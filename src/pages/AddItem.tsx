@@ -1,0 +1,63 @@
+import { AddClothingSheet } from "@/components/AddClothingSheet";
+import { ClothingItem } from "@/types/wardrobe";
+import { Camera, Upload, Sparkles } from "lucide-react";
+import heroImage from "@/assets/hero-wardrobe.jpg";
+
+interface Props {
+  onAdd: (item: ClothingItem) => void;
+}
+
+export function AddItem({ onAdd }: Props) {
+  return (
+    <div className="min-h-screen pb-24">
+      <header className="px-5 pt-12 pb-4">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Add Clothing</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Snap or upload to analyze</p>
+      </header>
+
+      {/* Hero */}
+      <div className="mx-5 rounded-3xl overflow-hidden relative h-52 mb-6">
+        <img src={heroImage} alt="Fashion" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
+        <div className="absolute bottom-4 left-4 right-4">
+          <div className="flex items-center gap-1.5 text-primary-foreground">
+            <Sparkles className="w-4 h-4" />
+            <span className="text-xs font-semibold">AI-Powered Analysis</span>
+          </div>
+          <p className="text-[11px] text-primary-foreground/80 mt-0.5">
+            Our AI detects category, color, fabric and style automatically
+          </p>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="px-5 space-y-3">
+        <AddClothingSheet onAdd={onAdd}>
+          <button className="w-full h-16 rounded-2xl bg-card border border-border flex items-center gap-4 px-5 hover:bg-muted transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
+              <Camera className="w-5 h-5 text-accent" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-foreground">Take a Photo</p>
+              <p className="text-[11px] text-muted-foreground">Use your camera to capture</p>
+            </div>
+          </button>
+        </AddClothingSheet>
+
+        <AddClothingSheet onAdd={onAdd}>
+          <button className="w-full h-16 rounded-2xl bg-card border border-border flex items-center gap-4 px-5 hover:bg-muted transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
+              <Upload className="w-5 h-5 text-accent" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-semibold text-foreground">Upload from Gallery</p>
+              <p className="text-[11px] text-muted-foreground">Choose from your photo library</p>
+            </div>
+          </button>
+        </AddClothingSheet>
+      </div>
+    </div>
+  );
+}
+
+export default AddItem;
