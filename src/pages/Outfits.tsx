@@ -4,26 +4,35 @@ import { Button } from "@/components/ui/button";
 import { OutfitCard } from "@/components/OutfitCard";
 import { ClothingItem, Outfit, OCCASIONS } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
-  onGenerate: (occasion: string) => Outfit | null;
+  onGenerate: (occasion: string) => Promise<Outfit | null>;
 }
 
 export function Outfits({ items, outfits, onGenerate }: Props) {
   const [selectedOccasion, setSelectedOccasion] = useState("");
   const [generating, setGenerating] = useState(false);
   const [latestOutfit, setLatestOutfit] = useState<Outfit | null>(null);
+  const { toast } = useToast();
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!selectedOccasion || items.length < 2) return;
     setGenerating(true);
-    setTimeout(() => {
-      const outfit = onGenerate(selectedOccasion);
+    try {
+      const outfit = await onGenerate(selectedOccasion);
       setLatestOutfit(outfit);
+      if (outfit) {
+        toast({ title: "Outfit Created ✨", description: `Perfect look for "${selectedOccasion}"` });
+      }
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Failed to generate outfit", variant: "destructive" });
+    } finally {
       setGenerating(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -64,7 +73,7 @@ export function Outfits({ items, outfits, onGenerate }: Props) {
           {generating ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Creating your look...
+              AI is styling your look...
             </>
           ) : (
             <>

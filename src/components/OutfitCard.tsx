@@ -1,5 +1,5 @@
 import { Outfit } from "@/types/wardrobe";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Lightbulb } from "lucide-react";
 
 interface Props {
   outfit: Outfit;
@@ -23,6 +23,12 @@ export function OutfitCard({ outfit }: Props) {
         ))}
       </div>
       <p className="text-xs text-muted-foreground leading-relaxed">{outfit.reasoning}</p>
+      {outfit.styleTips && (
+        <div className="flex items-start gap-2 bg-accent/10 rounded-xl p-2.5">
+          <Lightbulb className="w-3.5 h-3.5 text-accent mt-0.5 flex-shrink-0" />
+          <p className="text-[11px] text-foreground leading-relaxed">{outfit.styleTips}</p>
+        </div>
+      )}
     </div>
   );
 }

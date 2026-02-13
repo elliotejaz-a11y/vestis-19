@@ -6,14 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Camera, Upload, Sparkles, Loader2 } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   onAdd: (item: ClothingItem) => void;
   children: React.ReactNode;
 }
 
-const COLORS = ["Black", "White", "Navy", "Beige", "Brown", "Red", "Blue", "Green", "Pink", "Gray"];
-const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere"];
+const COLORS = ["Black", "White", "Navy", "Beige", "Brown", "Red", "Blue", "Green", "Pink", "Gray", "Burgundy", "Olive", "Cream", "Tan", "Charcoal"];
+const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas"];
 
 export function AddClothingSheet({ onAdd, children }: Props) {
   const [open, setOpen] = useState(false);
@@ -22,27 +24,60 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [category, setCategory] = useState("");
   const [color, setColor] = useState("");
   const [fabric, setFabric] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
-  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Remove data URL prefix
+        resolve(result.split(",")[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const url = URL.createObjectURL(file);
     setImageUrl(url);
 
-    // Mock AI analysis
     setAnalyzing(true);
-    setTimeout(() => {
-      const randomCat = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)];
-      const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
-      const randomFabric = FABRICS[Math.floor(Math.random() * FABRICS.length)];
-      setCategory(randomCat.value);
-      setColor(randomColor);
-      setFabric(randomFabric);
-      setName(`${randomColor} ${randomCat.label.slice(0, -1)}`);
+    try {
+      const base64 = await fileToBase64(file);
+      const { data, error } = await supabase.functions.invoke("analyze-clothing", {
+        body: { imageBase64: base64 },
+      });
+
+      if (error) throw error;
+
+      if (data) {
+        setName(data.name || "");
+        setCategory(data.category || "");
+        setColor(data.color || "");
+        setFabric(data.fabric || "");
+        setTags(data.style_tags || []);
+        toast({
+          title: "AI Analysis Complete ✨",
+          description: `Detected: ${data.name}`,
+        });
+      }
+    } catch (err) {
+      console.error("AI analysis failed:", err);
+      toast({
+        title: "AI analysis failed",
+        description: "You can still fill in the details manually.",
+        variant: "destructive",
+      });
+    } finally {
       setAnalyzing(false);
-    }, 1500);
+    }
   };
 
   const handleSave = () => {
@@ -54,7 +89,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       color,
       fabric,
       imageUrl,
-      tags: [color.toLowerCase(), fabric.toLowerCase(), category],
+      tags: [...tags, color.toLowerCase(), fabric.toLowerCase(), category].filter(Boolean),
       addedAt: new Date(),
     });
     resetForm();
@@ -67,6 +102,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     setCategory("");
     setColor("");
     setFabric("");
+    setTags([]);
   };
 
   return (
@@ -112,10 +148,21 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                   <Loader2 className="w-6 h-6 animate-spin text-accent" />
                   <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
                     <Sparkles className="w-4 h-4 text-accent" />
-                    Analyzing clothing...
+                    AI is analyzing your clothing...
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Style tags */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <span key={tag} className="px-2.5 py-1 rounded-full bg-accent/15 text-accent text-[10px] font-medium">
+                  {tag}
+                </span>
+              ))}
             </div>
           )}
 
