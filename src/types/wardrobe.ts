@@ -15,6 +15,7 @@ export interface Outfit {
   items: ClothingItem[];
   createdAt: Date;
   reasoning: string;
+  styleTips?: string;
 }
 
 export type ClothingCategory =

@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
+import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "wardrobe_items";
 
@@ -37,43 +38,53 @@ export function useWardrobe() {
   }, []);
 
   const generateOutfit = useCallback(
-    (occasion: string): Outfit | null => {
+    async (occasion: string): Promise<Outfit | null> => {
       if (items.length < 2) return null;
 
-      // Simple mock AI logic — picks items from different categories
-      const categories = [...new Set(items.map((i) => i.category))];
-      const selected: ClothingItem[] = [];
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-outfit", {
+          body: { occasion, items },
+        });
 
-      for (const cat of categories) {
-        const catItems = items.filter((i) => i.category === cat);
-        if (catItems.length > 0) {
-          selected.push(catItems[Math.floor(Math.random() * catItems.length)]);
-        }
-        if (selected.length >= 4) break;
-      }
+        if (error) throw error;
 
-      if (selected.length < 2) {
-        // fallback: pick 2-3 random
-        const shuffled = [...items].sort(() => Math.random() - 0.5);
-        return {
+        const outfit: Outfit = {
           id: crypto.randomUUID(),
           occasion,
-          items: shuffled.slice(0, Math.min(3, shuffled.length)),
+          items: data.items || [],
+          createdAt: new Date(),
+          reasoning: data.reasoning || "A curated look for this occasion.",
+          styleTips: data.style_tips,
+        };
+
+        setOutfits((prev) => [outfit, ...prev]);
+        return outfit;
+      } catch (err) {
+        console.error("AI outfit generation failed:", err);
+        // Fallback to basic logic
+        const categories = [...new Set(items.map((i) => i.category))];
+        const selected: ClothingItem[] = [];
+        for (const cat of categories) {
+          const catItems = items.filter((i) => i.category === cat);
+          if (catItems.length > 0) {
+            selected.push(catItems[Math.floor(Math.random() * catItems.length)]);
+          }
+          if (selected.length >= 4) break;
+        }
+
+        const fallbackItems = selected.length >= 2 ? selected : [...items].sort(() => Math.random() - 0.5).slice(0, 3);
+
+        const outfit: Outfit = {
+          id: crypto.randomUUID(),
+          occasion,
+          items: fallbackItems,
           createdAt: new Date(),
           reasoning: `A curated look for "${occasion}" combining complementary pieces from your wardrobe.`,
         };
+
+        setOutfits((prev) => [outfit, ...prev]);
+        return outfit;
       }
-
-      const outfit: Outfit = {
-        id: crypto.randomUUID(),
-        occasion,
-        items: selected,
-        createdAt: new Date(),
-        reasoning: `For "${occasion}", we selected pieces that complement each other in color and style, ensuring a polished and appropriate look.`,
-      };
-
-      setOutfits((prev) => [outfit, ...prev]);
-      return outfit;
     },
     [items]
   );
