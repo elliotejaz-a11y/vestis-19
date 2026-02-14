@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Sparkles, Loader2, Cloud, Sun, CloudRain, Snowflake, ArrowLeft } from "lucide-react";
+import { Sparkles, Loader2, Cloud, Sun, CloudRain, Snowflake, ArrowLeft, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OutfitCard } from "@/components/OutfitCard";
@@ -94,10 +94,17 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
             <ArrowLeft className="w-4 h-4 mr-1" /> Back to Calendar
           </Button>
         )}
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Outfit Generator</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {planDate ? `Creating outfit for ${planDate}` : "AI-styled looks for every occasion"}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Outfit Generator</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {planDate ? `Creating outfit for ${planDate}` : "AI-styled looks for every occasion"}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" className="rounded-xl text-xs h-9" onClick={() => navigate("/builder")}>
+            <Layers className="w-3.5 h-3.5 mr-1" /> Builder
+          </Button>
+        </div>
       </header>
 
       {/* Weather badge */}
