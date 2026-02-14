@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload } from "lucide-react";
+import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
 
 export const SKIN_TONES = [
@@ -245,14 +246,20 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
               key={b.value}
               onClick={() => setBodyType(b.value)}
               className={cn(
-                "p-4 rounded-2xl border-2 transition-all text-left",
+                "p-4 rounded-2xl border-2 transition-all",
                 bodyType === b.value
                   ? "border-accent bg-accent/10"
                   : "border-border bg-card hover:border-accent/40"
               )}
             >
-              <div className="flex items-center gap-3">
-                <span className="text-2xl w-8 text-center">{b.silhouette}</span>
+              <div className="flex flex-col items-center gap-2 text-center">
+                <BodySilhouette
+                  type={b.value}
+                  className={cn(
+                    "w-10 h-16 transition-colors",
+                    bodyType === b.value ? "text-accent" : "text-muted-foreground"
+                  )}
+                />
                 <div>
                   <p className="text-sm font-medium text-foreground">{b.label}</p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">{b.desc}</p>
