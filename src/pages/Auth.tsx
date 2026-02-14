@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Eye, EyeOff, Check, X, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Check, X, Loader2 } from "lucide-react";
+import vestisLogo from "@/assets/vestis-logo.png";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -73,10 +74,7 @@ export default function Auth() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
-          <div className="w-16 h-16 rounded-2xl bg-accent/15 flex items-center justify-center mx-auto mb-4">
-            <Sparkles className="w-8 h-8 text-accent" />
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Vestis</h1>
+          <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">Your AI-powered wardrobe stylist</p>
         </div>
 
