@@ -2,6 +2,7 @@ import { Shirt, User, Users, CalendarDays } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import vestisIcon from "@/assets/vestis-favicon.png";
+import vestisIconGrey from "@/assets/vestis-favicon-grey.png";
 
 const tabs = [
   { path: "/", icon: Shirt, label: "Wardrobe" },
@@ -32,7 +33,7 @@ export function BottomNav() {
                   "w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all",
                   active ? "bg-accent scale-110" : "bg-card border border-border"
                 )}>
-                  <img src={vestisIcon} alt="Outfits" className="w-7 h-7" />
+                  <img src={active ? vestisIcon : vestisIconGrey} alt="Outfits" className="w-7 h-7" />
                 </div>
                 <span className={cn("text-[9px] font-medium tracking-wide", active ? "text-accent" : "text-muted-foreground")}>{label}</span>
               </button>
