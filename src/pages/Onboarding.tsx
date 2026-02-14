@@ -76,6 +76,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [styles, setStyles] = useState<string[]>([]);
   const [customStyle, setCustomStyle] = useState("");
   const [bodyType, setBodyType] = useState("");
+  const [bodyGender, setBodyGender] = useState<"female" | "male">("female");
   const [preferredColors, setPreferredColors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -238,35 +239,64 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     },
     {
       title: "Your body type?",
-      subtitle: "For better fit recommendations",
+      subtitle: "Select a reference to help with fit recommendations",
       content: (
-        <div className="grid grid-cols-2 gap-3">
-          {BODY_TYPES.map((b) => (
+        <div className="space-y-4">
+          {/* Gender toggle */}
+          <div className="flex gap-2 justify-center">
             <button
-              key={b.value}
-              onClick={() => setBodyType(b.value)}
+              onClick={() => setBodyGender("female")}
               className={cn(
-                "p-4 rounded-2xl border-2 transition-all",
-                bodyType === b.value
-                  ? "border-accent bg-accent/10"
-                  : "border-border bg-card hover:border-accent/40"
+                "px-5 py-2 rounded-xl text-xs font-semibold transition-all",
+                bodyGender === "female"
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-card text-muted-foreground border border-border"
               )}
             >
-              <div className="flex flex-col items-center gap-2 text-center">
-                <BodySilhouette
-                  type={b.value}
-                  className={cn(
-                    "w-10 h-16 transition-colors",
-                    bodyType === b.value ? "text-accent" : "text-muted-foreground"
-                  )}
-                />
-                <div>
-                  <p className="text-sm font-medium text-foreground">{b.label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{b.desc}</p>
-                </div>
-              </div>
+              Female
             </button>
-          ))}
+            <button
+              onClick={() => setBodyGender("male")}
+              className={cn(
+                "px-5 py-2 rounded-xl text-xs font-semibold transition-all",
+                bodyGender === "male"
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-card text-muted-foreground border border-border"
+              )}
+            >
+              Male
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {BODY_TYPES.map((b) => (
+              <button
+                key={b.value}
+                onClick={() => setBodyType(b.value)}
+                className={cn(
+                  "p-3 rounded-2xl border-2 transition-all",
+                  bodyType === b.value
+                    ? "border-accent bg-accent/10"
+                    : "border-border bg-card hover:border-accent/40"
+                )}
+              >
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <BodySilhouette
+                    type={b.value}
+                    gender={bodyGender}
+                    className={cn(
+                      "w-10 h-20 transition-colors",
+                      bodyType === b.value ? "text-accent" : "text-muted-foreground"
+                    )}
+                  />
+                  <div>
+                    <p className="text-xs font-medium text-foreground">{b.label}</p>
+                    <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight">{b.desc}</p>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
       ),
       valid: !!bodyType,
