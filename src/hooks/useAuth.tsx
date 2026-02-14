@@ -8,6 +8,7 @@ interface Profile {
   username: string | null;
   avatar_url: string | null;
   bio: string | null;
+  is_public: boolean;
   skin_tone: string | null;
   style_preference: string | null;
   body_type: string | null;

@@ -13,6 +13,8 @@ import OutfitBuilder from "./pages/OutfitBuilder";
 import Profile from "./pages/Profile";
 import CalendarPage from "./pages/Calendar";
 import FeedbackPage from "./pages/Feedback";
+import SocialFeed from "./pages/SocialFeed";
+import UserProfilePage from "./pages/UserProfile";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
@@ -48,6 +50,8 @@ function AuthenticatedApp() {
         <Route path="/builder" element={<OutfitBuilder items={items} />} />
         <Route path="/calendar" element={<CalendarPage outfits={outfits} />} />
         <Route path="/profile" element={<Profile items={items} outfits={outfits} onSaveOutfit={saveOutfit} onDeleteOutfit={deleteOutfit} />} />
+        <Route path="/social" element={<SocialFeed />} />
+        <Route path="/user/:userId" element={<UserProfilePage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

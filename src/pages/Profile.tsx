@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Globe, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: Props) {
-  const { user, profile, signOut, refreshProfile } = useAuth();
+  const { user, profile, signOut, refreshProfile, updateProfile } = useAuth();
   const [editingProfile, setEditingProfile] = useState(false);
   const navigate = useNavigate();
 
@@ -189,6 +189,28 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: P
             </div>
           </div>
         )}
+
+        {/* Privacy toggle */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {profile?.is_public ? <Globe className="w-4 h-4 text-accent" /> : <Lock className="w-4 h-4 text-muted-foreground" />}
+            <div>
+              <p className="text-xs font-semibold text-foreground">{profile?.is_public ? "Public Profile" : "Private Profile"}</p>
+              <p className="text-[10px] text-muted-foreground">{profile?.is_public ? "Anyone can see your wardrobe & posts" : "Only followers can see your content"}</p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs rounded-xl"
+            onClick={async () => {
+              await updateProfile({ is_public: !profile?.is_public } as any);
+              await refreshProfile();
+            }}
+          >
+            {profile?.is_public ? "Make Private" : "Make Public"}
+          </Button>
+        </div>
 
         <Button variant="outline" onClick={() => navigate("/feedback")} className="w-full h-12 rounded-2xl text-sm">
           <MessageSquare className="w-4 h-4 mr-2" /> Help & Feedback
