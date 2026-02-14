@@ -1,11 +1,12 @@
-import { Shirt, Sparkles, User, Users, CalendarDays } from "lucide-react";
+import { Shirt, User, Users, CalendarDays } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import vestisIcon from "@/assets/vestis-favicon.png";
 
 const tabs = [
   { path: "/", icon: Shirt, label: "Wardrobe" },
-  { path: "/outfits", icon: Sparkles, label: "Outfits" },
   { path: "/calendar", icon: CalendarDays, label: "Calendar" },
+  { path: "/outfits", icon: null, label: "Outfits", isCenter: true },
   { path: "/friends", icon: Users, label: "Friends" },
   { path: "/profile", icon: User, label: "Profile" },
 ];
@@ -17,8 +18,27 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-border/60">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
-        {tabs.map(({ path, icon: Icon, label }) => {
+        {tabs.map(({ path, icon: Icon, label, isCenter }) => {
           const active = location.pathname === path;
+
+          if (isCenter) {
+            return (
+              <button
+                key={path}
+                onClick={() => navigate(path)}
+                className="flex flex-col items-center gap-0.5 px-2 py-1 -mt-5"
+              >
+                <div className={cn(
+                  "w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all",
+                  active ? "bg-accent scale-110" : "bg-card border border-border"
+                )}>
+                  <img src={vestisIcon} alt="Outfits" className="w-7 h-7" />
+                </div>
+                <span className={cn("text-[9px] font-medium tracking-wide", active ? "text-accent" : "text-muted-foreground")}>{label}</span>
+              </button>
+            );
+          }
+
           return (
             <button
               key={path}
@@ -30,7 +50,7 @@ export function BottomNav() {
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.8} />
+              {Icon && <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 1.8} />}
               <span className="text-[9px] font-medium tracking-wide">{label}</span>
             </button>
           );
