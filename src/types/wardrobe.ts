@@ -10,6 +10,7 @@ export interface ClothingItem {
   notes: string;
   addedAt: Date;
   estimatedPrice?: number;
+  isPrivate?: boolean;
 }
 
 export interface Outfit {
