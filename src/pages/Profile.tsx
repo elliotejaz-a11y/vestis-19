@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { OutfitCard } from "@/components/OutfitCard";
 import Onboarding from "@/pages/Onboarding";
+import { EditProfileSheet } from "@/components/EditProfileSheet";
 
 interface Props {
   items: ClothingItem[];
@@ -17,6 +18,7 @@ interface Props {
 export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: Props) {
   const { user, profile, signOut, refreshProfile, updateProfile } = useAuth();
   const [editingProfile, setEditingProfile] = useState(false);
+  const [showEditSheet, setShowEditSheet] = useState(false);
   const navigate = useNavigate();
 
   const savedOutfits = outfits.filter((o) => o.saved);
@@ -67,6 +69,9 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: P
             )}
             <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
+          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowEditSheet(true)}>
+            <Pencil className="w-4 h-4 text-accent" />
+          </Button>
         </div>
         {profile?.bio && (
           <p className="text-xs text-foreground mt-3 leading-relaxed">{profile.bio}</p>
@@ -220,6 +225,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: P
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
       </div>
+
+      <EditProfileSheet open={showEditSheet} onOpenChange={setShowEditSheet} />
     </div>
   );
 }
