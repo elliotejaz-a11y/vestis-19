@@ -33,14 +33,14 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a fashion expert AI that analyzes clothing items from photos. You must return structured data about the clothing item.`,
+            content: `You are a fashion expert AI that analyzes clothing items from photos. You must return structured data about the clothing item including an estimated retail value in NZD (New Zealand Dollars). Consider the brand quality indicators, fabric type, condition, and style when estimating the price. The "Vestis Price" should reflect what this item would reasonably cost in NZD at retail.`,
           },
           {
             role: 'user',
             content: [
               {
                 type: 'text',
-                text: 'Analyze this clothing item. Identify: the type/category, primary color, fabric/material, and a descriptive name. Be specific and accurate.',
+                text: 'Analyze this clothing item. Identify: the type/category, primary color, fabric/material, a descriptive name, and estimate its retail value in NZD. Be specific and accurate.',
               },
               {
                 type: 'image_url',
@@ -54,7 +54,7 @@ serve(async (req) => {
             type: 'function',
             function: {
               name: 'classify_clothing',
-              description: 'Classify a clothing item from a photo',
+              description: 'Classify a clothing item from a photo and estimate its value',
               parameters: {
                 type: 'object',
                 properties: {
@@ -63,8 +63,9 @@ serve(async (req) => {
                   color: { type: 'string', enum: ['Black', 'White', 'Navy', 'Beige', 'Brown', 'Red', 'Blue', 'Green', 'Pink', 'Gray', 'Burgundy', 'Olive', 'Cream', 'Tan', 'Charcoal'], description: 'Primary color' },
                   fabric: { type: 'string', enum: ['Cotton', 'Silk', 'Linen', 'Denim', 'Wool', 'Polyester', 'Leather', 'Cashmere', 'Suede', 'Knit', 'Chiffon', 'Velvet', 'Nylon', 'Canvas'], description: 'Primary fabric/material' },
                   style_tags: { type: 'array', items: { type: 'string' }, description: 'Style descriptors like casual, formal, streetwear, vintage, bohemian, preppy, sporty, elegant' },
+                  estimated_price_nzd: { type: 'number', description: 'Estimated retail value in New Zealand Dollars (NZD). Consider fabric quality, style, and typical retail pricing.' },
                 },
-                required: ['name', 'category', 'color', 'fabric', 'style_tags'],
+                required: ['name', 'category', 'color', 'fabric', 'style_tags', 'estimated_price_nzd'],
                 additionalProperties: false,
               },
             },
