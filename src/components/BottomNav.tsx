@@ -31,7 +31,7 @@ export function BottomNav() {
               >
                 <div className={cn(
                   "w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all",
-                  active ? "bg-accent scale-110" : "bg-card border border-border"
+                  "bg-card border border-border"
                 )}>
                   <img src={active ? vestisIcon : vestisIconGrey} alt="Outfits" className="w-7 h-7" />
                 </div>
