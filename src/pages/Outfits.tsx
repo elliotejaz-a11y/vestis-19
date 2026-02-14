@@ -1,35 +1,82 @@
-import { useState } from "react";
-import { Sparkles, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Sparkles, Loader2, Cloud, Sun, CloudRain, Snowflake, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OutfitCard } from "@/components/OutfitCard";
+import { OutfitChat } from "@/components/OutfitChat";
 import { ClothingItem, Outfit, OCCASIONS } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
-  onGenerate: (occasion: string) => Promise<Outfit | null>;
+  onGenerate: (occasion: string, weather?: { temp: number; description: string }) => Promise<Outfit | null>;
+  onSave?: (id: string, saved: boolean) => void;
+  onDelete?: (id: string) => void;
 }
 
-export function Outfits({ items, outfits, onGenerate }: Props) {
+export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props) {
+  const { user } = useAuth();
   const [selectedOccasion, setSelectedOccasion] = useState("");
   const [customOccasion, setCustomOccasion] = useState("");
   const [generating, setGenerating] = useState(false);
   const [latestOutfit, setLatestOutfit] = useState<Outfit | null>(null);
+  const [chatOutfit, setChatOutfit] = useState<Outfit | null>(null);
+  const [weather, setWeather] = useState<{ temp: number; description: string } | null>(null);
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const planDate = searchParams.get("planDate");
 
   const activeOccasion = customOccasion.trim() || selectedOccasion;
+
+  // Fetch weather
+  useEffect(() => {
+    navigator.geolocation?.getCurrentPosition(
+      async (pos) => {
+        try {
+          const resp = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current=temperature_2m,weather_code&timezone=auto`
+          );
+          const data = await resp.json();
+          const code = data.current.weather_code;
+          const temp = Math.round(data.current.temperature_2m);
+          const description = code <= 3 ? "Clear" : code <= 48 ? "Cloudy" : code <= 67 ? "Rainy" : "Snowy";
+          setWeather({ temp, description });
+        } catch {}
+      },
+      () => {},
+      { timeout: 5000 }
+    );
+  }, []);
+
+  const WeatherIcon = weather?.description === "Rainy" ? CloudRain
+    : weather?.description === "Snowy" ? Snowflake
+    : weather?.description === "Cloudy" ? Cloud : Sun;
 
   const handleGenerate = async () => {
     if (!activeOccasion || items.length < 2) return;
     setGenerating(true);
     try {
-      const outfit = await onGenerate(activeOccasion);
+      const outfit = await onGenerate(activeOccasion, weather || undefined);
       setLatestOutfit(outfit);
       if (outfit) {
         toast({ title: "Outfit Created ✨", description: `Perfect look for "${activeOccasion}"` });
+
+        // Auto-plan if coming from calendar
+        if (planDate && user) {
+          await supabase.from("planned_outfits").insert({
+            user_id: user.id,
+            outfit_id: outfit.id,
+            planned_date: planDate,
+          });
+          toast({ title: "Outfit planned for calendar! 📅" });
+          setTimeout(() => navigate("/calendar"), 1500);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -42,9 +89,27 @@ export function Outfits({ items, outfits, onGenerate }: Props) {
   return (
     <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-4">
+        {planDate && (
+          <Button variant="ghost" size="sm" className="mb-2 -ml-2 text-xs" onClick={() => navigate("/calendar")}>
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back to Calendar
+          </Button>
+        )}
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Outfit Generator</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">AI-styled looks for every occasion</p>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {planDate ? `Creating outfit for ${planDate}` : "AI-styled looks for every occasion"}
+        </p>
       </header>
+
+      {/* Weather badge */}
+      {weather && (
+        <div className="px-5 pb-3">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border/40 text-xs text-muted-foreground">
+            <WeatherIcon className="w-3.5 h-3.5" />
+            <span>{weather.temp}°C · {weather.description}</span>
+            <span className="text-[10px]">— AI will factor this in</span>
+          </div>
+        </div>
+      )}
 
       {/* Custom occasion input */}
       <div className="px-5 pb-3">
@@ -100,7 +165,7 @@ export function Outfits({ items, outfits, onGenerate }: Props) {
         {latestOutfit && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Latest Suggestion</p>
-            <OutfitCard outfit={latestOutfit} />
+            <OutfitCard outfit={latestOutfit} onSave={onSave} onDelete={onDelete} onChat={setChatOutfit} />
           </div>
         )}
         {outfits.length > 0 && (
@@ -110,12 +175,17 @@ export function Outfits({ items, outfits, onGenerate }: Props) {
               {outfits
                 .filter((o) => o.id !== latestOutfit?.id)
                 .map((outfit) => (
-                  <OutfitCard key={outfit.id} outfit={outfit} />
+                  <OutfitCard key={outfit.id} outfit={outfit} onSave={onSave} onDelete={onDelete} onChat={setChatOutfit} />
                 ))}
             </div>
           </div>
         )}
       </div>
+
+      {/* Chat sheet */}
+      {chatOutfit && (
+        <OutfitChat outfit={chatOutfit} open={!!chatOutfit} onOpenChange={(open) => !open && setChatOutfit(null)} />
+      )}
     </div>
   );
 }

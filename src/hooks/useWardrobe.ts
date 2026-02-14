@@ -51,6 +51,7 @@ export function useWardrobe() {
             createdAt: new Date(o.created_at),
             reasoning: o.reasoning,
             styleTips: o.style_tips || undefined,
+            saved: o.saved || false,
           };
         });
         setOutfits(dbOutfits);
@@ -76,16 +77,13 @@ export function useWardrobe() {
             .from("clothing-images")
             .upload(path, blob, { contentType: blob.type });
           if (!uploadError) {
-            const { data: urlData } = supabase.storage
-              .from("clothing-images")
-              .getPublicUrl(path);
+            const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
             imageUrl = urlData.publicUrl;
           }
         } catch (err) {
           console.error("Image upload failed:", err);
         }
       } else if (imageUrl.startsWith("data:image/svg+xml")) {
-        // SVG data URLs from presets - upload as SVG
         try {
           const svgData = atob(imageUrl.split(",")[1]);
           const blob = new Blob([svgData], { type: "image/svg+xml" });
@@ -94,16 +92,13 @@ export function useWardrobe() {
             .from("clothing-images")
             .upload(path, blob, { contentType: "image/svg+xml" });
           if (!uploadError) {
-            const { data: urlData } = supabase.storage
-              .from("clothing-images")
-              .getPublicUrl(path);
+            const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
             imageUrl = urlData.publicUrl;
           }
         } catch (err) {
           console.error("SVG upload failed:", err);
         }
       } else if (imageUrl.startsWith("data:")) {
-        // Base64 PNG/JPG from background removal
         try {
           const parts = imageUrl.split(",");
           const mime = parts[0].match(/:(.*?);/)?.[1] || "image/png";
@@ -118,13 +113,28 @@ export function useWardrobe() {
             .from("clothing-images")
             .upload(path, blob, { contentType: mime });
           if (!uploadError) {
-            const { data: urlData } = supabase.storage
-              .from("clothing-images")
-              .getPublicUrl(path);
+            const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
             imageUrl = urlData.publicUrl;
           }
         } catch (err) {
           console.error("Base64 upload failed:", err);
+        }
+      } else if (!imageUrl.startsWith("http")) {
+        // Vite bundled asset (relative path) - fetch and upload
+        try {
+          const response = await fetch(imageUrl);
+          const blob = await response.blob();
+          const ext = blob.type.split("/")[1] || "jpg";
+          const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("clothing-images")
+            .upload(path, blob, { contentType: blob.type });
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
+            imageUrl = urlData.publicUrl;
+          }
+        } catch (err) {
+          console.error("Asset upload failed:", err);
         }
       }
 
@@ -191,8 +201,27 @@ export function useWardrobe() {
     [user]
   );
 
+  const saveOutfit = useCallback(
+    async (id: string, saved: boolean) => {
+      if (!user) return;
+      await supabase.from("outfits").update({ saved } as any).eq("id", id).eq("user_id", user.id);
+      setOutfits((prev) => prev.map((o) => (o.id === id ? { ...o, saved } : o)));
+    },
+    [user]
+  );
+
+  const deleteOutfit = useCallback(
+    async (id: string) => {
+      if (!user) return;
+      await supabase.from("outfit_items").delete().match({ outfit_id: id });
+      await supabase.from("outfits").delete().eq("id", id).eq("user_id", user.id);
+      setOutfits((prev) => prev.filter((o) => o.id !== id));
+    },
+    [user]
+  );
+
   const generateOutfit = useCallback(
-    async (occasion: string): Promise<Outfit | null> => {
+    async (occasion: string, weather?: { temp: number; description: string }): Promise<Outfit | null> => {
       if (!user || items.length < 2) return null;
 
       try {
@@ -200,6 +229,7 @@ export function useWardrobe() {
           body: {
             occasion,
             items,
+            weather,
             userProfile: profile ? {
               skinTone: profile.skin_tone,
               stylePreference: profile.style_preference,
@@ -229,7 +259,7 @@ export function useWardrobe() {
 
         const outfit: Outfit = {
           id: outfitRow.id, occasion, items: selectedItems, createdAt: new Date(outfitRow.created_at),
-          reasoning: data.reasoning || "", styleTips: data.style_tips,
+          reasoning: data.reasoning || "", styleTips: data.style_tips, saved: false,
         };
         setOutfits((prev) => [outfit, ...prev]);
         return outfit;
@@ -257,7 +287,7 @@ export function useWardrobe() {
 
         const outfit: Outfit = {
           id: outfitRow?.id || crypto.randomUUID(), occasion, items: fallbackItems, createdAt: new Date(),
-          reasoning: `A curated look for "${occasion}" combining complementary pieces.`,
+          reasoning: `A curated look for "${occasion}" combining complementary pieces.`, saved: false,
         };
         setOutfits((prev) => [outfit, ...prev]);
         return outfit;
@@ -266,5 +296,5 @@ export function useWardrobe() {
     [user, items, profile]
   );
 
-  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, loading };
+  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, loading };
 }
