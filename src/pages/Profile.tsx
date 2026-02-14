@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 import Onboarding from "@/pages/Onboarding";
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 export function Profile({ items }: Props) {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const [editingProfile, setEditingProfile] = useState(false);
+  const navigate = useNavigate();
 
   const categoryBreakdown = CATEGORIES.map((cat) => ({
     ...cat,
@@ -23,19 +25,13 @@ export function Profile({ items }: Props) {
       acc[i.color] = (acc[i.color] || 0) + 1;
       return acc;
     }, {})
-  )
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
+  ).sort(([, a], [, b]) => b - a).slice(0, 5);
+
+  const totalWardrobeValue = items.reduce((sum, i) => sum + (i.estimatedPrice || 0), 0);
 
   if (editingProfile) {
     return (
-      <Onboarding
-        editMode
-        onComplete={async () => {
-          await refreshProfile();
-          setEditingProfile(false);
-        }}
-      />
+      <Onboarding editMode onComplete={async () => { await refreshProfile(); setEditingProfile(false); }} />
     );
   }
 
@@ -56,17 +52,23 @@ export function Profile({ items }: Props) {
       </header>
 
       <div className="px-5 space-y-4">
+        {/* Wardrobe Value */}
+        {totalWardrobeValue > 0 && (
+          <div className="rounded-2xl bg-accent/10 border border-accent/20 p-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs text-muted-foreground">Total Wardrobe Value</p>
+              <p className="text-2xl font-bold text-foreground">${totalWardrobeValue.toFixed(0)} <span className="text-sm font-normal text-muted-foreground">NZD</span></p>
+            </div>
+            <DollarSign className="w-8 h-8 text-accent" />
+          </div>
+        )}
+
         {/* Style preferences */}
         {profile && (
           <div className="rounded-2xl bg-card border border-border/40 p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-foreground">Style Preferences</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditingProfile(true)}
-                className="h-8 px-2.5 text-xs text-accent"
-              >
+              <Button variant="ghost" size="sm" onClick={() => setEditingProfile(true)} className="h-8 px-2.5 text-xs text-accent">
                 <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
               </Button>
             </div>
@@ -127,10 +129,7 @@ export function Profile({ items }: Props) {
                 <span className="text-xs text-muted-foreground">{cat.icon} {cat.label}</span>
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-accent transition-all"
-                      style={{ width: items.length ? `${(cat.count / items.length) * 100}%` : "0%" }}
-                    />
+                    <div className="h-full rounded-full bg-accent transition-all" style={{ width: items.length ? `${(cat.count / items.length) * 100}%` : "0%" }} />
                   </div>
                   <span className="text-xs font-medium text-foreground w-4 text-right">{cat.count}</span>
                 </div>
@@ -154,14 +153,14 @@ export function Profile({ items }: Props) {
           </div>
         )}
 
+        {/* Help & Feedback link */}
+        <Button variant="outline" onClick={() => navigate("/feedback")} className="w-full h-12 rounded-2xl text-sm">
+          <MessageSquare className="w-4 h-4 mr-2" /> Help & Feedback
+        </Button>
+
         {/* Sign out */}
-        <Button
-          variant="outline"
-          onClick={signOut}
-          className="w-full h-12 rounded-2xl text-sm"
-        >
-          <LogOut className="w-4 h-4 mr-2" />
-          Sign Out
+        <Button variant="outline" onClick={signOut} className="w-full h-12 rounded-2xl text-sm">
+          <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
       </div>
     </div>

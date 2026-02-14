@@ -19,6 +19,7 @@ export type Database = {
           category: string
           color: string
           created_at: string
+          estimated_price: number | null
           fabric: string
           id: string
           image_url: string
@@ -31,6 +32,7 @@ export type Database = {
           category: string
           color?: string
           created_at?: string
+          estimated_price?: number | null
           fabric?: string
           id?: string
           image_url: string
@@ -43,6 +45,7 @@ export type Database = {
           category?: string
           color?: string
           created_at?: string
+          estimated_price?: number | null
           fabric?: string
           id?: string
           image_url?: string
@@ -52,6 +55,65 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      feedback: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+          type: string
+          user_id: string
+          votes: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+          type: string
+          user_id: string
+          votes?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+          type?: string
+          user_id?: string
+          votes?: number | null
+        }
+        Relationships: []
+      }
+      feedback_votes: {
+        Row: {
+          created_at: string
+          feedback_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_votes_feedback_id_fkey"
+            columns: ["feedback_id"]
+            isOneToOne: false
+            referencedRelation: "feedback"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       outfit_items: {
         Row: {
@@ -112,6 +174,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      planned_outfits: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          outfit_id: string | null
+          planned_date: string
+          user_id: string
+          worn: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outfit_id?: string | null
+          planned_date: string
+          user_id: string
+          worn?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          outfit_id?: string | null
+          planned_date?: string
+          user_id?: string
+          worn?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planned_outfits_outfit_id_fkey"
+            columns: ["outfit_id"]
+            isOneToOne: false
+            referencedRelation: "outfits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

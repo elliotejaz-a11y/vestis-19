@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, Upload, Sparkles, Loader2, ImageOff } from "lucide-react";
+import { Camera, Upload, Sparkles, Loader2, ImageOff, DollarSign } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -27,9 +27,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [fabric, setFabric] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [analyzing, setAnalyzing] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
-  
+
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -67,10 +68,12 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Show preview immediately
+    setImageUrl(URL.createObjectURL(file));
     setAnalyzing(true);
     try {
       const base64 = await fileToBase64(file);
-      
+
       // Remove background first
       const cleanBase64 = await removeBackground(base64);
       setImageUrl(`data:image/png;base64,${cleanBase64}`);
@@ -88,18 +91,14 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         setColor(data.color || "");
         setFabric(data.fabric || "");
         setTags(data.style_tags || []);
+        if (data.estimated_price_nzd) setEstimatedPrice(data.estimated_price_nzd);
         toast({
           title: "AI Analysis Complete ✨",
-          description: `Detected: ${data.name}`,
+          description: `Detected: ${data.name}${data.estimated_price_nzd ? ` — Vestis Price: $${data.estimated_price_nzd} NZD` : ""}`,
         });
       }
     } catch (err) {
       console.error("AI analysis failed:", err);
-      // If we don't have an image URL yet, set original
-      if (!imageUrl) {
-        const file2 = e.target.files?.[0];
-        if (file2) setImageUrl(URL.createObjectURL(file2));
-      }
       toast({
         title: "AI analysis failed",
         description: "You can still fill in the details manually.",
@@ -122,19 +121,15 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       tags: [...tags, color.toLowerCase(), fabric.toLowerCase(), category].filter(Boolean),
       notes,
       addedAt: new Date(),
+      estimatedPrice,
     });
     resetForm();
     setOpen(false);
   };
 
   const resetForm = () => {
-    setImageUrl("");
-    setName("");
-    setCategory("");
-    setColor("");
-    setFabric("");
-    setTags([]);
-    setNotes("");
+    setImageUrl(""); setName(""); setCategory(""); setColor(""); setFabric("");
+    setTags([]); setNotes(""); setEstimatedPrice(undefined);
   };
 
   return (
@@ -146,7 +141,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         </SheetHeader>
 
         <div className="mt-6 space-y-5">
-          {/* Image upload */}
           {!imageUrl ? (
             <div className="flex gap-3">
               <button
@@ -156,44 +150,51 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 <Upload className="w-8 h-8" />
                 <span className="text-xs font-medium">Upload Photo</span>
               </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFile}
-              />
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
             </div>
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
               <img src={imageUrl} alt="Preview" className="w-full h-48 object-contain bg-white" />
               {(analyzing || removingBg) && (
-                <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
-                  <Loader2 className="w-6 h-6 animate-spin text-accent" />
-                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    {removingBg ? (
-                      <><ImageOff className="w-4 h-4 text-accent" /> Removing background...</>
-                    ) : (
-                      <><Sparkles className="w-4 h-4 text-accent" /> AI is analyzing your clothing...</>
-                    )}
+                <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                  <div className="text-center">
+                    <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground justify-center">
+                      {removingBg ? (
+                        <><ImageOff className="w-4 h-4 text-accent" /> Removing Background</>
+                      ) : (
+                        <><Sparkles className="w-4 h-4 text-accent" /> AI Analyzing Clothing</>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {removingBg
+                        ? "Creating a clean, uniform look for your wardrobe..."
+                        : "Detecting category, color, fabric & estimating value..."}
+                    </p>
                   </div>
                 </div>
               )}
             </div>
           )}
 
-          {/* Style tags */}
           {tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {tags.map((tag) => (
-                <span key={tag} className="px-2.5 py-1 rounded-full bg-accent/15 text-accent text-[10px] font-medium">
-                  {tag}
-                </span>
+                <span key={tag} className="px-2.5 py-1 rounded-full bg-accent/15 text-accent text-[10px] font-medium">{tag}</span>
               ))}
             </div>
           )}
 
-          {/* Form fields */}
+          {estimatedPrice && (
+            <div className="flex items-center justify-between bg-accent/10 rounded-xl p-3">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-accent" />
+                <span className="text-xs font-medium text-foreground">Vestis Price</span>
+              </div>
+              <span className="text-sm font-bold text-accent">${estimatedPrice.toFixed(0)} NZD</span>
+            </div>
+          )}
+
           <div className="space-y-3">
             <div>
               <Label className="text-xs font-medium text-muted-foreground">Name</Label>
@@ -205,9 +206,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((c) => (
-                      <SelectItem key={c.value} value={c.value}>{c.icon} {c.label}</SelectItem>
-                    ))}
+                    {CATEGORIES.map((c) => (<SelectItem key={c.value} value={c.value}>{c.icon} {c.label}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
@@ -216,9 +215,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 <Select value={color} onValueChange={setColor}>
                   <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue placeholder="Color" /></SelectTrigger>
                   <SelectContent>
-                    {COLORS.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
+                    {COLORS.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
@@ -227,21 +224,14 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 <Select value={fabric} onValueChange={setFabric}>
                   <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue placeholder="Fabric" /></SelectTrigger>
                   <SelectContent>
-                    {FABRICS.map((f) => (
-                      <SelectItem key={f} value={f}>{f}</SelectItem>
-                    ))}
+                    {FABRICS.map((f) => (<SelectItem key={f} value={f}>{f}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div>
               <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g. Super comfy, runs a size small, great for layering..."
-                className="mt-1 rounded-xl bg-card text-sm min-h-[60px]"
-              />
+              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Super comfy, runs a size small..." className="mt-1 rounded-xl bg-card text-sm min-h-[60px]" />
             </div>
           </div>
 
@@ -250,8 +240,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
             disabled={!imageUrl || !name || !category || analyzing || removingBg}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors"
           >
-            <Sparkles className="w-4 h-4 mr-2" />
-            Save to Wardrobe
+            <Sparkles className="w-4 h-4 mr-2" /> Save to Wardrobe
           </Button>
         </div>
       </SheetContent>
