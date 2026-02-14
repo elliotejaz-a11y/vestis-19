@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, ArrowRight, ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const SKIN_TONES = [
+export const SKIN_TONES = [
   { value: "fair", label: "Fair", color: "bg-[#FDEBD0]" },
   { value: "light", label: "Light", color: "bg-[#F5CBA7]" },
   { value: "medium", label: "Medium", color: "bg-[#DC7633]" },
@@ -15,7 +15,7 @@ const SKIN_TONES = [
   { value: "deep", label: "Deep", color: "bg-[#3B2F2F]" },
 ];
 
-const STYLES = [
+export const STYLES = [
   { value: "casual", label: "Casual", emoji: "👕" },
   { value: "classic", label: "Classic", emoji: "🎩" },
   { value: "streetwear", label: "Streetwear", emoji: "🧢" },
@@ -26,7 +26,7 @@ const STYLES = [
   { value: "vintage", label: "Vintage", emoji: "📻" },
 ];
 
-const BODY_TYPES = [
+export const BODY_TYPES = [
   { value: "slim", label: "Slim" },
   { value: "athletic", label: "Athletic" },
   { value: "average", label: "Average" },
@@ -36,7 +36,7 @@ const BODY_TYPES = [
   { value: "petite", label: "Petite" },
 ];
 
-const COLOR_OPTIONS = [
+export const COLOR_OPTIONS = [
   { value: "neutrals", label: "Neutrals", desc: "Black, white, beige, gray" },
   { value: "earth-tones", label: "Earth Tones", desc: "Brown, olive, tan, rust" },
   { value: "pastels", label: "Pastels", desc: "Soft pink, lavender, mint" },
@@ -45,7 +45,7 @@ const COLOR_OPTIONS = [
   { value: "jewel-tones", label: "Jewel Tones", desc: "Burgundy, teal, plum" },
 ];
 
-const GOALS = [
+export const GOALS = [
   { value: "look-polished", label: "Look more polished daily" },
   { value: "experiment", label: "Experiment with new styles" },
   { value: "capsule", label: "Build a capsule wardrobe" },
@@ -54,7 +54,12 @@ const GOALS = [
   { value: "express", label: "Express my personality" },
 ];
 
-export default function Onboarding() {
+interface OnboardingProps {
+  editMode?: boolean;
+  onComplete?: () => void;
+}
+
+export default function Onboarding({ editMode = false, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [skinTone, setSkinTone] = useState("");
   const [style, setStyle] = useState("");
@@ -64,6 +69,17 @@ export default function Onboarding() {
   const [saving, setSaving] = useState(false);
   const { updateProfile, profile } = useAuth();
   const { toast } = useToast();
+
+  // Pre-fill from existing profile in edit mode
+  useEffect(() => {
+    if (editMode && profile) {
+      setSkinTone(profile.skin_tone || "");
+      setStyle(profile.style_preference || "");
+      setBodyType(profile.body_type || "");
+      setPreferredColors(profile.preferred_colors || []);
+      setFashionGoals(profile.fashion_goals || "");
+    }
+  }, [editMode, profile]);
 
   const toggleColor = (c: string) =>
     setPreferredColors((prev) =>
@@ -203,7 +219,8 @@ export default function Onboarding() {
         onboarding_completed: true,
         display_name: profile?.display_name || null,
       });
-      toast({ title: "Welcome to StyleAI! ✨", description: "Your profile is set up." });
+      toast({ title: editMode ? "Profile updated! ✨" : "Welcome to StyleAI! ✨", description: editMode ? "Your style preferences have been saved." : "Your profile is set up." });
+      onComplete?.();
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
     }
@@ -245,6 +262,15 @@ export default function Onboarding() {
               <ArrowLeft className="w-4 h-4 mr-2" /> Back
             </Button>
           )}
+          {editMode && step === 0 && onComplete && (
+            <Button
+              variant="outline"
+              onClick={onComplete}
+              className="h-12 rounded-2xl flex-1"
+            >
+              Cancel
+            </Button>
+          )}
           {step < steps.length - 1 ? (
             <Button
               onClick={() => setStep(step + 1)}
@@ -259,7 +285,7 @@ export default function Onboarding() {
               disabled={!current.valid || saving}
               className="h-12 rounded-2xl flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
             >
-              {saving ? "Saving..." : <>Get Started <Check className="w-4 h-4 ml-2" /></>}
+              {saving ? "Saving..." : <>{editMode ? "Save Changes" : "Get Started"} <Check className="w-4 h-4 ml-2" /></>}
             </Button>
           )}
         </div>

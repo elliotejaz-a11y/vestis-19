@@ -6,6 +6,7 @@ export interface ClothingItem {
   fabric: string;
   imageUrl: string;
   tags: string[];
+  notes: string;
   addedAt: Date;
 }
 
