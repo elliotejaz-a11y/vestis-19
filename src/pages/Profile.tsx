@@ -1,11 +1,15 @@
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Settings } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   items: ClothingItem[];
 }
 
 export function Profile({ items }: Props) {
+  const { user, profile, signOut } = useAuth();
+
   const categoryBreakdown = CATEGORIES.map((cat) => ({
     ...cat,
     count: items.filter((i) => i.category === cat.value).length,
@@ -27,14 +31,49 @@ export function Profile({ items }: Props) {
           <div className="w-14 h-14 rounded-full bg-card border border-border flex items-center justify-center">
             <User className="w-6 h-6 text-muted-foreground" />
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">My Style Profile</h1>
-            <p className="text-xs text-muted-foreground">{items.length} items in wardrobe</p>
+          <div className="flex-1">
+            <h1 className="text-xl font-bold tracking-tight text-foreground">
+              {profile?.display_name || "My Style Profile"}
+            </h1>
+            <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>
       </header>
 
       <div className="px-5 space-y-4">
+        {/* Style preferences */}
+        {profile && (
+          <div className="rounded-2xl bg-card border border-border/40 p-4">
+            <p className="text-sm font-semibold text-foreground mb-3">Style Preferences</p>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {profile.skin_tone && (
+                <div className="bg-muted rounded-xl p-2.5">
+                  <p className="text-muted-foreground">Skin Tone</p>
+                  <p className="font-medium text-foreground capitalize">{profile.skin_tone}</p>
+                </div>
+              )}
+              {profile.style_preference && (
+                <div className="bg-muted rounded-xl p-2.5">
+                  <p className="text-muted-foreground">Style</p>
+                  <p className="font-medium text-foreground capitalize">{profile.style_preference}</p>
+                </div>
+              )}
+              {profile.body_type && (
+                <div className="bg-muted rounded-xl p-2.5">
+                  <p className="text-muted-foreground">Body Type</p>
+                  <p className="font-medium text-foreground capitalize">{profile.body_type}</p>
+                </div>
+              )}
+              {profile.fashion_goals && (
+                <div className="bg-muted rounded-xl p-2.5">
+                  <p className="text-muted-foreground">Goal</p>
+                  <p className="font-medium text-foreground capitalize">{profile.fashion_goals.replace(/-/g, " ")}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-2xl bg-card border border-border/40 p-3 text-center">
@@ -89,6 +128,16 @@ export function Profile({ items }: Props) {
             </div>
           </div>
         )}
+
+        {/* Sign out */}
+        <Button
+          variant="outline"
+          onClick={signOut}
+          className="w-full h-12 rounded-2xl text-sm"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Sign Out
+        </Button>
       </div>
     </div>
   );
