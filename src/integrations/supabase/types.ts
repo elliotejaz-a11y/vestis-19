@@ -118,6 +118,48 @@ export type Database = {
           },
         ]
       }
+      follow_requests: {
+        Row: {
+          created_at: string
+          id: string
+          requester_id: string
+          target_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          requester_id: string
+          target_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          requester_id?: string
+          target_id?: string
+        }
+        Relationships: []
+      }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: []
+      }
       outfit_items: {
         Row: {
           clothing_item_id: string
@@ -228,6 +270,7 @@ export type Database = {
           display_name: string | null
           fashion_goals: string | null
           id: string
+          is_public: boolean
           onboarding_completed: boolean
           preferred_colors: string[] | null
           skin_tone: string | null
@@ -243,6 +286,7 @@ export type Database = {
           display_name?: string | null
           fashion_goals?: string | null
           id: string
+          is_public?: boolean
           onboarding_completed?: boolean
           preferred_colors?: string[] | null
           skin_tone?: string | null
@@ -258,6 +302,7 @@ export type Database = {
           display_name?: string | null
           fashion_goals?: string | null
           id?: string
+          is_public?: boolean
           onboarding_completed?: boolean
           preferred_colors?: string[] | null
           skin_tone?: string | null
@@ -267,12 +312,144 @@ export type Database = {
         }
         Relationships: []
       }
+      social_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_likes: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_posts: {
+        Row: {
+          caption: string | null
+          comments_count: number
+          created_at: string
+          id: string
+          image_urls: string[]
+          likes_count: number
+          outfit_id: string | null
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          comments_count?: number
+          created_at?: string
+          id?: string
+          image_urls?: string[]
+          likes_count?: number
+          outfit_id?: string | null
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          comments_count?: number
+          created_at?: string
+          id?: string
+          image_urls?: string[]
+          likes_count?: number
+          outfit_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_posts_outfit_id_fkey"
+            columns: ["outfit_id"]
+            isOneToOne: false
+            referencedRelation: "outfits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_stories: {
+        Row: {
+          caption: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          image_url: string
+          user_id: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          image_url: string
+          user_id: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          image_url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_view_user: {
+        Args: { target_user_id: string; viewer_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
