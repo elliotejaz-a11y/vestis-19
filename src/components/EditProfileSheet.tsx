@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { User, Camera, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +21,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [username, setUsername] = useState(profile?.username || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
+  const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -48,6 +50,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       username: username || null,
       bio: bio || null,
       avatar_url: avatarUrl || null,
+      currency_preference: currencyPref,
     } as any);
     await refreshProfile();
     toast({ title: "Profile updated ✨" });
@@ -62,6 +65,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setUsername(profile.username || "");
       setBio(profile.bio || "");
       setAvatarUrl(profile.avatar_url || "");
+      setCurrencyPref(profile.currency_preference || "NZD");
     }
     onOpenChange(isOpen);
   };
@@ -131,6 +135,21 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
               maxLength={160}
             />
             <p className="text-[10px] text-muted-foreground text-right">{bio.length}/160</p>
+          </div>
+
+          {/* Currency Preference */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Currency</Label>
+            <Select value={currencyPref} onValueChange={setCurrencyPref}>
+              <SelectTrigger className="rounded-xl bg-card text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="NZD">🇳🇿 NZD</SelectItem>
+                <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Button

@@ -236,30 +236,6 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       ),
       valid: allStyles.length > 0,
     },
-    {
-      title: "Favorite color palettes?",
-      subtitle: "Select all that appeal to you",
-      content: (
-        <div className="grid grid-cols-2 gap-3">
-          {COLOR_OPTIONS.map((c) => (
-            <button
-              key={c.value}
-              onClick={() => toggleColor(c.value)}
-              className={cn(
-                "p-3 rounded-2xl border-2 transition-all text-left",
-                preferredColors.includes(c.value)
-                  ? "border-accent bg-accent/10"
-                  : "border-border bg-card hover:border-accent/40"
-              )}
-            >
-              <p className="text-sm font-medium text-foreground">{c.label}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{c.desc}</p>
-            </button>
-          ))}
-        </div>
-      ),
-      valid: preferredColors.length > 0,
-    },
   ];
 
   const handleFinish = async () => {
