@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Sparkles } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 
@@ -25,7 +26,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [fabric, setFabric] = useState(item?.fabric || "");
   const [notes, setNotes] = useState(item?.notes || "");
   const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
-
+  const [isPrivate, setIsPrivate] = useState(item?.isPrivate || false);
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
     setName(item.name);
@@ -34,18 +35,19 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setFabric(item.fabric);
     setNotes(item.notes);
     setEstimatedPrice(item.estimatedPrice?.toString() || "");
+    setIsPrivate(item.isPrivate || false);
   }
 
   const handleSave = () => {
     if (!item || !name || !category) return;
     const priceNum = estimatedPrice ? parseFloat(estimatedPrice) : undefined;
-    onSave({ ...item, name, category, color, fabric, notes, estimatedPrice: priceNum });
+    onSave({ ...item, name, category, color, fabric, notes, estimatedPrice: priceNum, isPrivate });
     onOpenChange(false);
   };
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColor(""); setFabric(""); setNotes(""); setEstimatedPrice(""); }
+      if (!o) { setName(""); setCategory(""); setColor(""); setFabric(""); setNotes(""); setEstimatedPrice(""); setIsPrivate(false); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto bg-background">
@@ -111,6 +113,14 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
               placeholder="e.g. 120"
               className="mt-1 rounded-xl bg-card"
             />
+          </div>
+
+          <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/40">
+            <div>
+              <Label className="text-xs font-medium text-foreground">Hide from friends</Label>
+              <p className="text-[10px] text-muted-foreground">This item won't be visible to friends</p>
+            </div>
+            <Switch checked={isPrivate} onCheckedChange={setIsPrivate} />
           </div>
 
           <Button onClick={handleSave} disabled={!name || !category} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90">

@@ -24,6 +24,7 @@ export type Database = {
           fabric: string
           id: string
           image_url: string
+          is_private: boolean
           name: string
           notes: string
           tags: string[]
@@ -38,6 +39,7 @@ export type Database = {
           fabric?: string
           id?: string
           image_url: string
+          is_private?: boolean
           name: string
           notes?: string
           tags?: string[]
@@ -52,6 +54,7 @@ export type Database = {
           fabric?: string
           id?: string
           image_url?: string
+          is_private?: boolean
           name?: string
           notes?: string
           tags?: string[]
@@ -446,6 +449,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      are_friends: {
+        Args: { user_a: string; user_b: string }
+        Returns: boolean
+      }
       can_view_user: {
         Args: { target_user_id: string; viewer_id: string }
         Returns: boolean

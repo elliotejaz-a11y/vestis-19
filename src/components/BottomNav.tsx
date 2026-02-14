@@ -1,4 +1,4 @@
-import { Shirt, Sparkles, User, CalendarDays, Layers } from "lucide-react";
+import { Shirt, Sparkles, User, Users, Layers } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
@@ -6,7 +6,7 @@ const tabs = [
   { path: "/", icon: Shirt, label: "Wardrobe" },
   { path: "/outfits", icon: Sparkles, label: "Outfits" },
   { path: "/builder", icon: Layers, label: "Builder" },
-  { path: "/calendar", icon: CalendarDays, label: "Calendar" },
+  { path: "/friends", icon: Users, label: "Friends" },
   { path: "/profile", icon: User, label: "Profile" },
 ];
 

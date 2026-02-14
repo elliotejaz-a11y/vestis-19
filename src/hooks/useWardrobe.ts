@@ -32,6 +32,7 @@ export function useWardrobe() {
         notes: r.notes || "",
         addedAt: new Date(r.created_at),
         estimatedPrice: r.estimated_price ? Number(r.estimated_price) : undefined,
+        isPrivate: r.is_private || false,
       }));
       setItems(dbItems);
 
@@ -212,6 +213,8 @@ export function useWardrobe() {
           color: item.color,
           fabric: item.fabric,
           notes: item.notes,
+          estimated_price: item.estimatedPrice || null,
+          is_private: item.isPrivate || false,
         } as any)
         .eq("id", item.id)
         .eq("user_id", user.id);
