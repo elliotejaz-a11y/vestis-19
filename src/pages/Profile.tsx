@@ -91,15 +91,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
       <div className="px-5 space-y-4">
         {/* Wardrobe Value */}
-        {totalWardrobeValue > 0 && (
-          <div className="rounded-2xl bg-accent/10 border border-accent/20 p-4 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-muted-foreground">Total Wardrobe Value</p>
-              <p className="text-2xl font-bold text-foreground">${totalWardrobeValue.toFixed(0)} <span className="text-sm font-normal text-muted-foreground">NZD</span></p>
-            </div>
-            <DollarSign className="w-8 h-8 text-accent" />
+        <div className="rounded-2xl bg-accent/10 border border-accent/20 p-4 flex items-center justify-between">
+          <div>
+            <p className="text-xs text-muted-foreground">Total Wardrobe Value</p>
+            <p className="text-2xl font-bold text-foreground">${totalWardrobeValue.toFixed(0)} <span className="text-sm font-normal text-muted-foreground">NZD</span></p>
           </div>
-        )}
+          <DollarSign className="w-8 h-8 text-accent" />
+        </div>
 
         {/* Style preferences */}
         {profile && (
@@ -121,12 +119,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                 <div className="bg-muted rounded-xl p-2.5">
                   <p className="text-muted-foreground">Style</p>
                   <p className="font-medium text-foreground capitalize">{profile.style_preference.replace(/,/g, ", ")}</p>
-                </div>
-              )}
-              {profile.body_type && (
-                <div className="bg-muted rounded-xl p-2.5">
-                  <p className="text-muted-foreground">Body Type</p>
-                  <p className="font-medium text-foreground capitalize">{profile.body_type.replace(/-/g, " ")}</p>
                 </div>
               )}
             </div>
@@ -202,7 +194,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
         {/* Recently Deleted */}
         {deletedItems.length > 0 && (
-          <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div id="recently-deleted-section" className="rounded-2xl bg-card border border-border/40 p-4">
             <div className="flex items-center gap-2 mb-3">
               <Trash2 className="w-4 h-4 text-muted-foreground" />
               <p className="text-sm font-semibold text-foreground">Recently Deleted</p>
@@ -243,6 +235,20 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               ))}
             </div>
           </div>
+        )}
+
+        {/* Recently Deleted button - always visible */}
+        {deletedItems.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              const el = document.getElementById("recently-deleted-section");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="w-full h-12 rounded-2xl text-sm"
+          >
+            <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
+          </Button>
         )}
 
         <Button variant="outline" onClick={() => navigate("/feedback")} className="w-full h-12 rounded-2xl text-sm">

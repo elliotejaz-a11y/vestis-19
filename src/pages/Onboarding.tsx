@@ -193,8 +193,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
                   : "border-border bg-card hover:border-accent/40"
               )}
             >
-              <div className={cn("w-10 h-10 rounded-full", t.color)} />
-              <span className="text-[9px] font-medium text-foreground">{t.label}</span>
+              <div className={cn("w-12 h-12 rounded-full border border-border/40", t.color)} />
             </button>
           ))}
         </div>
@@ -236,70 +235,6 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         </div>
       ),
       valid: allStyles.length > 0,
-    },
-    {
-      title: "Your body type?",
-      subtitle: "Select a reference to help with fit recommendations",
-      content: (
-        <div className="space-y-4">
-          {/* Gender toggle */}
-          <div className="flex gap-2 justify-center">
-            <button
-              onClick={() => setBodyGender("female")}
-              className={cn(
-                "px-5 py-2 rounded-xl text-xs font-semibold transition-all",
-                bodyGender === "female"
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-card text-muted-foreground border border-border"
-              )}
-            >
-              Female
-            </button>
-            <button
-              onClick={() => setBodyGender("male")}
-              className={cn(
-                "px-5 py-2 rounded-xl text-xs font-semibold transition-all",
-                bodyGender === "male"
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-card text-muted-foreground border border-border"
-              )}
-            >
-              Male
-            </button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {BODY_TYPES.map((b) => (
-              <button
-                key={b.value}
-                onClick={() => setBodyType(b.value)}
-                className={cn(
-                  "p-3 rounded-2xl border-2 transition-all",
-                  bodyType === b.value
-                    ? "border-accent bg-accent/10"
-                    : "border-border bg-card hover:border-accent/40"
-                )}
-              >
-                <div className="flex flex-col items-center gap-2 text-center">
-                  <BodySilhouette
-                    type={b.value}
-                    gender={bodyGender}
-                    className={cn(
-                      "w-10 h-20 transition-colors",
-                      bodyType === b.value ? "text-accent" : "text-muted-foreground"
-                    )}
-                  />
-                  <div>
-                    <p className="text-xs font-medium text-foreground">{b.label}</p>
-                    <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight">{b.desc}</p>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      ),
-      valid: !!bodyType,
     },
     {
       title: "Favorite color palettes?",
