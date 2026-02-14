@@ -66,7 +66,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         <div className="flex flex-col items-center gap-3">
           <div className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
               <User className="w-8 h-8 text-muted-foreground" />
             )}
