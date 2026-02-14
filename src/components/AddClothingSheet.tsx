@@ -21,6 +21,7 @@ const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leath
 export function AddClothingSheet({ onAdd, children }: Props) {
   const [open, setOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
+  const [backImageUrl, setBackImageUrl] = useState("");
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
   const [color, setColor] = useState("");
@@ -32,6 +33,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [removingBg, setRemovingBg] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
+  const backFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -109,6 +111,19 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     }
   };
 
+  const handleBackFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const base64 = await fileToBase64(file);
+      const cleanBase64 = await removeBackground(base64);
+      setBackImageUrl(`data:image/png;base64,${cleanBase64}`);
+      toast({ title: "Back image added ✨" });
+    } catch {
+      setBackImageUrl(URL.createObjectURL(file));
+    }
+  };
+
   const handleSave = () => {
     if (!imageUrl || !name || !category) return;
     onAdd({
@@ -118,6 +133,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       color,
       fabric,
       imageUrl,
+      backImageUrl: backImageUrl || undefined,
       tags: [...tags, color.toLowerCase(), fabric.toLowerCase(), category].filter(Boolean),
       notes,
       addedAt: new Date(),
@@ -128,7 +144,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   };
 
   const resetForm = () => {
-    setImageUrl(""); setName(""); setCategory(""); setColor(""); setFabric("");
+    setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColor(""); setFabric("");
     setTags([]); setNotes(""); setEstimatedPrice(undefined);
   };
 
@@ -174,6 +190,29 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Back image upload */}
+          {imageUrl && (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1.5">Back of clothing (optional)</p>
+              {!backImageUrl ? (
+                <button
+                  onClick={() => backFileRef.current?.click()}
+                  className="w-full h-24 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+                >
+                  <Upload className="w-5 h-5" />
+                  <span className="text-[10px]">Add back image</span>
+                </button>
+              ) : (
+                <div className="relative rounded-xl overflow-hidden bg-white h-24">
+                  <img src={backImageUrl} alt="Back" className="w-full h-full object-contain" />
+                  <button onClick={() => setBackImageUrl("")} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center text-foreground text-xs">✕</button>
+                </div>
+              )}
+              <input ref={backFileRef} type="file" accept="image/*" className="hidden" onChange={handleBackFile} />
+              <p className="text-[10px] text-muted-foreground mt-1">AI will assume plain fabric if no back image is added</p>
             </div>
           )}
 

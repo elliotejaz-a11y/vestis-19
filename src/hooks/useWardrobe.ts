@@ -27,6 +27,7 @@ export function useWardrobe() {
         color: r.color,
         fabric: r.fabric,
         imageUrl: r.image_url,
+        backImageUrl: r.back_image_url || undefined,
         tags: r.tags || [],
         notes: r.notes || "",
         addedAt: new Date(r.created_at),
@@ -67,6 +68,7 @@ export function useWardrobe() {
       if (!user) return;
 
       let imageUrl = item.imageUrl;
+      let backImageUrl = item.backImageUrl || "";
       if (imageUrl.startsWith("blob:")) {
         try {
           const response = await fetch(imageUrl);
@@ -138,6 +140,30 @@ export function useWardrobe() {
         }
       }
 
+      // Upload back image if it's a data URL
+      if (backImageUrl && backImageUrl.startsWith("data:")) {
+        try {
+          const parts = backImageUrl.split(",");
+          const mime = parts[0].match(/:(.*?);/)?.[1] || "image/png";
+          const b64 = parts[1];
+          const byteChars = atob(b64);
+          const byteArr = new Uint8Array(byteChars.length);
+          for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+          const blob = new Blob([byteArr], { type: mime });
+          const ext = mime.split("/")[1] || "png";
+          const path = `${user.id}/${crypto.randomUUID()}_back.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("clothing-images")
+            .upload(path, blob, { contentType: mime });
+          if (!uploadError) {
+            const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
+            backImageUrl = urlData.publicUrl;
+          }
+        } catch (err) {
+          console.error("Back image upload failed:", err);
+        }
+      }
+
       const { data, error } = await supabase
         .from("clothing_items")
         .insert({
@@ -147,6 +173,7 @@ export function useWardrobe() {
           color: item.color,
           fabric: item.fabric,
           image_url: imageUrl,
+          back_image_url: backImageUrl || null,
           tags: item.tags,
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
@@ -162,6 +189,7 @@ export function useWardrobe() {
           color: data.color,
           fabric: data.fabric,
           imageUrl: data.image_url,
+          backImageUrl: (data as any).back_image_url || undefined,
           tags: data.tags || [],
           notes: (data as any).notes || "",
           addedAt: new Date(data.created_at),

@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Wardrobe from "./pages/Wardrobe";
 import AddItem from "./pages/AddItem";
 import Outfits from "./pages/Outfits";
+import OutfitBuilder from "./pages/OutfitBuilder";
 import Profile from "./pages/Profile";
 import CalendarPage from "./pages/Calendar";
 import FeedbackPage from "./pages/Feedback";
@@ -44,6 +45,7 @@ function AuthenticatedApp() {
         <Route path="/" element={<Wardrobe items={items} onAdd={addItem} onRemove={removeItem} onUpdate={updateItem} />} />
         <Route path="/add" element={<AddItem onAdd={addItem} />} />
         <Route path="/outfits" element={<Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />} />
+        <Route path="/builder" element={<OutfitBuilder items={items} />} />
         <Route path="/calendar" element={<CalendarPage outfits={outfits} />} />
         <Route path="/profile" element={<Profile items={items} outfits={outfits} onSaveOutfit={saveOutfit} onDeleteOutfit={deleteOutfit} />} />
         <Route path="/feedback" element={<FeedbackPage />} />

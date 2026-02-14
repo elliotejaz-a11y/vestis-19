@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       clothing_items: {
         Row: {
+          back_image_url: string | null
           category: string
           color: string
           created_at: string
@@ -29,6 +30,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          back_image_url?: string | null
           category: string
           color?: string
           created_at?: string
@@ -42,6 +44,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          back_image_url?: string | null
           category?: string
           color?: string
           created_at?: string
@@ -218,6 +221,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
           body_type: string | null
           created_at: string
           display_name: string | null
@@ -228,8 +233,11 @@ export type Database = {
           skin_tone: string | null
           style_preference: string | null
           updated_at: string
+          username: string | null
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
           body_type?: string | null
           created_at?: string
           display_name?: string | null
@@ -240,8 +248,11 @@ export type Database = {
           skin_tone?: string | null
           style_preference?: string | null
           updated_at?: string
+          username?: string | null
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
           body_type?: string | null
           created_at?: string
           display_name?: string | null
@@ -252,6 +263,7 @@ export type Database = {
           skin_tone?: string | null
           style_preference?: string | null
           updated_at?: string
+          username?: string | null
         }
         Relationships: []
       }
