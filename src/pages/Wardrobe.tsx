@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit }: Props) {
-  const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("outfits");
+  const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
   const navigate = useNavigate();
@@ -37,15 +37,6 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
       {/* Main tabs */}
       <div className="px-5 pb-4 flex gap-2">
         <button
-          onClick={() => setActiveTab("outfits")}
-          className={cn(
-            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
-            activeTab === "outfits" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
-          )}
-        >
-          <Bookmark className="w-3.5 h-3.5" /> Saved Outfits
-        </button>
-        <button
           onClick={() => setActiveTab("clothes")}
           className={cn(
             "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
@@ -53,6 +44,15 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
           )}
         >
           <Shirt className="w-3.5 h-3.5" /> My Clothes
+        </button>
+        <button
+          onClick={() => setActiveTab("outfits")}
+          className={cn(
+            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            activeTab === "outfits" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
+          )}
+        >
+          <Bookmark className="w-3.5 h-3.5" /> Saved Outfits
         </button>
       </div>
 
