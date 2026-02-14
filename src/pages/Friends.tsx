@@ -3,9 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, UserPlus, UserCheck, Users, ArrowLeft, Shirt, Lock, Loader2, X } from "lucide-react";
+import { Search, UserPlus, UserCheck, Users, ArrowLeft, Shirt, Lock, Loader2, X, Bell } from "lucide-react";
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
+import { useState as useStateImport } from "react";
+import { useNotifications } from "@/hooks/useNotifications";
+import { NotificationsSheet } from "@/components/NotificationsSheet";
 
 interface FriendProfile {
   id: string;
@@ -30,6 +33,8 @@ export default function Friends() {
   const [friendWardrobe, setFriendWardrobe] = useState<ClothingItem[]>([]);
   const [loadingWardrobe, setLoadingWardrobe] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const { unreadCount } = useNotifications();
 
   // Fetch mutual friends
   const fetchFriends = useCallback(async () => {
@@ -259,9 +264,19 @@ export default function Friends() {
       <header className="px-5 pt-12 pb-2">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Friends</h1>
-          <Button variant="ghost" size="sm" onClick={() => setView("search")} className="rounded-xl">
-            <UserPlus className="w-4 h-4 mr-1" /> Add
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" onClick={() => setShowNotifications(true)} className="relative h-9 w-9">
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setView("search")} className="rounded-xl">
+              <UserPlus className="w-4 h-4 mr-1" /> Add
+            </Button>
+          </div>
         </div>
         <p className="text-xs text-muted-foreground mt-1">
           {friends.length} mutual {friends.length === 1 ? "friend" : "friends"}
@@ -299,6 +314,7 @@ export default function Friends() {
           ))}
         </div>
       )}
+      <NotificationsSheet open={showNotifications} onOpenChange={setShowNotifications} />
     </div>
   );
 }

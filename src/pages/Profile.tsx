@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -249,6 +249,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           className="w-full h-12 rounded-2xl text-sm"
         >
           <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
+        </Button>
+
+        <Button variant="outline" onClick={() => navigate("/calendar")} className="w-full h-12 rounded-2xl text-sm">
+          <CalendarDays className="w-4 h-4 mr-2" /> Outfit Calendar
         </Button>
 
         <Button variant="outline" onClick={() => navigate("/feedback")} className="w-full h-12 rounded-2xl text-sm">
