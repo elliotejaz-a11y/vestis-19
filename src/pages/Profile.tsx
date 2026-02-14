@@ -1,19 +1,25 @@
 import { useState } from "react";
-import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare } from "lucide-react";
+import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { OutfitCard } from "@/components/OutfitCard";
 import Onboarding from "@/pages/Onboarding";
 
 interface Props {
   items: ClothingItem[];
+  outfits?: Outfit[];
+  onSaveOutfit?: (id: string, saved: boolean) => void;
+  onDeleteOutfit?: (id: string) => void;
 }
 
-export function Profile({ items }: Props) {
+export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: Props) {
   const { user, profile, signOut, refreshProfile } = useAuth();
   const [editingProfile, setEditingProfile] = useState(false);
   const navigate = useNavigate();
+
+  const savedOutfits = outfits.filter((o) => o.saved);
 
   const categoryBreakdown = CATEGORIES.map((cat) => ({
     ...cat,
@@ -97,6 +103,21 @@ export function Profile({ items }: Props) {
                   <p className="font-medium text-foreground capitalize">{profile.fashion_goals.replace(/-/g, " ")}</p>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Saved Outfits */}
+        {savedOutfits.length > 0 && (
+          <div className="rounded-2xl bg-card border border-border/40 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Bookmark className="w-4 h-4 text-accent" />
+              <p className="text-sm font-semibold text-foreground">Saved Outfits</p>
+            </div>
+            <div className="space-y-3">
+              {savedOutfits.map((outfit) => (
+                <OutfitCard key={outfit.id} outfit={outfit} onSave={onSaveOutfit} onDelete={onDeleteOutfit} />
+              ))}
             </div>
           </div>
         )}

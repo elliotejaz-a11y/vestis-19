@@ -154,6 +154,7 @@ export type Database = {
           id: string
           occasion: string
           reasoning: string
+          saved: boolean | null
           style_tips: string | null
           user_id: string
         }
@@ -162,6 +163,7 @@ export type Database = {
           id?: string
           occasion: string
           reasoning?: string
+          saved?: boolean | null
           style_tips?: string | null
           user_id: string
         }
@@ -170,6 +172,7 @@ export type Database = {
           id?: string
           occasion?: string
           reasoning?: string
+          saved?: boolean | null
           style_tips?: string | null
           user_id?: string
         }

@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { occasion, items, userProfile } = await req.json();
+    const { occasion, items, userProfile, weather } = await req.json();
     if (!occasion || !items?.length) {
       return new Response(JSON.stringify({ error: 'Occasion and items required' }), {
         status: 400,
@@ -52,10 +52,13 @@ Always pick items that genuinely look great together. Explain your reasoning wit
           {
             role: 'user',
             content: `Create the best possible outfit for the occasion: "${occasion}"
+${weather ? `
+Current weather: ${weather.temp}°C, ${weather.description}. Factor this into your outfit choices — suggest weather-appropriate layers, fabrics, and styles.
+` : ''}
 ${userProfile ? `
 User profile:
 - Skin tone: ${userProfile.skinTone || 'not specified'}
-- Style preference: ${userProfile.stylePreference || 'not specified'}
+- Style preference: ${userProfile.stylePreference || 'not specified'} (IMPORTANT: match this style closely!)
 - Body type: ${userProfile.bodyType || 'not specified'}
 - Preferred color palettes: ${(userProfile.preferredColors || []).join(', ') || 'not specified'}
 - Fashion goal: ${userProfile.fashionGoals || 'not specified'}

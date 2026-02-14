@@ -1,16 +1,40 @@
 import { Outfit } from "@/types/wardrobe";
-import { Sparkles, Lightbulb } from "lucide-react";
+import { Sparkles, Lightbulb, Bookmark, MessageCircle, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface Props {
   outfit: Outfit;
+  onSave?: (id: string, saved: boolean) => void;
+  onDelete?: (id: string) => void;
+  onChat?: (outfit: Outfit) => void;
 }
 
-export function OutfitCard({ outfit }: Props) {
+export function OutfitCard({ outfit, onSave, onDelete, onChat }: Props) {
   return (
     <div className="rounded-2xl bg-card border border-border/40 p-4 space-y-3 shadow-sm">
-      <div className="flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-accent" />
-        <span className="text-sm font-semibold text-foreground">{outfit.occasion}</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-accent" />
+          <span className="text-sm font-semibold text-foreground">{outfit.occasion}</span>
+        </div>
+        <div className="flex items-center gap-0.5">
+          {onChat && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onChat(outfit)}>
+              <MessageCircle className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          )}
+          {onSave && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onSave(outfit.id, !outfit.saved)}>
+              <Bookmark className={cn("w-4 h-4", outfit.saved ? "fill-accent text-accent" : "text-muted-foreground")} />
+            </Button>
+          )}
+          {onDelete && (
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDelete(outfit.id)}>
+              <Trash2 className="w-4 h-4 text-muted-foreground" />
+            </Button>
+          )}
+        </div>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {outfit.items.map((item) => (

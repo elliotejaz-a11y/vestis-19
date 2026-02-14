@@ -36,16 +36,16 @@ function AppRoutes() {
 }
 
 function AuthenticatedApp() {
-  const { items, outfits, addItem, updateItem, removeItem, generateOutfit } = useWardrobe();
+  const { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit } = useWardrobe();
 
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
       <Routes>
         <Route path="/" element={<Wardrobe items={items} onAdd={addItem} onRemove={removeItem} onUpdate={updateItem} />} />
         <Route path="/add" element={<AddItem onAdd={addItem} />} />
-        <Route path="/outfits" element={<Outfits items={items} outfits={outfits} onGenerate={generateOutfit} />} />
+        <Route path="/outfits" element={<Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />} />
         <Route path="/calendar" element={<CalendarPage outfits={outfits} />} />
-        <Route path="/profile" element={<Profile items={items} />} />
+        <Route path="/profile" element={<Profile items={items} outfits={outfits} onSaveOutfit={saveOutfit} onDeleteOutfit={deleteOutfit} />} />
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
