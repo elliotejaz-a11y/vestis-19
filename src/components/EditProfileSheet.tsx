@@ -21,6 +21,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [username, setUsername] = useState(profile?.username || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
+  const [avatarPosition, setAvatarPosition] = useState(profile?.avatar_position || "center");
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -50,6 +51,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       username: username || null,
       bio: bio || null,
       avatar_url: avatarUrl || null,
+      avatar_position: avatarPosition,
       currency_preference: currencyPref,
     } as any);
     await refreshProfile();
@@ -65,6 +67,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setUsername(profile.username || "");
       setBio(profile.bio || "");
       setAvatarUrl(profile.avatar_url || "");
+      setAvatarPosition(profile.avatar_position || "center");
       setCurrencyPref(profile.currency_preference || "NZD");
     }
     onOpenChange(isOpen);
@@ -86,7 +89,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
               disabled={uploading}
             >
               {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" style={{ objectPosition: avatarPosition }} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <User className="w-8 h-8 text-muted-foreground" />
@@ -98,6 +101,38 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
             </button>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             <p className="text-[10px] text-muted-foreground">Tap to change photo</p>
+
+            {avatarUrl && (
+              <div className="space-y-1.5 w-full max-w-[200px]">
+                <Label className="text-[10px] text-muted-foreground text-center block">Adjust Position</Label>
+                <div className="grid grid-cols-3 gap-1">
+                  {[
+                    { label: "↖", value: "top left" },
+                    { label: "↑", value: "top center" },
+                    { label: "↗", value: "top right" },
+                    { label: "←", value: "center left" },
+                    { label: "•", value: "center" },
+                    { label: "→", value: "center right" },
+                    { label: "↙", value: "bottom left" },
+                    { label: "↓", value: "bottom center" },
+                    { label: "↘", value: "bottom right" },
+                  ].map((pos) => (
+                    <button
+                      key={pos.value}
+                      type="button"
+                      onClick={() => setAvatarPosition(pos.value)}
+                      className={`w-full aspect-square rounded-lg text-xs font-medium transition-all flex items-center justify-center ${
+                        avatarPosition === pos.value
+                          ? "bg-accent text-accent-foreground"
+                          : "bg-card border border-border text-muted-foreground hover:bg-accent/20"
+                      }`}
+                    >
+                      {pos.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Display Name */}

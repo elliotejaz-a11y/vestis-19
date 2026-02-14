@@ -12,6 +12,7 @@ interface UserProfile {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  avatar_position: string;
   bio: string | null;
   is_public: boolean;
 }
@@ -39,7 +40,7 @@ export default function UserProfilePage() {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("id, display_name, username, avatar_url, bio, is_public")
+        .select("id, display_name, username, avatar_url, avatar_position, bio, is_public")
         .eq("id", userId)
         .single();
       setProfile(profileData as UserProfile | null);
@@ -125,7 +126,7 @@ export default function UserProfilePage() {
         <div className="flex items-center gap-4">
           <div className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
             {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="w-8 h-8 text-muted-foreground" />

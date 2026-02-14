@@ -7,6 +7,7 @@ interface Profile {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  avatar_position: string;
   bio: string | null;
   is_public: boolean;
   skin_tone: string | null;
