@@ -135,10 +135,10 @@ export function useSocial() {
     if (!user) return;
     if (liked) {
       await supabase.from("social_likes").delete().match({ user_id: user.id, post_id: postId });
-      await supabase.from("social_posts").update({ likes_count: Math.max(0, (posts.find(p => p.id === postId)?.likes_count || 1) - 1) } as any).eq("id", postId);
+      await supabase.rpc('decrement_post_likes', { post_id_param: postId });
     } else {
       await supabase.from("social_likes").insert({ user_id: user.id, post_id: postId } as any);
-      await supabase.from("social_posts").update({ likes_count: (posts.find(p => p.id === postId)?.likes_count || 0) + 1 } as any).eq("id", postId);
+      await supabase.rpc('increment_post_likes', { post_id_param: postId });
     }
     setPosts(prev => prev.map(p => p.id === postId ? {
       ...p,

@@ -490,6 +490,22 @@ export type Database = {
         Args: { target_user_id: string; viewer_id: string }
         Returns: boolean
       }
+      decrement_feedback_votes: {
+        Args: { feedback_id_param: string }
+        Returns: undefined
+      }
+      decrement_post_likes: {
+        Args: { post_id_param: string }
+        Returns: undefined
+      }
+      increment_feedback_votes: {
+        Args: { feedback_id_param: string }
+        Returns: undefined
+      }
+      increment_post_likes: {
+        Args: { post_id_param: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,22 +12,48 @@ serve(async (req) => {
   }
 
   try {
+    // Auth check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data, error: authError } = await supabase.auth.getClaims(token);
+    if (authError || !data?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { occasion, items, userProfile, weather } = await req.json();
-    if (!occasion || !items?.length) {
-      return new Response(JSON.stringify({ error: 'Occasion and items required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+
+    // Input validation
+    if (!occasion || typeof occasion !== 'string' || occasion.length > 200) {
+      return new Response(JSON.stringify({ error: 'Invalid occasion' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (!Array.isArray(items) || items.length === 0 || items.length > 200) {
+      return new Response(JSON.stringify({ error: 'Invalid items' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    // Build a summary of wardrobe items for the AI
     const wardrobeSummary = items.map((item: any, i: number) => 
-      `${i + 1}. "${item.name}" — ${item.category}, ${item.color}, ${item.fabric}, tags: [${(item.tags || []).join(', ')}]${item.notes ? `, user notes: "${item.notes}"` : ''}`
+      `${i + 1}. \"${String(item.name || '').slice(0, 100)}\" — ${String(item.category || '').slice(0, 50)}, ${String(item.color || '').slice(0, 30)}, ${String(item.fabric || '').slice(0, 30)}, tags: [${(item.tags || []).slice(0, 10).join(', ')}]${item.notes ? `, user notes: \"${String(item.notes).slice(0, 200)}\"` : ''}`
     ).join('\n');
 
+    
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -51,7 +78,7 @@ Always pick items that genuinely look great together. Explain your reasoning wit
           },
           {
             role: 'user',
-            content: `Create the best possible outfit for the occasion: "${occasion}"
+            content: `Create the best possible outfit for the occasion: \"${occasion}\"
 ${weather ? `
 Current weather: ${weather.temp}°C, ${weather.description}. Factor this into your outfit choices — suggest weather-appropriate layers, fabrics, and styles.
 ` : ''}
@@ -118,13 +145,12 @@ Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const aiData = await response.json();
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall) throw new Error('No tool call in response');
 
     const result = JSON.parse(toolCall.function.arguments);
 
-    // Map indices back to actual items
     const selectedItems = result.selected_indices
       .filter((idx: number) => idx >= 1 && idx <= items.length)
       .map((idx: number) => items[idx - 1]);

@@ -65,10 +65,10 @@ export function FeedbackPage() {
     if (!user) return;
     if (hasVoted) {
       await supabase.from("feedback_votes").delete().eq("feedback_id", feedbackId).eq("user_id", user.id);
-      await supabase.from("feedback").update({ votes: Math.max(0, (items.find(i => i.id === feedbackId)?.votes || 1) - 1) } as any).eq("id", feedbackId);
+      await supabase.rpc('decrement_feedback_votes', { feedback_id_param: feedbackId });
     } else {
       await supabase.from("feedback_votes").insert({ feedback_id: feedbackId, user_id: user.id });
-      await supabase.from("feedback").update({ votes: (items.find(i => i.id === feedbackId)?.votes || 0) + 1 } as any).eq("id", feedbackId);
+      await supabase.rpc('increment_feedback_votes', { feedback_id_param: feedbackId });
     }
     fetchFeedback();
   };
