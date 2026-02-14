@@ -1,8 +1,10 @@
 import { useState, useMemo } from "react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
-import { Shuffle, Plus, Check, X } from "lucide-react";
+import { Shuffle, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+const CATEGORY_ORDER = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
 
 interface Props {
   items: ClothingItem[];
@@ -42,6 +44,11 @@ export default function OutfitBuilder({ items }: Props) {
   const clearAll = () => setSelected({});
 
   const selectedItems = Object.values(selected).filter(Boolean) as ClothingItem[];
+  const sortedSelected = [...selectedItems].sort((a, b) => {
+    const aIdx = CATEGORY_ORDER.indexOf(a.category);
+    const bIdx = CATEGORY_ORDER.indexOf(b.category);
+    return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+  });
 
   return (
     <div className="min-h-screen pb-24">
@@ -50,25 +57,26 @@ export default function OutfitBuilder({ items }: Props) {
         <p className="text-sm text-muted-foreground mt-0.5">Create your own outfit from head to toe</p>
       </header>
 
-      {/* Selected outfit preview */}
-      {selectedItems.length > 0 && (
+      {/* Flat-lay outfit preview */}
+      {sortedSelected.length > 0 && (
         <div className="px-5 pb-4">
-          <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="rounded-2xl bg-white border border-border/40 p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-foreground">Your Outfit ({selectedItems.length} pieces)</p>
+              <p className="text-xs font-semibold text-foreground">Your Outfit ({sortedSelected.length} pieces)</p>
               <button onClick={clearAll} className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
                 <X className="w-3 h-3" /> Clear
               </button>
             </div>
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {selectedItems.map((item) => (
-                <div key={item.id} className="flex-shrink-0 w-20">
-                  <div className="aspect-square rounded-xl overflow-hidden bg-white border border-border/40">
-                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+            <div className="flex flex-col items-center gap-1">
+              {sortedSelected.map((item) => {
+                const isSmall = item.category === "shoes" || item.category === "accessories";
+                const size = isSmall ? "w-16 h-16" : "w-24 h-24";
+                return (
+                  <div key={item.id} className={cn("flex-shrink-0", size)}>
+                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
                   </div>
-                  <p className="text-[10px] text-muted-foreground mt-1 truncate text-center">{item.name}</p>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
