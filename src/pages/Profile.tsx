@@ -238,18 +238,16 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         )}
 
         {/* Recently Deleted button - always visible */}
-        {deletedItems.length > 0 && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              const el = document.getElementById("recently-deleted-section");
-              el?.scrollIntoView({ behavior: "smooth" });
-            }}
-            className="w-full h-12 rounded-2xl text-sm"
-          >
-            <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          onClick={() => {
+            const el = document.getElementById("recently-deleted-section");
+            if (el) el.scrollIntoView({ behavior: "smooth" });
+          }}
+          className="w-full h-12 rounded-2xl text-sm"
+        >
+          <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
+        </Button>
 
         <Button variant="outline" onClick={() => navigate("/feedback")} className="w-full h-12 rounded-2xl text-sm">
           <MessageSquare className="w-4 h-4 mr-2" /> Help & Feedback
