@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ClothingCard } from "@/components/ClothingCard";
+import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
-import { EditClothingSheet } from "@/components/EditClothingSheet";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { Plus, Shirt } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -15,7 +15,7 @@ interface Props {
 
 export function Wardrobe({ items, onAdd, onRemove, onUpdate }: Props) {
   const [activeFilter, setActiveFilter] = useState<string>("all");
-  const [editItem, setEditItem] = useState<ClothingItem | null>(null);
+  const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
 
   const filtered = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
 
@@ -62,16 +62,17 @@ export function Wardrobe({ items, onAdd, onRemove, onUpdate }: Props) {
       ) : (
         <div className="px-4 grid grid-cols-2 gap-3">
           {filtered.map((item) => (
-            <ClothingCard key={item.id} item={item} onRemove={onRemove} onEdit={setEditItem} />
+            <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} />
           ))}
         </div>
       )}
 
-      <EditClothingSheet
-        item={editItem}
-        open={!!editItem}
-        onOpenChange={(o) => { if (!o) setEditItem(null); }}
+      <ClothingDetailSheet
+        item={detailItem}
+        open={!!detailItem}
+        onOpenChange={(o) => { if (!o) setDetailItem(null); }}
         onSave={onUpdate}
+        onRemove={onRemove}
       />
     </div>
   );

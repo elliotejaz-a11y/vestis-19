@@ -4,27 +4,60 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Sparkles, Eye, EyeOff } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Sparkles, Eye, EyeOff, Check, X, Loader2 } from "lucide-react";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
+
+  const checkUsername = async (value: string) => {
+    if (value.length < 3) { setUsernameAvailable(null); return; }
+    setCheckingUsername(true);
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("username", value)
+      .limit(1);
+    setUsernameAvailable(!data || data.length === 0);
+    setCheckingUsername(false);
+  };
+
+  const handleUsernameChange = (value: string) => {
+    const cleaned = value.toLowerCase().replace(/[^a-z0-9._]/g, "");
+    setUsername(cleaned);
+    setUsernameAvailable(null);
+    if (cleaned.length >= 3) {
+      const timeout = setTimeout(() => checkUsername(cleaned), 400);
+      return () => clearTimeout(timeout);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     if (isSignUp) {
+      if (usernameAvailable === false) {
+        toast({ title: "Username taken", description: "Please choose a different username.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
       const { error } = await signUp(email, password, displayName);
       if (error) {
         toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
       } else {
+        // Store username to set after email verification
+        localStorage.setItem("pending_username", username);
         toast({ title: "Check your email ✉️", description: "We sent a verification link to confirm your account." });
       }
     } else {
@@ -39,27 +72,50 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
       <div className="w-full max-w-sm space-y-8">
-        {/* Logo */}
         <div className="text-center space-y-2">
           <div className="w-16 h-16 rounded-2xl bg-accent/15 flex items-center justify-center mx-auto mb-4">
             <Sparkles className="w-8 h-8 text-accent" />
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">StyleAI</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Vestis</h1>
           <p className="text-sm text-muted-foreground">Your AI-powered wardrobe stylist</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignUp && (
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Name</Label>
-              <Input
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="Your name"
-                className="mt-1 rounded-xl bg-card"
-                required
-              />
-            </div>
+            <>
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Name</Label>
+                <Input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Your name"
+                  className="mt-1 rounded-xl bg-card"
+                  required
+                />
+              </div>
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Username</Label>
+                <div className="relative">
+                  <Input
+                    value={username}
+                    onChange={(e) => handleUsernameChange(e.target.value)}
+                    placeholder="e.g. fashionista23"
+                    className="mt-1 rounded-xl bg-card pr-10"
+                    required
+                    minLength={3}
+                    maxLength={30}
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {checkingUsername && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                    {!checkingUsername && usernameAvailable === true && <Check className="w-4 h-4 text-accent" />}
+                    {!checkingUsername && usernameAvailable === false && <X className="w-4 h-4 text-destructive" />}
+                  </div>
+                </div>
+                {usernameAvailable === false && (
+                  <p className="text-[10px] text-destructive mt-1">Username is already taken</p>
+                )}
+              </div>
+            </>
           )}
           <div>
             <Label className="text-xs font-medium text-muted-foreground">Email</Label>
@@ -96,7 +152,7 @@ export default function Auth() {
 
           <Button
             type="submit"
-            disabled={loading}
+            disabled={loading || (isSignUp && username.length >= 3 && usernameAvailable === false)}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
           >
             {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}

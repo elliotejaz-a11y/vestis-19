@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -35,6 +35,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: P
 
   const totalWardrobeValue = items.reduce((sum, i) => sum + (i.estimatedPrice || 0), 0);
 
+  const displayNameForTitle = profile?.display_name
+    ? `${profile.display_name}'s Profile`
+    : "My Profile";
+
   if (editingProfile) {
     return (
       <Onboarding editMode onComplete={async () => { await refreshProfile(); setEditingProfile(false); }} />
@@ -45,16 +49,28 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: P
     <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-6">
         <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-card border border-border flex items-center justify-center">
-            <User className="w-6 h-6 text-muted-foreground" />
+          <div className="w-14 h-14 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <User className="w-6 h-6 text-muted-foreground" />
+            )}
           </div>
           <div className="flex-1">
             <h1 className="text-xl font-bold tracking-tight text-foreground">
-              {profile?.display_name || "My Style Profile"}
+              {displayNameForTitle}
             </h1>
+            {profile?.username && (
+              <p className="text-xs text-accent font-medium flex items-center gap-0.5">
+                <AtSign className="w-3 h-3" />{profile.username}
+              </p>
+            )}
             <p className="text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>
+        {profile?.bio && (
+          <p className="text-xs text-foreground mt-3 leading-relaxed">{profile.bio}</p>
+        )}
       </header>
 
       <div className="px-5 space-y-4">
@@ -174,12 +190,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: P
           </div>
         )}
 
-        {/* Help & Feedback link */}
         <Button variant="outline" onClick={() => navigate("/feedback")} className="w-full h-12 rounded-2xl text-sm">
           <MessageSquare className="w-4 h-4 mr-2" /> Help & Feedback
         </Button>
 
-        {/* Sign out */}
         <Button variant="outline" onClick={signOut} className="w-full h-12 rounded-2xl text-sm">
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>

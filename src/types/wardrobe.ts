@@ -5,6 +5,7 @@ export interface ClothingItem {
   color: string;
   fabric: string;
   imageUrl: string;
+  backImageUrl?: string;
   tags: string[];
   notes: string;
   addedAt: Date;
