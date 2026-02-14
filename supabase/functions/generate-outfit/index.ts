@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { occasion, items } = await req.json();
+    const { occasion, items, userProfile } = await req.json();
     if (!occasion || !items?.length) {
       return new Response(JSON.stringify({ error: 'Occasion and items required' }), {
         status: 400,
@@ -44,17 +44,25 @@ serve(async (req) => {
 - **Occasion appropriateness**: formal events need polished pieces, casual outings allow relaxed fabrics and fits.
 - **Style cohesion**: items should share a visual language (e.g., don't mix streetwear sneakers with a formal blazer).
 - **Layering & proportion**: balance oversized with fitted, structured with flowing.
+- **Personal factors**: Consider the user's skin tone for flattering colors, body type for proportions, and personal style preference.
 
 Always pick items that genuinely look great together. Explain your reasoning with fashion expertise.`,
           },
           {
             role: 'user',
             content: `Create the best possible outfit for the occasion: "${occasion}"
-
+${userProfile ? `
+User profile:
+- Skin tone: ${userProfile.skinTone || 'not specified'}
+- Style preference: ${userProfile.stylePreference || 'not specified'}
+- Body type: ${userProfile.bodyType || 'not specified'}
+- Preferred color palettes: ${(userProfile.preferredColors || []).join(', ') || 'not specified'}
+- Fashion goal: ${userProfile.fashionGoals || 'not specified'}
+` : ''}
 Available wardrobe items:
 ${wardrobeSummary}
 
-Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Explain why these pieces work together using color theory, fabric compatibility, and style principles.`,
+Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.`,
           },
         ],
         tools: [

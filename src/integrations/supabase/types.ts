@@ -14,7 +14,141 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clothing_items: {
+        Row: {
+          category: string
+          color: string
+          created_at: string
+          fabric: string
+          id: string
+          image_url: string
+          name: string
+          tags: string[]
+          user_id: string
+        }
+        Insert: {
+          category: string
+          color?: string
+          created_at?: string
+          fabric?: string
+          id?: string
+          image_url: string
+          name: string
+          tags?: string[]
+          user_id: string
+        }
+        Update: {
+          category?: string
+          color?: string
+          created_at?: string
+          fabric?: string
+          id?: string
+          image_url?: string
+          name?: string
+          tags?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      outfit_items: {
+        Row: {
+          clothing_item_id: string
+          id: string
+          outfit_id: string
+        }
+        Insert: {
+          clothing_item_id: string
+          id?: string
+          outfit_id: string
+        }
+        Update: {
+          clothing_item_id?: string
+          id?: string
+          outfit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outfit_items_clothing_item_id_fkey"
+            columns: ["clothing_item_id"]
+            isOneToOne: false
+            referencedRelation: "clothing_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outfit_items_outfit_id_fkey"
+            columns: ["outfit_id"]
+            isOneToOne: false
+            referencedRelation: "outfits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outfits: {
+        Row: {
+          created_at: string
+          id: string
+          occasion: string
+          reasoning: string
+          style_tips: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          occasion: string
+          reasoning?: string
+          style_tips?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          occasion?: string
+          reasoning?: string
+          style_tips?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          body_type: string | null
+          created_at: string
+          display_name: string | null
+          fashion_goals: string | null
+          id: string
+          onboarding_completed: boolean
+          preferred_colors: string[] | null
+          skin_tone: string | null
+          style_preference: string | null
+          updated_at: string
+        }
+        Insert: {
+          body_type?: string | null
+          created_at?: string
+          display_name?: string | null
+          fashion_goals?: string | null
+          id: string
+          onboarding_completed?: boolean
+          preferred_colors?: string[] | null
+          skin_tone?: string | null
+          style_preference?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body_type?: string | null
+          created_at?: string
+          display_name?: string | null
+          fashion_goals?: string | null
+          id?: string
+          onboarding_completed?: boolean
+          preferred_colors?: string[] | null
+          skin_tone?: string | null
+          style_preference?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
