@@ -31,13 +31,13 @@ export const STYLES = [
   { value: "classic", label: "Classic", emoji: "🎩" },
   { value: "streetwear", label: "Streetwear", emoji: "🧢" },
   { value: "minimalist", label: "Minimalist", emoji: "⬜" },
-  { value: "bohemian", label: "Bohemian", emoji: "🌸" },
+  { value: "business-casual", label: "Business Casual", emoji: "👔" },
   { value: "elegant", label: "Elegant", emoji: "✨" },
   { value: "sporty", label: "Sporty", emoji: "🏃" },
   { value: "vintage", label: "Vintage", emoji: "📻" },
   { value: "preppy", label: "Preppy", emoji: "🏫" },
+  { value: "old-money", label: "Old Money", emoji: "💎" },
   { value: "grunge", label: "Grunge", emoji: "🎸" },
-  { value: "avant-garde", label: "Avant-Garde", emoji: "🎭" },
   { value: "techwear", label: "Techwear", emoji: "⚡" },
 ];
 
@@ -201,7 +201,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       valid: !!skinTone,
     },
     {
-      title: "What's your style?",
+      title: "What's your aesthetic?",
       subtitle: "Select all that apply, or type your own",
       content: (
         <div className="space-y-4">

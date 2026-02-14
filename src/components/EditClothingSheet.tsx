@@ -24,6 +24,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [color, setColor] = useState(item?.color || "");
   const [fabric, setFabric] = useState(item?.fabric || "");
   const [notes, setNotes] = useState(item?.notes || "");
+  const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
 
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
@@ -32,17 +33,19 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setColor(item.color);
     setFabric(item.fabric);
     setNotes(item.notes);
+    setEstimatedPrice(item.estimatedPrice?.toString() || "");
   }
 
   const handleSave = () => {
     if (!item || !name || !category) return;
-    onSave({ ...item, name, category, color, fabric, notes });
+    const priceNum = estimatedPrice ? parseFloat(estimatedPrice) : undefined;
+    onSave({ ...item, name, category, color, fabric, notes, estimatedPrice: priceNum });
     onOpenChange(false);
   };
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColor(""); setFabric(""); setNotes(""); }
+      if (!o) { setName(""); setCategory(""); setColor(""); setFabric(""); setNotes(""); setEstimatedPrice(""); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto bg-background">
@@ -99,12 +102,16 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
             </div>
           </div>
 
-          {item?.estimatedPrice && (
-            <div className="flex items-center justify-between bg-accent/10 rounded-xl p-3">
-              <span className="text-xs text-muted-foreground">Vestis Price</span>
-              <span className="text-sm font-bold text-accent">${item.estimatedPrice.toFixed(0)} NZD</span>
-            </div>
-          )}
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">Vestis Price (NZD)</Label>
+            <Input
+              type="number"
+              value={estimatedPrice}
+              onChange={(e) => setEstimatedPrice(e.target.value)}
+              placeholder="e.g. 120"
+              className="mt-1 rounded-xl bg-card"
+            />
+          </div>
 
           <Button onClick={handleSave} disabled={!name || !category} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90">
             <Sparkles className="w-4 h-4 mr-2" /> Save Changes
