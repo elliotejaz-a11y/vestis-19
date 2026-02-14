@@ -1,25 +1,36 @@
 import { useState } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Globe, Lock } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { OutfitCard } from "@/components/OutfitCard";
 import Onboarding from "@/pages/Onboarding";
 import { EditProfileSheet } from "@/components/EditProfileSheet";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { useToast } from "@/hooks/use-toast";
+
+interface DeletedItem extends ClothingItem {
+  deletedAt: string;
+}
 
 interface Props {
   items: ClothingItem[];
   outfits?: Outfit[];
   onSaveOutfit?: (id: string, saved: boolean) => void;
   onDeleteOutfit?: (id: string) => void;
+  deletedItems?: DeletedItem[];
+  onRestoreItem?: (item: ClothingItem) => void;
+  onPermanentDelete?: (id: string) => void;
 }
 
-export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: Props) {
+export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, deletedItems = [], onRestoreItem, onPermanentDelete }: Props) {
   const { user, profile, signOut, refreshProfile, updateProfile } = useAuth();
   const [editingProfile, setEditingProfile] = useState(false);
   const [showEditSheet, setShowEditSheet] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const savedOutfits = outfits.filter((o) => o.saved);
 
@@ -103,25 +114,19 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: P
               {profile.skin_tone && (
                 <div className="bg-muted rounded-xl p-2.5">
                   <p className="text-muted-foreground">Skin Tone</p>
-                  <p className="font-medium text-foreground capitalize">{profile.skin_tone}</p>
+                  <p className="font-medium text-foreground capitalize">{profile.skin_tone.replace(/-/g, " ")}</p>
                 </div>
               )}
               {profile.style_preference && (
                 <div className="bg-muted rounded-xl p-2.5">
                   <p className="text-muted-foreground">Style</p>
-                  <p className="font-medium text-foreground capitalize">{profile.style_preference}</p>
+                  <p className="font-medium text-foreground capitalize">{profile.style_preference.replace(/,/g, ", ")}</p>
                 </div>
               )}
               {profile.body_type && (
                 <div className="bg-muted rounded-xl p-2.5">
                   <p className="text-muted-foreground">Body Type</p>
-                  <p className="font-medium text-foreground capitalize">{profile.body_type}</p>
-                </div>
-              )}
-              {profile.fashion_goals && (
-                <div className="bg-muted rounded-xl p-2.5">
-                  <p className="text-muted-foreground">Goal</p>
-                  <p className="font-medium text-foreground capitalize">{profile.fashion_goals.replace(/-/g, " ")}</p>
+                  <p className="font-medium text-foreground capitalize">{profile.body_type.replace(/-/g, " ")}</p>
                 </div>
               )}
             </div>
@@ -195,27 +200,50 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: P
           </div>
         )}
 
-        {/* Privacy toggle */}
-        <div className="rounded-2xl bg-card border border-border/40 p-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {profile?.is_public ? <Globe className="w-4 h-4 text-accent" /> : <Lock className="w-4 h-4 text-muted-foreground" />}
-            <div>
-              <p className="text-xs font-semibold text-foreground">{profile?.is_public ? "Public Profile" : "Private Profile"}</p>
-              <p className="text-[10px] text-muted-foreground">{profile?.is_public ? "Anyone can see your wardrobe & posts" : "Only followers can see your content"}</p>
+        {/* Recently Deleted */}
+        {deletedItems.length > 0 && (
+          <div className="rounded-2xl bg-card border border-border/40 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Trash2 className="w-4 h-4 text-muted-foreground" />
+              <p className="text-sm font-semibold text-foreground">Recently Deleted</p>
+              <span className="text-[10px] text-muted-foreground ml-auto">Auto-deletes after 30 days</span>
+            </div>
+            <div className="space-y-2">
+              {deletedItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-3 p-2 rounded-xl bg-muted">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-white flex-shrink-0">
+                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground truncate">{item.name}</p>
+                    <p className="text-[10px] text-muted-foreground capitalize">{item.category}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => {
+                        onRestoreItem?.(item);
+                        toast({ title: "Item restored ✨" });
+                      }}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-accent" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => setDeleteId(item.id)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs rounded-xl"
-            onClick={async () => {
-              await updateProfile({ is_public: !profile?.is_public } as any);
-              await refreshProfile();
-            }}
-          >
-            {profile?.is_public ? "Make Private" : "Make Public"}
-          </Button>
-        </div>
+        )}
 
         <Button variant="outline" onClick={() => navigate("/feedback")} className="w-full h-12 rounded-2xl text-sm">
           <MessageSquare className="w-4 h-4 mr-2" /> Help & Feedback
@@ -227,6 +255,20 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit }: P
       </div>
 
       <EditProfileSheet open={showEditSheet} onOpenChange={setShowEditSheet} />
+
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(o) => { if (!o) setDeleteId(null); }}
+        onConfirm={() => {
+          if (deleteId) {
+            onPermanentDelete?.(deleteId);
+            setDeleteId(null);
+            toast({ title: "Permanently deleted" });
+          }
+        }}
+        title="Delete permanently?"
+        description="This item will be permanently removed and cannot be recovered."
+      />
     </div>
   );
 }

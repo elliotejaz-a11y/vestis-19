@@ -9,13 +9,20 @@ import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload } from "lucide-r
 import { cn } from "@/lib/utils";
 
 export const SKIN_TONES = [
+  { value: "porcelain", label: "Porcelain", color: "bg-[#FFF0E0]" },
   { value: "fair", label: "Fair", color: "bg-[#FDEBD0]" },
   { value: "light", label: "Light", color: "bg-[#F5CBA7]" },
+  { value: "warm-beige", label: "Warm Beige", color: "bg-[#E8C9A0]" },
+  { value: "golden", label: "Golden", color: "bg-[#D4A76A]" },
   { value: "medium", label: "Medium", color: "bg-[#DC7633]" },
   { value: "olive", label: "Olive", color: "bg-[#BA9B68]" },
-  { value: "tan", label: "Tan", color: "bg-[#A0522D]" },
-  { value: "dark", label: "Dark", color: "bg-[#6F4E37]" },
+  { value: "honey", label: "Honey", color: "bg-[#C68642]" },
+  { value: "caramel", label: "Caramel", color: "bg-[#A0522D]" },
+  { value: "tan", label: "Tan", color: "bg-[#8D6E63]" },
+  { value: "mocha", label: "Mocha", color: "bg-[#6F4E37]" },
+  { value: "espresso", label: "Espresso", color: "bg-[#4E342E]" },
   { value: "deep", label: "Deep", color: "bg-[#3B2F2F]" },
+  { value: "ebony", label: "Ebony", color: "bg-[#2C1E1E]" },
 ];
 
 export const STYLES = [
@@ -27,16 +34,23 @@ export const STYLES = [
   { value: "elegant", label: "Elegant", emoji: "✨" },
   { value: "sporty", label: "Sporty", emoji: "🏃" },
   { value: "vintage", label: "Vintage", emoji: "📻" },
+  { value: "preppy", label: "Preppy", emoji: "🏫" },
+  { value: "grunge", label: "Grunge", emoji: "🎸" },
+  { value: "avant-garde", label: "Avant-Garde", emoji: "🎭" },
+  { value: "techwear", label: "Techwear", emoji: "⚡" },
 ];
 
 export const BODY_TYPES = [
-  { value: "slim", label: "Slim" },
-  { value: "athletic", label: "Athletic" },
-  { value: "average", label: "Average" },
-  { value: "curvy", label: "Curvy" },
-  { value: "plus-size", label: "Plus Size" },
-  { value: "tall", label: "Tall" },
-  { value: "petite", label: "Petite" },
+  { value: "slim", label: "Slim", desc: "Narrow shoulders & hips, lean frame", silhouette: "▏" },
+  { value: "athletic", label: "Athletic", desc: "Broad shoulders, defined muscles", silhouette: "▽" },
+  { value: "average", label: "Average", desc: "Proportional build", silhouette: "▯" },
+  { value: "curvy", label: "Curvy", desc: "Defined waist, fuller hips & bust", silhouette: "⌛" },
+  { value: "plus-size", label: "Plus Size", desc: "Fuller, rounder build", silhouette: "◯" },
+  { value: "tall", label: "Tall", desc: "Above average height, long limbs", silhouette: "⏐" },
+  { value: "petite", label: "Petite", desc: "Smaller frame, shorter stature", silhouette: "·" },
+  { value: "inverted-triangle", label: "Inverted Triangle", desc: "Broad shoulders, narrow hips", silhouette: "▽" },
+  { value: "pear", label: "Pear", desc: "Narrow shoulders, wider hips", silhouette: "△" },
+  { value: "rectangle", label: "Rectangle", desc: "Similar shoulder, waist & hip width", silhouette: "▭" },
 ];
 
 export const COLOR_OPTIONS = [
@@ -46,15 +60,6 @@ export const COLOR_OPTIONS = [
   { value: "bold", label: "Bold Colors", desc: "Red, cobalt, emerald" },
   { value: "monochrome", label: "Monochrome", desc: "All black or all white" },
   { value: "jewel-tones", label: "Jewel Tones", desc: "Burgundy, teal, plum" },
-];
-
-export const GOALS = [
-  { value: "look-polished", label: "Look more polished daily" },
-  { value: "experiment", label: "Experiment with new styles" },
-  { value: "capsule", label: "Build a capsule wardrobe" },
-  { value: "sustainable", label: "Shop more sustainably" },
-  { value: "occasion-ready", label: "Always be occasion-ready" },
-  { value: "express", label: "Express my personality" },
 ];
 
 interface OnboardingProps {
@@ -67,10 +72,10 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [avatarUrl, setAvatarUrl] = useState("");
   const [bio, setBio] = useState("");
   const [skinTone, setSkinTone] = useState("");
-  const [style, setStyle] = useState("");
+  const [styles, setStyles] = useState<string[]>([]);
+  const [customStyle, setCustomStyle] = useState("");
   const [bodyType, setBodyType] = useState("");
   const [preferredColors, setPreferredColors] = useState<string[]>([]);
-  const [fashionGoals, setFashionGoals] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const { user, updateProfile, profile } = useAuth();
@@ -82,14 +87,17 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       setAvatarUrl(profile.avatar_url || "");
       setBio(profile.bio || "");
       setSkinTone(profile.skin_tone || "");
-      setStyle(profile.style_preference || "");
+      // Parse comma-separated styles
+      const existingStyles = profile.style_preference ? profile.style_preference.split(",").map(s => s.trim()).filter(Boolean) : [];
+      const knownValues = STYLES.map(s => s.value);
+      setStyles(existingStyles.filter(s => knownValues.includes(s)));
+      const customs = existingStyles.filter(s => !knownValues.includes(s));
+      setCustomStyle(customs.join(", "));
       setBodyType(profile.body_type || "");
       setPreferredColors(profile.preferred_colors || []);
-      setFashionGoals(profile.fashion_goals || "");
     }
   }, [editMode, profile]);
 
-  // Set pending username after signup
   useEffect(() => {
     if (user && !editMode) {
       const pendingUsername = localStorage.getItem("pending_username");
@@ -121,6 +129,16 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     setPreferredColors((prev) =>
       prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c]
     );
+
+  const toggleStyle = (s: string) =>
+    setStyles((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+    );
+
+  const allStyles = [
+    ...styles,
+    ...customStyle.split(",").map(s => s.trim()).filter(Boolean),
+  ];
 
   const steps = [
     {
@@ -155,7 +173,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           </div>
         </div>
       ),
-      valid: true, // optional step
+      valid: true,
     },
     {
       title: "What's your skin tone?",
@@ -174,7 +192,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
               )}
             >
               <div className={cn("w-10 h-10 rounded-full", t.color)} />
-              <span className="text-[10px] font-medium text-foreground">{t.label}</span>
+              <span className="text-[9px] font-medium text-foreground">{t.label}</span>
             </button>
           ))}
         </div>
@@ -183,27 +201,39 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     },
     {
       title: "What's your style?",
-      subtitle: "Pick what resonates most with you",
+      subtitle: "Select all that apply, or type your own",
       content: (
-        <div className="grid grid-cols-2 gap-3">
-          {STYLES.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => setStyle(s.value)}
-              className={cn(
-                "flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left",
-                style === s.value
-                  ? "border-accent bg-accent/10"
-                  : "border-border bg-card hover:border-accent/40"
-              )}
-            >
-              <span className="text-2xl">{s.emoji}</span>
-              <span className="text-sm font-medium text-foreground">{s.label}</span>
-            </button>
-          ))}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            {STYLES.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => toggleStyle(s.value)}
+                className={cn(
+                  "flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left",
+                  styles.includes(s.value)
+                    ? "border-accent bg-accent/10"
+                    : "border-border bg-card hover:border-accent/40"
+                )}
+              >
+                <span className="text-2xl">{s.emoji}</span>
+                <span className="text-sm font-medium text-foreground">{s.label}</span>
+                {styles.includes(s.value) && <Check className="w-4 h-4 text-accent ml-auto" />}
+              </button>
+            ))}
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Or describe your own style</p>
+            <Input
+              value={customStyle}
+              onChange={(e) => setCustomStyle(e.target.value)}
+              placeholder="e.g. Dark academia, Y2K, Cottagecore"
+              className="rounded-xl bg-card text-sm"
+            />
+          </div>
         </div>
       ),
-      valid: !!style,
+      valid: allStyles.length > 0,
     },
     {
       title: "Your body type?",
@@ -215,13 +245,19 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
               key={b.value}
               onClick={() => setBodyType(b.value)}
               className={cn(
-                "p-4 rounded-2xl border-2 transition-all text-sm font-medium text-foreground",
+                "p-4 rounded-2xl border-2 transition-all text-left",
                 bodyType === b.value
                   ? "border-accent bg-accent/10"
                   : "border-border bg-card hover:border-accent/40"
               )}
             >
-              {b.label}
+              <div className="flex items-center gap-3">
+                <span className="text-2xl w-8 text-center">{b.silhouette}</span>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{b.label}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{b.desc}</p>
+                </div>
+              </div>
             </button>
           ))}
         </div>
@@ -252,40 +288,18 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       ),
       valid: preferredColors.length > 0,
     },
-    {
-      title: "Fashion goal?",
-      subtitle: "What do you want to achieve?",
-      content: (
-        <div className="space-y-2.5">
-          {GOALS.map((g) => (
-            <button
-              key={g.value}
-              onClick={() => setFashionGoals(g.value)}
-              className={cn(
-                "w-full p-4 rounded-2xl border-2 transition-all text-left text-sm font-medium text-foreground",
-                fashionGoals === g.value
-                  ? "border-accent bg-accent/10"
-                  : "border-border bg-card hover:border-accent/40"
-              )}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-      ),
-      valid: !!fashionGoals,
-    },
   ];
 
   const handleFinish = async () => {
     setSaving(true);
     try {
+      const styleValue = allStyles.join(", ");
       await updateProfile({
         skin_tone: skinTone,
-        style_preference: style,
+        style_preference: styleValue || null,
         body_type: bodyType,
         preferred_colors: preferredColors,
-        fashion_goals: fashionGoals,
+        fashion_goals: null,
         onboarding_completed: true,
         display_name: profile?.display_name || null,
         avatar_url: avatarUrl || null,
@@ -321,7 +335,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           <p className="text-sm text-muted-foreground mt-1">{current.subtitle}</p>
         </div>
 
-        <div className="flex-1">{current.content}</div>
+        <div className="flex-1 overflow-y-auto">{current.content}</div>
 
         <div className="flex gap-3 mt-6">
           {step > 0 && (
@@ -340,7 +354,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
               disabled={!current.valid}
               className="h-12 rounded-2xl flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
             >
-              {step === 0 ? "Next" : "Next"} <ArrowRight className="w-4 h-4 ml-2" />
+              Next <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           ) : (
             <Button
