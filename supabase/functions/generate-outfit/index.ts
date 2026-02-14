@@ -24,7 +24,7 @@ serve(async (req) => {
 
     // Build a summary of wardrobe items for the AI
     const wardrobeSummary = items.map((item: any, i: number) => 
-      `${i + 1}. "${item.name}" — ${item.category}, ${item.color}, ${item.fabric}, tags: [${(item.tags || []).join(', ')}]`
+      `${i + 1}. "${item.name}" — ${item.category}, ${item.color}, ${item.fabric}, tags: [${(item.tags || []).join(', ')}]${item.notes ? `, user notes: "${item.notes}"` : ''}`
     ).join('\n');
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -45,6 +45,7 @@ serve(async (req) => {
 - **Style cohesion**: items should share a visual language (e.g., don't mix streetwear sneakers with a formal blazer).
 - **Layering & proportion**: balance oversized with fitted, structured with flowing.
 - **Personal factors**: Consider the user's skin tone for flattering colors, body type for proportions, and personal style preference.
+- **User notes**: Pay attention to any notes the user has added about their clothes (comfort, fit, preferences) and factor them into your selection.
 
 Always pick items that genuinely look great together. Explain your reasoning with fashion expertise.`,
           },

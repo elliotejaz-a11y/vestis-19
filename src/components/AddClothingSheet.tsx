@@ -3,8 +3,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/co
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, Upload, Sparkles, Loader2 } from "lucide-react";
+import { Camera, Upload, Sparkles, Loader2, ImageOff } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -25,7 +26,9 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [color, setColor] = useState("");
   const [fabric, setFabric] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -34,7 +37,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        // Remove data URL prefix
         resolve(result.split(",")[1]);
       };
       reader.onerror = reject;
@@ -42,17 +44,42 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     });
   };
 
+  const removeBackground = async (base64: string): Promise<string> => {
+    setRemovingBg(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("remove-background", {
+        body: { imageBase64: base64 },
+      });
+      if (error) throw error;
+      if (data?.imageBase64 && !data.fallback) {
+        return data.imageBase64;
+      }
+    } catch (err) {
+      console.error("Background removal failed:", err);
+    } finally {
+      setRemovingBg(false);
+    }
+    return base64;
+  };
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const url = URL.createObjectURL(file);
-    setImageUrl(url);
 
     setAnalyzing(true);
     try {
       const base64 = await fileToBase64(file);
+      
+      // Remove background first
+      const cleanBase64 = await removeBackground(base64);
+      
+      // Create displayable URL from processed image
+      const processedUrl = `data:image/png;base64,${cleanBase64}`;
+      setImageUrl(processedUrl);
+
+      // Analyze clothing with AI
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
-        body: { imageBase64: base64 },
+        body: { imageBase64: cleanBase64 },
       });
 
       if (error) throw error;
@@ -70,6 +97,11 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       }
     } catch (err) {
       console.error("AI analysis failed:", err);
+      // If we don't have an image URL yet, set original
+      if (!imageUrl) {
+        const file2 = e.target.files?.[0];
+        if (file2) setImageUrl(URL.createObjectURL(file2));
+      }
       toast({
         title: "AI analysis failed",
         description: "You can still fill in the details manually.",
@@ -90,6 +122,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       fabric,
       imageUrl,
       tags: [...tags, color.toLowerCase(), fabric.toLowerCase(), category].filter(Boolean),
+      notes,
       addedAt: new Date(),
     });
     resetForm();
@@ -103,6 +136,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     setColor("");
     setFabric("");
     setTags([]);
+    setNotes("");
   };
 
   return (
@@ -121,34 +155,29 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 onClick={() => fileRef.current?.click()}
                 className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
               >
-                <Camera className="w-8 h-8" />
-                <span className="text-xs font-medium">Take Photo</span>
-              </button>
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-              >
                 <Upload className="w-8 h-8" />
-                <span className="text-xs font-medium">Upload</span>
+                <span className="text-xs font-medium">Upload Photo</span>
               </button>
               <input
                 ref={fileRef}
                 type="file"
                 accept="image/*"
-                capture="environment"
                 className="hidden"
                 onChange={handleFile}
               />
             </div>
           ) : (
-            <div className="relative rounded-2xl overflow-hidden">
-              <img src={imageUrl} alt="Preview" className="w-full h-48 object-cover" />
-              {analyzing && (
+            <div className="relative rounded-2xl overflow-hidden bg-muted">
+              <img src={imageUrl} alt="Preview" className="w-full h-48 object-contain" />
+              {(analyzing || removingBg) && (
                 <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
                   <Loader2 className="w-6 h-6 animate-spin text-accent" />
                   <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    <Sparkles className="w-4 h-4 text-accent" />
-                    AI is analyzing your clothing...
+                    {removingBg ? (
+                      <><ImageOff className="w-4 h-4 text-accent" /> Removing background...</>
+                    ) : (
+                      <><Sparkles className="w-4 h-4 text-accent" /> AI is analyzing your clothing...</>
+                    )}
                   </div>
                 </div>
               )}
@@ -207,11 +236,20 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 </Select>
               </div>
             </div>
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="e.g. Super comfy, runs a size small, great for layering..."
+                className="mt-1 rounded-xl bg-card text-sm min-h-[60px]"
+              />
+            </div>
           </div>
 
           <Button
             onClick={handleSave}
-            disabled={!imageUrl || !name || !category || analyzing}
+            disabled={!imageUrl || !name || !category || analyzing || removingBg}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors"
           >
             <Sparkles className="w-4 h-4 mr-2" />

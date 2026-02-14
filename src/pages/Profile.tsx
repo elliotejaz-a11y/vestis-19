@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Settings } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import Onboarding from "@/pages/Onboarding";
 
 interface Props {
   items: ClothingItem[];
 }
 
 export function Profile({ items }: Props) {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
+  const [editingProfile, setEditingProfile] = useState(false);
 
   const categoryBreakdown = CATEGORIES.map((cat) => ({
     ...cat,
@@ -23,6 +26,18 @@ export function Profile({ items }: Props) {
   )
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5);
+
+  if (editingProfile) {
+    return (
+      <Onboarding
+        editMode
+        onComplete={async () => {
+          await refreshProfile();
+          setEditingProfile(false);
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen pb-24">
@@ -44,7 +59,17 @@ export function Profile({ items }: Props) {
         {/* Style preferences */}
         {profile && (
           <div className="rounded-2xl bg-card border border-border/40 p-4">
-            <p className="text-sm font-semibold text-foreground mb-3">Style Preferences</p>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-foreground">Style Preferences</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setEditingProfile(true)}
+                className="h-8 px-2.5 text-xs text-accent"
+              >
+                <Pencil className="w-3.5 h-3.5 mr-1" /> Edit
+              </Button>
+            </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               {profile.skin_tone && (
                 <div className="bg-muted rounded-xl p-2.5">

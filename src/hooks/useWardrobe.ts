@@ -29,6 +29,7 @@ export function useWardrobe() {
         fabric: r.fabric,
         imageUrl: r.image_url,
         tags: r.tags || [],
+        notes: (r as any).notes || "",
         addedAt: new Date(r.created_at),
       }));
       setItems(dbItems);
@@ -97,7 +98,8 @@ export function useWardrobe() {
           fabric: item.fabric,
           image_url: imageUrl,
           tags: item.tags,
-        })
+          notes: item.notes,
+        } as any)
         .select()
         .single();
 
@@ -110,6 +112,7 @@ export function useWardrobe() {
           fabric: data.fabric,
           imageUrl: data.image_url,
           tags: data.tags || [],
+          notes: (data as any).notes || "",
           addedAt: new Date(data.created_at),
         };
         setItems((prev) => [newItem, ...prev]);
