@@ -10,11 +10,11 @@ interface Props {
 export function ClothingCard({ item, onRemove, compact }: Props) {
   return (
     <div className="group relative rounded-2xl overflow-hidden bg-card border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300">
-      <div className={compact ? "aspect-square" : "aspect-[3/4]"}>
+      <div className={`${compact ? "aspect-square" : "aspect-[3/4]"} bg-white`}>
         <img
           src={item.imageUrl}
           alt={item.name}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
           loading="lazy"
         />
       </div>

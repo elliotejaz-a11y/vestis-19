@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, Upload, Sparkles, Loader2, ImageOff } from "lucide-react";
+import { Camera, Upload, Sparkles, Loader2 } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -28,7 +28,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
-  const [removingBg, setRemovingBg] = useState(false);
+  
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -44,23 +44,8 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     });
   };
 
-  const removeBackground = async (base64: string): Promise<string> => {
-    setRemovingBg(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("remove-background", {
-        body: { imageBase64: base64 },
-      });
-      if (error) throw error;
-      if (data?.imageBase64 && !data.fallback) {
-        return data.imageBase64;
-      }
-    } catch (err) {
-      console.error("Background removal failed:", err);
-    } finally {
-      setRemovingBg(false);
-    }
-    return base64;
-  };
+  // Background removal is currently not available via the AI gateway
+  // Images are displayed cleanly with CSS object-contain on a white bg
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -70,16 +55,12 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     try {
       const base64 = await fileToBase64(file);
       
-      // Remove background first
-      const cleanBase64 = await removeBackground(base64);
-      
-      // Create displayable URL from processed image
-      const processedUrl = `data:image/png;base64,${cleanBase64}`;
-      setImageUrl(processedUrl);
+      // Display the image immediately
+      setImageUrl(`data:image/png;base64,${base64}`);
 
       // Analyze clothing with AI
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
-        body: { imageBase64: cleanBase64 },
+        body: { imageBase64: base64 },
       });
 
       if (error) throw error;
@@ -168,16 +149,12 @@ export function AddClothingSheet({ onAdd, children }: Props) {
             </div>
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
-              <img src={imageUrl} alt="Preview" className="w-full h-48 object-contain" />
-              {(analyzing || removingBg) && (
+              <img src={imageUrl} alt="Preview" className="w-full h-48 object-contain bg-white" />
+              {analyzing && (
                 <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
                   <Loader2 className="w-6 h-6 animate-spin text-accent" />
                   <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
-                    {removingBg ? (
-                      <><ImageOff className="w-4 h-4 text-accent" /> Removing background...</>
-                    ) : (
-                      <><Sparkles className="w-4 h-4 text-accent" /> AI is analyzing your clothing...</>
-                    )}
+                    <Sparkles className="w-4 h-4 text-accent" /> AI is analyzing your clothing...
                   </div>
                 </div>
               )}
@@ -249,7 +226,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
           <Button
             onClick={handleSave}
-            disabled={!imageUrl || !name || !category || analyzing || removingBg}
+            disabled={!imageUrl || !name || !category || analyzing}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors"
           >
             <Sparkles className="w-4 h-4 mr-2" />
