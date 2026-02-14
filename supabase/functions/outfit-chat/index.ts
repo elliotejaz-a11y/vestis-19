@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,12 +12,52 @@ serve(async (req) => {
   }
 
   try {
+    // Auth check
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const token = authHeader.replace('Bearer ', '');
+    const { data, error: authError } = await supabase.auth.getClaims(token);
+    if (authError || !data?.claims) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { messages, outfitContext } = await req.json();
+
+    // Input validation
+    if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
+      return new Response(JSON.stringify({ error: 'Invalid messages' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    for (const msg of messages) {
+      if (!msg.role || !msg.content || typeof msg.content !== 'string' || msg.content.length > 2000) {
+        return new Response(JSON.stringify({ error: 'Invalid message format' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+    if (!outfitContext || typeof outfitContext.occasion !== 'string') {
+      return new Response(JSON.stringify({ error: 'Invalid outfit context' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    const outfitSummary = outfitContext.items
-      .map((i: any) => `"${i.name}" (${i.category}, ${i.color}, ${i.fabric})`)
+    const outfitSummary = (outfitContext.items || []).slice(0, 20)
+      .map((i: any) => `"${String(i.name || '').slice(0, 100)}" (${i.category}, ${i.color}, ${i.fabric})`)
       .join(', ');
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -30,14 +71,14 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a world-class fashion stylist AI assistant. The user has just generated an outfit for "${outfitContext.occasion}" consisting of: ${outfitSummary}.
+            content: `You are a world-class fashion stylist AI assistant. The user has just generated an outfit for "${String(outfitContext.occasion).slice(0, 200)}" consisting of: ${outfitSummary}.
 
-Original reasoning: ${outfitContext.reasoning}
-${outfitContext.styleTips ? `Style tips: ${outfitContext.styleTips}` : ''}
+Original reasoning: ${String(outfitContext.reasoning || '').slice(0, 500)}
+${outfitContext.styleTips ? `Style tips: ${String(outfitContext.styleTips).slice(0, 500)}` : ''}
 
 Help the user refine this outfit. You can suggest color alternatives, item swaps, layering tips, accessory additions, or styling adjustments. Be specific and actionable. Keep responses concise (2-4 sentences). Be warm and encouraging.`,
           },
-          ...messages.map((m: any) => ({ role: m.role, content: m.content })),
+          ...messages.map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 2000) })),
         ],
         stream: true,
       }),
