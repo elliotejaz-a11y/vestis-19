@@ -104,15 +104,26 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
             </div>
           </div>
 
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground">Vestis Price (NZD)</Label>
-            <Input
-              type="number"
-              value={estimatedPrice}
-              onChange={(e) => setEstimatedPrice(e.target.value)}
-              placeholder="e.g. 120"
-              className="mt-1 rounded-xl bg-card"
-            />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium text-muted-foreground">Vestis Price</Label>
+              <Switch
+                checked={estimatedPrice !== ""}
+                onCheckedChange={(checked) => {
+                  if (!checked) setEstimatedPrice("");
+                  else setEstimatedPrice(item?.estimatedPrice?.toString() || "0");
+                }}
+              />
+            </div>
+            {estimatedPrice !== "" && (
+              <Input
+                type="number"
+                value={estimatedPrice}
+                onChange={(e) => setEstimatedPrice(e.target.value)}
+                placeholder="e.g. 120"
+                className="rounded-xl bg-card"
+              />
+            )}
           </div>
 
           <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/40">
