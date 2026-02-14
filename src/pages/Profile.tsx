@@ -47,6 +47,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   ).sort(([, a], [, b]) => b - a).slice(0, 5);
 
   const totalWardrobeValue = items.reduce((sum, i) => sum + (i.estimatedPrice || 0), 0);
+  const currency = profile?.currency_preference || "NZD";
+  const currencySymbol = currency === "EUR" ? "€" : "$";
 
   const displayNameForTitle = profile?.display_name
     ? `${profile.display_name}'s Profile`
@@ -61,20 +63,20 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   return (
     <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-14 h-14 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
-              <User className="w-6 h-6 text-muted-foreground" />
+              <User className="w-8 h-8 text-muted-foreground" />
             )}
           </div>
-          <div className="flex-1">
+          <div className="text-center">
             <h1 className="text-xl font-bold tracking-tight text-foreground">
               {displayNameForTitle}
             </h1>
             {profile?.username && (
-              <p className="text-xs text-accent font-medium flex items-center gap-0.5">
+              <p className="text-xs text-accent font-medium flex items-center justify-center gap-0.5">
                 <AtSign className="w-3 h-3" />{profile.username}
               </p>
             )}
@@ -94,7 +96,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         <div className="rounded-2xl bg-accent/10 border border-accent/20 p-4 flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground">Total Wardrobe Value</p>
-            <p className="text-2xl font-bold text-foreground">${totalWardrobeValue.toFixed(0)} <span className="text-sm font-normal text-muted-foreground">NZD</span></p>
+            <p className="text-2xl font-bold text-foreground">{currencySymbol}{totalWardrobeValue.toFixed(0)} <span className="text-sm font-normal text-muted-foreground">{currency}</span></p>
           </div>
           <DollarSign className="w-8 h-8 text-accent" />
         </div>

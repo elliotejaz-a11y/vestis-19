@@ -224,13 +224,36 @@ export function AddClothingSheet({ onAdd, children }: Props) {
             </div>
           )}
 
-          {estimatedPrice && (
+          {estimatedPrice !== undefined && (
             <div className="flex items-center justify-between bg-accent/10 rounded-xl p-3">
               <div className="flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-accent" />
                 <span className="text-xs font-medium text-foreground">Vestis Price</span>
               </div>
-              <span className="text-sm font-bold text-accent">${estimatedPrice.toFixed(0)} NZD</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold text-accent">${estimatedPrice.toFixed(0)}</span>
+                <button
+                  onClick={() => setEstimatedPrice(undefined)}
+                  className="text-[10px] text-muted-foreground underline"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          )}
+
+          {estimatedPrice === undefined && imageUrl && !analyzing && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Price (optional)</Label>
+              <Input
+                type="number"
+                placeholder="Add a value..."
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  if (!isNaN(val) && val > 0) setEstimatedPrice(val);
+                }}
+                className="rounded-xl bg-card"
+              />
             </div>
           )}
 

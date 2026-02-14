@@ -15,6 +15,7 @@ interface Profile {
   preferred_colors: string[] | null;
   fashion_goals: string | null;
   onboarding_completed: boolean;
+  currency_preference: string;
 }
 
 interface AuthContextType {
