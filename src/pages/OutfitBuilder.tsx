@@ -67,23 +67,26 @@ export default function OutfitBuilder({ items }: Props) {
                 <X className="w-3 h-3" /> Clear
               </button>
             </div>
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center -space-y-4">
               {(() => {
+                const accessories = sortedSelected.filter(i => i.category === "accessories");
                 const outerwear = sortedSelected.filter(i => i.category === "outerwear");
                 const tops = sortedSelected.filter(i => i.category === "tops");
-                const rest = sortedSelected.filter(i => i.category !== "outerwear" && i.category !== "tops");
+                const dresses = sortedSelected.filter(i => i.category === "dresses");
+                const bottoms = sortedSelected.filter(i => i.category === "bottoms");
+                const shoes = sortedSelected.filter(i => i.category === "shoes");
 
                 return (
                   <>
-                    {sortedSelected.filter(i => i.category === "accessories").map((item) => (
-                      <div key={item.id} className="w-16 h-16 flex-shrink-0">
+                    {accessories.map((item) => (
+                      <div key={item.id} className="w-14 h-14 flex-shrink-0 z-10">
                         <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
                       </div>
                     ))}
                     {(outerwear.length > 0 || tops.length > 0) && (
-                      <div className="flex items-start justify-center gap-2">
+                      <div className="flex items-start justify-center -space-x-4 z-20">
                         {outerwear.map((item) => (
-                          <div key={item.id} className="w-20 h-20 flex-shrink-0 -mt-2">
+                          <div key={item.id} className="w-20 h-20 flex-shrink-0">
                             <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
                           </div>
                         ))}
@@ -94,15 +97,21 @@ export default function OutfitBuilder({ items }: Props) {
                         ))}
                       </div>
                     )}
-                    {rest.filter(i => i.category !== "accessories").map((item) => {
-                      const isSmall = item.category === "shoes";
-                      const size = isSmall ? "w-16 h-16" : "w-24 h-24";
-                      return (
-                        <div key={item.id} className={cn("flex-shrink-0", size)}>
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                        </div>
-                      );
-                    })}
+                    {dresses.map((item) => (
+                      <div key={item.id} className="w-24 h-28 flex-shrink-0 z-10">
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                      </div>
+                    ))}
+                    {bottoms.map((item) => (
+                      <div key={item.id} className="w-24 h-24 flex-shrink-0 z-10">
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                      </div>
+                    ))}
+                    {shoes.map((item) => (
+                      <div key={item.id} className="w-14 h-14 flex-shrink-0 z-10">
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                      </div>
+                    ))}
                   </>
                 );
               })()}
