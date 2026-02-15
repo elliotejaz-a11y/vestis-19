@@ -1,12 +1,11 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
-import { Shuffle, Check, X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { Shuffle, Check, X, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const CATEGORY_ORDER = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
 
-// Default positions for each category (percentage-based, centered layout)
 const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
   accessories: { x: 50, y: 5 },
   outerwear: { x: 30, y: 25 },
@@ -33,11 +32,12 @@ export default function OutfitBuilder({ items }: Props) {
   const [selected, setSelected] = useState<Record<string, ClothingItem | null>>({});
   const [activeCategory, setActiveCategory] = useState<string>("tops");
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [scales, setScales] = useState<Record<string, number>>({});
   const [zOrder, setZOrder] = useState<Record<string, number>>({});
-  const [previewScale, setPreviewScale] = useState(1);
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+  const pinchRef = useRef<{ itemId: string; startDist: number; startScale: number } | null>(null);
+  const lastTapRef = useRef<{ id: string; time: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const zCounterRef = useRef(1);
 
@@ -50,9 +50,10 @@ export default function OutfitBuilder({ items }: Props) {
     return map;
   }, [items]);
 
-  const getItemPos = (item: ClothingItem) => {
-    return positions[item.id] || DEFAULT_POSITIONS[item.category] || { x: 50, y: 50 };
-  };
+  const getItemPos = (item: ClothingItem) =>
+    positions[item.id] || DEFAULT_POSITIONS[item.category] || { x: 50, y: 50 };
+
+  const getItemScale = (id: string) => scales[id] ?? 1;
 
   const toggleItem = (item: ClothingItem) => {
     setSelected((prev) => {
@@ -71,18 +72,20 @@ export default function OutfitBuilder({ items }: Props) {
     }
     setSelected(newSelected);
     setPositions({});
+    setScales({});
     setZOrder({});
   };
 
   const clearAll = () => {
     setSelected({});
     setPositions({});
+    setScales({});
     setZOrder({});
-    setPreviewScale(1);
   };
 
-  const resetPositions = () => {
+  const resetLayout = () => {
     setPositions({});
+    setScales({});
     setZOrder({});
   };
 
@@ -93,7 +96,24 @@ export default function OutfitBuilder({ items }: Props) {
     return az - bz;
   });
 
-  // Freeform drag handlers
+  // Bring item to front
+  const bringToFront = (id: string) => {
+    zCounterRef.current += 1;
+    setZOrder((prev) => ({ ...prev, [id]: zCounterRef.current + 10 }));
+  };
+
+  // Double-tap to cycle scale: 1x → 1.4x → 1.8x → 0.6x → 1x
+  const SCALE_STEPS = [1, 1.4, 1.8, 0.6];
+  const handleDoubleTap = (id: string) => {
+    setScales((prev) => {
+      const current = prev[id] ?? 1;
+      const idx = SCALE_STEPS.findIndex((s) => Math.abs(s - current) < 0.05);
+      const next = SCALE_STEPS[(idx + 1) % SCALE_STEPS.length];
+      return { ...prev, [id]: next };
+    });
+  };
+
+  // Pointer drag
   const handlePointerDown = useCallback((e: React.PointerEvent, item: ClothingItem) => {
     e.preventDefault();
     e.stopPropagation();
@@ -101,44 +121,73 @@ export default function OutfitBuilder({ items }: Props) {
     const pos = getItemPos(item);
     dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: pos.x, startPosY: pos.y };
     setDraggingId(item.id);
-    // Bring to front
-    zCounterRef.current += 1;
-    setZOrder((prev) => ({ ...prev, [item.id]: zCounterRef.current + 10 }));
+    bringToFront(item.id);
+
+    // Detect double-tap
+    const now = Date.now();
+    if (lastTapRef.current && lastTapRef.current.id === item.id && now - lastTapRef.current.time < 300) {
+      handleDoubleTap(item.id);
+      lastTapRef.current = null;
+    } else {
+      lastTapRef.current = { id: item.id, time: now };
+    }
   }, [positions]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragRef.current || !draggingId || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
-    const dx = ((e.clientX - dragRef.current.startX) / rect.width) * 100 / previewScale;
-    const dy = ((e.clientY - dragRef.current.startY) / rect.height) * 100 / previewScale;
+    const dx = ((e.clientX - dragRef.current.startX) / rect.width) * 100;
+    const dy = ((e.clientY - dragRef.current.startY) / rect.height) * 100;
     const newX = Math.max(0, Math.min(100, dragRef.current.startPosX + dx));
     const newY = Math.max(0, Math.min(100, dragRef.current.startPosY + dy));
     setPositions((prev) => ({ ...prev, [draggingId]: { x: newX, y: newY } }));
-  }, [draggingId, previewScale]);
+  }, [draggingId]);
 
   const handlePointerUp = useCallback(() => {
     dragRef.current = null;
     setDraggingId(null);
   }, []);
 
-  // Pinch-to-zoom handlers
-  const getTouchDist = (touches: React.TouchList) => {
-    const [t1, t2] = [touches[0], touches[1]];
-    return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+  // Pinch-to-resize individual items (two-finger touch on canvas)
+  const getTouchDist = (t: React.TouchList) =>
+    Math.hypot(t[1].clientX - t[0].clientX, t[1].clientY - t[0].clientY);
+
+  const findItemUnderTouch = (t: React.TouchList): string | null => {
+    if (!canvasRef.current) return null;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const cx = ((t[0].clientX + t[1].clientX) / 2 - rect.left) / rect.width * 100;
+    const cy = ((t[0].clientY + t[1].clientY) / 2 - rect.top) / rect.height * 100;
+    // Find the topmost item near the midpoint
+    let best: { id: string; z: number } | null = null;
+    for (const item of selectedItems) {
+      const pos = getItemPos(item);
+      const size = ITEM_SIZES[item.category] || { w: 80, h: 80 };
+      const halfW = (size.w / rect.width) * 100 * 1.5;
+      const halfH = (size.h / rect.height) * 100 * 1.5;
+      if (Math.abs(cx - pos.x) < halfW && Math.abs(cy - pos.y) < halfH) {
+        const z = zOrder[item.id] || CATEGORY_ORDER.indexOf(item.category);
+        if (!best || z > best.z) best = { id: item.id, z };
+      }
+    }
+    return best?.id ?? null;
   };
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2) {
-      pinchRef.current = { startDist: getTouchDist(e.touches), startScale: previewScale };
+      const itemId = findItemUnderTouch(e.touches);
+      if (itemId) {
+        pinchRef.current = { itemId, startDist: getTouchDist(e.touches), startScale: getItemScale(itemId) };
+      }
     }
-  }, [previewScale]);
+  }, [selectedItems, positions, scales, zOrder]);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2 && pinchRef.current) {
       e.preventDefault();
       const dist = getTouchDist(e.touches);
       const ratio = dist / pinchRef.current.startDist;
-      setPreviewScale(Math.min(2, Math.max(0.5, pinchRef.current.startScale * ratio)));
+      const newScale = Math.min(2.5, Math.max(0.3, pinchRef.current.startScale * ratio));
+      setScales((prev) => ({ ...prev, [pinchRef.current!.itemId]: newScale }));
     }
   }, []);
 
@@ -150,7 +199,7 @@ export default function OutfitBuilder({ items }: Props) {
     <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-4">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Outfit Builder</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Drag items freely to arrange your outfit</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Drag to move · Double-tap to resize · Pinch to scale</p>
       </header>
 
       {/* Freeform outfit canvas */}
@@ -160,17 +209,10 @@ export default function OutfitBuilder({ items }: Props) {
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-foreground">Your Outfit ({sortedForRender.length} pieces)</p>
               <div className="flex items-center gap-2">
-                <button onClick={() => setPreviewScale((s) => Math.max(0.5, s - 0.1))} className="text-muted-foreground hover:text-foreground">
-                  <ZoomOut className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-[10px] text-muted-foreground min-w-[32px] text-center">{Math.round(previewScale * 100)}%</span>
-                <button onClick={() => setPreviewScale((s) => Math.min(2, s + 0.1))} className="text-muted-foreground hover:text-foreground">
-                  <ZoomIn className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={resetPositions} className="text-muted-foreground hover:text-foreground" title="Reset positions">
+                <button onClick={resetLayout} className="text-muted-foreground hover:text-foreground" title="Reset layout">
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
-                <button onClick={clearAll} className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1 ml-1">
+                <button onClick={clearAll} className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1">
                   <X className="w-3 h-3" /> Clear
                 </button>
               </div>
@@ -186,39 +228,38 @@ export default function OutfitBuilder({ items }: Props) {
               className="relative overflow-hidden rounded-xl bg-muted/20"
               style={{ height: 320, touchAction: "none" }}
             >
-              <div className="absolute inset-0 origin-center" style={{ transform: `scale(${previewScale})` }}>
-                {sortedForRender.map((item) => {
-                  const pos = getItemPos(item);
-                  const size = ITEM_SIZES[item.category] || { w: 80, h: 80 };
-                  const isDragging = draggingId === item.id;
-                  return (
-                    <div
-                      key={item.id}
-                      onPointerDown={(e) => handlePointerDown(e, item)}
-                      className={cn(
-                        "absolute cursor-grab active:cursor-grabbing transition-shadow select-none",
-                        isDragging && "ring-2 ring-accent/50 rounded-lg shadow-lg"
-                      )}
-                      style={{
-                        left: `${pos.x}%`,
-                        top: `${pos.y}%`,
-                        width: size.w,
-                        height: size.h,
-                        transform: "translate(-50%, -50%)",
-                        zIndex: zOrder[item.id] || CATEGORY_ORDER.indexOf(item.category),
-                        transition: isDragging ? "none" : "box-shadow 0.2s",
-                      }}
-                    >
-                      <img
-                        src={item.imageUrl}
-                        alt={item.name}
-                        className="w-full h-full object-contain drop-shadow-sm pointer-events-none"
-                        draggable={false}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+              {sortedForRender.map((item) => {
+                const pos = getItemPos(item);
+                const baseSize = ITEM_SIZES[item.category] || { w: 80, h: 80 };
+                const s = getItemScale(item.id);
+                const isDragging = draggingId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    onPointerDown={(e) => handlePointerDown(e, item)}
+                    className={cn(
+                      "absolute cursor-grab active:cursor-grabbing select-none",
+                      isDragging && "ring-2 ring-accent/50 rounded-lg shadow-lg"
+                    )}
+                    style={{
+                      left: `${pos.x}%`,
+                      top: `${pos.y}%`,
+                      width: baseSize.w,
+                      height: baseSize.h,
+                      transform: `translate(-50%, -50%) scale(${s})`,
+                      zIndex: zOrder[item.id] || CATEGORY_ORDER.indexOf(item.category),
+                      transition: isDragging ? "none" : "box-shadow 0.2s, transform 0.2s",
+                    }}
+                  >
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="w-full h-full object-contain drop-shadow-sm pointer-events-none"
+                      draggable={false}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
