@@ -1,53 +1,29 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
-import { Shuffle, Check, X, GripVertical, ZoomIn, ZoomOut } from "lucide-react";
+import { Shuffle, Check, X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 const CATEGORY_ORDER = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
 
-function SortableOutfitItem({ item }: { item: ClothingItem }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: item.id,
-  });
+// Default positions for each category (percentage-based, centered layout)
+const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
+  accessories: { x: 50, y: 5 },
+  outerwear: { x: 30, y: 25 },
+  tops: { x: 55, y: 28 },
+  dresses: { x: 50, y: 45 },
+  bottoms: { x: 50, y: 58 },
+  shoes: { x: 50, y: 85 },
+};
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 50 : undefined,
-    opacity: isDragging ? 0.8 : 1,
-  };
-
-  const isSmall = item.category === "accessories" || item.category === "shoes";
-  const sizeClass = item.category === "dresses" ? "w-24 h-28" : isSmall ? "w-14 h-14" : "w-24 h-24";
-
-  return (
-    <div ref={setNodeRef} style={style} className={cn("flex items-center gap-1 flex-shrink-0", isDragging && "scale-105")}>
-      <button {...attributes} {...listeners} className="touch-none p-1 text-muted-foreground/50 hover:text-muted-foreground">
-        <GripVertical className="w-3.5 h-3.5" />
-      </button>
-      <div className={sizeClass}>
-        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-      </div>
-    </div>
-  );
-}
+const ITEM_SIZES: Record<string, { w: number; h: number }> = {
+  accessories: { w: 56, h: 56 },
+  outerwear: { w: 80, h: 80 },
+  tops: { w: 96, h: 96 },
+  dresses: { w: 96, h: 112 },
+  bottoms: { w: 96, h: 96 },
+  shoes: { w: 56, h: 56 },
+};
 
 interface Props {
   items: ClothingItem[];
@@ -56,15 +32,14 @@ interface Props {
 export default function OutfitBuilder({ items }: Props) {
   const [selected, setSelected] = useState<Record<string, ClothingItem | null>>({});
   const [activeCategory, setActiveCategory] = useState<string>("tops");
-  const [orderedIds, setOrderedIds] = useState<string[]>([]);
+  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [zOrder, setZOrder] = useState<Record<string, number>>({});
   const [previewScale, setPreviewScale] = useState(1);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const pinchRef = useRef<{ startDist: number; startScale: number } | null>(null);
-  const previewContainerRef = useRef<HTMLDivElement>(null);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
-  );
+  const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const zCounterRef = useRef(1);
 
   const categorizedItems = useMemo(() => {
     const map: Record<string, ClothingItem[]> = {};
@@ -75,66 +50,76 @@ export default function OutfitBuilder({ items }: Props) {
     return map;
   }, [items]);
 
+  const getItemPos = (item: ClothingItem) => {
+    return positions[item.id] || DEFAULT_POSITIONS[item.category] || { x: 50, y: 50 };
+  };
+
   const toggleItem = (item: ClothingItem) => {
     setSelected((prev) => {
       const wasSelected = prev[item.category]?.id === item.id;
-      const next = { ...prev, [item.category]: wasSelected ? null : item };
-      if (!wasSelected) {
-        setOrderedIds((ids) => [...ids.filter((id) => id !== item.id), item.id]);
-      } else {
-        setOrderedIds((ids) => ids.filter((id) => id !== item.id));
-      }
-      return next;
+      return { ...prev, [item.category]: wasSelected ? null : item };
     });
   };
 
   const randomize = () => {
     const newSelected: Record<string, ClothingItem | null> = {};
-    const newIds: string[] = [];
     for (const cat of CATEGORIES) {
       const catItems = categorizedItems[cat.value];
       if (catItems.length > 0) {
-        const picked = catItems[Math.floor(Math.random() * catItems.length)];
-        newSelected[cat.value] = picked;
-        newIds.push(picked.id);
+        newSelected[cat.value] = catItems[Math.floor(Math.random() * catItems.length)];
       }
     }
     setSelected(newSelected);
-    setOrderedIds(newIds);
+    setPositions({});
+    setZOrder({});
   };
 
   const clearAll = () => {
     setSelected({});
-    setOrderedIds([]);
+    setPositions({});
+    setZOrder({});
     setPreviewScale(1);
   };
 
-  const selectedItems = Object.values(selected).filter(Boolean) as ClothingItem[];
-
-  const sortedSelected = useMemo(() => {
-    const itemMap = new Map(selectedItems.map((i) => [i.id, i]));
-    // Use custom order if available, fallback to category order
-    const ordered = orderedIds.filter((id) => itemMap.has(id)).map((id) => itemMap.get(id)!);
-    // Add any items not in orderedIds
-    const remaining = selectedItems.filter((i) => !orderedIds.includes(i.id));
-    remaining.sort((a, b) => {
-      const aIdx = CATEGORY_ORDER.indexOf(a.category);
-      const bIdx = CATEGORY_ORDER.indexOf(b.category);
-      return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
-    });
-    return [...ordered, ...remaining];
-  }, [selectedItems, orderedIds]);
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setOrderedIds((ids) => {
-        const oldIndex = ids.indexOf(active.id as string);
-        const newIndex = ids.indexOf(over.id as string);
-        return arrayMove(ids, oldIndex, newIndex);
-      });
-    }
+  const resetPositions = () => {
+    setPositions({});
+    setZOrder({});
   };
+
+  const selectedItems = Object.values(selected).filter(Boolean) as ClothingItem[];
+  const sortedForRender = [...selectedItems].sort((a, b) => {
+    const az = zOrder[a.id] || CATEGORY_ORDER.indexOf(a.category);
+    const bz = zOrder[b.id] || CATEGORY_ORDER.indexOf(b.category);
+    return az - bz;
+  });
+
+  // Freeform drag handlers
+  const handlePointerDown = useCallback((e: React.PointerEvent, item: ClothingItem) => {
+    e.preventDefault();
+    e.stopPropagation();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const pos = getItemPos(item);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: pos.x, startPosY: pos.y };
+    setDraggingId(item.id);
+    // Bring to front
+    zCounterRef.current += 1;
+    setZOrder((prev) => ({ ...prev, [item.id]: zCounterRef.current + 10 }));
+  }, [positions]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current || !draggingId || !canvasRef.current) return;
+    const rect = canvasRef.current.getBoundingClientRect();
+    const dx = ((e.clientX - dragRef.current.startX) / rect.width) * 100 / previewScale;
+    const dy = ((e.clientY - dragRef.current.startY) / rect.height) * 100 / previewScale;
+    const newX = Math.max(0, Math.min(100, dragRef.current.startPosX + dx));
+    const newY = Math.max(0, Math.min(100, dragRef.current.startPosY + dy));
+    setPositions((prev) => ({ ...prev, [draggingId]: { x: newX, y: newY } }));
+  }, [draggingId, previewScale]);
+
+  const handlePointerUp = useCallback(() => {
+    dragRef.current = null;
+    setDraggingId(null);
+  }, []);
 
   // Pinch-to-zoom handlers
   const getTouchDist = (touches: React.TouchList) => {
@@ -165,15 +150,15 @@ export default function OutfitBuilder({ items }: Props) {
     <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-4">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Outfit Builder</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Create your own outfit from head to toe</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Drag items freely to arrange your outfit</p>
       </header>
 
-      {/* Flat-lay outfit preview */}
-      {sortedSelected.length > 0 && (
+      {/* Freeform outfit canvas */}
+      {sortedForRender.length > 0 && (
         <div className="px-5 pb-4">
           <div className="rounded-2xl bg-white border border-border/40 p-4">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-foreground">Your Outfit ({sortedSelected.length} pieces)</p>
+              <p className="text-xs font-semibold text-foreground">Your Outfit ({sortedForRender.length} pieces)</p>
               <div className="flex items-center gap-2">
                 <button onClick={() => setPreviewScale((s) => Math.max(0.5, s - 0.1))} className="text-muted-foreground hover:text-foreground">
                   <ZoomOut className="w-3.5 h-3.5" />
@@ -182,29 +167,57 @@ export default function OutfitBuilder({ items }: Props) {
                 <button onClick={() => setPreviewScale((s) => Math.min(2, s + 0.1))} className="text-muted-foreground hover:text-foreground">
                   <ZoomIn className="w-3.5 h-3.5" />
                 </button>
+                <button onClick={resetPositions} className="text-muted-foreground hover:text-foreground" title="Reset positions">
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
                 <button onClick={clearAll} className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1 ml-1">
                   <X className="w-3 h-3" /> Clear
                 </button>
               </div>
             </div>
             <div
-              ref={previewContainerRef}
+              ref={canvasRef}
               onTouchStart={onTouchStart}
               onTouchMove={onTouchMove}
               onTouchEnd={onTouchEnd}
-              className="overflow-hidden touch-none"
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onPointerLeave={handlePointerUp}
+              className="relative overflow-hidden rounded-xl bg-muted/20"
+              style={{ height: 320, touchAction: "none" }}
             >
-              <div
-                className="flex flex-col items-center -space-y-2 transition-transform origin-center"
-                style={{ transform: `scale(${previewScale})` }}
-              >
-                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={sortedSelected.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-                    {sortedSelected.map((item) => (
-                      <SortableOutfitItem key={item.id} item={item} />
-                    ))}
-                  </SortableContext>
-                </DndContext>
+              <div className="absolute inset-0 origin-center" style={{ transform: `scale(${previewScale})` }}>
+                {sortedForRender.map((item) => {
+                  const pos = getItemPos(item);
+                  const size = ITEM_SIZES[item.category] || { w: 80, h: 80 };
+                  const isDragging = draggingId === item.id;
+                  return (
+                    <div
+                      key={item.id}
+                      onPointerDown={(e) => handlePointerDown(e, item)}
+                      className={cn(
+                        "absolute cursor-grab active:cursor-grabbing transition-shadow select-none",
+                        isDragging && "ring-2 ring-accent/50 rounded-lg shadow-lg"
+                      )}
+                      style={{
+                        left: `${pos.x}%`,
+                        top: `${pos.y}%`,
+                        width: size.w,
+                        height: size.h,
+                        transform: "translate(-50%, -50%)",
+                        zIndex: zOrder[item.id] || CATEGORY_ORDER.indexOf(item.category),
+                        transition: isDragging ? "none" : "box-shadow 0.2s",
+                      }}
+                    >
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-contain drop-shadow-sm pointer-events-none"
+                        draggable={false}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
