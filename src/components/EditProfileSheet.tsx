@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Camera, Loader2 } from "lucide-react";
+import { User, Camera, Loader2, Move } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -15,18 +15,64 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
+/** Parse stored position string "X% Y%" back to numbers, default 50/50 */
+function parsePosition(pos: string): { x: number; y: number } {
+  if (!pos) return { x: 50, y: 50 };
+  const match = pos.match(/([\d.]+)%\s+([\d.]+)%/);
+  if (match) return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
+  // Legacy keyword fallback
+  const map: Record<string, { x: number; y: number }> = {
+    "top left": { x: 0, y: 0 }, "top center": { x: 50, y: 0 }, "top right": { x: 100, y: 0 },
+    "center left": { x: 0, y: 50 }, center: { x: 50, y: 50 }, "center right": { x: 100, y: 50 },
+    "bottom left": { x: 0, y: 100 }, "bottom center": { x: 50, y: 100 }, "bottom right": { x: 100, y: 100 },
+  };
+  return map[pos] || { x: 50, y: 50 };
+}
+
 export function EditProfileSheet({ open, onOpenChange }: Props) {
   const { user, profile, updateProfile, refreshProfile } = useAuth();
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
   const [username, setUsername] = useState(profile?.username || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
-  const [avatarPosition, setAvatarPosition] = useState(profile?.avatar_position || "center");
+  const [avatarPosition, setAvatarPosition] = useState(profile?.avatar_position || "50% 50%");
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Drag state
+  const dragContainerRef = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const startPos = useRef({ x: 0, y: 0 });
+  const startOffset = useRef({ x: 50, y: 50 });
+
+  const posObj = parsePosition(avatarPosition);
+
+  const clamp = (v: number) => Math.max(0, Math.min(100, v));
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    dragging.current = true;
+    startPos.current = { x: e.clientX, y: e.clientY };
+    startOffset.current = parsePosition(avatarPosition);
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [avatarPosition]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current || !dragContainerRef.current) return;
+    const rect = dragContainerRef.current.getBoundingClientRect();
+    const dx = e.clientX - startPos.current.x;
+    const dy = e.clientY - startPos.current.y;
+    // Invert: dragging right moves image left (decreases x%)
+    const newX = clamp(startOffset.current.x - (dx / rect.width) * 100);
+    const newY = clamp(startOffset.current.y - (dy / rect.height) * 100);
+    setAvatarPosition(`${newX.toFixed(1)}% ${newY.toFixed(1)}%`);
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    dragging.current = false;
+  }, []);
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -40,6 +86,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
     } else {
       const { data } = supabase.storage.from("social-media").getPublicUrl(path);
       setAvatarUrl(data.publicUrl);
+      setAvatarPosition("50% 50%");
     }
     setUploading(false);
   };
@@ -60,14 +107,13 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
     onOpenChange(false);
   };
 
-  // Sync state when sheet opens
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen && profile) {
       setDisplayName(profile.display_name || "");
       setUsername(profile.username || "");
       setBio(profile.bio || "");
       setAvatarUrl(profile.avatar_url || "");
-      setAvatarPosition(profile.avatar_position || "center");
+      setAvatarPosition(profile.avatar_position || "50% 50%");
       setCurrencyPref(profile.currency_preference || "NZD");
     }
     onOpenChange(isOpen);
@@ -81,57 +127,65 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
         </SheetHeader>
 
         <div className="mt-4 space-y-5">
-          {/* Avatar */}
+          {/* Avatar with drag-to-reposition */}
           <div className="flex flex-col items-center gap-2">
-            <button
-              onClick={() => fileRef.current?.click()}
-              className="relative w-20 h-20 rounded-full bg-card border border-border overflow-hidden group"
-              disabled={uploading}
+            <div
+              ref={dragContainerRef}
+              className="relative w-28 h-28 rounded-full bg-card border-2 border-border overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none"
+              onPointerDown={avatarUrl ? handlePointerDown : undefined}
+              onPointerMove={avatarUrl ? handlePointerMove : undefined}
+              onPointerUp={avatarUrl ? handlePointerUp : undefined}
             >
               {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" style={{ objectPosition: avatarPosition }} />
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="w-full h-full object-cover pointer-events-none"
+                  style={{ objectPosition: avatarPosition }}
+                  draggable={false}
+                />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <User className="w-8 h-8 text-muted-foreground" />
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full h-full flex items-center justify-center"
+                >
+                  <User className="w-10 h-10 text-muted-foreground" />
+                </button>
+              )}
+              {avatarUrl && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <Move className="w-5 h-5 text-background/70 drop-shadow-md" />
                 </div>
               )}
-              <div className="absolute inset-0 bg-background/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                {uploading ? <Loader2 className="w-5 h-5 animate-spin text-foreground" /> : <Camera className="w-5 h-5 text-foreground" />}
-              </div>
-            </button>
+            </div>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-            <p className="text-[10px] text-muted-foreground">Tap to change photo</p>
-
-            {avatarUrl && (
-              <div className="space-y-1.5 w-full max-w-[200px]">
-                <Label className="text-[10px] text-muted-foreground text-center block">Adjust Position</Label>
-                <div className="grid grid-cols-3 gap-1">
-                  {[
-                    { label: "↖", value: "top left" },
-                    { label: "↑", value: "top center" },
-                    { label: "↗", value: "top right" },
-                    { label: "←", value: "center left" },
-                    { label: "•", value: "center" },
-                    { label: "→", value: "center right" },
-                    { label: "↙", value: "bottom left" },
-                    { label: "↓", value: "bottom center" },
-                    { label: "↘", value: "bottom right" },
-                  ].map((pos) => (
-                    <button
-                      key={pos.value}
-                      type="button"
-                      onClick={() => setAvatarPosition(pos.value)}
-                      className={`w-full aspect-square rounded-lg text-xs font-medium transition-all flex items-center justify-center ${
-                        avatarPosition === pos.value
-                          ? "bg-accent text-accent-foreground"
-                          : "bg-card border border-border text-muted-foreground hover:bg-accent/20"
-                      }`}
-                    >
-                      {pos.label}
-                    </button>
-                  ))}
+            {avatarUrl ? (
+              <div className="text-center space-y-1">
+                <p className="text-[10px] text-muted-foreground">Drag to reposition photo</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    className="text-[10px] text-accent font-medium hover:underline"
+                    disabled={uploading}
+                  >
+                    {uploading ? "Uploading..." : "Change photo"}
+                  </button>
+                  <button
+                    onClick={() => setAvatarPosition("50% 50%")}
+                    className="text-[10px] text-muted-foreground hover:underline"
+                  >
+                    Reset
+                  </button>
                 </div>
               </div>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="text-[10px] text-muted-foreground"
+                disabled={uploading}
+              >
+                {uploading ? "Uploading..." : "Tap to add photo"}
+              </button>
             )}
           </div>
 
