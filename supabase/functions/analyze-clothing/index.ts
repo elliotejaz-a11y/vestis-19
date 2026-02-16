@@ -96,8 +96,8 @@ serve(async (req) => {
                 type: 'object',
                 properties: {
                   name: { type: 'string', description: 'Descriptive name like "Navy Linen Blazer" or "Black Leather Boots"' },
-                  category: { type: 'string', enum: ['tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories'], description: 'Clothing category' },
-                  color: { type: 'string', enum: ['Black', 'White', 'Navy', 'Beige', 'Brown', 'Red', 'Blue', 'Green', 'Pink', 'Gray', 'Burgundy', 'Olive', 'Cream', 'Tan', 'Charcoal'], description: 'Primary color' },
+                  category: { type: 'string', enum: ['tops', 'bottoms', 'dresses', 'jumpers', 'outerwear', 'shoes', 'accessories'], description: 'Clothing category. Use "jumpers" for sweaters, jumpers, knit pullovers, cardigans, and similar knitwear.' },
+                  color: { type: 'string', description: 'Primary color of the item' },
                   fabric: { type: 'string', enum: ['Cotton', 'Silk', 'Linen', 'Denim', 'Wool', 'Polyester', 'Leather', 'Cashmere', 'Suede', 'Knit', 'Chiffon', 'Velvet', 'Nylon', 'Canvas'], description: 'Primary fabric/material' },
                   style_tags: { type: 'array', items: { type: 'string' }, description: 'Style descriptors like casual, formal, streetwear, vintage, bohemian, preppy, sporty, elegant' },
                   estimated_price_nzd: { type: 'number', description: 'Estimated retail value in New Zealand Dollars (NZD). Consider fabric quality, style, and typical retail pricing.' },
