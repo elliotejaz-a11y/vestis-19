@@ -20,6 +20,7 @@ import Friends from "./pages/Friends";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+import { AppTutorial } from "@/components/AppTutorial";
 import { Loader2 } from "lucide-react";
 import { useCallback } from "react";
 import { ClothingItem } from "@/types/wardrobe";
@@ -99,6 +100,7 @@ function AuthenticatedApp() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       <BottomNav />
+      <AppTutorial />
     </div>
   );
 }

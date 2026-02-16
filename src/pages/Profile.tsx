@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import Onboarding from "@/pages/Onboarding";
 import { EditProfileSheet } from "@/components/EditProfileSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
+import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -255,6 +256,12 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         <Button variant="outline" onClick={() => navigate("/calendar")} className="w-full h-12 rounded-2xl text-sm">
           <CalendarDays className="w-4 h-4 mr-2" /> Outfit Calendar
         </Button>
+
+        <WardrobeServiceSheet>
+          <Button variant="outline" className="w-full h-12 rounded-2xl text-sm">
+            <Home className="w-4 h-4 mr-2" /> Wardrobe Upload Service
+          </Button>
+        </WardrobeServiceSheet>
 
         <Button variant="outline" onClick={() => navigate("/feedback")} className="w-full h-12 rounded-2xl text-sm">
           <MessageSquare className="w-4 h-4 mr-2" /> Help & Feedback
