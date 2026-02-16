@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const ALLOWED_ORIGINS = [
   "https://vestis-19.lovable.app",
   "https://id-preview--1830068e-1c44-4713-a94f-43ffd21bb2c7.lovable.app",
+  "https://1830068e-1c44-4713-a94f-43ffd21bb2c7.lovableproject.com",
 ];
 
 function getCorsHeaders(req: Request) {
