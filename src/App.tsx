@@ -17,6 +17,7 @@ import FeedbackPage from "./pages/Feedback";
 import SocialFeed from "./pages/SocialFeed";
 import UserProfilePage from "./pages/UserProfile";
 import Friends from "./pages/Friends";
+import Chat from "./pages/Chat";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
@@ -82,6 +83,7 @@ function AuthenticatedApp() {
         <Route path="/outfits" element={<Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />} />
         <Route path="/builder" element={<OutfitBuilder items={items} />} />
         <Route path="/friends" element={<Friends />} />
+        <Route path="/chat" element={<Chat />} />
         <Route path="/calendar" element={<CalendarPage outfits={outfits} />} />
         <Route path="/profile" element={
           <Profile

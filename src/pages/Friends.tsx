@@ -3,11 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, UserPlus, UserCheck, Users, ArrowLeft, Shirt, Lock, Loader2, X, Bell } from "lucide-react";
+import { Search, UserPlus, UserCheck, Users, ArrowLeft, Shirt, Lock, Loader2, X, Bell, MessageCircle } from "lucide-react";
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/currency";
 import { useState as useStateImport } from "react";
+import { useNavigate } from "react-router-dom";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationsSheet } from "@/components/NotificationsSheet";
 
@@ -23,6 +24,7 @@ type View = "list" | "search" | "wardrobe";
 
 export default function Friends() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [view, setView] = useState<View>("list");
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -310,7 +312,20 @@ export default function Friends() {
                 <p className="text-sm font-semibold text-foreground truncate">{friend.display_name || friend.username || "User"}</p>
                 {friend.username && <p className="text-xs text-muted-foreground">@{friend.username}</p>}
               </div>
-              <Shirt className="w-4 h-4 text-muted-foreground" />
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/chat?with=${friend.id}`);
+                  }}
+                >
+                  <MessageCircle className="w-4 h-4 text-muted-foreground" />
+                </Button>
+                <Shirt className="w-4 h-4 text-muted-foreground" />
+              </div>
             </button>
           ))}
         </div>
