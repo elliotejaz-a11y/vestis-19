@@ -26,6 +26,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [fabric, setFabric] = useState(item?.fabric || "");
   const [notes, setNotes] = useState(item?.notes || "");
   const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
+  const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
   const [isPrivate, setIsPrivate] = useState(item?.isPrivate || false);
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
@@ -35,19 +36,20 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setFabric(item.fabric);
     setNotes(item.notes);
     setEstimatedPrice(item.estimatedPrice?.toString() || "");
+    setPriceEnabled(item.estimatedPrice != null);
     setIsPrivate(item.isPrivate || false);
   }
 
   const handleSave = () => {
     if (!item || !name || !category) return;
-    const priceNum = estimatedPrice ? parseFloat(estimatedPrice) : undefined;
+    const priceNum = priceEnabled && estimatedPrice ? parseFloat(estimatedPrice) : (priceEnabled ? 0 : undefined);
     onSave({ ...item, name, category, color, fabric, notes, estimatedPrice: priceNum, isPrivate });
     onOpenChange(false);
   };
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColor(""); setFabric(""); setNotes(""); setEstimatedPrice(""); setIsPrivate(false); }
+      if (!o) { setName(""); setCategory(""); setColor(""); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto bg-background">
@@ -108,14 +110,15 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
             <div className="flex items-center justify-between">
               <Label className="text-xs font-medium text-muted-foreground">Vestis Price</Label>
               <Switch
-                checked={estimatedPrice !== ""}
+                checked={priceEnabled}
                 onCheckedChange={(checked) => {
+                  setPriceEnabled(checked);
                   if (!checked) setEstimatedPrice("");
                   else setEstimatedPrice(item?.estimatedPrice?.toString() || "0");
                 }}
               />
             </div>
-            {estimatedPrice !== "" && (
+            {priceEnabled && (
               <Input
                 type="number"
                 value={estimatedPrice}
