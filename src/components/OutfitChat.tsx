@@ -2,23 +2,67 @@ import { useState, useRef, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Outfit } from "@/types/wardrobe";
+import { Outfit, ClothingItem } from "@/types/wardrobe";
 import { Send, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   outfit: Outfit;
+  wardrobeItems: ClothingItem[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type Message = { role: "user" | "assistant"; content: string };
+type OutfitPreview = {
+  items: ClothingItem[];
+  explanation: string;
+};
 
-export function OutfitChat({ outfit, open, onOpenChange }: Props) {
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+  outfitPreview?: OutfitPreview;
+};
+
+const CATEGORY_ORDER = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
+
+function MiniOutfitDisplay({ items }: { items: ClothingItem[] }) {
+  const sorted = [...items].sort((a, b) => {
+    const aIdx = CATEGORY_ORDER.indexOf(a.category);
+    const bIdx = CATEGORY_ORDER.indexOf(b.category);
+    return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+  });
+
+  return (
+    <div className="bg-white rounded-xl p-3 my-2">
+      <div className="flex flex-wrap items-center justify-center gap-1">
+        {sorted.map((item) => {
+          const isShoes = item.category === "shoes";
+          const isAccessory = item.category === "accessories";
+          const size = isShoes || isAccessory ? "w-12 h-12" : "w-16 h-16";
+          return (
+            <div key={item.id} className={cn("flex-shrink-0 flex flex-col items-center", size)}>
+              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex flex-wrap justify-center gap-1 mt-2">
+        {sorted.map((item) => (
+          <span key={item.id} className="text-[9px] text-muted-foreground bg-muted/50 rounded-full px-1.5 py-0.5">
+            {item.name}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function OutfitChat({ outfit, wardrobeItems, open, onOpenChange }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -34,15 +78,38 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  const resolveOutfitPreview = (toolArgs: any): OutfitPreview | undefined => {
+    const outfitIndices: number[] = toolArgs.outfit_item_indices || [];
+    const wardrobeIndices: number[] = toolArgs.wardrobe_item_indices || [];
+    
+    const previewItems: ClothingItem[] = [];
+    
+    for (const idx of outfitIndices) {
+      if (idx >= 1 && idx <= outfit.items.length) {
+        previewItems.push(outfit.items[idx - 1]);
+      }
+    }
+    for (const idx of wardrobeIndices) {
+      if (idx >= 1 && idx <= wardrobeItems.length) {
+        previewItems.push(wardrobeItems[idx - 1]);
+      }
+    }
+
+    if (previewItems.length === 0) return undefined;
+
+    return {
+      items: previewItems,
+      explanation: toolArgs.explanation || '',
+    };
+  };
+
   const sendMessage = async () => {
-    if (!input.trim() || isStreaming) return;
+    if (!input.trim() || isLoading) return;
     const userMsg: Message = { role: "user", content: input.trim() };
     const allMessages = [...messages, userMsg];
     setMessages(allMessages);
     setInput("");
-    setIsStreaming(true);
-
-    let assistantContent = "";
+    setIsLoading(true);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -53,56 +120,44 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
           Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
-          messages: allMessages,
+          messages: allMessages.map(m => ({ role: m.role, content: m.content })),
           outfitContext: {
             occasion: outfit.occasion,
             items: outfit.items.map((i) => ({ name: i.name, category: i.category, color: i.color, fabric: i.fabric })),
             reasoning: outfit.reasoning,
             styleTips: outfit.styleTips,
+            wardrobeItems: wardrobeItems.map((i) => ({ name: i.name, category: i.category, color: i.color, fabric: i.fabric })),
           },
         }),
       });
 
-      if (!resp.ok || !resp.body) throw new Error("Stream failed");
+      if (!resp.ok) throw new Error("Request failed");
 
-      const reader = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        let newlineIdx: number;
-        while ((newlineIdx = buffer.indexOf("\n")) !== -1) {
-          let line = buffer.slice(0, newlineIdx);
-          buffer = buffer.slice(newlineIdx + 1);
-          if (line.endsWith("\r")) line = line.slice(0, -1);
-          if (!line.startsWith("data: ")) continue;
-          const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") break;
-          try {
-            const parsed = JSON.parse(jsonStr);
-            const content = parsed.choices?.[0]?.delta?.content;
-            if (content) {
-              assistantContent += content;
-              setMessages((prev) => {
-                const last = prev[prev.length - 1];
-                if (last?.role === "assistant" && prev.length > allMessages.length) {
-                  return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantContent } : m));
-                }
-                return [...prev, { role: "assistant", content: assistantContent }];
-              });
-            }
-          } catch {}
+      const data = await resp.json();
+      
+      // Build assistant message with optional outfit preview
+      let outfitPreview: OutfitPreview | undefined;
+      
+      if (data.toolCalls?.length > 0) {
+        for (const tc of data.toolCalls) {
+          if (tc.name === 'show_outfit') {
+            outfitPreview = resolveOutfitPreview(tc.args);
+          }
         }
       }
+
+      const assistantContent = data.content || outfitPreview?.explanation || "Here's my suggestion!";
+      
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: assistantContent,
+        outfitPreview,
+      }]);
     } catch (e) {
       console.error(e);
-      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
     } finally {
-      setIsStreaming(false);
+      setIsLoading(false);
     }
   };
 
@@ -117,10 +172,10 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           {messages.map((msg, i) => (
-            <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+            <div key={i} className={cn("flex flex-col", msg.role === "user" ? "items-end" : "items-start")}>
               <div
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                  "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
                   msg.role === "user"
                     ? "bg-accent text-accent-foreground"
                     : "bg-card border border-border/40 text-foreground"
@@ -128,9 +183,14 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
               >
                 {msg.content}
               </div>
+              {msg.outfitPreview && (
+                <div className="max-w-[85%] mt-1">
+                  <MiniOutfitDisplay items={msg.outfitPreview.items} />
+                </div>
+              )}
             </div>
           ))}
-          {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
+          {isLoading && (
             <div className="flex justify-start">
               <div className="bg-card border border-border/40 rounded-2xl px-3.5 py-2.5">
                 <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
@@ -146,11 +206,11 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
             onKeyDown={(e) => e.key === "Enter" && sendMessage()}
             placeholder="Ask about colors, swaps, styling..."
             className="rounded-xl bg-card text-sm"
-            disabled={isStreaming}
+            disabled={isLoading}
           />
           <Button
             onClick={sendMessage}
-            disabled={isStreaming || !input.trim()}
+            disabled={isLoading || !input.trim()}
             size="icon"
             className="rounded-xl bg-accent text-accent-foreground shrink-0"
           >

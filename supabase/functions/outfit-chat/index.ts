@@ -57,8 +57,12 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
     const outfitSummary = (outfitContext.items || []).slice(0, 20)
-      .map((i: any) => `"${String(i.name || '').slice(0, 100)}" (${i.category}, ${i.color}, ${i.fabric})`)
-      .join(', ');
+      .map((i: any, idx: number) => `${idx + 1}. "${String(i.name || '').slice(0, 100)}" (${i.category}, ${i.color}, ${i.fabric})`)
+      .join('\n');
+
+    const wardrobeSummary = (outfitContext.wardrobeItems || []).slice(0, 50)
+      .map((i: any, idx: number) => `W${idx + 1}. "${String(i.name || '').slice(0, 100)}" (${i.category}, ${i.color}, ${i.fabric})`)
+      .join('\n');
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -71,16 +75,50 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a world-class fashion stylist AI assistant. The user has just generated an outfit for "${String(outfitContext.occasion).slice(0, 200)}" consisting of: ${outfitSummary}.
+            content: `You are a world-class fashion stylist AI assistant. The user has just generated an outfit for "${String(outfitContext.occasion).slice(0, 200)}" consisting of:
+${outfitSummary}
 
 Original reasoning: ${String(outfitContext.reasoning || '').slice(0, 500)}
 ${outfitContext.styleTips ? `Style tips: ${String(outfitContext.styleTips).slice(0, 500)}` : ''}
 
-Help the user refine this outfit. You can suggest color alternatives, item swaps, layering tips, accessory additions, or styling adjustments. Be specific and actionable. Keep responses concise (2-4 sentences). Be warm and encouraging.`,
+${wardrobeSummary ? `The user's full wardrobe (available for swaps):\n${wardrobeSummary}` : ''}
+
+Help the user refine this outfit. You can suggest color alternatives, item swaps, layering tips, accessory additions, or styling adjustments. Be specific and actionable. Be warm and encouraging.
+
+IMPORTANT: Whenever you suggest a new or modified outfit combination, you MUST call the show_outfit tool with the indices of the items to display. Use the current outfit item indices (1-based) for items already in the outfit, and wardrobe item indices prefixed with "W" (e.g. "W3") for items from the full wardrobe. Always provide a brief explanation alongside the tool call.`,
           },
           ...messages.map((m: any) => ({ role: m.role, content: String(m.content).slice(0, 2000) })),
         ],
-        stream: true,
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'show_outfit',
+              description: 'Display a visual preview of a suggested outfit combination to the user. Call this whenever you suggest swapping, adding, or removing items.',
+              parameters: {
+                type: 'object',
+                properties: {
+                  outfit_item_indices: {
+                    type: 'array',
+                    items: { type: 'integer' },
+                    description: 'The 1-based indices of items from the CURRENT outfit to keep',
+                  },
+                  wardrobe_item_indices: {
+                    type: 'array',
+                    items: { type: 'integer' },
+                    description: 'The 1-based indices of items from the FULL WARDROBE to add (the W-prefixed numbers without the W)',
+                  },
+                  explanation: {
+                    type: 'string',
+                    description: 'Brief 1-2 sentence explanation of this outfit combination',
+                  },
+                },
+                required: ['outfit_item_indices', 'wardrobe_item_indices', 'explanation'],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
       }),
     });
 
@@ -100,8 +138,31 @@ Help the user refine this outfit. You can suggest color alternatives, item swaps
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    return new Response(response.body, {
-      headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+    const aiData = await response.json();
+    const message = aiData.choices?.[0]?.message;
+
+    // Build response with both text content and any tool calls
+    const result: any = {
+      content: message?.content || '',
+      toolCalls: [],
+    };
+
+    if (message?.tool_calls) {
+      for (const tc of message.tool_calls) {
+        if (tc.function?.name === 'show_outfit') {
+          try {
+            const args = JSON.parse(tc.function.arguments);
+            result.toolCalls.push({
+              name: 'show_outfit',
+              args,
+            });
+          } catch {}
+        }
+      }
+    }
+
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
     console.error('outfit-chat error:', error);
