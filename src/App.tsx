@@ -81,7 +81,7 @@ function AuthenticatedApp() {
         } />
         <Route path="/add" element={<AddItem onAdd={addItem} />} />
         <Route path="/outfits" element={<Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />} />
-        <Route path="/builder" element={<OutfitBuilder items={items} />} />
+        <Route path="/builder" element={<OutfitBuilder items={items} onSaveOutfit={saveOutfit} />} />
         <Route path="/friends" element={<Friends />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/calendar" element={<CalendarPage outfits={outfits} />} />

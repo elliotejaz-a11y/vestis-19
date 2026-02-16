@@ -60,43 +60,29 @@ export default function Auth() {
       if (error) {
         toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
       } else {
-        // Store username to set after email verification
         localStorage.setItem("pending_username", username);
-        // Mark that this is a fresh signup so tutorial shows
         localStorage.setItem("vestis_fresh_signup", "true");
         toast({ title: "Check your email ✉️", description: "We sent a verification link to confirm your account." });
       }
     } else {
       let signInEmail = email;
-      // If logging in via username, look up the email first
+
       if (loginMethod === "username" && loginUsername.trim()) {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("id")
+          .select("email")
           .ilike("username", loginUsername.trim())
           .limit(1)
           .single();
-        if (!profileData) {
+
+        if (!profileData?.email) {
           toast({ title: "Username not found", description: "No account found with that username.", variant: "destructive" });
           setLoading(false);
           return;
         }
-        // Get user email from auth admin - we need to use a workaround via the profiles table
-        // Since we can't get email from profiles, ask user to use email login
-        // Actually let's look up via a different approach - store email hint
-        // The simplest approach: we'll need the user's email. Let's inform them.
-        const { data: authData } = await supabase.auth.signInWithPassword({
-          email: loginUsername.trim() + "@lookup", // This will fail but we need another approach
-          password,
-        });
-        // Actually, the cleanest approach is to store email in profiles or use email
-        // Let's just try signing in with the username as email (won't work for most)
-        // Better approach: look up user id, then we need their email
-        // Since we can't get email from profiles, let's add it or ask user to use email
-        toast({ title: "Use your email to sign in", description: "Username login requires your registered email address.", variant: "destructive" });
-        setLoading(false);
-        return;
+        signInEmail = profileData.email;
       }
+
       const { error } = await signIn(signInEmail, password);
       if (error) {
         toast({ title: "Sign in failed", description: error.message, variant: "destructive" });
@@ -153,17 +139,52 @@ export default function Auth() {
               </div>
             </>
           )}
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground">Email</Label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="mt-1 rounded-xl bg-card"
-              required
-            />
-          </div>
+
+          {/* Login method toggle - only show on sign in */}
+          {!isSignUp && (
+            <div className="flex rounded-xl bg-card border border-border overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setLoginMethod("email")}
+                className={`flex-1 py-2 text-xs font-medium transition-colors ${loginMethod === "email" ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}
+              >
+                Email
+              </button>
+              <button
+                type="button"
+                onClick={() => setLoginMethod("username")}
+                className={`flex-1 py-2 text-xs font-medium transition-colors ${loginMethod === "username" ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}
+              >
+                Username
+              </button>
+            </div>
+          )}
+
+          {isSignUp || loginMethod === "email" ? (
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="mt-1 rounded-xl bg-card"
+                required
+              />
+            </div>
+          ) : (
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Username</Label>
+              <Input
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                placeholder="your username"
+                className="mt-1 rounded-xl bg-card"
+                required
+              />
+            </div>
+          )}
+
           <div>
             <Label className="text-xs font-medium text-muted-foreground">Password</Label>
             <div className="relative">

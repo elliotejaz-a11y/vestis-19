@@ -1,14 +1,18 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
-import { Shuffle, Check, X, RotateCcw } from "lucide-react";
+import { Shuffle, Check, X, RotateCcw, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
-const CATEGORY_ORDER = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
+const CATEGORY_ORDER = ["accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
 
 const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
   accessories: { x: 50, y: 5 },
   outerwear: { x: 30, y: 25 },
+  jumpers: { x: 42, y: 30 },
   tops: { x: 55, y: 28 },
   dresses: { x: 50, y: 45 },
   bottoms: { x: 50, y: 58 },
@@ -18,6 +22,7 @@ const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
 const ITEM_SIZES: Record<string, { w: number; h: number }> = {
   accessories: { w: 56, h: 56 },
   outerwear: { w: 80, h: 80 },
+  jumpers: { w: 88, h: 88 },
   tops: { w: 96, h: 96 },
   dresses: { w: 96, h: 112 },
   bottoms: { w: 96, h: 96 },
@@ -26,15 +31,19 @@ const ITEM_SIZES: Record<string, { w: number; h: number }> = {
 
 interface Props {
   items: ClothingItem[];
+  onSaveOutfit?: (id: string, saved: boolean) => void;
 }
 
-export default function OutfitBuilder({ items }: Props) {
+export default function OutfitBuilder({ items, onSaveOutfit }: Props) {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [selected, setSelected] = useState<Record<string, ClothingItem | null>>({});
   const [activeCategory, setActiveCategory] = useState<string>("tops");
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [scales, setScales] = useState<Record<string, number>>({});
   const [zOrder, setZOrder] = useState<Record<string, number>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
   const pinchRef = useRef<{ itemId: string; startDist: number; startScale: number } | null>(null);
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
@@ -96,13 +105,11 @@ export default function OutfitBuilder({ items }: Props) {
     return az - bz;
   });
 
-  // Bring item to front
   const bringToFront = (id: string) => {
     zCounterRef.current += 1;
     setZOrder((prev) => ({ ...prev, [id]: zCounterRef.current + 10 }));
   };
 
-  // Double-tap to cycle scale: 1x → 1.4x → 1.8x → 0.6x → 1x
   const SCALE_STEPS = [1, 1.4, 1.8, 0.6];
   const handleDoubleTap = (id: string) => {
     setScales((prev) => {
@@ -113,7 +120,6 @@ export default function OutfitBuilder({ items }: Props) {
     });
   };
 
-  // Pointer drag
   const handlePointerDown = useCallback((e: React.PointerEvent, item: ClothingItem) => {
     e.preventDefault();
     e.stopPropagation();
@@ -123,7 +129,6 @@ export default function OutfitBuilder({ items }: Props) {
     setDraggingId(item.id);
     bringToFront(item.id);
 
-    // Detect double-tap
     const now = Date.now();
     if (lastTapRef.current && lastTapRef.current.id === item.id && now - lastTapRef.current.time < 300) {
       handleDoubleTap(item.id);
@@ -148,7 +153,6 @@ export default function OutfitBuilder({ items }: Props) {
     setDraggingId(null);
   }, []);
 
-  // Pinch-to-resize individual items (two-finger touch on canvas)
   const getTouchDist = (t: React.TouchList) =>
     Math.hypot(t[1].clientX - t[0].clientX, t[1].clientY - t[0].clientY);
 
@@ -157,7 +161,6 @@ export default function OutfitBuilder({ items }: Props) {
     const rect = canvasRef.current.getBoundingClientRect();
     const cx = ((t[0].clientX + t[1].clientX) / 2 - rect.left) / rect.width * 100;
     const cy = ((t[0].clientY + t[1].clientY) / 2 - rect.top) / rect.height * 100;
-    // Find the topmost item near the midpoint
     let best: { id: string; z: number } | null = null;
     for (const item of selectedItems) {
       const pos = getItemPos(item);
@@ -195,6 +198,42 @@ export default function OutfitBuilder({ items }: Props) {
     pinchRef.current = null;
   }, []);
 
+  // Save the current outfit to the database
+  const handleSaveOutfit = async () => {
+    if (!user || selectedItems.length < 2) return;
+    setSaving(true);
+    try {
+      const { data: outfitRow, error: outfitErr } = await supabase
+        .from("outfits")
+        .insert({
+          user_id: user.id,
+          occasion: "Custom outfit",
+          reasoning: "Created in Outfit Builder",
+          saved: true,
+        })
+        .select()
+        .single();
+
+      if (outfitErr || !outfitRow) throw outfitErr;
+
+      await supabase.from("outfit_items").insert(
+        selectedItems.map((item) => ({
+          outfit_id: outfitRow.id,
+          clothing_item_id: item.id,
+        }))
+      );
+
+      toast({ title: "Outfit saved! ✨", description: "Your outfit has been saved to your profile." });
+      
+      if (onSaveOutfit) onSaveOutfit(outfitRow.id, true);
+    } catch (err) {
+      console.error("Save outfit failed:", err);
+      toast({ title: "Failed to save outfit", variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-4">
@@ -202,7 +241,6 @@ export default function OutfitBuilder({ items }: Props) {
         <p className="text-sm text-muted-foreground mt-0.5">Drag to move · Double-tap to resize · Pinch to scale</p>
       </header>
 
-      {/* Freeform outfit canvas */}
       {sortedForRender.length > 0 && (
         <div className="px-5 pb-4">
           <div className="rounded-2xl bg-white border border-border/40 p-4">
@@ -265,8 +303,8 @@ export default function OutfitBuilder({ items }: Props) {
         </div>
       )}
 
-      {/* Randomize button */}
-      <div className="px-5 pb-4">
+      {/* Action buttons */}
+      <div className="px-5 pb-4 space-y-2">
         <Button
           onClick={randomize}
           disabled={items.length < 2}
@@ -274,6 +312,16 @@ export default function OutfitBuilder({ items }: Props) {
         >
           <Shuffle className="w-4 h-4 mr-2" /> Randomize Outfit
         </Button>
+        {selectedItems.length >= 2 && (
+          <Button
+            onClick={handleSaveOutfit}
+            disabled={saving}
+            variant="outline"
+            className="w-full h-11 rounded-2xl text-sm"
+          >
+            <Bookmark className="w-4 h-4 mr-2" /> {saving ? "Saving..." : "Save This Outfit"}
+          </Button>
+        )}
       </div>
 
       {/* Category tabs */}

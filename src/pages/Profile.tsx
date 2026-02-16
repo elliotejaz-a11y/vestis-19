@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { EditProfileSheet } from "@/components/EditProfileSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -31,8 +32,27 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [editingProfile, setEditingProfile] = useState(false);
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchCounts = async () => {
+      const { count: followers } = await supabase
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("following_id", user.id);
+      const { count: following } = await supabase
+        .from("follows")
+        .select("*", { count: "exact", head: true })
+        .eq("follower_id", user.id);
+      setFollowerCount(followers || 0);
+      setFollowingCount(following || 0);
+    };
+    fetchCounts();
+  }, [user]);
 
   const savedOutfits = outfits.filter((o) => o.saved);
 
@@ -83,6 +103,17 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               </p>
             )}
             <p className="text-xs text-muted-foreground">{user?.email}</p>
+            <div className="flex items-center justify-center gap-4 mt-2">
+              <button onClick={() => navigate("/friends")} className="text-center">
+                <p className="text-sm font-bold text-foreground">{followerCount}</p>
+                <p className="text-[10px] text-muted-foreground">Followers</p>
+              </button>
+              <div className="w-px h-6 bg-border" />
+              <button onClick={() => navigate("/friends")} className="text-center">
+                <p className="text-sm font-bold text-foreground">{followingCount}</p>
+                <p className="text-[10px] text-muted-foreground">Following</p>
+              </button>
+            </div>
           </div>
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowEditSheet(true)}>
             <Pencil className="w-4 h-4 text-accent" />

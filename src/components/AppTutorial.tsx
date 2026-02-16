@@ -3,7 +3,6 @@ import { X, ArrowRight, Shirt, Sparkles, Users, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 
 const TUTORIAL_STEPS = [
   {
@@ -51,9 +50,14 @@ export function AppTutorial() {
 
   useEffect(() => {
     if (!user) return;
-    const key = `vestis_tutorial_seen_${user.id}`;
-    if (!localStorage.getItem(key)) {
+
+    // Only show tutorial automatically on fresh signup
+    const isFreshSignup = localStorage.getItem("vestis_fresh_signup") === "true";
+    const tutorialSeen = localStorage.getItem(`vestis_tutorial_seen_${user.id}`);
+
+    if (isFreshSignup && !tutorialSeen) {
       setVisible(true);
+      localStorage.removeItem("vestis_fresh_signup");
     }
 
     // Listen for replay event
@@ -88,44 +92,24 @@ export function AppTutorial() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
-      {/* Overlay */}
       <div className="absolute inset-0 bg-foreground/60 backdrop-blur-sm" onClick={dismiss} />
-
-      {/* Card */}
       <div className="relative z-10 mx-4 mb-24 sm:mb-0 w-full max-w-sm animate-in slide-in-from-bottom-4 duration-300">
         <div className="rounded-3xl bg-card border border-border shadow-xl p-6">
-          {/* Close */}
           <button onClick={dismiss} className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors">
             <X className="w-5 h-5" />
           </button>
-
-          {/* Progress dots */}
           <div className="flex gap-1.5 mb-5">
             {TUTORIAL_STEPS.map((_, i) => (
-              <div
-                key={i}
-                className={cn(
-                  "h-1 rounded-full flex-1 transition-all",
-                  i <= step ? "bg-accent" : "bg-border"
-                )}
-              />
+              <div key={i} className={cn("h-1 rounded-full flex-1 transition-all", i <= step ? "bg-accent" : "bg-border")} />
             ))}
           </div>
-
-          {/* Icon */}
           <div className="w-14 h-14 rounded-2xl bg-accent/15 flex items-center justify-center mb-4">
             <Icon className="w-7 h-7 text-accent" />
           </div>
-
-          {/* Content */}
           <h2 className="text-lg font-bold text-foreground mb-1.5">{current.title}</h2>
           <p className="text-sm text-muted-foreground leading-relaxed mb-6">{current.description}</p>
-
-          {/* Actions */}
           <div className="flex gap-3">
-            <Button variant="outline" onClick={dismiss} className="flex-1 h-11 rounded-2xl text-sm">
-              Skip
-            </Button>
+            <Button variant="outline" onClick={dismiss} className="flex-1 h-11 rounded-2xl text-sm">Skip</Button>
             <Button onClick={next} className="flex-1 h-11 rounded-2xl text-sm bg-accent text-accent-foreground hover:bg-accent/90">
               {isLast ? "Get Started" : "Next"}
               <ArrowRight className="w-4 h-4 ml-1.5" />
