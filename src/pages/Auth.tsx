@@ -150,7 +150,7 @@ export default function Auth() {
 
           <Button
             type="submit"
-            disabled={loading || (isSignUp && username.length >= 3 && usernameAvailable === false)}
+            disabled={loading || (isSignUp && (!displayName.trim() || username.length < 3 || usernameAvailable === false))}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
           >
             {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
