@@ -253,9 +253,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
         </Button>
 
-        <Button variant="outline" onClick={() => navigate("/calendar")} className="w-full h-12 rounded-2xl text-sm">
-          <CalendarDays className="w-4 h-4 mr-2" /> Outfit Calendar
-        </Button>
 
         <WardrobeServiceSheet>
           <Button variant="outline" className="w-full h-12 rounded-2xl text-sm">
