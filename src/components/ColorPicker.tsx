@@ -2,12 +2,16 @@ import { cn } from "@/lib/utils";
 
 const COLOR_GROUPS: { label: string; colors: string[] }[] = [
   {
+    label: "Other",
+    colors: ["Multicolour"],
+  },
+  {
     label: "Black & White",
     colors: ["Black", "White", "Cream", "Ivory"],
   },
   {
-    label: "Gray",
-    colors: ["Gray", "Light Gray", "Charcoal", "Silver"],
+    label: "Grey",
+    colors: ["Grey", "Light Grey", "Charcoal", "Silver"],
   },
   {
     label: "Blue",
@@ -40,10 +44,6 @@ const COLOR_GROUPS: { label: string; colors: string[] }[] = [
   {
     label: "Brown & Tan",
     colors: ["Brown", "Dark Brown", "Light Brown", "Tan", "Camel", "Beige", "Taupe", "Khaki"],
-  },
-  {
-    label: "Other",
-    colors: ["Multicolor"],
   },
 ];
 

@@ -93,7 +93,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
               </div>
             </div>
             <div>
-              <Label className="text-xs font-medium text-muted-foreground">Colors</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Colours</Label>
               <div className="mt-1.5">
                 <ColorPicker selected={colors} onChange={setColors} />
               </div>
