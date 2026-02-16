@@ -1,6 +1,18 @@
 import { cn } from "@/lib/utils";
 
-const COLORS = ["Black", "White", "Navy", "Beige", "Brown", "Red", "Blue", "Green", "Pink", "Gray", "Burgundy", "Olive", "Cream", "Tan", "Charcoal"];
+const COLORS = [
+  "Black", "White", "Cream", "Ivory",
+  "Gray", "Light Gray", "Charcoal", "Silver",
+  "Navy", "Blue", "Light Blue", "Dark Blue", "Sky Blue", "Cobalt", "Teal",
+  "Red", "Dark Red", "Burgundy", "Coral", "Rust",
+  "Pink", "Light Pink", "Hot Pink", "Blush", "Mauve",
+  "Green", "Dark Green", "Light Green", "Olive", "Sage", "Emerald", "Mint", "Forest Green",
+  "Yellow", "Mustard", "Gold",
+  "Orange", "Burnt Orange", "Peach",
+  "Purple", "Lavender", "Plum", "Lilac",
+  "Brown", "Dark Brown", "Light Brown", "Tan", "Camel", "Beige", "Taupe", "Khaki",
+  "Multicolor",
+];
 
 interface Props {
   selected: string[];
