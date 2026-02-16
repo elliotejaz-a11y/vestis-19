@@ -9,22 +9,27 @@ import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload } from "lucide-r
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
 
-export const SKIN_TONES = [
-  { value: "porcelain", label: "Porcelain", color: "bg-[#FFF0E0]" },
-  { value: "fair", label: "Fair", color: "bg-[#FDEBD0]" },
-  { value: "light", label: "Light", color: "bg-[#F5CBA7]" },
-  { value: "warm-beige", label: "Warm Beige", color: "bg-[#E8C9A0]" },
-  { value: "golden", label: "Golden", color: "bg-[#D4A76A]" },
-  { value: "medium", label: "Medium", color: "bg-[#DC7633]" },
-  { value: "olive", label: "Olive", color: "bg-[#BA9B68]" },
-  { value: "honey", label: "Honey", color: "bg-[#C68642]" },
-  { value: "caramel", label: "Caramel", color: "bg-[#A0522D]" },
-  { value: "tan", label: "Tan", color: "bg-[#8D6E63]" },
-  { value: "mocha", label: "Mocha", color: "bg-[#6F4E37]" },
-  { value: "espresso", label: "Espresso", color: "bg-[#4E342E]" },
-  { value: "deep", label: "Deep", color: "bg-[#3B2F2F]" },
-  { value: "ebony", label: "Ebony", color: "bg-[#2C1E1E]" },
+// Skin tone is now stored as a 0-100 slider value string
+const skinToneGradient = [
+  "#FFEEDE", "#FFF0E0", "#FDEBD0", "#F5CBA7", "#E8C9A0",
+  "#D4A76A", "#DC7633", "#BA9B68", "#C68642", "#A0522D",
+  "#8D6E63", "#6F4E37", "#4E342E", "#3B2F2F", "#2C1E1E"
 ];
+
+function getSkinToneColor(value: number): string {
+  const idx = (value / 100) * (skinToneGradient.length - 1);
+  const lower = Math.floor(idx);
+  const upper = Math.min(Math.ceil(idx), skinToneGradient.length - 1);
+  if (lower === upper) return skinToneGradient[lower];
+  const t = idx - lower;
+  const hex = (c: string) => parseInt(c, 16);
+  const l = skinToneGradient[lower];
+  const u = skinToneGradient[upper];
+  const r = Math.round(hex(l.slice(1, 3)) * (1 - t) + hex(u.slice(1, 3)) * t);
+  const g = Math.round(hex(l.slice(3, 5)) * (1 - t) + hex(u.slice(3, 5)) * t);
+  const b = Math.round(hex(l.slice(5, 7)) * (1 - t) + hex(u.slice(5, 7)) * t);
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
 
 export const STYLES = [
   { value: "casual", label: "Casual", emoji: "👕" },
@@ -72,7 +77,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [step, setStep] = useState(0);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [bio, setBio] = useState("");
-  const [skinTone, setSkinTone] = useState("");
+  const [skinTone, setSkinTone] = useState(50);
   const [styles, setStyles] = useState<string[]>([]);
   const [customStyle, setCustomStyle] = useState("");
   const [bodyType, setBodyType] = useState("");
@@ -88,7 +93,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     if (editMode && profile) {
       setAvatarUrl(profile.avatar_url || "");
       setBio(profile.bio || "");
-      setSkinTone(profile.skin_tone || "");
+      setSkinTone(profile.skin_tone ? parseInt(profile.skin_tone) || 50 : 50);
       // Parse comma-separated styles
       const existingStyles = profile.style_preference ? profile.style_preference.split(",").map(s => s.trim()).filter(Boolean) : [];
       const knownValues = STYLES.map(s => s.value);
@@ -175,30 +180,38 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           </div>
         </div>
       ),
-      valid: true,
+      valid: !!avatarUrl,
     },
     {
       title: "What's your skin tone?",
-      subtitle: "This helps the AI suggest flattering colors",
+      subtitle: "Drag the slider to match your skin tone",
       content: (
-        <div className="grid grid-cols-4 gap-3">
-          {SKIN_TONES.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setSkinTone(t.value)}
-              className={cn(
-                "flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all",
-                skinTone === t.value
-                  ? "border-accent bg-accent/10"
-                  : "border-border bg-card hover:border-accent/40"
-              )}
-            >
-              <div className={cn("w-12 h-12 rounded-full border border-border/40", t.color)} />
-            </button>
-          ))}
+        <div className="flex flex-col items-center gap-6">
+          <div
+            className="w-32 h-32 rounded-full border-4 border-border shadow-lg transition-colors duration-150"
+            style={{ backgroundColor: getSkinToneColor(skinTone) }}
+          />
+          <div className="w-full space-y-3">
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={skinTone}
+              onChange={(e) => setSkinTone(Number(e.target.value))}
+              className="w-full h-3 rounded-full appearance-none cursor-pointer"
+              style={{
+                background: `linear-gradient(to right, ${skinToneGradient.join(", ")})`,
+              }}
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground">
+              <span>Light</span>
+              <span>Medium</span>
+              <span>Dark</span>
+            </div>
+          </div>
         </div>
       ),
-      valid: !!skinTone,
+      valid: true,
     },
     {
       title: "What's your aesthetic?",
@@ -243,7 +256,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     try {
       const styleValue = allStyles.join(", ");
       await updateProfile({
-        skin_tone: skinTone,
+        skin_tone: String(skinTone),
         style_preference: styleValue || null,
         body_type: bodyType,
         preferred_colors: preferredColors,
