@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Search, UserPlus, UserCheck, Users, ArrowLeft, Shirt, Lock, Loader2, X, Bell } from "lucide-react";
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
+import { formatPrice } from "@/lib/currency";
 import { useState as useStateImport } from "react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationsSheet } from "@/components/NotificationsSheet";
@@ -21,7 +22,7 @@ interface FriendProfile {
 type View = "list" | "search" | "wardrobe";
 
 export default function Friends() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [view, setView] = useState<View>("list");
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -181,7 +182,7 @@ export default function Friends() {
                   <p className="text-[10px] text-white font-medium truncate">{item.name}</p>
                   <p className="text-[9px] text-white/70">{item.category} • {item.color}</p>
                   {item.estimatedPrice !== undefined && (
-                    <p className="text-[9px] text-white/80 font-semibold">${item.estimatedPrice}</p>
+                    <p className="text-[9px] text-white/80 font-semibold">{formatPrice(item.estimatedPrice, profile?.currency_preference || "NZD")}</p>
                   )}
                 </div>
               </div>

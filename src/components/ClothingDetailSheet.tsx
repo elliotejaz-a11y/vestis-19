@@ -5,6 +5,8 @@ import { ClothingItem } from "@/types/wardrobe";
 import { EditClothingSheet } from "@/components/EditClothingSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { Pencil, DollarSign, Tag, Palette, Shirt, StickyNote, ImageIcon } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { formatPrice } from "@/lib/currency";
 
 interface Props {
   item: ClothingItem | null;
@@ -18,6 +20,8 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
   const [editing, setEditing] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const { profile } = useAuth();
+  const currency = profile?.currency_preference || "NZD";
 
   if (!item) return null;
 
@@ -101,7 +105,7 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
                   <DollarSign className="w-4 h-4 text-accent" />
                   <div>
                     <p className="text-[10px] text-muted-foreground">Vestis Price</p>
-                    <p className="text-xs font-bold text-accent">${item.estimatedPrice.toFixed(0)} NZD</p>
+                    <p className="text-xs font-bold text-accent">{formatPrice(item.estimatedPrice, currency)} {currency}</p>
                   </div>
                 </div>
               )}
