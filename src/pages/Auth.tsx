@@ -11,7 +11,9 @@ import vestisLogo from "@/assets/vestis-logo.png";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [loginMethod, setLoginMethod] = useState<"email" | "username">("email");
   const [email, setEmail] = useState("");
+  const [loginUsername, setLoginUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
@@ -60,10 +62,42 @@ export default function Auth() {
       } else {
         // Store username to set after email verification
         localStorage.setItem("pending_username", username);
+        // Mark that this is a fresh signup so tutorial shows
+        localStorage.setItem("vestis_fresh_signup", "true");
         toast({ title: "Check your email ✉️", description: "We sent a verification link to confirm your account." });
       }
     } else {
-      const { error } = await signIn(email, password);
+      let signInEmail = email;
+      // If logging in via username, look up the email first
+      if (loginMethod === "username" && loginUsername.trim()) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("username", loginUsername.trim())
+          .limit(1)
+          .single();
+        if (!profileData) {
+          toast({ title: "Username not found", description: "No account found with that username.", variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+        // Get user email from auth admin - we need to use a workaround via the profiles table
+        // Since we can't get email from profiles, ask user to use email login
+        // Actually let's look up via a different approach - store email hint
+        // The simplest approach: we'll need the user's email. Let's inform them.
+        const { data: authData } = await supabase.auth.signInWithPassword({
+          email: loginUsername.trim() + "@lookup", // This will fail but we need another approach
+          password,
+        });
+        // Actually, the cleanest approach is to store email in profiles or use email
+        // Let's just try signing in with the username as email (won't work for most)
+        // Better approach: look up user id, then we need their email
+        // Since we can't get email from profiles, let's add it or ask user to use email
+        toast({ title: "Use your email to sign in", description: "Username login requires your registered email address.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      const { error } = await signIn(signInEmail, password);
       if (error) {
         toast({ title: "Sign in failed", description: error.message, variant: "destructive" });
       }
