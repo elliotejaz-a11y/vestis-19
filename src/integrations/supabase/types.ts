@@ -336,6 +336,7 @@ export type Database = {
           created_at: string
           currency_preference: string
           display_name: string | null
+          email: string | null
           fashion_goals: string | null
           id: string
           is_public: boolean
@@ -354,6 +355,7 @@ export type Database = {
           created_at?: string
           currency_preference?: string
           display_name?: string | null
+          email?: string | null
           fashion_goals?: string | null
           id: string
           is_public?: boolean
@@ -372,6 +374,7 @@ export type Database = {
           created_at?: string
           currency_preference?: string
           display_name?: string | null
+          email?: string | null
           fashion_goals?: string | null
           id?: string
           is_public?: boolean
