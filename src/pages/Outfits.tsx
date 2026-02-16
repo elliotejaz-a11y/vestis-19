@@ -191,7 +191,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
 
       {/* Chat sheet */}
       {chatOutfit && (
-        <OutfitChat outfit={chatOutfit} open={!!chatOutfit} onOpenChange={(open) => !open && setChatOutfit(null)} />
+        <OutfitChat outfit={chatOutfit} wardrobeItems={items} open={!!chatOutfit} onOpenChange={(open) => !open && setChatOutfit(null)} />
       )}
     </div>
   );
