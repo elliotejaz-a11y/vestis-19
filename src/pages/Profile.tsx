@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays } from "lucide-react";
+import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -46,9 +47,9 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     }, {})
   ).sort(([, a], [, b]) => b - a).slice(0, 5);
 
-  const totalWardrobeValue = items.reduce((sum, i) => sum + (i.estimatedPrice || 0), 0);
+  const totalWardrobeValueNzd = items.reduce((sum, i) => sum + (i.estimatedPrice || 0), 0);
   const currency = profile?.currency_preference || "NZD";
-  const currencySymbol = currency === "EUR" ? "€" : "$";
+  const totalWardrobeValue = convertPrice(totalWardrobeValueNzd, currency);
 
   const displayNameForTitle = profile?.display_name
     ? `${profile.display_name}'s Profile`
@@ -96,7 +97,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         <div className="rounded-2xl bg-accent/10 border border-accent/20 p-4 flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground">Total Wardrobe Value</p>
-            <p className="text-2xl font-bold text-foreground">{currencySymbol}{totalWardrobeValue.toFixed(0)} <span className="text-sm font-normal text-muted-foreground">{currency}</span></p>
+            <p className="text-2xl font-bold text-foreground">{formatPrice(totalWardrobeValueNzd, currency)} <span className="text-sm font-normal text-muted-foreground">{currency}</span></p>
           </div>
           <DollarSign className="w-8 h-8 text-accent" />
         </div>
