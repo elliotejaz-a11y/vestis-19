@@ -98,7 +98,7 @@ serve(async (req) => {
                   name: { type: 'string', description: 'Descriptive name like "Navy Linen Blazer" or "Black Leather Boots"' },
                   category: { type: 'string', enum: ['tops', 'bottoms', 'dresses', 'jumpers', 'outerwear', 'shoes', 'accessories'], description: 'Clothing category. Use "jumpers" for sweaters, jumpers, knit pullovers, cardigans, and similar knitwear.' },
                   color: { type: 'string', description: 'Primary color of the item' },
-                  fabric: { type: 'string', enum: ['Cotton', 'Silk', 'Linen', 'Denim', 'Wool', 'Polyester', 'Leather', 'Cashmere', 'Suede', 'Knit', 'Chiffon', 'Velvet', 'Nylon', 'Canvas'], description: 'Primary fabric/material' },
+                  fabric: { type: 'string', enum: ['Cotton', 'Silk', 'Linen', 'Denim', 'Wool', 'Polyester', 'Leather', 'Cashmere', 'Suede', 'Knit', 'Chiffon', 'Velvet', 'Nylon', 'Canvas', 'Metal', 'Silver', 'Gold', 'Stainless Steel', 'Titanium', 'Platinum', 'Rubber', 'Satin', 'Faux Leather', 'Gore-Tex', 'Mesh'], description: 'Primary fabric/material. Use Metal/Silver/Gold/Stainless Steel/Titanium/Platinum for jewelry, watches, and metal accessories.' },
                   style_tags: { type: 'array', items: { type: 'string' }, description: 'Style descriptors like casual, formal, streetwear, vintage, bohemian, preppy, sporty, elegant' },
                   estimated_price_nzd: { type: 'number', description: 'Estimated retail value in New Zealand Dollars (NZD). Consider fabric quality, style, and typical retail pricing.' },
                 },
