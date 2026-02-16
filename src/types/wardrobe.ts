@@ -36,6 +36,7 @@ export type ClothingCategory =
   | "tops"
   | "bottoms"
   | "dresses"
+  | "jumpers"
   | "outerwear"
   | "shoes"
   | "accessories";
@@ -44,6 +45,7 @@ export const CATEGORIES: { value: ClothingCategory; label: string; icon: string 
   { value: "tops", label: "Tops", icon: "👕" },
   { value: "bottoms", label: "Bottoms", icon: "👖" },
   { value: "dresses", label: "Dresses", icon: "👗" },
+  { value: "jumpers", label: "Jumpers", icon: "🧶" },
   { value: "outerwear", label: "Outerwear", icon: "🧥" },
   { value: "shoes", label: "Shoes", icon: "👟" },
   { value: "accessories", label: "Accessories", icon: "👜" },
