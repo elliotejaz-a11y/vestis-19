@@ -5,18 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Camera, Upload, Sparkles, Loader2, ImageOff, DollarSign } from "lucide-react";
+import { Upload, Sparkles, Loader2, ImageOff, DollarSign } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ColorPicker, joinColors } from "@/components/ColorPicker";
+
+const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas"];
 
 interface Props {
   onAdd: (item: ClothingItem) => void;
   children: React.ReactNode;
 }
-
-const COLORS = ["Black", "White", "Navy", "Beige", "Brown", "Red", "Blue", "Green", "Pink", "Gray", "Burgundy", "Olive", "Cream", "Tan", "Charcoal"];
-const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas"];
 
 export function AddClothingSheet({ onAdd, children }: Props) {
   const [open, setOpen] = useState(false);
@@ -24,7 +24,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [backImageUrl, setBackImageUrl] = useState("");
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
-  const [color, setColor] = useState("");
+  const [colors, setColors] = useState<string[]>([]);
   const [fabric, setFabric] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
@@ -70,17 +70,13 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Show preview immediately
     setImageUrl(URL.createObjectURL(file));
     setAnalyzing(true);
     try {
       const base64 = await fileToBase64(file);
-
-      // Remove background first
       const cleanBase64 = await removeBackground(base64);
       setImageUrl(`data:image/png;base64,${cleanBase64}`);
 
-      // Analyze clothing with AI
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
         body: { imageBase64: cleanBase64 },
       });
@@ -90,7 +86,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       if (data) {
         setName(data.name || "");
         setCategory(data.category || "");
-        setColor(data.color || "");
+        setColors(data.color ? [data.color] : []);
         setFabric(data.fabric || "");
         setTags(data.style_tags || []);
         if (data.estimated_price_nzd) setEstimatedPrice(data.estimated_price_nzd);
@@ -126,6 +122,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
   const handleSave = () => {
     if (!imageUrl || !name || !category) return;
+    const color = joinColors(colors);
     onAdd({
       id: crypto.randomUUID(),
       name,
@@ -134,7 +131,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       fabric,
       imageUrl,
       backImageUrl: backImageUrl || undefined,
-      tags: [...tags, color.toLowerCase(), fabric.toLowerCase(), category].filter(Boolean),
+      tags: [...tags, ...colors.map(c => c.toLowerCase()), fabric.toLowerCase(), category].filter(Boolean),
       notes,
       addedAt: new Date(),
       estimatedPrice,
@@ -144,7 +141,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   };
 
   const resetForm = () => {
-    setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColor(""); setFabric("");
+    setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
     setTags([]); setNotes(""); setEstimatedPrice(undefined);
   };
 
@@ -262,22 +259,13 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               <Label className="text-xs font-medium text-muted-foreground">Name</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Blue Linen Shirt" className="mt-1 rounded-xl bg-card" />
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs font-medium text-muted-foreground">Category</Label>
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((c) => (<SelectItem key={c.value} value={c.value}>{c.icon} {c.label}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground">Color</Label>
-                <Select value={color} onValueChange={setColor}>
-                  <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue placeholder="Color" /></SelectTrigger>
-                  <SelectContent>
-                    {COLORS.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
@@ -289,6 +277,12 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                     {FABRICS.map((f) => (<SelectItem key={f} value={f}>{f}</SelectItem>))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Colors</Label>
+              <div className="mt-1.5">
+                <ColorPicker selected={colors} onChange={setColors} />
               </div>
             </div>
             <div>

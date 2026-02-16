@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Sparkles } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
+import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
 
-const COLORS = ["Black", "White", "Navy", "Beige", "Brown", "Red", "Blue", "Green", "Pink", "Gray", "Burgundy", "Olive", "Cream", "Tan", "Charcoal"];
 const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas"];
 
 interface Props {
@@ -22,17 +22,18 @@ interface Props {
 export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [name, setName] = useState(item?.name || "");
   const [category, setCategory] = useState(item?.category || "");
-  const [color, setColor] = useState(item?.color || "");
+  const [colors, setColors] = useState<string[]>(parseColors(item?.color || ""));
   const [fabric, setFabric] = useState(item?.fabric || "");
   const [notes, setNotes] = useState(item?.notes || "");
   const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
   const [isPrivate, setIsPrivate] = useState(item?.isPrivate || false);
+
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
     setName(item.name);
     setCategory(item.category);
-    setColor(item.color);
+    setColors(parseColors(item.color));
     setFabric(item.fabric);
     setNotes(item.notes);
     setEstimatedPrice(item.estimatedPrice?.toString() || "");
@@ -43,13 +44,13 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const handleSave = () => {
     if (!item || !name || !category) return;
     const priceNum = priceEnabled && estimatedPrice ? parseFloat(estimatedPrice) : (priceEnabled ? 0 : undefined);
-    onSave({ ...item, name, category, color, fabric, notes, estimatedPrice: priceNum, isPrivate });
+    onSave({ ...item, name, category, color: joinColors(colors), fabric, notes, estimatedPrice: priceNum, isPrivate });
     onOpenChange(false);
   };
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColor(""); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); }
+      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto bg-background">
@@ -69,7 +70,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
               <Label className="text-xs font-medium text-muted-foreground">Name</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 rounded-xl bg-card" />
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs font-medium text-muted-foreground">Category</Label>
                 <Select value={category} onValueChange={setCategory}>
@@ -82,15 +83,6 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
                 </Select>
               </div>
               <div>
-                <Label className="text-xs font-medium text-muted-foreground">Color</Label>
-                <Select value={color} onValueChange={setColor}>
-                  <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {COLORS.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
                 <Label className="text-xs font-medium text-muted-foreground">Fabric</Label>
                 <Select value={fabric} onValueChange={setFabric}>
                   <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue /></SelectTrigger>
@@ -98,6 +90,12 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
                     {FABRICS.map((f) => (<SelectItem key={f} value={f}>{f}</SelectItem>))}
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Colors</Label>
+              <div className="mt-1.5">
+                <ColorPicker selected={colors} onChange={setColors} />
               </div>
             </div>
             <div>
