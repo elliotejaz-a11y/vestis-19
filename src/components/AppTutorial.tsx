@@ -55,6 +55,14 @@ export function AppTutorial() {
     if (!localStorage.getItem(key)) {
       setVisible(true);
     }
+
+    // Listen for replay event
+    const handleReplay = () => {
+      setStep(0);
+      setVisible(true);
+    };
+    window.addEventListener("vestis-replay-tutorial", handleReplay);
+    return () => window.removeEventListener("vestis-replay-tutorial", handleReplay);
   }, [user]);
 
   const dismiss = () => {

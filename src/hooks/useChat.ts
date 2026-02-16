@@ -166,7 +166,13 @@ export function useChatMessages(friendId: string | null) {
             (msg.sender_id === user.id && msg.receiver_id === friendId) ||
             (msg.sender_id === friendId && msg.receiver_id === user.id)
           ) {
-            setMessages((prev) => [...prev, msg]);
+            setMessages((prev) => {
+              // Skip if already present (from optimistic update or duplicate)
+              if (prev.some((m) => m.id === msg.id)) return prev;
+              // Remove any temp optimistic message from same sender with same content
+              const filtered = prev.filter((m) => !m.id.startsWith("temp-") || m.sender_id !== msg.sender_id);
+              return [...filtered, msg];
+            });
             // Auto mark as read if we're the receiver
             if (msg.receiver_id === user.id && !msg.read) {
               supabase.from("messages").update({ read: true }).eq("id", msg.id).then(() => {});
@@ -182,6 +188,18 @@ export function useChatMessages(friendId: string | null) {
   const sendMessage = async (content: string) => {
     if (!user || !friendId || !content.trim()) return { error: null };
     setSending(true);
+
+    // Optimistic update: show message immediately
+    const optimisticMsg: ChatMessage = {
+      id: `temp-${Date.now()}`,
+      sender_id: user.id,
+      receiver_id: friendId,
+      content: content.trim(),
+      created_at: new Date().toISOString(),
+      read: false,
+      is_flagged: false,
+    };
+    setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -199,10 +217,21 @@ export function useChatMessages(friendId: string | null) {
 
       const result = await resp.json();
       if (!resp.ok) {
+        // Remove optimistic message on failure
+        setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
         return { error: result.error || result.reason || "Failed to send" };
       }
+
+      // Replace optimistic message with real one
+      if (result.message) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === optimisticMsg.id ? (result.message as ChatMessage) : m))
+        );
+      }
+
       return { error: null };
     } catch (e: any) {
+      setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
       return { error: e.message || "Failed to send" };
     } finally {
       setSending(false);
