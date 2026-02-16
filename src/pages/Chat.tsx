@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ArrowLeft, MessageCircle, Send, Loader2, AlertTriangle,
-  Search, UserPlus, UserCheck, Users, Bell, CheckCheck, Shirt
+  Search, UserPlus, UserCheck, Users, Bell, CheckCheck, Shirt, Compass, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -24,6 +24,8 @@ interface FriendProfile {
   username: string | null;
   avatar_url: string | null;
   is_public: boolean;
+  style_preference?: string | null;
+  bio?: string | null;
 }
 
 // ─── Main Chat Page ───
@@ -32,12 +34,20 @@ export default function Chat() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { unreadCount } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead } = useNotifications();
+  const [activeTab, setActiveTab] = useState("messages");
 
   const initialFriendId = searchParams.get("with");
   const [selectedFriend, setSelectedFriend] = useState<{ id: string; name: string; avatar: string | null } | null>(null);
 
   const { conversations, loading: convsLoading } = useChat();
+
+  // Auto-mark all notifications as read when notifications tab is opened
+  useEffect(() => {
+    if (activeTab === "notifications" && unreadCount > 0) {
+      markAllAsRead();
+    }
+  }, [activeTab, unreadCount, markAllAsRead]);
 
   useEffect(() => {
     if (initialFriendId && !selectedFriend) {
@@ -78,18 +88,21 @@ export default function Chat() {
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Chat</h1>
       </header>
 
-      <Tabs defaultValue="messages" className="px-5">
-        <TabsList className="w-full grid grid-cols-3 rounded-xl bg-muted/60 h-10 mb-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="px-5">
+        <TabsList className="w-full grid grid-cols-4 rounded-xl bg-muted/60 h-10 mb-4">
           <TabsTrigger value="messages" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
             Messages
           </TabsTrigger>
           <TabsTrigger value="friends" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
             Friends
           </TabsTrigger>
+          <TabsTrigger value="discover" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm">
+            Discover
+          </TabsTrigger>
           <TabsTrigger value="notifications" className="rounded-lg text-xs data-[state=active]:bg-card data-[state=active]:shadow-sm relative">
             Notifications
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-accent-foreground text-[9px] font-bold flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center">
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             )}
@@ -111,6 +124,10 @@ export default function Chat() {
 
         <TabsContent value="friends">
           <FriendsTab />
+        </TabsContent>
+
+        <TabsContent value="discover">
+          <DiscoverTab />
         </TabsContent>
 
         <TabsContent value="notifications">
@@ -161,7 +178,6 @@ function MessagesTab({
   }, [showNewChat, fetchFriends]);
 
   if (showNewChat) {
-    // Filter friends not already in conversations
     const existingIds = new Set(conversations.map(c => c.friendId));
     const newFriends = friends.filter(f => !existingIds.has(f.id));
 
@@ -234,10 +250,12 @@ function MessagesTab({
                   <p className={cn("text-xs truncate", conv.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground")}>
                     {conv.lastMessage}
                   </p>
-                  {conv.unreadCount > 0 && (
-                    <span className="w-5 h-5 rounded-full bg-accent text-accent-foreground text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-2">
+                  {conv.unreadCount > 0 ? (
+                    <span className="w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-2">
                       {conv.unreadCount}
                     </span>
+                  ) : (
+                    <span className="text-[9px] text-muted-foreground/60 ml-2 flex-shrink-0">Read</span>
                   )}
                 </div>
               </div>
@@ -262,7 +280,6 @@ function FriendsTab() {
   const [searchResults, setSearchResults] = useState<FriendProfile[]>([]);
   const [searching, setSearching] = useState(false);
 
-  // Wardrobe view state
   const [selectedFriend, setSelectedFriend] = useState<FriendProfile | null>(null);
   const [friendWardrobe, setFriendWardrobe] = useState<ClothingItem[]>([]);
   const [loadingWardrobe, setLoadingWardrobe] = useState(false);
@@ -324,7 +341,6 @@ function FriendsTab() {
     setLoadingWardrobe(false);
   };
 
-  // Wardrobe view
   if (selectedFriend) {
     return (
       <div>
@@ -362,7 +378,6 @@ function FriendsTab() {
     );
   }
 
-  // Search mode
   if (searchMode) {
     return (
       <div>
@@ -404,7 +419,6 @@ function FriendsTab() {
     );
   }
 
-  // Friends list
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -447,6 +461,124 @@ function FriendsTab() {
   );
 }
 
+// ─── Discover Tab ───
+function DiscoverTab() {
+  const { user } = useAuth();
+  const [people, setPeople] = useState<FriendProfile[]>([]);
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const [followerIds, setFollowerIds] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [followingLoading, setFollowingLoading] = useState<string | null>(null);
+
+  const fetchDiscover = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+
+    // Get current following/follower data
+    const [{ data: following }, { data: followers }] = await Promise.all([
+      supabase.from("follows").select("following_id").eq("follower_id", user.id),
+      supabase.from("follows").select("follower_id").eq("following_id", user.id),
+    ]);
+    const myFollowing = (following || []).map((f: any) => f.following_id);
+    const myFollowers = (followers || []).map((f: any) => f.follower_id);
+    setFollowingIds(myFollowing);
+    setFollowerIds(myFollowers);
+
+    // Fetch public profiles (excluding self)
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, display_name, username, avatar_url, is_public, style_preference, bio")
+      .eq("is_public", true)
+      .neq("id", user.id)
+      .limit(50);
+
+    if (profiles) {
+      // Shuffle to feel "personalized"
+      const shuffled = [...profiles].sort(() => Math.random() - 0.5);
+      setPeople(shuffled as FriendProfile[]);
+    }
+    setLoading(false);
+  }, [user]);
+
+  useEffect(() => { fetchDiscover(); }, [fetchDiscover]);
+
+  const isMutualFriend = (userId: string) => followingIds.includes(userId) && followerIds.includes(userId);
+
+  const handleFollow = async (targetId: string) => {
+    if (!user) return;
+    setFollowingLoading(targetId);
+    if (followingIds.includes(targetId)) {
+      await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
+      setFollowingIds(prev => prev.filter(id => id !== targetId));
+    } else {
+      await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+      setFollowingIds(prev => [...prev, targetId]);
+    }
+    setFollowingLoading(null);
+  };
+
+  return (
+    <div>
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles className="w-4 h-4 text-accent" />
+          <p className="text-sm font-semibold text-foreground">Suggested for you</p>
+        </div>
+        <p className="text-xs text-muted-foreground">People you might want to connect with</p>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-accent" /></div>
+      ) : people.length === 0 ? (
+        <div className="text-center py-12">
+          <Compass className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+          <p className="text-sm text-muted-foreground">No one to discover yet</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {people.map((p) => {
+            const isFollowing = followingIds.includes(p.id);
+            const isFriend = isMutualFriend(p.id);
+            return (
+              <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40">
+                <Avatar url={p.avatar_url} name={p.display_name || p.username || "U"} size="w-12 h-12" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{p.display_name || p.username || "User"}</p>
+                  {p.username && <p className="text-xs text-muted-foreground">@{p.username}</p>}
+                  {p.style_preference && (
+                    <p className="text-[10px] text-accent/80 mt-0.5 truncate">{p.style_preference} style</p>
+                  )}
+                  {!p.style_preference && p.bio && (
+                    <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.bio}</p>
+                  )}
+                  {isFriend && <p className="text-[10px] text-accent font-medium">Friends ✓</p>}
+                </div>
+                <Button
+                  size="sm"
+                  variant={isFollowing ? "outline" : "default"}
+                  onClick={() => handleFollow(p.id)}
+                  disabled={followingLoading === p.id}
+                  className="rounded-xl text-xs h-8"
+                >
+                  {followingLoading === p.id ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : isFriend ? (
+                    <><UserCheck className="w-3.5 h-3.5 mr-1" /> Friends</>
+                  ) : isFollowing ? (
+                    "Following"
+                  ) : (
+                    <><UserPlus className="w-3.5 h-3.5 mr-1" /> Follow</>
+                  )}
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Notifications Tab ───
 function NotificationsTab() {
   const { user } = useAuth();
@@ -479,14 +611,6 @@ function NotificationsTab() {
 
   return (
     <div>
-      {notifications.some(n => !n.read) && (
-        <div className="flex justify-end mb-3">
-          <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs text-accent">
-            <CheckCheck className="w-3.5 h-3.5 mr-1" /> Mark all read
-          </Button>
-        </div>
-      )}
-
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-accent" /></div>
       ) : notifications.length === 0 ? (
@@ -503,11 +627,7 @@ function NotificationsTab() {
             return (
               <div
                 key={n.id}
-                onClick={() => !n.read && markAsRead(n.id)}
-                className={cn(
-                  "w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-colors",
-                  n.read ? "bg-card" : "bg-accent/10 border border-accent/20"
-                )}
+                className="w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-colors bg-card"
               >
                 <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {n.from_profile?.avatar_url ? (
@@ -543,7 +663,6 @@ function NotificationsTab() {
                     <p className="text-[10px] text-accent font-medium mt-1">Friends ✓</p>
                   )}
                 </div>
-                {!n.read && <div className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />}
               </div>
             );
           })}
