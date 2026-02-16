@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -262,6 +262,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
             <Home className="w-4 h-4 mr-2" /> Wardrobe Upload Service
           </Button>
         </WardrobeServiceSheet>
+
+        <Button variant="outline" onClick={() => {
+          if (user) localStorage.removeItem(`vestis_tutorial_seen_${user.id}`);
+          navigate("/");
+        }} className="w-full h-12 rounded-2xl text-sm">
+          <Sparkles className="w-4 h-4 mr-2" /> Replay App Tutorial
+        </Button>
 
         <Button variant="outline" onClick={() => navigate("/feedback")} className="w-full h-12 rounded-2xl text-sm">
           <MessageSquare className="w-4 h-4 mr-2" /> Help & Feedback
