@@ -262,7 +262,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
         <Button variant="outline" onClick={() => {
           if (user) localStorage.removeItem(`vestis_tutorial_seen_${user.id}`);
-          navigate("/");
+          window.dispatchEvent(new Event("vestis-replay-tutorial"));
         }} className="w-full h-12 rounded-2xl text-sm">
           <Sparkles className="w-4 h-4 mr-2" /> Replay App Tutorial
         </Button>
