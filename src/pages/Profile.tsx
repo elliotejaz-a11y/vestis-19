@@ -12,6 +12,7 @@ import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
 import { FitPicSheet } from "@/components/FitPicSheet";
+import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DeletedItem extends ClothingItem {
@@ -36,6 +37,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [fitPics, setFitPics] = useState<any[]>([]);
+  const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -165,14 +167,18 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           ) : (
             <div className="grid grid-cols-3 gap-1">
               {fitPics.slice(0, 9).map((pic: any) => (
-                <div key={pic.id} className="aspect-square rounded-xl overflow-hidden relative">
+                <button
+                  key={pic.id}
+                  onClick={() => setSelectedFitPic(pic)}
+                  className="aspect-square rounded-xl overflow-hidden relative"
+                >
                   <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
                   {pic.is_private && (
                     <div className="absolute top-1 right-1 bg-foreground/60 rounded-full px-1.5 py-0.5">
                       <span className="text-[8px] text-background">Private</span>
                     </div>
                   )}
-                </div>
+                </button>
               ))}
             </div>
           )}
@@ -352,6 +358,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       </div>
 
       <EditProfileSheet open={showEditSheet} onOpenChange={setShowEditSheet} />
+
+      <FitPicDetailSheet
+        pic={selectedFitPic}
+        open={!!selectedFitPic}
+        onOpenChange={(o) => { if (!o) setSelectedFitPic(null); }}
+        onUpdated={() => { setSelectedFitPic(null); fetchFitPics(); }}
+      />
 
       <DeleteConfirmDialog
         open={!!deleteId}
