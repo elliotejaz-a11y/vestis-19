@@ -246,14 +246,17 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                 </span>
               )}
             </Label>
-            <Input
-              value={username}
-              onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-              placeholder="username"
-              className="rounded-xl bg-card text-sm"
-              maxLength={30}
-              disabled={isUsernameLocked}
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/60 select-none">@</span>
+              <Input
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                placeholder="username"
+                className="rounded-xl bg-card text-sm pl-7"
+                maxLength={30}
+                disabled={isUsernameLocked}
+              />
+            </div>
           </div>
 
           {/* Bio */}
