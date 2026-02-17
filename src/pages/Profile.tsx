@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
+import FollowListSheet from "@/components/FollowListSheet";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DeletedItem extends ClothingItem {
@@ -38,6 +39,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [followingCount, setFollowingCount] = useState(0);
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
+  const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -119,12 +121,12 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
             )}
             <p className="text-xs text-muted-foreground">{user?.email}</p>
             <div className="flex items-center justify-center gap-4 mt-2">
-              <button onClick={() => navigate("/friends")} className="text-center">
+              <button onClick={() => setFollowSheet({ open: true, type: "followers" })} className="text-center">
                 <p className="text-sm font-bold text-foreground">{followerCount}</p>
                 <p className="text-[10px] text-muted-foreground">Followers</p>
               </button>
               <div className="w-px h-6 bg-border" />
-              <button onClick={() => navigate("/friends")} className="text-center">
+              <button onClick={() => setFollowSheet({ open: true, type: "following" })} className="text-center">
                 <p className="text-sm font-bold text-foreground">{followingCount}</p>
                 <p className="text-[10px] text-muted-foreground">Following</p>
               </button>
@@ -358,6 +360,15 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       </div>
 
       <EditProfileSheet open={showEditSheet} onOpenChange={setShowEditSheet} />
+
+      {user && (
+        <FollowListSheet
+          open={followSheet.open}
+          onOpenChange={(o) => setFollowSheet((prev) => ({ ...prev, open: o }))}
+          userId={user.id}
+          type={followSheet.type}
+        />
+      )}
 
       <FitPicDetailSheet
         pic={selectedFitPic}
