@@ -16,15 +16,6 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-function base64ToBlob(base64: string): Blob {
-  const byteCharacters = atob(base64);
-  const byteNumbers = new Uint8Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
-  return new Blob([byteNumbers], { type: 'image/png' });
-}
-
 function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i++) {
@@ -52,8 +43,8 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
     const token = authHeader.replace('Bearer ', '');
-    const { data, error: authError } = await supabase.auth.getClaims(token);
-    if (authError || !data?.claims) {
+    const { data, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !data?.user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -79,35 +70,81 @@ serve(async (req) => {
     }
     cleanBase64 = cleanBase64.replace(/\s/g, '');
 
-    const REMOVE_BG_API_KEY = Deno.env.get('REMOVE_BG_API_KEY');
-    if (!REMOVE_BG_API_KEY) throw new Error('REMOVE_BG_API_KEY is not configured');
+    // Use Lovable AI (Gemini) to generate image with background removed
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    const imageBlob = base64ToBlob(cleanBase64);
-    const formData = new FormData();
-    formData.append('image_file', imageBlob, 'image.png');
-    formData.append('size', 'auto');
-
-    const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+    const response = await fetch('https://ai.lovable.dev/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'X-Api-Key': REMOVE_BG_API_KEY,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify({
+        model: 'google/gemini-3-pro-image-preview',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Remove the background from this image completely. Make the background fully transparent (alpha = 0). Keep the main subject exactly as it is with no changes to color, shape, or detail. Output only the resulting image with transparent background, no text.',
+              },
+              {
+                type: 'image_url',
+                image_url: { url: `data:image/png;base64,${cleanBase64}` },
+              },
+            ],
+          },
+        ],
+      }),
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('remove.bg API error:', response.status, errorBody);
+      console.error('Lovable AI error:', response.status, errorBody);
       return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const resultBuffer = await response.arrayBuffer();
-    const resultBase64 = uint8ArrayToBase64(new Uint8Array(resultBuffer));
+    const result = await response.json();
+    
+    // Extract the image from the response
+    const content = result.choices?.[0]?.message?.content;
+    
+    // Check if response contains inline image data
+    if (Array.isArray(content)) {
+      for (const part of content) {
+        if (part.type === 'image_url' && part.image_url?.url) {
+          const url = part.image_url.url;
+          if (url.startsWith('data:')) {
+            const b64 = url.split(',')[1];
+            if (b64) {
+              console.log('Background removed successfully via Lovable AI');
+              return new Response(JSON.stringify({ imageBase64: b64 }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              });
+            }
+          }
+        }
+      }
+    }
 
-    console.log('Background removed successfully');
-    return new Response(JSON.stringify({ imageBase64: resultBase64 }), {
+    // If we got a text response with base64 data embedded
+    if (typeof content === 'string') {
+      const b64Match = content.match(/data:image\/[^;]+;base64,([A-Za-z0-9+/=]+)/);
+      if (b64Match?.[1]) {
+        console.log('Background removed successfully via Lovable AI (text extraction)');
+        return new Response(JSON.stringify({ imageBase64: b64Match[1] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // Fallback: return original
+    console.log('Could not extract processed image, returning original');
+    return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
