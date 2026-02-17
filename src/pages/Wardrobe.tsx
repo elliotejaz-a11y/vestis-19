@@ -148,6 +148,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         onOpenChange={(o) => { if (!o) setDetailItem(null); }}
         onSave={onUpdate}
         onRemove={onRemove}
+        onDuplicated={() => { setDetailItem(null); window.location.reload(); }}
       />
     </div>
   );

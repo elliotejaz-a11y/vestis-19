@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { ClothingItem } from "@/types/wardrobe";
 import { EditClothingSheet } from "@/components/EditClothingSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { Pencil, DollarSign, Tag, Palette, Shirt, StickyNote, ImageIcon } from "lucide-react";
+import { Pencil, DollarSign, Tag, Palette, Shirt, StickyNote, ImageIcon, Copy } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatPrice } from "@/lib/currency";
 
@@ -14,14 +15,39 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onSave: (item: ClothingItem) => void;
   onRemove?: (id: string) => void;
+  onDuplicated?: () => void;
 }
 
-export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove }: Props) {
+export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove, onDuplicated }: Props) {
   const [editing, setEditing] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
-  const { profile } = useAuth();
+  const [duplicating, setDuplicating] = useState(false);
+  const { profile, user } = useAuth();
   const currency = profile?.currency_preference || "NZD";
+
+  const handleDuplicate = async () => {
+    if (!item || !user) return;
+    setDuplicating(true);
+    const { error } = await supabase.from("clothing_items").insert({
+      user_id: user.id,
+      name: `${item.name} (copy)`,
+      category: item.category,
+      color: item.color,
+      fabric: item.fabric,
+      image_url: item.imageUrl,
+      back_image_url: item.backImageUrl || null,
+      tags: item.tags,
+      notes: item.notes,
+      estimated_price: item.estimatedPrice || null,
+      is_private: item.isPrivate || false,
+    });
+    setDuplicating(false);
+    if (!error) {
+      onDuplicated?.();
+      onOpenChange(false);
+    }
+  };
 
   if (!item) return null;
 
@@ -137,6 +163,14 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
                 className="flex-1 h-11 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
               >
                 <Pencil className="w-4 h-4 mr-2" /> Edit Item
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleDuplicate}
+                disabled={duplicating}
+                className="h-11 rounded-2xl text-sm"
+              >
+                <Copy className="w-4 h-4" />
               </Button>
               {onRemove && (
                 <Button
