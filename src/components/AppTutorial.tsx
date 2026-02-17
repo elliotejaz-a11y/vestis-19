@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, ArrowRight, Shirt, Sparkles, Users, User } from "lucide-react";
+import { X, ArrowRight, Shirt, Sparkles, Users, User, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -12,6 +12,12 @@ const TUTORIAL_STEPS = [
     target: null,
   },
   {
+    title: "Photograph Your Clothes 📸",
+    description: "Take photos of your clothing items to build your digital wardrobe. Make sure each item fills the entire frame for the best results. You can upload everything at once or add items as you wear them!",
+    icon: Camera,
+    target: null,
+  },
+  {
     title: "Your Wardrobe",
     description: "This is your digital closet. All your clothes live here — tap any item to see details, edit, or remove it.",
     icon: Shirt,
@@ -19,7 +25,7 @@ const TUTORIAL_STEPS = [
   },
   {
     title: "Add Clothing",
-    description: "Snap a photo or upload from your gallery. Our AI will automatically detect the category, color, fabric, and estimate value.",
+    description: "Snap a photo or upload from your gallery. Our AI will automatically detect the category, colour, fabric, and estimate value.",
     icon: Sparkles,
     target: "add",
   },

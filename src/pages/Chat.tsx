@@ -85,7 +85,7 @@ export default function Chat() {
   return (
     <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-2">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">Chat</h1>
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">Socials</h1>
       </header>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="px-5">
@@ -685,6 +685,7 @@ function ChatView({
   onBack: () => void;
 }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { messages, loading, sending, sendMessage } = useChatMessages(friendId);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -710,8 +711,10 @@ function ChatView({
         <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 -ml-1">
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <Avatar url={friendAvatar} name={friendName} size="w-9 h-9" />
-        <p className="text-sm font-semibold text-foreground">{friendName}</p>
+        <button onClick={() => navigate(`/user/${friendId}`)} className="flex items-center gap-3">
+          <Avatar url={friendAvatar} name={friendName} size="w-9 h-9" />
+          <p className="text-sm font-semibold text-foreground">{friendName}</p>
+        </button>
       </header>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-2">

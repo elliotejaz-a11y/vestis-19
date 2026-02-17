@@ -223,7 +223,7 @@ export default function OutfitBuilder({ items, onSaveOutfit }: Props) {
         }))
       );
 
-      toast({ title: "Outfit saved! ✨", description: "Your outfit has been saved to your profile." });
+      toast({ title: "Outfit saved! ✨", description: "Your outfit has been saved to your wardrobe." });
       
       if (onSaveOutfit) onSaveOutfit(outfitRow.id, true);
     } catch (err) {

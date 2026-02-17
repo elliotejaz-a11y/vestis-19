@@ -121,6 +121,47 @@ export type Database = {
           },
         ]
       }
+      fit_pics: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string
+          is_private: boolean
+          outfit_id: string | null
+          pic_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url: string
+          is_private?: boolean
+          outfit_id?: string | null
+          pic_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string
+          is_private?: boolean
+          outfit_id?: string | null
+          pic_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fit_pics_outfit_id_fkey"
+            columns: ["outfit_id"]
+            isOneToOne: false
+            referencedRelation: "outfits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follow_requests: {
         Row: {
           created_at: string

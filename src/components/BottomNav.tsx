@@ -8,7 +8,7 @@ const tabs = [
   { path: "/", icon: Shirt, label: "Wardrobe" },
   { path: "/calendar", icon: CalendarDays, label: "Calendar" },
   { path: "/outfits", icon: null, label: "Outfits", isCenter: true },
-  { path: "/chat", icon: MessageCircle, label: "Chat" },
+  { path: "/chat", icon: MessageCircle, label: "Socials" },
   { path: "/profile", icon: User, label: "Profile" },
 ];
 

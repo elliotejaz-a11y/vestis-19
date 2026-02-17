@@ -1,7 +1,8 @@
 import { Outfit, ClothingItem } from "@/types/wardrobe";
-import { Sparkles, Lightbulb, Bookmark, MessageCircle, Trash2 } from "lucide-react";
+import { Sparkles, Lightbulb, Bookmark, MessageCircle, Trash2, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { FitPicSheet } from "@/components/FitPicSheet";
 
 const CATEGORY_ORDER = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
 
@@ -86,6 +87,11 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
                 <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
               </Button>
             )}
+            <FitPicSheet outfitId={outfit.id}>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <Camera className="w-3.5 h-3.5 text-muted-foreground" />
+              </Button>
+            </FitPicSheet>
             {onSave && (
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onSave(outfit.id, !outfit.saved)}>
                 <Bookmark className={cn("w-3.5 h-3.5", outfit.saved ? "fill-accent text-accent" : "text-muted-foreground")} />
