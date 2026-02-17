@@ -51,18 +51,13 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const removeBackground = async (base64: string): Promise<string> => {
     setRemovingBg(true);
     try {
-      const { removeBackground: removeBg } = await import("@imgly/background-removal");
-      const blob = await fetch(`data:image/png;base64,${base64}`).then(r => r.blob());
-      const resultBlob = await removeBg(blob, { progress: (key, current, total) => {
-        console.log(`BG removal: ${key} ${current}/${total}`);
-      }});
-      const reader = new FileReader();
-      const resultBase64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve((reader.result as string).split(",")[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(resultBlob);
+      const { data, error } = await supabase.functions.invoke("remove-background", {
+        body: { imageBase64: base64 },
       });
-      return resultBase64;
+      if (error) throw error;
+      if (data?.imageBase64 && !data.fallback) {
+        return data.imageBase64;
+      }
     } catch (err) {
       console.error("Background removal failed:", err);
     } finally {
