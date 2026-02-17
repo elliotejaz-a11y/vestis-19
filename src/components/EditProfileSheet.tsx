@@ -5,10 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Camera, Loader2, Move } from "lucide-react";
+import { User, Camera, Loader2, Move, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { differenceInDays } from "date-fns";
 
 interface Props {
   open: boolean;
@@ -49,6 +50,15 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const startOffset = useRef({ x: 50, y: 50 });
 
   const posObj = parsePosition(avatarPosition);
+
+  // Username cooldown: locked for 14 days after last change
+  const usernameLockedUntil = profile?.username_changed_at
+    ? new Date(new Date(profile.username_changed_at).getTime() + 14 * 24 * 60 * 60 * 1000)
+    : null;
+  const isUsernameLocked = usernameLockedUntil ? new Date() < usernameLockedUntil : false;
+  const daysRemaining = usernameLockedUntil
+    ? Math.max(0, differenceInDays(usernameLockedUntil, new Date()))
+    : 0;
 
   const clamp = (v: number) => Math.max(0, Math.min(100, v));
 
@@ -92,15 +102,40 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   };
 
   const handleSave = async () => {
+    if (!user) return;
     setSaving(true);
-    await updateProfile({
+
+    const usernameChanged = username !== (profile?.username || "");
+
+    // Check uniqueness if username changed
+    if (usernameChanged && username.length >= 3) {
+      const { data: existing } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", username)
+        .neq("id", user.id)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        toast({ title: "Username taken", description: "Please choose a different username.", variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+    }
+
+    const updateData: any = {
       display_name: displayName || null,
       username: username || null,
       bio: bio || null,
       avatar_url: avatarUrl || null,
       avatar_position: avatarPosition,
       currency_preference: currencyPref,
-    } as any);
+    };
+
+    if (usernameChanged) {
+      updateData.username_changed_at = new Date().toISOString();
+    }
+
+    await updateProfile(updateData);
     await refreshProfile();
     toast({ title: "Profile updated ✨" });
     setSaving(false);
@@ -203,13 +238,21 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
 
           {/* Username */}
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Username</Label>
+            <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+              Username
+              {isUsernameLocked && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/70">
+                  <Lock className="w-3 h-3" /> Locked for {daysRemaining} more {daysRemaining === 1 ? "day" : "days"}
+                </span>
+              )}
+            </Label>
             <Input
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
               placeholder="username"
               className="rounded-xl bg-card text-sm"
               maxLength={30}
+              disabled={isUsernameLocked}
             />
           </div>
 

@@ -17,6 +17,7 @@ interface Profile {
   fashion_goals: string | null;
   onboarding_completed: boolean;
   currency_preference: string;
+  username_changed_at: string | null;
 }
 
 interface AuthContextType {

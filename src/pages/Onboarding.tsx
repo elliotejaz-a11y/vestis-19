@@ -109,7 +109,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     if (user && !editMode) {
       const pendingUsername = localStorage.getItem("pending_username");
       if (pendingUsername) {
-        supabase.from("profiles").update({ username: pendingUsername } as any).eq("id", user.id).then(() => {
+        supabase.from("profiles").update({ username: pendingUsername, username_changed_at: new Date().toISOString() } as any).eq("id", user.id).then(() => {
           localStorage.removeItem("pending_username");
         });
       }
