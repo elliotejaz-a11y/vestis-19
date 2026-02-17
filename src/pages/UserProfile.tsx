@@ -6,8 +6,8 @@ import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, User, Lock, Loader2, Grid3X3, AtSign, Shirt, Palette, TrendingUp, Camera } from "lucide-react";
 import { CATEGORIES } from "@/types/wardrobe";
-import { formatDistanceToNow } from "date-fns";
-
+import FollowListSheet from "@/components/FollowListSheet";
+import UserWardrobeSheet from "@/components/UserWardrobeSheet";
 interface UserProfileData {
   id: string;
   display_name: string | null;
@@ -42,6 +42,8 @@ export default function UserProfilePage() {
   const [colorCount, setColorCount] = useState(0);
   const [fitPics, setFitPics] = useState<FitPic[]>([]);
   const [activeTab, setActiveTab] = useState<"posts" | "fitpics">("fitpics");
+  const [followListType, setFollowListType] = useState<"followers" | "following" | null>(null);
+  const [showWardrobe, setShowWardrobe] = useState(false);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -161,15 +163,15 @@ export default function UserProfilePage() {
               </p>
             )}
             <div className="flex items-center justify-center gap-4 mt-2">
-              <div className="text-center">
+              <button onClick={() => setFollowListType("followers")} className="text-center">
                 <p className="text-sm font-bold text-foreground">{followersCount}</p>
                 <p className="text-[10px] text-muted-foreground">Followers</p>
-              </div>
+              </button>
               <div className="w-px h-6 bg-border" />
-              <div className="text-center">
+              <button onClick={() => setFollowListType("following")} className="text-center">
                 <p className="text-sm font-bold text-foreground">{followingCount}</p>
                 <p className="text-[10px] text-muted-foreground">Following</p>
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -215,7 +217,7 @@ export default function UserProfilePage() {
           )}
 
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-2">
+          <button onClick={() => setShowWardrobe(true)} className="grid grid-cols-3 gap-2 w-full text-left">
             <div className="rounded-2xl bg-card border border-border/40 p-3 text-center">
               <Shirt className="w-5 h-5 mx-auto text-accent mb-1" />
               <p className="text-lg font-bold text-foreground">{wardrobeCount}</p>
@@ -231,7 +233,7 @@ export default function UserProfilePage() {
               <p className="text-lg font-bold text-foreground">{categoryBreakdown.filter(c => c.count > 0).length}</p>
               <p className="text-[10px] text-muted-foreground">Categories</p>
             </div>
-          </div>
+          </button>
 
           {/* Tabs: Fit Pics / Posts */}
           <div className="flex rounded-xl bg-muted/60 overflow-hidden">
@@ -265,6 +267,22 @@ export default function UserProfilePage() {
             <PostsGrid userId={userId!} profileData={profile} />
           )}
         </div>
+      )}
+      {userId && (
+        <>
+          <FollowListSheet
+            open={followListType !== null}
+            onOpenChange={(open) => { if (!open) setFollowListType(null); }}
+            userId={userId}
+            type={followListType || "followers"}
+          />
+          <UserWardrobeSheet
+            open={showWardrobe}
+            onOpenChange={setShowWardrobe}
+            userId={userId}
+            displayName={profile?.display_name || profile?.username || "User"}
+          />
+        </>
       )}
     </div>
   );
