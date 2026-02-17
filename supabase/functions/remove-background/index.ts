@@ -77,11 +77,11 @@ serve(async (req) => {
     const API4AI_API_KEY = Deno.env.get('API4AI_API_KEY');
     if (!API4AI_API_KEY) throw new Error('API4AI_API_KEY is not configured');
 
-    const response = await fetch('https://background-removal4.p.rapidapi.com/v1/results', {
+    // Use API4AI Developer Portal direct endpoint
+    const response = await fetch('https://api4ai.cloud/img-bg-removal/v1/results', {
       method: 'POST',
       headers: {
-        'X-RapidAPI-Key': API4AI_API_KEY,
-        'X-RapidAPI-Host': 'background-removal4.p.rapidapi.com',
+        'Authorization': `Api-Key ${API4AI_API_KEY}`,
       },
       body: formData,
     });
@@ -112,7 +112,7 @@ serve(async (req) => {
     }
 
     // Fallback: return original
-    console.log('Could not extract processed image from API4AI, returning original');
+    console.log('Could not extract processed image from API4AI response:', JSON.stringify(result).slice(0, 500));
     return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
