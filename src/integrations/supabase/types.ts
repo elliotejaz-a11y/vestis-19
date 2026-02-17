@@ -387,6 +387,7 @@ export type Database = {
           style_preference: string | null
           updated_at: string
           username: string | null
+          username_changed_at: string | null
         }
         Insert: {
           avatar_position?: string
@@ -406,6 +407,7 @@ export type Database = {
           style_preference?: string | null
           updated_at?: string
           username?: string | null
+          username_changed_at?: string | null
         }
         Update: {
           avatar_position?: string
@@ -425,6 +427,7 @@ export type Database = {
           style_preference?: string | null
           updated_at?: string
           username?: string | null
+          username_changed_at?: string | null
         }
         Relationships: []
       }
