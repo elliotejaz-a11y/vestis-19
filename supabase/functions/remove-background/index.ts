@@ -62,57 +62,100 @@ serve(async (req) => {
     }
     cleanBase64 = cleanBase64.replace(/\s/g, '');
 
-    // Decode base64 to binary
-    const binaryStr = atob(cleanBase64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    // Build FormData with the image file
-    const formData = new FormData();
-    const blob = new Blob([bytes], { type: 'image/png' });
-    formData.append('image', blob, 'image.png');
-
-    const API4AI_API_KEY = Deno.env.get('API4AI_API_KEY');
-    if (!API4AI_API_KEY) throw new Error('API4AI_API_KEY is not configured');
-
-    // Use API4AI Developer Portal direct endpoint
-    const response = await fetch('https://api4ai.cloud/img-bg-removal/v1/results', {
+    // Use Gemini 2.5 Flash Image to remove background
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Api-Key ${API4AI_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-image',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Remove the background from this image completely. Return ONLY the subject/clothing item with a fully transparent background. Keep the original item exactly as it is with no changes to colors, details, or proportions. Output the result as a PNG image with transparency.',
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${cleanBase64}`,
+                },
+              },
+            ],
+          },
+        ],
+      }),
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('API4AI error:', response.status, errorBody);
+      console.error('Gemini image error:', response.status, errorBody);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true, error: 'Rate limited' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true, error: 'Credits exhausted' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const result = await response.json();
+    console.log('Gemini response structure:', JSON.stringify(result).slice(0, 500));
+
+    // Extract image from response - Gemini image model returns inline_data in content parts
+    const content = result?.choices?.[0]?.message?.content;
     
-    // API4AI returns results in: result.results[0].entities[0].image (base64 string)
-    const resultImage = result?.results?.[0]?.entities?.[0]?.image;
-    
-    if (resultImage && typeof resultImage === 'string') {
-      // Remove data URI prefix if present
-      let outputBase64 = resultImage;
-      if (outputBase64.startsWith('data:')) {
-        outputBase64 = outputBase64.split(',')[1] || outputBase64;
+    // Check if content is an array of parts (multimodal response)
+    if (Array.isArray(content)) {
+      for (const part of content) {
+        if (part.type === 'image_url' && part.image_url?.url) {
+          let outputBase64 = part.image_url.url;
+          if (outputBase64.startsWith('data:')) {
+            outputBase64 = outputBase64.split(',')[1] || outputBase64;
+          }
+          console.log('Background removed successfully via Gemini');
+          return new Response(JSON.stringify({ imageBase64: outputBase64 }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        // Also check for inline_data format
+        if (part.inline_data?.data) {
+          console.log('Background removed successfully via Gemini (inline_data)');
+          return new Response(JSON.stringify({ imageBase64: part.inline_data.data }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
       }
-      console.log('Background removed successfully via API4AI');
-      return new Response(JSON.stringify({ imageBase64: outputBase64 }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    }
+    
+    // If content is a string, check if it contains base64 image data
+    if (typeof content === 'string') {
+      const base64Match = content.match(/data:image\/[^;]+;base64,([A-Za-z0-9+/=]+)/);
+      if (base64Match?.[1]) {
+        console.log('Background removed successfully via Gemini (string extraction)');
+        return new Response(JSON.stringify({ imageBase64: base64Match[1] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     // Fallback: return original
-    console.log('Could not extract processed image from API4AI response:', JSON.stringify(result).slice(0, 500));
+    console.log('Could not extract processed image from Gemini response:', JSON.stringify(result).slice(0, 500));
     return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
