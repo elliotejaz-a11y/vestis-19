@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { EditProfileSheet } from "@/components/EditProfileSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
+import { FitPicSheet } from "@/components/FitPicSheet";
 import { supabase } from "@/integrations/supabase/client";
 
 interface DeletedItem extends ClothingItem {
@@ -34,8 +35,19 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
+  const [fitPics, setFitPics] = useState<any[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const fetchFitPics = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("fit_pics")
+      .select("id, image_url, description, pic_date, is_private, created_at")
+      .eq("user_id", user.id)
+      .order("pic_date", { ascending: false });
+    setFitPics(data || []);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -52,6 +64,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       setFollowingCount(following || 0);
     };
     fetchCounts();
+    fetchFitPics();
   }, [user]);
 
   const savedOutfits = outfits.filter((o) => o.saved);
@@ -134,7 +147,38 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <DollarSign className="w-8 h-8 text-accent" />
         </div>
 
-        {/* Style preferences */}
+        {/* Fit Pics */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Camera className="w-4 h-4 text-accent" />
+              <p className="text-sm font-semibold text-foreground">Fit Pics</p>
+            </div>
+            <FitPicSheet onSaved={fetchFitPics}>
+              <Button variant="ghost" size="sm" className="h-8 px-2.5 text-xs text-accent">
+                <Camera className="w-3.5 h-3.5 mr-1" /> Add
+              </Button>
+            </FitPicSheet>
+          </div>
+          {fitPics.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">No fit pics yet — capture your looks!</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-1">
+              {fitPics.slice(0, 9).map((pic: any) => (
+                <div key={pic.id} className="aspect-square rounded-xl overflow-hidden relative">
+                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                  {pic.is_private && (
+                    <div className="absolute top-1 right-1 bg-foreground/60 rounded-full px-1.5 py-0.5">
+                      <span className="text-[8px] text-background">Private</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+
         {profile && (
           <div className="rounded-2xl bg-card border border-border/40 p-4">
             <div className="flex items-center justify-between mb-3">

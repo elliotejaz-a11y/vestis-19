@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,15 +12,15 @@ import vestisLogo from "@/assets/vestis-logo.png";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
-  const [loginMethod, setLoginMethod] = useState<"email" | "username">("email");
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [loginUsername, setLoginUsername] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
@@ -65,22 +66,31 @@ export default function Auth() {
         toast({ title: "Check your email ✉️", description: "We sent a verification link to confirm your account." });
       }
     } else {
-      let signInEmail = email;
+      let signInEmail = emailOrUsername.trim();
 
-      if (loginMethod === "username" && loginUsername.trim()) {
+      // Detect if input is a username (no @ sign) and look up the email
+      const isEmail = signInEmail.includes("@");
+      if (!isEmail && signInEmail.length > 0) {
         const { data: profileData } = await supabase
           .from("profiles")
           .select("email")
-          .ilike("username", loginUsername.trim())
+          .ilike("username", signInEmail)
           .limit(1)
           .single();
 
         if (!profileData?.email) {
-          toast({ title: "Username not found", description: "No account found with that username.", variant: "destructive" });
+          toast({ title: "User not found", description: "No account found with that email or username.", variant: "destructive" });
           setLoading(false);
           return;
         }
         signInEmail = profileData.email;
+      }
+
+      // Handle remember me - if unchecked, we'll clear session on tab close
+      if (!rememberMe) {
+        localStorage.setItem("vestis_no_remember", "true");
+      } else {
+        localStorage.removeItem("vestis_no_remember");
       }
 
       const { error } = await signIn(signInEmail, password);
@@ -140,27 +150,7 @@ export default function Auth() {
             </>
           )}
 
-          {/* Login method toggle - only show on sign in */}
-          {!isSignUp && (
-            <div className="flex rounded-xl bg-card border border-border overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setLoginMethod("email")}
-                className={`flex-1 py-2 text-xs font-medium transition-colors ${loginMethod === "email" ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}
-              >
-                Email
-              </button>
-              <button
-                type="button"
-                onClick={() => setLoginMethod("username")}
-                className={`flex-1 py-2 text-xs font-medium transition-colors ${loginMethod === "username" ? "bg-accent text-accent-foreground" : "text-muted-foreground"}`}
-              >
-                Username
-              </button>
-            </div>
-          )}
-
-          {isSignUp || loginMethod === "email" ? (
+          {isSignUp ? (
             <div>
               <Label className="text-xs font-medium text-muted-foreground">Email</Label>
               <Input
@@ -174,11 +164,11 @@ export default function Auth() {
             </div>
           ) : (
             <div>
-              <Label className="text-xs font-medium text-muted-foreground">Username</Label>
+              <Label className="text-xs font-medium text-muted-foreground">Email or Username</Label>
               <Input
-                value={loginUsername}
-                onChange={(e) => setLoginUsername(e.target.value)}
-                placeholder="your username"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
+                placeholder="you@example.com or username"
                 className="mt-1 rounded-xl bg-card"
                 required
               />
@@ -206,6 +196,20 @@ export default function Auth() {
               </button>
             </div>
           </div>
+
+          {/* Remember me - only on sign in */}
+          {!isSignUp && (
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="remember"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked === true)}
+              />
+              <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer">
+                Remember me
+              </label>
+            </div>
+          )}
 
           <Button
             type="submit"
