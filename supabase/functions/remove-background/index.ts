@@ -16,14 +16,6 @@ function getCorsHeaders(req: Request) {
   };
 }
 
-function uint8ArrayToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') {
@@ -70,39 +62,33 @@ serve(async (req) => {
     }
     cleanBase64 = cleanBase64.replace(/\s/g, '');
 
-    // Use Lovable AI (Gemini) to generate image with background removed
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+    // Decode base64 to binary
+    const binaryStr = atob(cleanBase64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) {
+      bytes[i] = binaryStr.charCodeAt(i);
+    }
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Build FormData with the image file
+    const formData = new FormData();
+    const blob = new Blob([bytes], { type: 'image/png' });
+    formData.append('image', blob, 'image.png');
+
+    const API4AI_API_KEY = Deno.env.get('API4AI_API_KEY');
+    if (!API4AI_API_KEY) throw new Error('API4AI_API_KEY is not configured');
+
+    const response = await fetch('https://background-removal4.p.rapidapi.com/v1/results', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
+        'X-RapidAPI-Key': API4AI_API_KEY,
+        'X-RapidAPI-Host': 'background-removal4.p.rapidapi.com',
       },
-      body: JSON.stringify({
-        model: 'google/gemini-3-pro-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Remove the background from this image completely. Make the background fully transparent (alpha = 0). Keep the main subject exactly as it is with no changes to color, shape, or detail. Output only the resulting image with transparent background, no text.',
-              },
-              {
-                type: 'image_url',
-                image_url: { url: `data:image/png;base64,${cleanBase64}` },
-              },
-            ],
-          },
-        ],
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('Lovable AI error:', response.status, errorBody);
+      console.error('API4AI error:', response.status, errorBody);
       return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -110,40 +96,23 @@ serve(async (req) => {
 
     const result = await response.json();
     
-    // Extract the image from the response
-    const content = result.choices?.[0]?.message?.content;
+    // API4AI returns results in: result.results[0].entities[0].image (base64 string)
+    const resultImage = result?.results?.[0]?.entities?.[0]?.image;
     
-    // Check if response contains inline image data
-    if (Array.isArray(content)) {
-      for (const part of content) {
-        if (part.type === 'image_url' && part.image_url?.url) {
-          const url = part.image_url.url;
-          if (url.startsWith('data:')) {
-            const b64 = url.split(',')[1];
-            if (b64) {
-              console.log('Background removed successfully via Lovable AI');
-              return new Response(JSON.stringify({ imageBase64: b64 }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
-            }
-          }
-        }
+    if (resultImage && typeof resultImage === 'string') {
+      // Remove data URI prefix if present
+      let outputBase64 = resultImage;
+      if (outputBase64.startsWith('data:')) {
+        outputBase64 = outputBase64.split(',')[1] || outputBase64;
       }
-    }
-
-    // If we got a text response with base64 data embedded
-    if (typeof content === 'string') {
-      const b64Match = content.match(/data:image\/[^;]+;base64,([A-Za-z0-9+/=]+)/);
-      if (b64Match?.[1]) {
-        console.log('Background removed successfully via Lovable AI (text extraction)');
-        return new Response(JSON.stringify({ imageBase64: b64Match[1] }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+      console.log('Background removed successfully via API4AI');
+      return new Response(JSON.stringify({ imageBase64: outputBase64 }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Fallback: return original
-    console.log('Could not extract processed image, returning original');
+    console.log('Could not extract processed image from API4AI, returning original');
     return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
