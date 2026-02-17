@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Check, X, Plus, Undo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, X, Plus, Undo2, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Outfit } from "@/types/wardrobe";
 import { OutfitCard } from "@/components/OutfitCard";
@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isToday, isBefore } from "date-fns";
+import { FitPicSheet } from "@/components/FitPicSheet";
+import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
 
 interface Props {
   outfits: Outfit[];
@@ -21,7 +23,19 @@ export function CalendarPage({ outfits }: Props) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [plannedOutfits, setPlannedOutfits] = useState<any[]>([]);
+  const [fitPics, setFitPics] = useState<any[]>([]);
+  const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [assigning, setAssigning] = useState(false);
+
+  const fetchFitPics = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("fit_pics")
+      .select("id, image_url, description, pic_date, is_private, created_at")
+      .eq("user_id", user.id)
+      .order("pic_date", { ascending: false });
+    setFitPics(data || []);
+  };
 
   useEffect(() => {
     if (!user) return;
@@ -30,6 +44,7 @@ export function CalendarPage({ outfits }: Props) {
       setPlannedOutfits(data || []);
     };
     fetchPlanned();
+    fetchFitPics();
   }, [user]);
 
   const monthStart = startOfMonth(currentMonth);
@@ -40,6 +55,8 @@ export function CalendarPage({ outfits }: Props) {
 
   const getPlannedForDate = (date: Date) =>
     plannedOutfits.filter((p) => p.planned_date === format(date, "yyyy-MM-dd"));
+  const getFitPicsForDate = (date: Date) =>
+    fitPics.filter((p) => p.pic_date === format(date, "yyyy-MM-dd"));
   const getOutfitById = (id: string) => outfits.find((o) => o.id === id);
 
   const handleAssignOutfit = async (outfitId: string) => {
@@ -117,6 +134,7 @@ export function CalendarPage({ outfits }: Props) {
             const planned = getPlannedForDate(day);
             const hasPlanned = planned.length > 0;
             const hasWorn = planned.some((p: any) => p.worn);
+            const hasFitPic = getFitPicsForDate(day).length > 0;
             const isPast = isBefore(day, new Date()) && !isToday(day);
             const isSelected = selectedDate && isSameDay(day, selectedDate);
 
@@ -132,9 +150,14 @@ export function CalendarPage({ outfits }: Props) {
                 )}
               >
                 {day.getDate()}
-                {hasPlanned && (
-                  <div className={cn("w-1.5 h-1.5 rounded-full absolute bottom-1", hasWorn ? "bg-accent/70" : "bg-accent")} />
-                )}
+                <div className="flex gap-0.5 absolute bottom-1">
+                  {hasPlanned && (
+                    <div className={cn("w-1.5 h-1.5 rounded-full", hasWorn ? "bg-accent/70" : "bg-accent")} />
+                  )}
+                  {hasFitPic && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                  )}
+                </div>
               </button>
             );
           })}
@@ -145,10 +168,35 @@ export function CalendarPage({ outfits }: Props) {
         <div className="px-5 mt-6 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-foreground">{format(selectedDate, "EEEE, MMMM d")}</p>
-            <Button variant="outline" size="sm" className="rounded-xl text-xs h-8" onClick={handleCreateOutfit}>
-              <Plus className="w-3.5 h-3.5 mr-1" /> Create Outfit
-            </Button>
+            <div className="flex gap-1.5">
+              <FitPicSheet defaultDate={format(selectedDate, "yyyy-MM-dd")} onSaved={fetchFitPics}>
+                <Button variant="outline" size="sm" className="rounded-xl text-xs h-8">
+                  <Camera className="w-3.5 h-3.5 mr-1" /> Fit Pic
+                </Button>
+              </FitPicSheet>
+              <Button variant="outline" size="sm" className="rounded-xl text-xs h-8" onClick={handleCreateOutfit}>
+                <Plus className="w-3.5 h-3.5 mr-1" /> Outfit
+              </Button>
+            </div>
           </div>
+
+          {/* Fit pics for this date */}
+          {(() => {
+            const dateFitPics = getFitPicsForDate(selectedDate);
+            if (dateFitPics.length === 0) return null;
+            return (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">📸 Fit Pics</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {dateFitPics.map((pic: any) => (
+                    <button key={pic.id} onClick={() => setSelectedFitPic(pic)} className="aspect-square rounded-xl overflow-hidden relative">
+                      <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
 
           {selectedPlanned.length > 0 ? (
             <div className="space-y-3">
@@ -207,8 +255,13 @@ export function CalendarPage({ outfits }: Props) {
           )}
         </div>
       )}
+      <FitPicDetailSheet
+        pic={selectedFitPic}
+        open={!!selectedFitPic}
+        onOpenChange={(o) => { if (!o) setSelectedFitPic(null); }}
+        onUpdated={() => { setSelectedFitPic(null); fetchFitPics(); }}
+      />
     </div>
   );
 }
-
 export default CalendarPage;
