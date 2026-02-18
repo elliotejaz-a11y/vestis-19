@@ -32,7 +32,7 @@ async function removeBackgroundAlgorithmic(imageBytes: Uint8Array): Promise<Uint
   let img = await Image.decode(imageBytes);
 
   // 1. Resize if longest side > 1600px (saves memory + time)
-  const MAX = 1600;
+  const MAX = 600;
   if (img.width > MAX || img.height > MAX) {
     const scale = MAX / Math.max(img.width, img.height);
     img.resize(Math.round(img.width * scale), Math.round(img.height * scale));
@@ -123,11 +123,6 @@ async function removeBackgroundAlgorithmic(imageBytes: Uint8Array): Promise<Uint
     tryEnqueue(x0 + 1, y0);
     tryEnqueue(x0, y0 - 1);
     tryEnqueue(x0, y0 + 1);
-    // Also check diagonals for better coverage
-    tryEnqueue(x0 - 1, y0 - 1);
-    tryEnqueue(x0 + 1, y0 - 1);
-    tryEnqueue(x0 - 1, y0 + 1);
-    tryEnqueue(x0 + 1, y0 + 1);
   }
 
   const bgCount = qIdx;
@@ -287,56 +282,55 @@ serve(async (req) => {
     // Set status → processing
     await serviceClient.from('wardrobe_items').update({ status: 'processing' }).eq('id', wardrobe_item_id);
 
-    try {
-      // Download original
-      const { data: fileData, error: dlErr } = await serviceClient.storage
-        .from('wardrobe-originals')
-        .download(item.original_path);
+    // Process in background to avoid CPU time limit
+    const processInBackground = async () => {
+      try {
+        // Download original
+        const { data: fileData, error: dlErr } = await serviceClient.storage
+          .from('wardrobe-originals')
+          .download(item.original_path);
 
-      if (dlErr || !fileData) throw new Error(`Download failed: ${dlErr?.message}`);
+        if (dlErr || !fileData) throw new Error(`Download failed: ${dlErr?.message}`);
 
-      const arrayBuf = await fileData.arrayBuffer();
-      const imageBytes = new Uint8Array(arrayBuf);
+        const arrayBuf = await fileData.arrayBuffer();
+        const imageBytes = new Uint8Array(arrayBuf);
 
-      // Remove background
-      const pngBytes = await removeBackgroundAlgorithmic(imageBytes);
+        // Remove background
+        const pngBytes = await removeBackgroundAlgorithmic(imageBytes);
 
-      // Upload cutout
-      const cutoutPath = `${userId}/${wardrobe_item_id}.png`;
-      const { error: uploadErr } = await serviceClient.storage
-        .from('wardrobe-cutouts')
-        .upload(cutoutPath, new Blob([pngBytes], { type: 'image/png' }), {
-          contentType: 'image/png',
-          upsert: true,
-        });
+        // Upload cutout
+        const cutoutPath = `${userId}/${wardrobe_item_id}.png`;
+        const { error: uploadErr } = await serviceClient.storage
+          .from('wardrobe-cutouts')
+          .upload(cutoutPath, new Blob([pngBytes], { type: 'image/png' }), {
+            contentType: 'image/png',
+            upsert: true,
+          });
 
-      if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
+        if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
 
-      // Update DB
-      await serviceClient.from('wardrobe_items')
-        .update({ status: 'completed', cutout_path: cutoutPath })
-        .eq('id', wardrobe_item_id);
+        // Update DB
+        await serviceClient.from('wardrobe_items')
+          .update({ status: 'completed', cutout_path: cutoutPath })
+          .eq('id', wardrobe_item_id);
 
-      const { data: signedData } = await serviceClient.storage
-        .from('wardrobe-cutouts')
-        .createSignedUrl(cutoutPath, 3600);
+      } catch (processErr) {
+        const msg = processErr instanceof Error ? processErr.message : 'Unknown processing error';
+        console.error('Processing error:', msg);
+        await serviceClient.from('wardrobe_items')
+          .update({ status: 'failed', error_message: msg })
+          .eq('id', wardrobe_item_id);
+      }
+    };
 
-      return new Response(JSON.stringify({
-        ok: true,
-        cutout_path: cutoutPath,
-        signed_url: signedData?.signedUrl || null,
-      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    // Use EdgeRuntime.waitUntil for background processing
+    (globalThis as any).EdgeRuntime?.waitUntil?.(processInBackground()) ?? await processInBackground();
 
-    } catch (processErr) {
-      const msg = processErr instanceof Error ? processErr.message : 'Unknown processing error';
-      console.error('Processing error:', msg);
-      await serviceClient.from('wardrobe_items')
-        .update({ status: 'failed', error_message: msg })
-        .eq('id', wardrobe_item_id);
-      return new Response(JSON.stringify({ ok: false, error: msg }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    return new Response(JSON.stringify({
+      ok: true,
+      wardrobe_item_id,
+      message: 'Processing started',
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
     console.error('remove-background error:', error);
