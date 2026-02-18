@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Sparkles, Loader2, ImageOff, DollarSign, Search } from "lucide-react";
+import { Upload, Sparkles, Loader2, ImageOff, DollarSign } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -31,7 +31,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [analyzing, setAnalyzing] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
-  const [searchingImage, setSearchingImage] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
@@ -95,25 +94,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
           title: "AI Analysis Complete ✨",
           description: `Detected: ${data.name}${data.estimated_price_nzd ? ` — Vestis Price: $${data.estimated_price_nzd} NZD` : ""}`,
         });
-
-        // Search for a professional product image
-        if (data.name) {
-          setSearchingImage(true);
-          try {
-            const { data: imageData } = await supabase.functions.invoke("search-clothing-image", {
-              body: { name: data.name, category: data.category, color: data.color },
-            });
-            if (imageData?.imageBase64) {
-              const contentType = imageData.contentType || "image/png";
-              setImageUrl(`data:${contentType};base64,${imageData.imageBase64}`);
-              toast({ title: "Product image found 🔍", description: "Replaced with a professional product photo" });
-            }
-          } catch (err) {
-            console.error("Product image search failed:", err);
-          } finally {
-            setSearchingImage(false);
-          }
-        }
       }
     } catch (err) {
       console.error("AI analysis failed:", err);
@@ -188,15 +168,13 @@ export function AddClothingSheet({ onAdd, children }: Props) {
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
               <img src={imageUrl} alt="Preview" className="w-full h-48 object-contain bg-white" />
-              {(analyzing || removingBg || searchingImage) && (
+              {(analyzing || removingBg) && (
                 <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <Loader2 className="w-8 h-8 animate-spin text-accent" />
                   <div className="text-center">
                     <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground justify-center">
                       {removingBg ? (
                         <><ImageOff className="w-4 h-4 text-accent" /> Removing Background</>
-                      ) : searchingImage ? (
-                        <><Search className="w-4 h-4 text-accent" /> Finding Product Image</>
                       ) : (
                         <><Sparkles className="w-4 h-4 text-accent" /> AI Analyzing Clothing</>
                       )}
@@ -204,8 +182,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                     <p className="text-[11px] text-muted-foreground mt-1">
                       {removingBg
                         ? "Creating a clean, uniform look for your wardrobe..."
-                        : searchingImage
-                        ? "Searching the web for a professional product photo..."
                         : "Detecting category, color, fabric & estimating value..."}
                     </p>
                   </div>
@@ -317,7 +293,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
           <Button
             onClick={handleSave}
-            disabled={!imageUrl || !name || !category || analyzing || removingBg || searchingImage}
+            disabled={!imageUrl || !name || !category || analyzing || removingBg}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors"
           >
             <Sparkles className="w-4 h-4 mr-2" /> Save to Wardrobe
