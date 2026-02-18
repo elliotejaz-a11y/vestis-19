@@ -128,19 +128,52 @@ export function useWardrobeItems() {
     pollingRef.current.set(itemId, interval);
   }, [toast]);
 
+  // Resize image client-side to reduce edge function CPU load
+  const resizeImage = useCallback(async (file: File, maxSize = 800): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(
+          (blob) => (blob ? resolve(blob) : reject(new Error("Canvas toBlob failed"))),
+          "image/png",
+          0.9
+        );
+        URL.revokeObjectURL(img.src);
+      };
+      img.onerror = () => reject(new Error("Image load failed"));
+      img.src = URL.createObjectURL(file);
+    });
+  }, []);
+
   // Upload files and create wardrobe items
   const uploadFiles = useCallback(async (files: File[]) => {
     if (!user) return;
 
     for (const file of files) {
       const timestamp = Date.now();
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/\.[^.]+$/, "") + ".png";
       const storagePath = `${user.id}/${timestamp}_${safeName}`;
 
-      // Upload to wardrobe-originals
+      // Resize client-side before uploading
+      let uploadBlob: Blob;
+      try {
+        uploadBlob = await resizeImage(file, 800);
+      } catch {
+        uploadBlob = file;
+      }
+
+      // Upload resized image to wardrobe-originals
       const { error: uploadErr } = await supabase.storage
         .from("wardrobe-originals")
-        .upload(storagePath, file, { contentType: file.type });
+        .upload(storagePath, uploadBlob, { contentType: "image/png" });
 
       if (uploadErr) {
         toast({ title: "Upload failed", description: uploadErr.message, variant: "destructive" });
