@@ -80,7 +80,7 @@ serve(async (req) => {
             content: [
               {
                 type: 'text',
-                text: 'Remove the background from this image completely. Return ONLY the subject/clothing item with a fully transparent background. Keep the original item exactly as it is with no changes to colors, details, or proportions. Output the result as a PNG image with transparency.',
+                text: 'Replace the background of this image with a plain solid white background. Keep the subject/clothing item exactly as it is with no changes to colors, details, or proportions. Output the result as a PNG image.',
               },
               {
                 type: 'image_url',
