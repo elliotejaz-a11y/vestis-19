@@ -560,6 +560,45 @@ export type Database = {
         }
         Relationships: []
       }
+      wardrobe_items: {
+        Row: {
+          category: string
+          created_at: string
+          cutout_path: string | null
+          error_message: string | null
+          id: string
+          name: string
+          original_path: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          cutout_path?: string | null
+          error_message?: string | null
+          id?: string
+          name?: string
+          original_path: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          cutout_path?: string | null
+          error_message?: string | null
+          id?: string
+          name?: string
+          original_path?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       wardrobe_service_requests: {
         Row: {
           address: string

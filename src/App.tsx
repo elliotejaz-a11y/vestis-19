@@ -8,6 +8,7 @@ import { useWardrobe } from "@/hooks/useWardrobe";
 import { useRecentlyDeleted } from "@/hooks/useRecentlyDeleted";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import Wardrobe from "./pages/Wardrobe";
+import WardrobeUpload from "./pages/WardrobeUpload";
 import AddItem from "./pages/AddItem";
 import Outfits from "./pages/Outfits";
 import OutfitBuilder from "./pages/OutfitBuilder";
@@ -80,6 +81,7 @@ function AuthenticatedApp() {
           />
         } />
         <Route path="/add" element={<AddItem onAdd={addItem} />} />
+        <Route path="/wardrobe-upload" element={<WardrobeUpload />} />
         <Route path="/outfits" element={<Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />} />
         <Route path="/builder" element={<OutfitBuilder items={items} onSaveOutfit={saveOutfit} />} />
         <Route path="/friends" element={<Friends />} />
