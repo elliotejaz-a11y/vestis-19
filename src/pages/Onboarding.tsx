@@ -247,7 +247,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           </div>
         </div>
       ),
-      valid: allStyles.length > 0,
+      valid: true,
     },
   ];
 
