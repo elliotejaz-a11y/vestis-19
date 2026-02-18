@@ -1,267 +1,169 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Image } from "https://deno.land/x/imagescript@1.2.17/mod.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+const ALLOWED_ORIGINS = [
+  'https://vestis-19.lovable.app',
+  'https://id-preview--1830068e-1c44-4713-a94f-43ffd21bb2c7.lovable.app',
+  'https://1830068e-1c44-4713-a94f-43ffd21bb2c7.lovableproject.com',
+];
 
-// ─── Color helpers ───────────────────────────────────────────────
-
-function pixelRGB(px: number): [number, number, number] {
-  return [(px >>> 24) & 0xFF, (px >>> 16) & 0xFF, (px >>> 8) & 0xFF];
-}
-
-function colorDist(r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number {
-  const dr = r1 - r2, dg = g1 - g2, db = b1 - b2;
-  return Math.sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db);
-}
-
-function median(arr: number[]): number {
-  if (arr.length === 0) return 0;
-  const s = [...arr].sort((a, b) => a - b);
-  const m = s.length >> 1;
-  return s.length & 1 ? s[m] : (s[m - 1] + s[m]) / 2;
-}
-
-// ─── Core algorithm (optimised for edge function CPU limits) ─────
-
-async function removeBackgroundAlgorithmic(imageBytes: Uint8Array): Promise<Uint8Array> {
-  let img = await Image.decode(imageBytes);
-
-  // Aggressive resize – edge functions have ~2s CPU budget
-  const MAX = 400;
-  if (img.width > MAX || img.height > MAX) {
-    const scale = MAX / Math.max(img.width, img.height);
-    img = img.resize(Math.round(img.width * scale), Math.round(img.height * scale));
-  }
-
-  const w = img.width;
-  const h = img.height;
-  const total = w * h;
-
-  console.log(`Processing ${w}×${h} image (${total} px)`);
-
-  // Sample edge pixels for background color
-  const step = Math.max(1, Math.floor(Math.min(w, h) / 40));
-  const samplesR: number[] = [], samplesG: number[] = [], samplesB: number[] = [];
-
-  const samplePixel = (x: number, y: number) => {
-    const px = img.getPixelAt(x, y);
-    const [r, g, b] = pixelRGB(px);
-    samplesR.push(r); samplesG.push(g); samplesB.push(b);
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get('Origin') || '';
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
   };
-
-  for (let x = 1; x <= w; x += step) { samplePixel(x, 1); samplePixel(x, h); }
-  for (let y = 2; y < h; y += step) { samplePixel(1, y); samplePixel(w, y); }
-
-  const bgR = Math.round(median(samplesR));
-  const bgG = Math.round(median(samplesG));
-  const bgB = Math.round(median(samplesB));
-
-  // Adaptive threshold
-  const dists: number[] = [];
-  for (let i = 0; i < samplesR.length; i++) {
-    dists.push(colorDist(samplesR[i], samplesG[i], samplesB[i], bgR, bgG, bgB));
-  }
-  const medDist = median(dists);
-  const threshold = Math.max(40, Math.min(100, medDist * 1.8 + 30));
-
-  console.log(`Background: rgb(${bgR},${bgG},${bgB})  threshold: ${threshold.toFixed(1)}`);
-
-  // Flood-fill BFS from border pixels (4-connected only for speed)
-  const mask = new Uint8Array(total); // 0=unvisited, 1=bg, 2=fg
-  const queue: number[] = [];
-  let qIdx = 0;
-
-  const tryEnqueue = (x0: number, y0: number) => {
-    if (x0 < 0 || x0 >= w || y0 < 0 || y0 >= h) return;
-    const idx = y0 * w + x0;
-    if (mask[idx] !== 0) return;
-    const px = img.getPixelAt(x0 + 1, y0 + 1);
-    const [r, g, b] = pixelRGB(px);
-    if (colorDist(r, g, b, bgR, bgG, bgB) <= threshold) {
-      mask[idx] = 1;
-      queue.push(idx);
-    } else {
-      mask[idx] = 2;
-    }
-  };
-
-  for (let x = 0; x < w; x++) { tryEnqueue(x, 0); tryEnqueue(x, h - 1); }
-  for (let y = 1; y < h - 1; y++) { tryEnqueue(0, y); tryEnqueue(w - 1, y); }
-
-  while (qIdx < queue.length) {
-    const idx = queue[qIdx++];
-    const x0 = idx % w;
-    const y0 = (idx - x0) / w;
-    tryEnqueue(x0 - 1, y0);
-    tryEnqueue(x0 + 1, y0);
-    tryEnqueue(x0, y0 - 1);
-    tryEnqueue(x0, y0 + 1);
-  }
-
-  const bgCount = qIdx;
-  console.log(`Flood fill: ${bgCount} bg pixels (${(bgCount / total * 100).toFixed(1)}%)`);
-
-  if (bgCount / total > 0.97) {
-    console.warn('Almost everything detected as background – returning original');
-    return await img.encode();
-  }
-
-  // Apply mask – simple hard cutout (no feathering to save CPU)
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      if (mask[y * w + x] === 1) {
-        img.setPixelAt(x + 1, y + 1, 0x00000000);
-      }
-    }
-  }
-
-  console.log('Background removal complete');
-  return await img.encode();
 }
-
-// ─── Edge Function handler ───────────────────────────────────────
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-  const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
-
   try {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
     const token = authHeader.replace('Bearer ', '');
-    const { data: authData, error: authError } = await userClient.auth.getUser(token);
-    if (authError || !authData?.user) {
-      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+    const { data, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !data?.user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    const userId = authData.user.id;
-    const body = await req.json();
 
-    // Legacy base64 mode
-    if (body.imageBase64) {
-      return await handleLegacyMode(body.imageBase64, corsHeaders);
-    }
-
-    // New mode: wardrobe_item_id
-    const { wardrobe_item_id } = body;
-    if (!wardrobe_item_id) {
-      return new Response(JSON.stringify({ ok: false, error: 'wardrobe_item_id is required' }), {
+    const { imageBase64 } = await req.json();
+    if (!imageBase64 || typeof imageBase64 !== 'string') {
+      return new Response(JSON.stringify({ error: 'No image provided' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const { data: item, error: fetchErr } = await serviceClient
-      .from('wardrobe_items').select('*').eq('id', wardrobe_item_id).single();
-
-    if (fetchErr || !item) {
-      return new Response(JSON.stringify({ ok: false, error: 'Item not found' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    if (item.user_id !== userId) {
-      return new Response(JSON.stringify({ ok: false, error: 'Forbidden' }), {
-        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const base64Size = imageBase64.length * 0.75;
+    if (base64Size > 10 * 1024 * 1024) {
+      return new Response(JSON.stringify({ error: 'Image too large (max 10MB)' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    await serviceClient.from('wardrobe_items').update({ status: 'processing' }).eq('id', wardrobe_item_id);
+    let cleanBase64 = imageBase64.trim();
+    if (cleanBase64.startsWith('data:')) {
+      cleanBase64 = cleanBase64.split(',')[1] || cleanBase64;
+    }
+    cleanBase64 = cleanBase64.replace(/\s/g, '');
 
-    // Background processing via waitUntil (extends wall-clock time for network I/O)
-    const processInBackground = async () => {
-      try {
-        const { data: fileData, error: dlErr } = await serviceClient.storage
-          .from('wardrobe-originals').download(item.original_path);
-        if (dlErr || !fileData) throw new Error(`Download failed: ${dlErr?.message}`);
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-        const imageBytes = new Uint8Array(await fileData.arrayBuffer());
-        const pngBytes = await removeBackgroundAlgorithmic(imageBytes);
-
-        const cutoutPath = `${userId}/${wardrobe_item_id}.png`;
-        const { error: uploadErr } = await serviceClient.storage
-          .from('wardrobe-cutouts')
-          .upload(cutoutPath, new Blob([pngBytes], { type: 'image/png' }), {
-            contentType: 'image/png', upsert: true,
-          });
-        if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
-
-        await serviceClient.from('wardrobe_items')
-          .update({ status: 'completed', cutout_path: cutoutPath })
-          .eq('id', wardrobe_item_id);
-      } catch (processErr) {
-        const msg = processErr instanceof Error ? processErr.message : 'Unknown error';
-        console.error('Processing error:', msg);
-        await serviceClient.from('wardrobe_items')
-          .update({ status: 'failed', error_message: msg })
-          .eq('id', wardrobe_item_id);
-      }
-    };
-
-    (globalThis as any).EdgeRuntime?.waitUntil?.(processInBackground()) ?? await processInBackground();
-
-    return new Response(JSON.stringify({ ok: true, wardrobe_item_id, message: 'Processing started' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Use Gemini 2.5 Flash Image to remove background
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-image',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Remove the background from this image completely, leaving ONLY the clothing item/accessory with a fully transparent background. Do not add any background color — the result must have alpha transparency. Keep the subject exactly as it is with no changes to colors, details, or proportions. Output the result as a PNG image with transparent background.',
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/png;base64,${cleanBase64}`,
+                },
+              },
+            ],
+          },
+        ],
+      }),
     });
 
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error('Gemini image error:', response.status, errorBody);
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true, error: 'Rate limited' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true, error: 'Credits exhausted' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const result = await response.json();
+    console.log('Gemini response structure:', JSON.stringify(result).slice(0, 500));
+
+    // Extract image from response - Gemini image model returns inline_data in content parts
+    const content = result?.choices?.[0]?.message?.content;
+    
+    // Check if content is an array of parts (multimodal response)
+    if (Array.isArray(content)) {
+      for (const part of content) {
+        if (part.type === 'image_url' && part.image_url?.url) {
+          let outputBase64 = part.image_url.url;
+          if (outputBase64.startsWith('data:')) {
+            outputBase64 = outputBase64.split(',')[1] || outputBase64;
+          }
+          console.log('Background removed successfully via Gemini');
+          return new Response(JSON.stringify({ imageBase64: outputBase64 }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        // Also check for inline_data format
+        if (part.inline_data?.data) {
+          console.log('Background removed successfully via Gemini (inline_data)');
+          return new Response(JSON.stringify({ imageBase64: part.inline_data.data }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+      }
+    }
+    
+    // If content is a string, check if it contains base64 image data
+    if (typeof content === 'string') {
+      const base64Match = content.match(/data:image\/[^;]+;base64,([A-Za-z0-9+/=]+)/);
+      if (base64Match?.[1]) {
+        console.log('Background removed successfully via Gemini (string extraction)');
+        return new Response(JSON.stringify({ imageBase64: base64Match[1] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
+
+    // Fallback: return original
+    console.log('Could not extract processed image from Gemini response:', JSON.stringify(result).slice(0, 500));
+    return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   } catch (error) {
     console.error('remove-background error:', error);
-    return new Response(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : 'Unknown error' }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
-
-// ─── Legacy base64 handler ───────────────────────────────────────
-
-async function handleLegacyMode(imageBase64: string, cors: Record<string, string>) {
-  let cleanBase64 = imageBase64.trim();
-  if (cleanBase64.startsWith('data:')) cleanBase64 = cleanBase64.split(',')[1] || cleanBase64;
-  cleanBase64 = cleanBase64.replace(/\s/g, '');
-
-  if (cleanBase64.length * 0.75 > 10 * 1024 * 1024) {
-    return new Response(JSON.stringify({ error: 'Image too large (max 10MB)' }), {
-      status: 400, headers: { ...cors, 'Content-Type': 'application/json' },
-    });
-  }
-
-  try {
-    const binaryStr = atob(cleanBase64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-
-    const pngBytes = await removeBackgroundAlgorithmic(bytes);
-
-    let resultB64 = '';
-    const chunk = 32768;
-    for (let i = 0; i < pngBytes.length; i += chunk) {
-      resultB64 += String.fromCharCode(...pngBytes.subarray(i, i + chunk));
-    }
-    resultB64 = btoa(resultB64);
-
-    return new Response(JSON.stringify({ imageBase64: resultB64 }), {
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
-  } catch (err) {
-    console.error('Legacy bg removal error:', err);
-    return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
-      headers: { ...cors, 'Content-Type': 'application/json' },
-    });
-  }
-}
