@@ -1,34 +1,129 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Image } from "https://deno.land/x/imagescript@1.2.17/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
-async function removeBackgroundViaAPI(imageBytes: Uint8Array): Promise<Uint8Array> {
-  const apiKey = Deno.env.get('REMOVE_BG_API_KEY');
-  if (!apiKey) throw new Error('REMOVE_BG_API_KEY not configured');
+// ─── Color helpers ───────────────────────────────────────────────
 
-  const formData = new FormData();
-  formData.append('image_file', new Blob([imageBytes]), 'image.jpg');
-  formData.append('size', 'auto');
+function pixelRGB(px: number): [number, number, number] {
+  return [(px >>> 24) & 0xFF, (px >>> 16) & 0xFF, (px >>> 8) & 0xFF];
+}
 
-  const response = await fetch('https://api.remove.bg/v1.0/removebg', {
-    method: 'POST',
-    headers: { 'X-Api-Key': apiKey },
-    body: formData,
-  });
+function colorDist(r1: number, g1: number, b1: number, r2: number, g2: number, b2: number): number {
+  const dr = r1 - r2, dg = g1 - g2, db = b1 - b2;
+  return Math.sqrt(2 * dr * dr + 4 * dg * dg + 3 * db * db);
+}
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error('remove.bg error:', response.status, errText);
-    throw new Error(`remove.bg API error: ${response.status}`);
+function median(arr: number[]): number {
+  if (arr.length === 0) return 0;
+  const s = [...arr].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length & 1 ? s[m] : (s[m - 1] + s[m]) / 2;
+}
+
+// ─── Core algorithm (optimised for edge function CPU limits) ─────
+
+async function removeBackgroundAlgorithmic(imageBytes: Uint8Array): Promise<Uint8Array> {
+  let img = await Image.decode(imageBytes);
+
+  // Aggressive resize – edge functions have ~2s CPU budget
+  const MAX = 400;
+  if (img.width > MAX || img.height > MAX) {
+    const scale = MAX / Math.max(img.width, img.height);
+    img = img.resize(Math.round(img.width * scale), Math.round(img.height * scale));
   }
 
-  const arrayBuf = await response.arrayBuffer();
-  return new Uint8Array(arrayBuf);
+  const w = img.width;
+  const h = img.height;
+  const total = w * h;
+
+  console.log(`Processing ${w}×${h} image (${total} px)`);
+
+  // Sample edge pixels for background color
+  const step = Math.max(1, Math.floor(Math.min(w, h) / 40));
+  const samplesR: number[] = [], samplesG: number[] = [], samplesB: number[] = [];
+
+  const samplePixel = (x: number, y: number) => {
+    const px = img.getPixelAt(x, y);
+    const [r, g, b] = pixelRGB(px);
+    samplesR.push(r); samplesG.push(g); samplesB.push(b);
+  };
+
+  for (let x = 1; x <= w; x += step) { samplePixel(x, 1); samplePixel(x, h); }
+  for (let y = 2; y < h; y += step) { samplePixel(1, y); samplePixel(w, y); }
+
+  const bgR = Math.round(median(samplesR));
+  const bgG = Math.round(median(samplesG));
+  const bgB = Math.round(median(samplesB));
+
+  // Adaptive threshold
+  const dists: number[] = [];
+  for (let i = 0; i < samplesR.length; i++) {
+    dists.push(colorDist(samplesR[i], samplesG[i], samplesB[i], bgR, bgG, bgB));
+  }
+  const medDist = median(dists);
+  const threshold = Math.max(40, Math.min(100, medDist * 1.8 + 30));
+
+  console.log(`Background: rgb(${bgR},${bgG},${bgB})  threshold: ${threshold.toFixed(1)}`);
+
+  // Flood-fill BFS from border pixels (4-connected only for speed)
+  const mask = new Uint8Array(total); // 0=unvisited, 1=bg, 2=fg
+  const queue: number[] = [];
+  let qIdx = 0;
+
+  const tryEnqueue = (x0: number, y0: number) => {
+    if (x0 < 0 || x0 >= w || y0 < 0 || y0 >= h) return;
+    const idx = y0 * w + x0;
+    if (mask[idx] !== 0) return;
+    const px = img.getPixelAt(x0 + 1, y0 + 1);
+    const [r, g, b] = pixelRGB(px);
+    if (colorDist(r, g, b, bgR, bgG, bgB) <= threshold) {
+      mask[idx] = 1;
+      queue.push(idx);
+    } else {
+      mask[idx] = 2;
+    }
+  };
+
+  for (let x = 0; x < w; x++) { tryEnqueue(x, 0); tryEnqueue(x, h - 1); }
+  for (let y = 1; y < h - 1; y++) { tryEnqueue(0, y); tryEnqueue(w - 1, y); }
+
+  while (qIdx < queue.length) {
+    const idx = queue[qIdx++];
+    const x0 = idx % w;
+    const y0 = (idx - x0) / w;
+    tryEnqueue(x0 - 1, y0);
+    tryEnqueue(x0 + 1, y0);
+    tryEnqueue(x0, y0 - 1);
+    tryEnqueue(x0, y0 + 1);
+  }
+
+  const bgCount = qIdx;
+  console.log(`Flood fill: ${bgCount} bg pixels (${(bgCount / total * 100).toFixed(1)}%)`);
+
+  if (bgCount / total > 0.97) {
+    console.warn('Almost everything detected as background – returning original');
+    return await img.encode();
+  }
+
+  // Apply mask – simple hard cutout (no feathering to save CPU)
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (mask[y * w + x] === 1) {
+        img.setPixelAt(x + 1, y + 1, 0x00000000);
+      }
+    }
+  }
+
+  console.log('Background removal complete');
+  return await img.encode();
 }
+
+// ─── Edge Function handler ───────────────────────────────────────
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -41,7 +136,6 @@ serve(async (req) => {
   const serviceClient = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
-    // Auth
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
@@ -59,7 +153,6 @@ serve(async (req) => {
       });
     }
     const userId = authData.user.id;
-
     const body = await req.json();
 
     // Legacy base64 mode
@@ -75,12 +168,8 @@ serve(async (req) => {
       });
     }
 
-    // Fetch item & verify ownership
     const { data: item, error: fetchErr } = await serviceClient
-      .from('wardrobe_items')
-      .select('*')
-      .eq('id', wardrobe_item_id)
-      .single();
+      .from('wardrobe_items').select('*').eq('id', wardrobe_item_id).single();
 
     if (fetchErr || !item) {
       return new Response(JSON.stringify({ ok: false, error: 'Item not found' }), {
@@ -93,41 +182,31 @@ serve(async (req) => {
       });
     }
 
-    // Set status → processing
     await serviceClient.from('wardrobe_items').update({ status: 'processing' }).eq('id', wardrobe_item_id);
 
-    // Process in background
+    // Background processing via waitUntil (extends wall-clock time for network I/O)
     const processInBackground = async () => {
       try {
         const { data: fileData, error: dlErr } = await serviceClient.storage
-          .from('wardrobe-originals')
-          .download(item.original_path);
-
+          .from('wardrobe-originals').download(item.original_path);
         if (dlErr || !fileData) throw new Error(`Download failed: ${dlErr?.message}`);
 
-        const arrayBuf = await fileData.arrayBuffer();
-        const imageBytes = new Uint8Array(arrayBuf);
+        const imageBytes = new Uint8Array(await fileData.arrayBuffer());
+        const pngBytes = await removeBackgroundAlgorithmic(imageBytes);
 
-        // Remove background via API
-        const pngBytes = await removeBackgroundViaAPI(imageBytes);
-
-        // Upload cutout
         const cutoutPath = `${userId}/${wardrobe_item_id}.png`;
         const { error: uploadErr } = await serviceClient.storage
           .from('wardrobe-cutouts')
           .upload(cutoutPath, new Blob([pngBytes], { type: 'image/png' }), {
-            contentType: 'image/png',
-            upsert: true,
+            contentType: 'image/png', upsert: true,
           });
-
         if (uploadErr) throw new Error(`Upload failed: ${uploadErr.message}`);
 
         await serviceClient.from('wardrobe_items')
           .update({ status: 'completed', cutout_path: cutoutPath })
           .eq('id', wardrobe_item_id);
-
       } catch (processErr) {
-        const msg = processErr instanceof Error ? processErr.message : 'Unknown processing error';
+        const msg = processErr instanceof Error ? processErr.message : 'Unknown error';
         console.error('Processing error:', msg);
         await serviceClient.from('wardrobe_items')
           .update({ status: 'failed', error_message: msg })
@@ -137,11 +216,9 @@ serve(async (req) => {
 
     (globalThis as any).EdgeRuntime?.waitUntil?.(processInBackground()) ?? await processInBackground();
 
-    return new Response(JSON.stringify({
-      ok: true,
-      wardrobe_item_id,
-      message: 'Processing started',
-    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ ok: true, wardrobe_item_id, message: 'Processing started' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
 
   } catch (error) {
     console.error('remove-background error:', error);
@@ -151,7 +228,8 @@ serve(async (req) => {
   }
 });
 
-// Legacy base64 handler
+// ─── Legacy base64 handler ───────────────────────────────────────
+
 async function handleLegacyMode(imageBase64: string, cors: Record<string, string>) {
   let cleanBase64 = imageBase64.trim();
   if (cleanBase64.startsWith('data:')) cleanBase64 = cleanBase64.split(',')[1] || cleanBase64;
@@ -168,9 +246,8 @@ async function handleLegacyMode(imageBase64: string, cors: Record<string, string
     const bytes = new Uint8Array(binaryStr.length);
     for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
 
-    const pngBytes = await removeBackgroundViaAPI(bytes);
+    const pngBytes = await removeBackgroundAlgorithmic(bytes);
 
-    // Encode result back to base64
     let resultB64 = '';
     const chunk = 32768;
     for (let i = 0; i < pngBytes.length; i += chunk) {
