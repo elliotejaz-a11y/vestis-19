@@ -66,100 +66,81 @@ serve(async (req) => {
     }
     cleanBase64 = cleanBase64.replace(/\s/g, '');
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+    if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not configured');
 
-    // Use Gemini 2.5 Flash Image to remove background
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Decode base64 to binary for the multipart form upload
+    const binaryStr = atob(cleanBase64);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+    const imageBlob = new Blob([bytes], { type: 'image/png' });
+
+    // Use OpenAI's gpt-image-1 model via the images/edits endpoint
+    const formData = new FormData();
+    formData.append('image', imageBlob, 'clothing.png');
+    formData.append('prompt', 'Of the clothes added please remove the background and make it that only the clothes which seem to have been intentionally added remain. Output a PNG with a fully transparent background.');
+    formData.append('model', 'gpt-image-1');
+    formData.append('size', '1024x1024');
+
+    console.log('Calling OpenAI image edit API...');
+
+    const response = await fetch('https://api.openai.com/v1/images/edits', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
       },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Remove the background from this image completely, leaving ONLY the clothing item/accessory with a fully transparent background. Do not add any background color — the result must have alpha transparency. Keep the subject exactly as it is with no changes to colors, details, or proportions. Output the result as a PNG image with transparent background.',
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/png;base64,${cleanBase64}`,
-                },
-              },
-            ],
-          },
-        ],
-      }),
+      body: formData,
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('Gemini image error:', response.status, errorBody);
-      
+      console.error('OpenAI image edit error:', response.status, errorBody);
+
       if (response.status === 429) {
         return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true, error: 'Rate limited' }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true, error: 'Credits exhausted' }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      
+
       return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const result = await response.json();
-    console.log('Gemini response structure:', JSON.stringify(result).slice(0, 500));
+    console.log('OpenAI response received, data length:', result?.data?.length);
 
-    // Extract image from response - Gemini image model returns inline_data in content parts
-    const content = result?.choices?.[0]?.message?.content;
-    
-    // Check if content is an array of parts (multimodal response)
-    if (Array.isArray(content)) {
-      for (const part of content) {
-        if (part.type === 'image_url' && part.image_url?.url) {
-          let outputBase64 = part.image_url.url;
-          if (outputBase64.startsWith('data:')) {
-            outputBase64 = outputBase64.split(',')[1] || outputBase64;
-          }
-          console.log('Background removed successfully via Gemini');
-          return new Response(JSON.stringify({ imageBase64: outputBase64 }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        // Also check for inline_data format
-        if (part.inline_data?.data) {
-          console.log('Background removed successfully via Gemini (inline_data)');
-          return new Response(JSON.stringify({ imageBase64: part.inline_data.data }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-      }
+    // OpenAI returns data[0].b64_json or data[0].url
+    const imageData = result?.data?.[0];
+    if (imageData?.b64_json) {
+      console.log('Background removed successfully via OpenAI (b64_json)');
+      return new Response(JSON.stringify({ imageBase64: imageData.b64_json }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
-    
-    // If content is a string, check if it contains base64 image data
-    if (typeof content === 'string') {
-      const base64Match = content.match(/data:image\/[^;]+;base64,([A-Za-z0-9+/=]+)/);
-      if (base64Match?.[1]) {
-        console.log('Background removed successfully via Gemini (string extraction)');
-        return new Response(JSON.stringify({ imageBase64: base64Match[1] }), {
+
+    if (imageData?.url) {
+      // Download the image from URL and convert to base64
+      console.log('OpenAI returned URL, downloading...');
+      const imgResp = await fetch(imageData.url);
+      if (imgResp.ok) {
+        const imgBuffer = await imgResp.arrayBuffer();
+        const imgBytes = new Uint8Array(imgBuffer);
+        let b64 = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < imgBytes.length; i += chunkSize) {
+          b64 += String.fromCharCode(...imgBytes.slice(i, i + chunkSize));
+        }
+        const outputBase64 = btoa(b64);
+        console.log('Background removed successfully via OpenAI (url download)');
+        return new Response(JSON.stringify({ imageBase64: outputBase64 }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
     }
 
     // Fallback: return original
-    console.log('Could not extract processed image from Gemini response:', JSON.stringify(result).slice(0, 500));
+    console.log('Could not extract processed image from OpenAI response');
     return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
