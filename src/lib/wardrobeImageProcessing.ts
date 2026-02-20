@@ -6,7 +6,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 const MAX_LONG_EDGE = 2000;
-const REQUEST_TIMEOUT_MS = 25000;
+const REQUEST_TIMEOUT_MS = 60000;
 const MAX_RETRIES = 2;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
