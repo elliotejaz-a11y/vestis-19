@@ -127,22 +127,61 @@ export interface ProcessBackgroundRemovalOptions {
   itemId: string;
   imageUrl: string;
   userId: string;
+  /** When provided, skip fetching image from URL (avoids CORS). Use for initial add flow. */
+  imageBase64ForProcessing?: string;
   onStatusUpdate?: (payload: { imageUrl?: string; imageStatus: "ready" | "failed"; imageError?: string | null }) => void;
 }
 
 /**
+ * Extract storage path from Supabase public URL for download() fallback.
+ * e.g. https://xxx.supabase.co/storage/v1/object/public/clothing-images/userId/file.png -> userId/file.png
+ */
+function getStoragePathFromPublicUrl(publicUrl: string): string | null {
+  try {
+    const match = publicUrl.match(/\/object\/public\/clothing-images\/(.+)$/);
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Run background removal for an existing wardrobe item (original already in storage).
- * 1) Fetch image, hash, check cache (same user + same hash + ready) and reuse if found.
- * 2) Else downscale, call remove-background with retries, upload PNG to storage, update row.
+ * 1) Get image blob: use imageBase64ForProcessing if provided (avoids CORS); else fetch(imageUrl) or storage.download(path).
+ * 2) Hash, check cache (same user + same hash + ready) and reuse if found.
+ * 3) Else downscale, call remove-background with retries, upload PNG to storage, update row.
  * On failure: update row with status failed and error; onStatusUpdate(..., 'failed', error).
  */
 export async function processBackgroundRemoval(options: ProcessBackgroundRemovalOptions): Promise<void> {
-  const { itemId, imageUrl, userId, onStatusUpdate } = options;
+  const { itemId, imageUrl, userId, imageBase64ForProcessing, onStatusUpdate } = options;
 
   try {
-    const resp = await fetch(imageUrl);
-    if (!resp.ok) throw new Error(`Fetch image failed: ${resp.status}`);
-    const blob = await resp.blob();
+    let blob: Blob;
+    if (imageBase64ForProcessing && imageBase64ForProcessing.length > 0) {
+      console.log("[BG removal] Using provided base64 (no fetch)");
+      const byteChars = atob(imageBase64ForProcessing.replace(/\s/g, ""));
+      const byteArr = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+      blob = new Blob([byteArr], { type: "image/png" });
+    } else {
+      let resp: Response | null = null;
+      try {
+        resp = await fetch(imageUrl, { mode: "cors" });
+      } catch (fetchErr) {
+        console.warn("[BG removal] Fetch image failed (likely CORS), trying Supabase storage download:", fetchErr);
+      }
+      if (resp?.ok) {
+        blob = await resp.blob();
+        console.log("[BG removal] Fetched image from URL");
+      } else {
+        const path = getStoragePathFromPublicUrl(imageUrl);
+        if (!path) throw new Error("Could not load image (fetch failed and no storage path)");
+        const { data, error } = await supabase.storage.from("clothing-images").download(path);
+        if (error || !data) throw new Error(error?.message || "Storage download failed");
+        blob = data;
+        console.log("[BG removal] Loaded image via storage.download");
+      }
+    }
 
     const hash = await hashImageBlob(blob);
 
@@ -157,6 +196,7 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
       .maybeSingle();
 
     if (existing?.image_url) {
+      console.log("[BG removal] Reused cached processed image");
       await supabase
         .from("clothing_items")
         .update({
@@ -174,6 +214,7 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
     const pngBlob = await downscaleToPng(blob);
     const base64 = await blobToBase64(pngBlob);
     const { imageBase64: resultBase64, fallback } = await removeBackgroundWithRetry(base64);
+    if (fallback) console.warn("[BG removal] Edge function returned fallback (original image)");
 
     if (fallback) {
       await supabase
@@ -223,10 +264,11 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
       .eq("id", itemId)
       .eq("user_id", userId);
 
+    console.log("[BG removal] Done – processed image saved");
     onStatusUpdate?.({ imageUrl: processedUrl, imageStatus: "ready" });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Background removal failed";
-    console.error("processBackgroundRemoval error:", message);
+    console.error("[BG removal] Error:", message, err);
     await supabase
       .from("clothing_items")
       .update({

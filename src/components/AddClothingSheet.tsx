@@ -15,7 +15,7 @@ import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wa
 const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
 
 interface Props {
-  onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean }) => void;
+  onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
   children: React.ReactNode;
 }
 
@@ -46,6 +46,24 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  };
+
+  const imageUrlToBase64 = async (url: string): Promise<string | undefined> => {
+    if (url.startsWith("data:")) return url.split(",")[1];
+    if (url.startsWith("blob:")) {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.includes(",") ? result.split(",")[1] : "");
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+    return undefined;
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,10 +119,18 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     toast({ title: "Back image added" });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!imageUrl || !name || !category) return;
     const color = joinColors(colors);
     const isFileSourced = imageUrl.startsWith("blob:") || imageUrl.startsWith("data:");
+    let imageBase64ForProcessing: string | undefined;
+    if (isFileSourced) {
+      try {
+        imageBase64ForProcessing = await imageUrlToBase64(imageUrl);
+      } catch (e) {
+        console.warn("Could not get base64 for background removal:", e);
+      }
+    }
     onAdd(
       {
         id: crypto.randomUUID(),
@@ -119,7 +145,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         addedAt: new Date(),
         estimatedPrice,
       },
-      { runBackgroundRemoval: isFileSourced }
+      { runBackgroundRemoval: isFileSourced, imageBase64ForProcessing }
     );
     resetForm();
     setOpen(false);

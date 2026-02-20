@@ -5,6 +5,10 @@ const ALLOWED_ORIGINS = [
   'https://vestis-19.lovable.app',
   'https://id-preview--1830068e-1c44-4713-a94f-43ffd21bb2c7.lovable.app',
   'https://1830068e-1c44-4713-a94f-43ffd21bb2c7.lovableproject.com',
+  'http://localhost:8080',
+  'http://localhost:5173',
+  'http://127.0.0.1:8080',
+  'http://127.0.0.1:5173',
 ];
 
 function getCorsHeaders(req: Request) {

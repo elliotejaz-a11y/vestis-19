@@ -2,10 +2,12 @@ import { useState, useCallback, useEffect } from "react";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 
 export function useWardrobe() {
   const { user, profile } = useAuth();
+  const { toast } = useToast();
   const [items, setItems] = useState<ClothingItem[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +71,7 @@ export function useWardrobe() {
   }, [user]);
 
   const addItem = useCallback(
-    async (item: ClothingItem, options?: { runBackgroundRemoval?: boolean }) => {
+    async (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => {
       if (!user) return;
 
       const runBgRemoval = options?.runBackgroundRemoval === true;
@@ -214,6 +216,7 @@ export function useWardrobe() {
             itemId: data.id,
             imageUrl,
             userId: user.id,
+            imageBase64ForProcessing: options?.imageBase64ForProcessing,
             onStatusUpdate: (payload) => {
               setItems((prev) =>
                 prev.map((i) =>
@@ -227,12 +230,19 @@ export function useWardrobe() {
                     : i
                 )
               );
+              if (payload.imageStatus === "failed") {
+                toast({
+                  title: "Background removal didn’t complete",
+                  description: payload.imageError || "Tap the card to retry.",
+                  variant: "destructive",
+                });
+              }
             },
           });
         }
       }
     },
-    [user]
+    [user, toast]
   );
 
   const retryBackgroundRemoval = useCallback(
@@ -266,10 +276,17 @@ export function useWardrobe() {
                 : i
             )
           );
+          if (payload.imageStatus === "failed") {
+            toast({
+              title: "Background removal didn’t complete",
+              description: payload.imageError || "Try again later.",
+              variant: "destructive",
+            });
+          }
         },
       });
     },
-    [user, items]
+    [user, items, toast]
   );
 
   const updateItem = useCallback(
