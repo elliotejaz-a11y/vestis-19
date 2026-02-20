@@ -24,10 +24,6 @@ export type Database = {
           fabric: string
           id: string
           image_url: string
-          image_original_url: string | null
-          image_status: string
-          image_error: string | null
-          image_hash: string | null
           is_private: boolean
           name: string
           notes: string
@@ -43,10 +39,6 @@ export type Database = {
           fabric?: string
           id?: string
           image_url: string
-          image_original_url?: string | null
-          image_status?: string
-          image_error?: string | null
-          image_hash?: string | null
           is_private?: boolean
           name: string
           notes?: string
@@ -62,10 +54,6 @@ export type Database = {
           fabric?: string
           id?: string
           image_url?: string
-          image_original_url?: string | null
-          image_status?: string
-          image_error?: string | null
-          image_hash?: string | null
           is_private?: boolean
           name?: string
           notes?: string
@@ -568,6 +556,45 @@ export type Database = {
           expires_at?: string
           id?: string
           image_url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      wardrobe_items: {
+        Row: {
+          category: string
+          created_at: string
+          cutout_path: string | null
+          error_message: string | null
+          id: string
+          name: string
+          original_path: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          cutout_path?: string | null
+          error_message?: string | null
+          id?: string
+          name?: string
+          original_path: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          cutout_path?: string | null
+          error_message?: string | null
+          id?: string
+          name?: string
+          original_path?: string
+          status?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
