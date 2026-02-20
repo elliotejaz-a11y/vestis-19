@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
-  onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean }) => void;
+  onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
   onRemove: (id: string) => void;
   onUpdate: (item: ClothingItem) => void;
   onSaveOutfit?: (id: string, saved: boolean) => void;

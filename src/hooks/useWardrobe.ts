@@ -31,9 +31,6 @@ export function useWardrobe() {
         fabric: r.fabric,
         imageUrl: r.image_url,
         backImageUrl: r.back_image_url || undefined,
-        imageOriginalUrl: r.image_original_url || undefined,
-        imageStatus: (r.image_status as ClothingItem["imageStatus"]) || "ready",
-        imageError: r.image_error ?? undefined,
         tags: r.tags || [],
         notes: r.notes || "",
         addedAt: new Date(r.created_at),
@@ -185,9 +182,7 @@ export function useWardrobe() {
           tags: item.tags,
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
-          image_original_url: runBgRemoval ? imageUrl : null,
-          image_status: runBgRemoval ? "processing" : "ready",
-        } as any)
+        })
         .select()
         .single();
 
@@ -199,15 +194,12 @@ export function useWardrobe() {
           color: data.color,
           fabric: data.fabric,
           imageUrl: data.image_url,
-          backImageUrl: (data as any).back_image_url || undefined,
-          imageOriginalUrl: (data as any).image_original_url || undefined,
-          imageStatus: (data as any).image_status || "ready",
-          imageError: (data as any).image_error ?? undefined,
+          backImageUrl: data.back_image_url || undefined,
           tags: data.tags || [],
-          notes: (data as any).notes || "",
+          notes: data.notes || "",
           addedAt: new Date(data.created_at),
-          estimatedPrice: (data as any).estimated_price ? Number((data as any).estimated_price) : undefined,
-          isPrivate: (data as any).is_private ?? false,
+          estimatedPrice: data.estimated_price ? Number(data.estimated_price) : undefined,
+          isPrivate: data.is_private ?? false,
         };
         setItems((prev) => [newItem, ...prev]);
 
