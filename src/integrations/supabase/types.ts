@@ -24,6 +24,10 @@ export type Database = {
           fabric: string
           id: string
           image_url: string
+          image_original_url: string | null
+          image_status: string
+          image_error: string | null
+          image_hash: string | null
           is_private: boolean
           name: string
           notes: string
@@ -39,6 +43,10 @@ export type Database = {
           fabric?: string
           id?: string
           image_url: string
+          image_original_url?: string | null
+          image_status?: string
+          image_error?: string | null
+          image_hash?: string | null
           is_private?: boolean
           name: string
           notes?: string
@@ -54,6 +62,10 @@ export type Database = {
           fabric?: string
           id?: string
           image_url?: string
+          image_original_url?: string | null
+          image_status?: string
+          image_error?: string | null
+          image_hash?: string | null
           is_private?: boolean
           name?: string
           notes?: string

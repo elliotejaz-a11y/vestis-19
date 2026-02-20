@@ -11,14 +11,15 @@ import { useNavigate } from "react-router-dom";
 interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
-  onAdd: (item: ClothingItem) => void;
+  onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean }) => void;
   onRemove: (id: string) => void;
   onUpdate: (item: ClothingItem) => void;
   onSaveOutfit?: (id: string, saved: boolean) => void;
   onDeleteOutfit?: (id: string) => void;
+  onRetryBackgroundRemoval?: (id: string) => void;
 }
 
-export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit }: Props) {
+export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
@@ -128,7 +129,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
           ) : (
             <div className="px-4 grid grid-cols-2 gap-3">
               {filtered.map((item) => (
-                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} />
+                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
               ))}
             </div>
           )}

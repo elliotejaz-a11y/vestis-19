@@ -1,3 +1,6 @@
+/** Image processing state for wardrobe item (background removal). */
+export type ClothingImageStatus = "processing" | "ready" | "failed";
+
 export interface ClothingItem {
   id: string;
   name: string;
@@ -6,6 +9,12 @@ export interface ClothingItem {
   fabric: string;
   imageUrl: string;
   backImageUrl?: string;
+  /** Original image URL before background removal (for retry/fallback). */
+  imageOriginalUrl?: string | null;
+  /** processing | ready | failed */
+  imageStatus?: ClothingImageStatus;
+  /** Error message when imageStatus === "failed". */
+  imageError?: string | null;
   tags: string[];
   notes: string;
   addedAt: Date;

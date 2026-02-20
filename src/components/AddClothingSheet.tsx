@@ -5,16 +5,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Sparkles, Loader2, ImageOff, DollarSign } from "lucide-react";
+import { Upload, Sparkles, Loader2, DollarSign } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ColorPicker, joinColors } from "@/components/ColorPicker";
+import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wardrobeImageProcessing";
 
 const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
 
 interface Props {
-  onAdd: (item: ClothingItem) => void;
+  onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean }) => void;
   children: React.ReactNode;
 }
 
@@ -30,7 +31,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [notes, setNotes] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [analyzing, setAnalyzing] = useState(false);
-  const [removingBg, setRemovingBg] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
@@ -48,37 +48,24 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     });
   };
 
-  const removeBackground = async (base64: string): Promise<string> => {
-    setRemovingBg(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("remove-background", {
-        body: { imageBase64: base64 },
-      });
-      if (error) throw error;
-      if (data?.imageBase64 && !data.fallback) {
-        return data.imageBase64;
-      }
-    } catch (err) {
-      console.error("Background removal failed:", err);
-    } finally {
-      setRemovingBg(false);
-    }
-    return base64;
-  };
-
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!isAllowedWardrobeImageType(file.type)) {
+      toast({ title: "Invalid file type", description: "Use JPG, PNG or WebP.", variant: "destructive" });
+      return;
+    }
+    if (!isAllowedWardrobeImageSize(file.size)) {
+      toast({ title: "File too large", description: "Max size 10MB.", variant: "destructive" });
+      return;
+    }
 
     setImageUrl(URL.createObjectURL(file));
     setAnalyzing(true);
     try {
       const base64 = await fileToBase64(file);
-      const cleanBase64 = await removeBackground(base64);
-      setImageUrl(`data:image/png;base64,${cleanBase64}`);
-
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
-        body: { imageBase64: cleanBase64 },
+        body: { imageBase64: base64 },
       });
 
       if (error) throw error;
@@ -110,32 +97,30 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const handleBackFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    try {
-      const base64 = await fileToBase64(file);
-      const cleanBase64 = await removeBackground(base64);
-      setBackImageUrl(`data:image/png;base64,${cleanBase64}`);
-      toast({ title: "Back image added ✨" });
-    } catch {
-      setBackImageUrl(URL.createObjectURL(file));
-    }
+    setBackImageUrl(URL.createObjectURL(file));
+    toast({ title: "Back image added" });
   };
 
   const handleSave = () => {
     if (!imageUrl || !name || !category) return;
     const color = joinColors(colors);
-    onAdd({
-      id: crypto.randomUUID(),
-      name,
-      category,
-      color,
-      fabric,
-      imageUrl,
-      backImageUrl: backImageUrl || undefined,
-      tags: [...tags, ...colors.map(c => c.toLowerCase()), fabric.toLowerCase(), category].filter(Boolean),
-      notes,
-      addedAt: new Date(),
-      estimatedPrice,
-    });
+    const isFileSourced = imageUrl.startsWith("blob:") || imageUrl.startsWith("data:");
+    onAdd(
+      {
+        id: crypto.randomUUID(),
+        name,
+        category,
+        color,
+        fabric,
+        imageUrl,
+        backImageUrl: backImageUrl || undefined,
+        tags: [...tags, ...colors.map(c => c.toLowerCase()), fabric.toLowerCase(), category].filter(Boolean),
+        notes,
+        addedAt: new Date(),
+        estimatedPrice,
+      },
+      { runBackgroundRemoval: isFileSourced }
+    );
     resetForm();
     setOpen(false);
   };
@@ -163,26 +148,20 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 <Upload className="w-8 h-8" />
                 <span className="text-xs font-medium">Upload Photo</span>
               </button>
-              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
             </div>
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
               <img src={imageUrl} alt="Preview" className="w-full h-48 object-contain bg-white" />
-              {(analyzing || removingBg) && (
+              {analyzing && (
                 <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <Loader2 className="w-8 h-8 animate-spin text-accent" />
                   <div className="text-center">
                     <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground justify-center">
-                      {removingBg ? (
-                        <><ImageOff className="w-4 h-4 text-accent" /> Removing Background</>
-                      ) : (
-                        <><Sparkles className="w-4 h-4 text-accent" /> AI Analyzing Clothing</>
-                      )}
+                      <Sparkles className="w-4 h-4 text-accent" /> AI Analyzing Clothing
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      {removingBg
-                        ? "Creating a clean, uniform look for your wardrobe..."
-                        : "Detecting category, color, fabric & estimating value..."}
+                      Detecting category, color, fabric & estimating value…
                     </p>
                   </div>
                 </div>
@@ -293,7 +272,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
           <Button
             onClick={handleSave}
-            disabled={!imageUrl || !name || !category || analyzing || removingBg}
+            disabled={!imageUrl || !name || !category || analyzing}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors"
           >
             <Sparkles className="w-4 h-4 mr-2" /> Save to Wardrobe

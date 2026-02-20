@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 
 export function useWardrobe() {
   const { user, profile } = useAuth();
@@ -28,6 +29,9 @@ export function useWardrobe() {
         fabric: r.fabric,
         imageUrl: r.image_url,
         backImageUrl: r.back_image_url || undefined,
+        imageOriginalUrl: r.image_original_url || undefined,
+        imageStatus: (r.image_status as ClothingItem["imageStatus"]) || "ready",
+        imageError: r.image_error ?? undefined,
         tags: r.tags || [],
         notes: r.notes || "",
         addedAt: new Date(r.created_at),
@@ -65,9 +69,10 @@ export function useWardrobe() {
   }, [user]);
 
   const addItem = useCallback(
-    async (item: ClothingItem) => {
+    async (item: ClothingItem, options?: { runBackgroundRemoval?: boolean }) => {
       if (!user) return;
 
+      const runBgRemoval = options?.runBackgroundRemoval === true;
       let imageUrl = item.imageUrl;
       let backImageUrl = item.backImageUrl || "";
       if (imageUrl.startsWith("blob:")) {
@@ -178,6 +183,8 @@ export function useWardrobe() {
           tags: item.tags,
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
+          image_original_url: runBgRemoval ? imageUrl : null,
+          image_status: runBgRemoval ? "processing" : "ready",
         } as any)
         .select()
         .single();
@@ -191,15 +198,78 @@ export function useWardrobe() {
           fabric: data.fabric,
           imageUrl: data.image_url,
           backImageUrl: (data as any).back_image_url || undefined,
+          imageOriginalUrl: (data as any).image_original_url || undefined,
+          imageStatus: (data as any).image_status || "ready",
+          imageError: (data as any).image_error ?? undefined,
           tags: data.tags || [],
           notes: (data as any).notes || "",
           addedAt: new Date(data.created_at),
           estimatedPrice: (data as any).estimated_price ? Number((data as any).estimated_price) : undefined,
+          isPrivate: (data as any).is_private ?? false,
         };
         setItems((prev) => [newItem, ...prev]);
+
+        if (runBgRemoval && data.id) {
+          processBackgroundRemoval({
+            itemId: data.id,
+            imageUrl,
+            userId: user.id,
+            onStatusUpdate: (payload) => {
+              setItems((prev) =>
+                prev.map((i) =>
+                  i.id === data.id
+                    ? {
+                        ...i,
+                        imageUrl: payload.imageUrl ?? i.imageUrl,
+                        imageStatus: payload.imageStatus,
+                        imageError: payload.imageError ?? i.imageError,
+                      }
+                    : i
+                )
+              );
+            },
+          });
+        }
       }
     },
     [user]
+  );
+
+  const retryBackgroundRemoval = useCallback(
+    async (itemId: string) => {
+      if (!user) return;
+      const item = items.find((i) => i.id === itemId);
+      if (!item) return;
+      const sourceUrl = item.imageOriginalUrl || item.imageUrl;
+      await supabase
+        .from("clothing_items")
+        .update({ image_status: "processing", image_error: null } as any)
+        .eq("id", itemId)
+        .eq("user_id", user.id);
+      setItems((prev) =>
+        prev.map((i) => (i.id === itemId ? { ...i, imageStatus: "processing" as const, imageError: undefined } : i))
+      );
+      processBackgroundRemoval({
+        itemId,
+        imageUrl: sourceUrl,
+        userId: user.id,
+        onStatusUpdate: (payload) => {
+          setItems((prev) =>
+            prev.map((i) =>
+              i.id === itemId
+                ? {
+                    ...i,
+                    imageUrl: payload.imageUrl ?? i.imageUrl,
+                    imageStatus: payload.imageStatus,
+                    imageError: payload.imageError ?? i.imageError,
+                  }
+                : i
+            )
+          );
+        },
+      });
+    },
+    [user, items]
   );
 
   const updateItem = useCallback(
@@ -327,5 +397,5 @@ export function useWardrobe() {
     [user, items, profile]
   );
 
-  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, loading };
+  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, loading };
 }
