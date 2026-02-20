@@ -191,15 +191,8 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
     if (fallback) console.warn("[BG removal] Edge function returned fallback (original image)");
 
     if (fallback) {
-      await supabase
-        .from("clothing_items")
-        .update({
-          image_status: "failed",
-          image_error: "Background removal unavailable; using original.",
-        } as any)
-        .eq("id", itemId)
-        .eq("user_id", userId);
-      onStatusUpdate?.({ imageStatus: "failed", imageError: "Background removal unavailable" });
+      console.warn("[BG removal] Fallback – using original image as-is");
+      onStatusUpdate?.({ imageStatus: "ready" });
       return;
     }
 
@@ -212,14 +205,7 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
       .from("clothing-images")
       .upload(path, resultBlob, { contentType: "image/png", upsert: false });
     if (uploadError) {
-      await supabase
-        .from("clothing_items")
-        .update({
-          image_status: "failed",
-          image_error: "Upload of processed image failed",
-        } as any)
-        .eq("id", itemId)
-        .eq("user_id", userId);
+      console.error("[BG removal] Upload failed:", uploadError.message);
       onStatusUpdate?.({ imageStatus: "failed", imageError: "Upload failed" });
       return;
     }
@@ -229,12 +215,7 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
 
     await supabase
       .from("clothing_items")
-      .update({
-        image_url: processedUrl,
-        image_status: "ready",
-        image_error: null,
-        
-      } as any)
+      .update({ image_url: processedUrl })
       .eq("id", itemId)
       .eq("user_id", userId);
 
@@ -243,14 +224,6 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
   } catch (err) {
     const message = err instanceof Error ? err.message : "Background removal failed";
     console.error("[BG removal] Error:", message, err);
-    await supabase
-      .from("clothing_items")
-      .update({
-        image_status: "failed",
-        image_error: message,
-      } as any)
-      .eq("id", itemId)
-      .eq("user_id", userId);
     onStatusUpdate?.({ imageStatus: "failed", imageError: message });
   }
 }
