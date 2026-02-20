@@ -183,33 +183,7 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
       }
     }
 
-    const hash = await hashImageBlob(blob);
-
-    const { data: existing } = await supabase
-      .from("clothing_items")
-      .select("id, image_url")
-      .eq("user_id", userId)
-      .eq("image_hash", hash)
-      .eq("image_status", "ready")
-      .neq("id", itemId)
-      .limit(1)
-      .maybeSingle();
-
-    if (existing?.image_url) {
-      console.log("[BG removal] Reused cached processed image");
-      await supabase
-        .from("clothing_items")
-        .update({
-          image_url: existing.image_url,
-          image_status: "ready",
-          image_error: null,
-          image_hash: hash,
-        } as any)
-        .eq("id", itemId)
-        .eq("user_id", userId);
-      onStatusUpdate?.({ imageUrl: existing.image_url, imageStatus: "ready" });
-      return;
-    }
+    // Skip hash-cache lookup (image_hash column not in schema)
 
     const pngBlob = await downscaleToPng(blob);
     const base64 = await blobToBase64(pngBlob);
@@ -259,7 +233,7 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
         image_url: processedUrl,
         image_status: "ready",
         image_error: null,
-        image_hash: hash,
+        
       } as any)
       .eq("id", itemId)
       .eq("user_id", userId);
