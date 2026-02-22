@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wardrobeImageProcessing";
+import { processClothingImage } from "@/lib/image-processing";
 
 const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
 
@@ -78,10 +79,13 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       return;
     }
 
-    setImageUrl(URL.createObjectURL(file));
     setAnalyzing(true);
     try {
-      const base64 = await fileToBase64(file);
+      // Remove background first so the AI sees a cleaner image
+      const cleanBlob = await processClothingImage(file);
+      setImageUrl(URL.createObjectURL(cleanBlob));
+
+      const base64 = await fileToBase64(new File([cleanBlob], file.name, { type: "image/png" }));
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
         body: { imageBase64: base64 },
       });
