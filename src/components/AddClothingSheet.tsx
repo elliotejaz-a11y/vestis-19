@@ -192,7 +192,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
             </div>
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
-              <img src={imageUrl} alt="Preview" className="w-full h-48 object-contain bg-white" />
+              <img src={imageUrl} alt="Preview" className={`w-full h-48 object-contain bg-white ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`} />
               {removingBg && (
                 <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <Loader2 className="w-8 h-8 animate-spin text-accent" />
