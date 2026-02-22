@@ -32,6 +32,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [notes, setNotes] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [analyzing, setAnalyzing] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
@@ -79,12 +80,21 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       return;
     }
 
+    // Show original preview immediately
+    setImageUrl(URL.createObjectURL(file));
+    setRemovingBg(true);
+    let cleanBlob: Blob;
+    try {
+      cleanBlob = await processClothingImage(file);
+      setImageUrl(URL.createObjectURL(cleanBlob));
+    } catch {
+      cleanBlob = file;
+    } finally {
+      setRemovingBg(false);
+    }
+
     setAnalyzing(true);
     try {
-      // Remove background first so the AI sees a cleaner image
-      const cleanBlob = await processClothingImage(file);
-      setImageUrl(URL.createObjectURL(cleanBlob));
-
       const base64 = await fileToBase64(new File([cleanBlob], file.name, { type: "image/png" }));
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
         body: { imageBase64: base64 },
@@ -183,7 +193,16 @@ export function AddClothingSheet({ onAdd, children }: Props) {
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
               <img src={imageUrl} alt="Preview" className="w-full h-48 object-contain bg-white" />
-              {analyzing && (
+              {removingBg && (
+                <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground">Cleaning up image…</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Removing background</p>
+                  </div>
+                </div>
+              )}
+              {!removingBg && analyzing && (
                 <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <Loader2 className="w-8 h-8 animate-spin text-accent" />
                   <div className="text-center">
