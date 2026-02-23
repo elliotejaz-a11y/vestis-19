@@ -223,25 +223,33 @@ export function AddClothingSheet({ onAdd, children }: Props) {
             </div>
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
-              <img src={imageUrl} alt="Preview" className={`w-full h-48 object-contain bg-white ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`} />
+              <img
+                src={imageUrl}
+                alt="Preview"
+                className={`w-full h-48 object-contain bg-white transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
+              />
               {removingBg && (
-                <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+                    <Sparkles className="w-5 h-5 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
                   <div className="text-center">
-                    <p className="text-sm font-semibold text-foreground">Cleaning up image…</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">Removing background</p>
+                    <p className="text-sm font-semibold text-white">Removing Background</p>
+                    <p className="text-[11px] text-white/60 mt-1">This may take a moment…</p>
                   </div>
                 </div>
               )}
               {!removingBg && analyzing && (
-                <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+                    <Sparkles className="w-5 h-5 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
                   <div className="text-center">
-                    <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground justify-center">
-                      <Sparkles className="w-4 h-4 text-accent" /> AI Analyzing Clothing
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-1">
-                      Detecting category, color, fabric & estimating value…
+                    <p className="text-sm font-semibold text-white">AI Analyzing Clothing</p>
+                    <p className="text-[11px] text-white/60 mt-1">
+                      Detecting category, color, fabric & value…
                     </p>
                   </div>
                 </div>
