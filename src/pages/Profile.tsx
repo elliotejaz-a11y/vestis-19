@@ -404,7 +404,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       {user && (
         <FollowListSheet
           open={followSheet.open}
-          onOpenChange={(o) => setFollowSheet((prev) => ({ ...prev, open: o }))}
+          onOpenChange={(o) => {
+            setFollowSheet((prev) => ({ ...prev, open: o }));
+            if (!o) fetchFollowCounts();
+          }}
           userId={user.id}
           type={followSheet.type}
         />
