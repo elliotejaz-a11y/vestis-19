@@ -316,30 +316,3 @@ export default function UserProfilePage() {
   );
 }
 
-// Posts grid sub-component
-function PostsGrid({ userId, profileData }: { userId: string; profileData: any }) {
-  const [posts, setPosts] = useState<any[]>([]);
-
-  useEffect(() => {
-    supabase
-      .from("social_posts")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setPosts(data || []));
-  }, [userId]);
-
-  if (posts.length === 0) {
-    return <p className="text-center text-xs text-muted-foreground py-12">No posts yet</p>;
-  }
-
-  return (
-    <div className="grid grid-cols-3 gap-0.5">
-      {posts.map((post) => (
-        <div key={post.id} className="aspect-square">
-          <img src={post.image_urls[0]} alt="" className="w-full h-full object-cover rounded-sm" />
-        </div>
-      ))}
-    </div>
-  );
-}

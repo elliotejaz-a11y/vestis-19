@@ -779,7 +779,29 @@ function ChatView({
         )}
       </div>
 
+      {showFitPics && (
+        <div className="px-4 py-2 border-t border-border/40 bg-card max-h-[200px] overflow-y-auto">
+          <p className="text-xs font-medium text-foreground mb-2">Send a Fit Pic</p>
+          {loadingPics ? (
+            <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-accent" /></div>
+          ) : fitPics.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">No fit pics yet</p>
+          ) : (
+            <div className="grid grid-cols-4 gap-1">
+              {fitPics.map((pic: any) => (
+                <button key={pic.id} onClick={() => sendFitPic(pic.image_url)} className="aspect-square rounded-lg overflow-hidden">
+                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="px-4 py-3 border-t border-border/40 flex gap-2">
+        <Button variant="ghost" size="icon" className="rounded-xl shrink-0 h-10 w-10" onClick={() => { setShowFitPics(!showFitPics); if (!showFitPics) loadFitPics(); }}>
+          <Image className="w-4 h-4 text-muted-foreground" />
+        </Button>
         <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()} placeholder="Type a message..." className="rounded-xl bg-card text-sm" maxLength={2000} disabled={sending} />
         <Button onClick={handleSend} disabled={sending || !input.trim()} size="icon" className="rounded-xl bg-accent text-accent-foreground shrink-0">
           {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
