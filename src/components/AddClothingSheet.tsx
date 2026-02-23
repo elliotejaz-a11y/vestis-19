@@ -50,6 +50,31 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     });
   };
 
+  const resizeImageForAnalysis = (blob: Blob, maxDim: number): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width <= maxDim && height <= maxDim) {
+          resolve(blob);
+          return;
+        }
+        const scale = maxDim / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d")!;
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Canvas toBlob failed"))), "image/jpeg", 0.85);
+      };
+      img.onerror = reject;
+      img.src = URL.createObjectURL(blob);
+    });
+  };
+
+
   const imageUrlToBase64 = async (url: string): Promise<string | undefined> => {
     if (url.startsWith("data:")) return url.split(",")[1];
     if (url.startsWith("blob:")) {
@@ -95,7 +120,9 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
     setAnalyzing(true);
     try {
-      const base64 = await fileToBase64(new File([cleanBlob], file.name, { type: "image/png" }));
+      // Resize image to max 1024px before sending to AI to stay under 10MB limit
+      const resizedBlob = await resizeImageForAnalysis(cleanBlob, 1024);
+      const base64 = await fileToBase64(new File([resizedBlob], file.name, { type: "image/jpeg" }));
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
         body: { imageBase64: base64 },
       });
