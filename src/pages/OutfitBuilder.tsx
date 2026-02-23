@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 
 const CATEGORY_ORDER = ["accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
 
@@ -198,8 +199,9 @@ export default function OutfitBuilder({ items, onSaveOutfit }: Props) {
     pinchRef.current = null;
   }, []);
 
-  // Save the current outfit to the database
-  const handleSaveOutfit = async () => {
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+
+  const handleSaveOutfit = async (name?: string, description?: string) => {
     if (!user || selectedItems.length < 2) return;
     setSaving(true);
     try {
@@ -210,7 +212,9 @@ export default function OutfitBuilder({ items, onSaveOutfit }: Props) {
           occasion: "Custom outfit",
           reasoning: "Created in Outfit Builder",
           saved: true,
-        })
+          name: name || "",
+          description: description || "",
+        } as any)
         .select()
         .single();
 
@@ -225,7 +229,7 @@ export default function OutfitBuilder({ items, onSaveOutfit }: Props) {
 
       toast({ title: "Outfit saved! ✨", description: "Your outfit has been saved to your wardrobe." });
       
-      if (onSaveOutfit) onSaveOutfit(outfitRow.id, true);
+      if (onSaveOutfit) onSaveOutfit(outfitRow.id, true, name, description);
     } catch (err) {
       console.error("Save outfit failed:", err);
       toast({ title: "Failed to save outfit", variant: "destructive" });
@@ -314,7 +318,7 @@ export default function OutfitBuilder({ items, onSaveOutfit }: Props) {
         </Button>
         {selectedItems.length >= 2 && (
           <Button
-            onClick={handleSaveOutfit}
+            onClick={() => setSaveDialogOpen(true)}
             disabled={saving}
             variant="outline"
             className="w-full h-11 rounded-2xl text-sm"
@@ -373,6 +377,15 @@ export default function OutfitBuilder({ items, onSaveOutfit }: Props) {
           </div>
         )}
       </div>
+      <SaveOutfitDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+        onConfirm={(name, description) => {
+          setSaveDialogOpen(false);
+          handleSaveOutfit(name || undefined, description || undefined);
+        }}
+        defaultName="Custom outfit"
+      />
     </div>
   );
 }
