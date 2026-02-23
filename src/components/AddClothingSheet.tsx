@@ -55,19 +55,23 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       const img = new Image();
       img.onload = () => {
         let { width, height } = img;
-        if (width <= maxDim && height <= maxDim) {
-          resolve(blob);
-          return;
-        }
-        const scale = maxDim / Math.max(width, height);
+        const scale = Math.min(1, maxDim / Math.max(width, height));
         width = Math.round(width * scale);
         height = Math.round(height * scale);
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d")!;
+        // White background to flatten transparency for JPEG
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
-        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Canvas toBlob failed"))), "image/jpeg", 0.85);
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error("Canvas toBlob failed"))),
+          "image/jpeg",
+          0.8
+        );
+        URL.revokeObjectURL(img.src);
       };
       img.onerror = reject;
       img.src = URL.createObjectURL(blob);

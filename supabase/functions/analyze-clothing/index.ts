@@ -59,7 +59,7 @@ serve(async (req) => {
               },
               {
                 type: 'image_url',
-                image_url: { url: `data:image/png;base64,${imageBase64}` },
+                image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
               },
             ],
           },
