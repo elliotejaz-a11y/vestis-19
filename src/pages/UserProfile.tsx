@@ -276,24 +276,13 @@ export default function UserProfilePage() {
             </div>
           )}
 
-          {/* Tabs: Fit Pics / Posts */}
-          <div className="flex rounded-xl bg-muted/60 overflow-hidden">
-            <button
-              onClick={() => setActiveTab("fitpics")}
-              className={`flex-1 py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${activeTab === "fitpics" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
-            >
-              <Camera className="w-3.5 h-3.5" /> Fit Pics
-            </button>
-            <button
-              onClick={() => setActiveTab("posts")}
-              className={`flex-1 py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${activeTab === "posts" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
-            >
-              <Grid3X3 className="w-3.5 h-3.5" /> Posts
-            </button>
-          </div>
-
-          {activeTab === "fitpics" ? (
-            fitPics.length === 0 ? (
+          {/* Fit Pics */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Camera className="w-4 h-4 text-accent" />
+              <p className="text-sm font-semibold text-foreground">Fit Pics</p>
+            </div>
+            {fitPics.length === 0 ? (
               <p className="text-center text-xs text-muted-foreground py-12">No fit pics yet</p>
             ) : (
               <div className="grid grid-cols-3 gap-0.5">
@@ -303,10 +292,8 @@ export default function UserProfilePage() {
                   </div>
                 ))}
               </div>
-            )
-          ) : (
-            <PostsGrid userId={userId!} profileData={profile} />
-          )}
+            )}
+          </div>
         </div>
       )}
       {userId && (
