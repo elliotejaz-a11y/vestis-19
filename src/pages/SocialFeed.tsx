@@ -28,12 +28,13 @@ export default function SocialFeed() {
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
-    if (query.length < 2) { setSearchResults([]); return; }
+    if (query.trim().length < 3) { setSearchResults([]); return; }
     setSearching(true);
+    const q = query.trim();
     const { data } = await supabase
       .from("profiles")
       .select("id, display_name, username, avatar_url")
-      .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+      .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
       .limit(10);
     setSearchResults(data || []);
     setSearching(false);

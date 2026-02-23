@@ -81,7 +81,7 @@ export default function Friends() {
     followingIds.includes(userId) && followerIds.includes(userId);
 
   const handleSearch = async () => {
-    if (!searchQuery.trim() || !user) return;
+    if (!searchQuery.trim() || searchQuery.trim().length < 3 || !user) return;
     setSearching(true);
     const q = searchQuery.trim().toLowerCase();
 
@@ -90,7 +90,7 @@ export default function Friends() {
       .select("id, display_name, username, avatar_url, is_public")
       .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
       .neq("id", user.id)
-      .limit(20);
+      .limit(10);
 
     setSearchResults((data || []) as FriendProfile[]);
     setSearching(false);
