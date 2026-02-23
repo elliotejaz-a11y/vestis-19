@@ -145,14 +145,18 @@ export function CalendarPage({ outfits }: Props) {
                 className={cn(
                   "aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-medium transition-all relative",
                   isSelected ? "bg-accent text-accent-foreground" :
+                  hasWorn ? "bg-green-500/20 text-green-700 dark:text-green-400 ring-1 ring-green-500/30" :
                   isToday(day) ? "bg-accent/20 text-foreground" :
                   isPast ? "text-muted-foreground/50" : "text-foreground hover:bg-muted"
                 )}
               >
                 {day.getDate()}
                 <div className="flex gap-0.5 absolute bottom-1">
-                  {hasPlanned && (
-                    <div className={cn("w-1.5 h-1.5 rounded-full", hasWorn ? "bg-accent/70" : "bg-accent")} />
+                  {hasPlanned && !hasWorn && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                  )}
+                  {hasWorn && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
                   )}
                   {hasFitPic && (
                     <div className="w-1.5 h-1.5 rounded-full bg-primary" />
