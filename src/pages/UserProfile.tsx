@@ -41,9 +41,11 @@ export default function UserProfilePage() {
   const [categoryBreakdown, setCategoryBreakdown] = useState<{ label: string; icon: string; count: number }[]>([]);
   const [colorCount, setColorCount] = useState(0);
   const [fitPics, setFitPics] = useState<FitPic[]>([]);
-  const [activeTab, setActiveTab] = useState<"posts" | "fitpics">("fitpics");
   const [followListType, setFollowListType] = useState<"followers" | "following" | null>(null);
   const [showWardrobe, setShowWardrobe] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
+  const [showColors, setShowColors] = useState(false);
+  const [userColors, setUserColors] = useState<[string, number][]>([]);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
