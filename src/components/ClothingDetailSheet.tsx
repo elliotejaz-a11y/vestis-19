@@ -72,7 +72,7 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
 
           <div className="mt-4 space-y-4">
             {/* Image with front/back toggle */}
-            <div className="relative rounded-2xl overflow-hidden bg-white">
+            <div className="relative rounded-2xl overflow-hidden bg-white dark:bg-neutral-800">
               <img
                 src={showBack && item.backImageUrl ? item.backImageUrl : item.imageUrl}
                 alt={item.name}

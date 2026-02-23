@@ -259,7 +259,7 @@ export default function OutfitBuilder({ items, onSaveOutfit, onOutfitCreated }: 
 
       {sortedForRender.length > 0 && (
         <div className="px-5 pb-4">
-          <div className="rounded-2xl bg-white border border-border/40 p-4">
+          <div className="rounded-2xl bg-white dark:bg-neutral-800 border border-border/40 p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-foreground">Your Outfit ({sortedForRender.length} pieces)</p>
               <div className="flex items-center gap-2">
@@ -371,7 +371,7 @@ export default function OutfitBuilder({ items, onSaveOutfit, onOutfitCreated }: 
                 isSelected ? "border-accent ring-2 ring-accent/30" : "border-border/40"
               )}
             >
-              <div className="aspect-square bg-white">
+              <div className="aspect-square bg-white dark:bg-neutral-800">
                 <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
               </div>
               <p className="text-[9px] text-muted-foreground p-1.5 truncate text-center">{item.name}</p>

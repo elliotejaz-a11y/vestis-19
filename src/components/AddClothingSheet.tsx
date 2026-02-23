@@ -226,7 +226,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               <img
                 src={imageUrl}
                 alt="Preview"
-                className={`w-full h-48 object-contain bg-white transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
+                className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
               />
               {removingBg && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
@@ -270,7 +270,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                   <span className="text-[10px]">Add back image</span>
                 </button>
               ) : (
-                <div className="relative rounded-xl overflow-hidden bg-white h-24">
+                <div className="relative rounded-xl overflow-hidden bg-white dark:bg-neutral-800 h-24">
                   <img src={backImageUrl} alt="Back" className="w-full h-full object-contain" />
                   <button onClick={() => setBackImageUrl("")} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center text-foreground text-xs">✕</button>
                 </div>

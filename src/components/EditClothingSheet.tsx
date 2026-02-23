@@ -61,7 +61,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
         <div className="mt-6 space-y-5">
           {item && (
             <div className="rounded-2xl overflow-hidden bg-muted">
-              <img src={item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white" />
+              <img src={item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white dark:bg-neutral-800" />
             </div>
           )}
 
