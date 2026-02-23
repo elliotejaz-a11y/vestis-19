@@ -688,8 +688,31 @@ function ChatView({
   const navigate = useNavigate();
   const { messages, loading, sending, sendMessage } = useChatMessages(friendId);
   const [input, setInput] = useState("");
+  const [showFitPics, setShowFitPics] = useState(false);
+  const [fitPics, setFitPics] = useState<any[]>([]);
+  const [loadingPics, setLoadingPics] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const loadFitPics = async () => {
+    if (!user) return;
+    setLoadingPics(true);
+    const { data } = await supabase
+      .from("fit_pics")
+      .select("id, image_url, description, pic_date")
+      .eq("user_id", user.id)
+      .order("pic_date", { ascending: false });
+    setFitPics(data || []);
+    setLoadingPics(false);
+  };
+
+  const sendFitPic = async (imageUrl: string) => {
+    const { error } = await sendMessage(`[IMG]${imageUrl}[/IMG]`);
+    if (error) {
+      toast({ title: "Failed to send", description: error, variant: "destructive" });
+    }
+    setShowFitPics(false);
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
