@@ -328,9 +328,11 @@ export function useWardrobe() {
   const deleteOutfit = useCallback(
     async (id: string) => {
       if (!user) return;
-      await supabase.from("outfit_items").delete().match({ outfit_id: id });
-      await supabase.from("outfits").delete().eq("id", id).eq("user_id", user.id);
+      // Optimistic: remove from UI immediately
       setOutfits((prev) => prev.filter((o) => o.id !== id));
+      // Then delete from DB in background
+      supabase.from("outfit_items").delete().match({ outfit_id: id })
+        .then(() => supabase.from("outfits").delete().eq("id", id).eq("user_id", user.id));
     },
     [user]
   );
