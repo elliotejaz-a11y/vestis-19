@@ -133,7 +133,23 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   }
 
   return (
-    <div className="min-h-screen pb-24">
+    <div
+      ref={scrollRef}
+      className="min-h-screen pb-24 overflow-auto"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Pull to refresh indicator */}
+      <div
+        className="flex items-center justify-center overflow-hidden transition-all"
+        style={{ height: refreshing ? 48 : pullDistance, opacity: refreshing || pullDistance > 10 ? 1 : 0 }}
+      >
+        <RotateCcw className={`w-5 h-5 text-accent ${refreshing ? "animate-spin" : ""}`} />
+        <span className="text-xs text-muted-foreground ml-2">
+          {refreshing ? "Refreshing…" : pullDistance > 50 ? "Release to refresh" : "Pull to refresh"}
+        </span>
+      </div>
       <header className="px-5 pt-12 pb-6">
         <div className="flex flex-col items-center gap-3">
           <div className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
