@@ -123,7 +123,7 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
                 </Button>
               )}
               {onDelete && (
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onDelete(outfit.id)}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 active:scale-90 transition-transform" onClick={() => onDelete(outfit.id)}>
                   <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
               )}
