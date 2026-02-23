@@ -21,6 +21,10 @@ import Chat from "./pages/Chat";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+import Terms from "./pages/policies/Terms";
+import Privacy from "./pages/policies/Privacy";
+import Community from "./pages/policies/Community";
+import Cookies from "./pages/policies/Cookies";
 import { AppTutorial } from "@/components/AppTutorial";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect } from "react";
@@ -104,6 +108,10 @@ function AuthenticatedApp() {
         <Route path="/social" element={<SocialFeed />} />
         <Route path="/user/:userId" element={<UserProfilePage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
+        <Route path="/policies/terms" element={<Terms />} />
+        <Route path="/policies/privacy" element={<Privacy />} />
+        <Route path="/policies/community" element={<Community />} />
+        <Route path="/policies/cookies" element={<Cookies />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       <BottomNav />

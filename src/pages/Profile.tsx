@@ -357,6 +357,24 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         <Button variant="outline" onClick={signOut} className="w-full h-12 rounded-2xl text-sm">
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
+
+        {/* Policies */}
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-2 pb-4">
+          {[
+            { label: "Terms of Service", path: "/policies/terms" },
+            { label: "Privacy Policy", path: "/policies/privacy" },
+            { label: "Community Guidelines", path: "/policies/community" },
+            { label: "Cookie Policy", path: "/policies/cookies" },
+          ].map((p, i) => (
+            <button
+              key={i}
+              onClick={() => navigate(p.path)}
+              className="text-[10px] text-muted-foreground hover:text-accent transition-colors"
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <EditProfileSheet open={showEditSheet} onOpenChange={setShowEditSheet} />
