@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
@@ -41,6 +41,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const touchStartY = useRef(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchFollowCounts = async () => {
     if (!user) return;
@@ -54,6 +58,35 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const navigate = useNavigate();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchFollowCounts(), fetchFitPics(), refreshProfile()]);
+    setRefreshing(false);
+  }, [user]);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    if (scrollRef.current && scrollRef.current.scrollTop === 0) {
+      touchStartY.current = e.touches[0].clientY;
+    }
+  }, []);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartY.current || refreshing) return;
+    if (scrollRef.current && scrollRef.current.scrollTop > 0) return;
+    const diff = e.touches[0].clientY - touchStartY.current;
+    if (diff > 0) {
+      setPullDistance(Math.min(diff * 0.4, 80));
+    }
+  }, [refreshing]);
+
+  const onTouchEnd = useCallback(() => {
+    if (pullDistance > 50) {
+      handleRefresh();
+    }
+    setPullDistance(0);
+    touchStartY.current = 0;
+  }, [pullDistance, handleRefresh]);
 
   const fetchFitPics = async () => {
     if (!user) return;
@@ -100,7 +133,23 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   }
 
   return (
-    <div className="min-h-screen pb-24">
+    <div
+      ref={scrollRef}
+      className="min-h-screen pb-24 overflow-auto"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Pull to refresh indicator */}
+      <div
+        className="flex items-center justify-center overflow-hidden transition-all"
+        style={{ height: refreshing ? 48 : pullDistance, opacity: refreshing || pullDistance > 10 ? 1 : 0 }}
+      >
+        <RotateCcw className={`w-5 h-5 text-accent ${refreshing ? "animate-spin" : ""}`} />
+        <span className="text-xs text-muted-foreground ml-2">
+          {refreshing ? "Refreshing…" : pullDistance > 50 ? "Release to refresh" : "Pull to refresh"}
+        </span>
+      </div>
       <header className="px-5 pt-12 pb-6">
         <div className="flex flex-col items-center gap-3">
           <div className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
