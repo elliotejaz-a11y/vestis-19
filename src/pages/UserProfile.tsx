@@ -87,6 +87,10 @@ export default function UserProfilePage() {
         setCategoryBreakdown(catCounts);
         const uniqueColors = new Set(wardrobeData.map(i => i.color).filter(Boolean));
         setColorCount(uniqueColors.size);
+        // Build color breakdown
+        const colorMap: Record<string, number> = {};
+        wardrobeData.forEach(i => { if (i.color) colorMap[i.color] = (colorMap[i.color] || 0) + 1; });
+        setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
       }
 
       // Fit pics (non-private for other users)
