@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { FitPicSheet } from "@/components/FitPicSheet";
 import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
 import FollowListSheet from "@/components/FollowListSheet";
 import { supabase } from "@/integrations/supabase/client";
+import { useTheme } from "next-themes";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -42,6 +43,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
 
   const fetchFitPics = async () => {
     if (!user) return;
@@ -336,6 +338,28 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
         </Button>
 
+        {/* Appearance */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <p className="text-sm font-semibold text-foreground mb-3">Appearance</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTheme("light")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                theme === "light" ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
+              }`}
+            >
+              <Sun className="w-3.5 h-3.5" /> Light
+            </button>
+            <button
+              onClick={() => setTheme("dark")}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                theme === "dark" ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
+              }`}
+            >
+              <Moon className="w-3.5 h-3.5" /> Dark
+            </button>
+          </div>
+        </div>
 
         <WardrobeServiceSheet>
           <Button variant="outline" className="w-full h-12 rounded-2xl text-sm">
