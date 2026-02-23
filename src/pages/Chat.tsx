@@ -723,15 +723,36 @@ function ChatView({
         ) : messages.length === 0 ? (
           <div className="text-center py-16"><p className="text-xs text-muted-foreground">Say hello to {friendName} 👋</p></div>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className={cn("flex", msg.sender_id === user?.id ? "justify-end" : "justify-start")}>
-              <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm", msg.sender_id === user?.id ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
-                {msg.is_flagged ? (
-                  <span className="flex items-center gap-1 text-muted-foreground italic text-xs"><AlertTriangle className="w-3 h-3" /> Message removed</span>
-                ) : msg.content}
+          messages.map((msg) => {
+            const isMine = msg.sender_id === user?.id;
+            const isTemp = msg.id.startsWith("temp-");
+            const isImage = msg.content.startsWith("[IMG]") && msg.content.endsWith("[/IMG]");
+            const imageUrl = isImage ? msg.content.slice(5, -6) : null;
+            return (
+              <div key={msg.id} className={cn("flex", isMine ? "justify-end" : "justify-start")}>
+                <div className="flex flex-col items-end gap-0.5">
+                  <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
+                    {msg.is_flagged ? (
+                      <span className="flex items-center gap-1 text-muted-foreground italic text-xs"><AlertTriangle className="w-3 h-3" /> Message removed</span>
+                    ) : isImage && imageUrl ? (
+                      <img src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
+                    ) : msg.content}
+                  </div>
+                  {isMine && (
+                    <div className="flex items-center gap-0.5 mr-1">
+                      {isTemp ? (
+                        <Check className="w-3 h-3 text-muted-foreground/50" />
+                      ) : msg.read ? (
+                        <CheckCheck className="w-3 h-3 text-blue-500" />
+                      ) : (
+                        <CheckCheck className="w-3 h-3 text-muted-foreground/50" />
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
