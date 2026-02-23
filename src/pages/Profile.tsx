@@ -41,6 +41,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
+  const [refreshing, setRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const touchStartY = useRef(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const fetchFollowCounts = async () => {
     if (!user) return;
@@ -54,6 +58,35 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const navigate = useNavigate();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchFollowCounts(), fetchFitPics(), refreshProfile()]);
+    setRefreshing(false);
+  }, [user]);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    if (scrollRef.current && scrollRef.current.scrollTop === 0) {
+      touchStartY.current = e.touches[0].clientY;
+    }
+  }, []);
+
+  const onTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartY.current || refreshing) return;
+    if (scrollRef.current && scrollRef.current.scrollTop > 0) return;
+    const diff = e.touches[0].clientY - touchStartY.current;
+    if (diff > 0) {
+      setPullDistance(Math.min(diff * 0.4, 80));
+    }
+  }, [refreshing]);
+
+  const onTouchEnd = useCallback(() => {
+    if (pullDistance > 50) {
+      handleRefresh();
+    }
+    setPullDistance(0);
+    touchStartY.current = 0;
+  }, [pullDistance, handleRefresh]);
 
   const fetchFitPics = async () => {
     if (!user) return;
