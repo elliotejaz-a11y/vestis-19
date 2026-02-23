@@ -248,7 +248,7 @@ function MessagesTab({
                 </div>
                 <div className="flex items-center justify-between">
                   <p className={cn("text-xs truncate", conv.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground")}>
-                    {conv.lastMessage}
+                    {conv.lastMessage.startsWith("[IMG]") ? "📷 Photo" : conv.lastMessage}
                   </p>
                   {conv.unreadCount > 0 ? (
                     <span className="w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-2">
