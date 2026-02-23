@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Lock, Loader2, Grid3X3, AtSign, Shirt, Palette, TrendingUp, Camera } from "lucide-react";
+import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera } from "lucide-react";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
@@ -41,9 +41,11 @@ export default function UserProfilePage() {
   const [categoryBreakdown, setCategoryBreakdown] = useState<{ label: string; icon: string; count: number }[]>([]);
   const [colorCount, setColorCount] = useState(0);
   const [fitPics, setFitPics] = useState<FitPic[]>([]);
-  const [activeTab, setActiveTab] = useState<"posts" | "fitpics">("fitpics");
   const [followListType, setFollowListType] = useState<"followers" | "following" | null>(null);
   const [showWardrobe, setShowWardrobe] = useState(false);
+  const [showCategories, setShowCategories] = useState(false);
+  const [showColors, setShowColors] = useState(false);
+  const [userColors, setUserColors] = useState<[string, number][]>([]);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -85,6 +87,10 @@ export default function UserProfilePage() {
         setCategoryBreakdown(catCounts);
         const uniqueColors = new Set(wardrobeData.map(i => i.color).filter(Boolean));
         setColorCount(uniqueColors.size);
+        // Build color breakdown
+        const colorMap: Record<string, number> = {};
+        wardrobeData.forEach(i => { if (i.color) colorMap[i.color] = (colorMap[i.color] || 0) + 1; });
+        setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
       }
 
       // Fit pics (non-private for other users)
@@ -217,42 +223,66 @@ export default function UserProfilePage() {
           )}
 
           {/* Stats */}
-          <button onClick={() => setShowWardrobe(true)} className="grid grid-cols-3 gap-2 w-full text-left">
-            <div className="rounded-2xl bg-card border border-border/40 p-3 text-center">
+          <div className="grid grid-cols-3 gap-2 w-full">
+            <button onClick={() => setShowWardrobe(true)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
               <Shirt className="w-5 h-5 mx-auto text-accent mb-1" />
               <p className="text-lg font-bold text-foreground">{wardrobeCount}</p>
               <p className="text-[10px] text-muted-foreground">Total Pieces</p>
-            </div>
-            <div className="rounded-2xl bg-card border border-border/40 p-3 text-center">
+            </button>
+            <button onClick={() => setShowColors(!showColors)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
               <Palette className="w-5 h-5 mx-auto text-accent mb-1" />
               <p className="text-lg font-bold text-foreground">{colorCount}</p>
               <p className="text-[10px] text-muted-foreground">Colours</p>
-            </div>
-            <div className="rounded-2xl bg-card border border-border/40 p-3 text-center">
+            </button>
+            <button onClick={() => setShowCategories(!showCategories)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
               <TrendingUp className="w-5 h-5 mx-auto text-accent mb-1" />
               <p className="text-lg font-bold text-foreground">{categoryBreakdown.filter(c => c.count > 0).length}</p>
               <p className="text-[10px] text-muted-foreground">Categories</p>
-            </div>
-          </button>
-
-          {/* Tabs: Fit Pics / Posts */}
-          <div className="flex rounded-xl bg-muted/60 overflow-hidden">
-            <button
-              onClick={() => setActiveTab("fitpics")}
-              className={`flex-1 py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${activeTab === "fitpics" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
-            >
-              <Camera className="w-3.5 h-3.5" /> Fit Pics
-            </button>
-            <button
-              onClick={() => setActiveTab("posts")}
-              className={`flex-1 py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1.5 ${activeTab === "posts" ? "bg-card shadow-sm text-foreground" : "text-muted-foreground"}`}
-            >
-              <Grid3X3 className="w-3.5 h-3.5" /> Posts
             </button>
           </div>
 
-          {activeTab === "fitpics" ? (
-            fitPics.length === 0 ? (
+          {/* Color breakdown (expandable) */}
+          {showColors && userColors.length > 0 && (
+            <div className="rounded-2xl bg-card border border-border/40 p-4">
+              <p className="text-sm font-semibold text-foreground mb-3">Colour Breakdown</p>
+              <div className="flex flex-wrap gap-2">
+                {userColors.map(([color, count]) => (
+                  <div key={color} className="text-center px-3 py-1.5 rounded-xl bg-muted">
+                    <p className="text-xs font-medium text-foreground capitalize">{color}</p>
+                    <p className="text-[10px] text-muted-foreground">{count} items</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Category breakdown (expandable) */}
+          {showCategories && (
+            <div className="rounded-2xl bg-card border border-border/40 p-4">
+              <p className="text-sm font-semibold text-foreground mb-3">Category Breakdown</p>
+              <div className="space-y-2">
+                {categoryBreakdown.filter(c => c.count > 0).map((cat) => (
+                  <div key={cat.label} className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{cat.icon} {cat.label}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-accent transition-all" style={{ width: wardrobeCount ? `${(cat.count / wardrobeCount) * 100}%` : "0%" }} />
+                      </div>
+                      <span className="text-xs font-medium text-foreground w-4 text-right">{cat.count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Fit Pics */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Camera className="w-4 h-4 text-accent" />
+              <p className="text-sm font-semibold text-foreground">Fit Pics</p>
+            </div>
+            {fitPics.length === 0 ? (
               <p className="text-center text-xs text-muted-foreground py-12">No fit pics yet</p>
             ) : (
               <div className="grid grid-cols-3 gap-0.5">
@@ -262,10 +292,8 @@ export default function UserProfilePage() {
                   </div>
                 ))}
               </div>
-            )
-          ) : (
-            <PostsGrid userId={userId!} profileData={profile} />
-          )}
+            )}
+          </div>
         </div>
       )}
       {userId && (
@@ -288,30 +316,3 @@ export default function UserProfilePage() {
   );
 }
 
-// Posts grid sub-component
-function PostsGrid({ userId, profileData }: { userId: string; profileData: any }) {
-  const [posts, setPosts] = useState<any[]>([]);
-
-  useEffect(() => {
-    supabase
-      .from("social_posts")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => setPosts(data || []));
-  }, [userId]);
-
-  if (posts.length === 0) {
-    return <p className="text-center text-xs text-muted-foreground py-12">No posts yet</p>;
-  }
-
-  return (
-    <div className="grid grid-cols-3 gap-0.5">
-      {posts.map((post) => (
-        <div key={post.id} className="aspect-square">
-          <img src={post.image_urls[0]} alt="" className="w-full h-full object-cover rounded-sm" />
-        </div>
-      ))}
-    </div>
-  );
-}

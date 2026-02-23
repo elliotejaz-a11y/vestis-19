@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ArrowLeft, MessageCircle, Send, Loader2, AlertTriangle,
-  Search, UserPlus, UserCheck, Users, Bell, CheckCheck, Shirt, Compass, Sparkles
+  Search, UserPlus, UserCheck, Users, Bell, Check, CheckCheck, Shirt, Compass, Sparkles, Image
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -248,7 +248,7 @@ function MessagesTab({
                 </div>
                 <div className="flex items-center justify-between">
                   <p className={cn("text-xs truncate", conv.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground")}>
-                    {conv.lastMessage}
+                    {conv.lastMessage.startsWith("[IMG]") ? "📷 Photo" : conv.lastMessage}
                   </p>
                   {conv.unreadCount > 0 ? (
                     <span className="w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-2">
@@ -688,8 +688,31 @@ function ChatView({
   const navigate = useNavigate();
   const { messages, loading, sending, sendMessage } = useChatMessages(friendId);
   const [input, setInput] = useState("");
+  const [showFitPics, setShowFitPics] = useState(false);
+  const [fitPics, setFitPics] = useState<any[]>([]);
+  const [loadingPics, setLoadingPics] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const loadFitPics = async () => {
+    if (!user) return;
+    setLoadingPics(true);
+    const { data } = await supabase
+      .from("fit_pics")
+      .select("id, image_url, description, pic_date")
+      .eq("user_id", user.id)
+      .order("pic_date", { ascending: false });
+    setFitPics(data || []);
+    setLoadingPics(false);
+  };
+
+  const sendFitPic = async (imageUrl: string) => {
+    const { error } = await sendMessage(`[IMG]${imageUrl}[/IMG]`);
+    if (error) {
+      toast({ title: "Failed to send", description: error, variant: "destructive" });
+    }
+    setShowFitPics(false);
+  };
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -723,19 +746,62 @@ function ChatView({
         ) : messages.length === 0 ? (
           <div className="text-center py-16"><p className="text-xs text-muted-foreground">Say hello to {friendName} 👋</p></div>
         ) : (
-          messages.map((msg) => (
-            <div key={msg.id} className={cn("flex", msg.sender_id === user?.id ? "justify-end" : "justify-start")}>
-              <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm", msg.sender_id === user?.id ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
-                {msg.is_flagged ? (
-                  <span className="flex items-center gap-1 text-muted-foreground italic text-xs"><AlertTriangle className="w-3 h-3" /> Message removed</span>
-                ) : msg.content}
+          messages.map((msg) => {
+            const isMine = msg.sender_id === user?.id;
+            const isTemp = msg.id.startsWith("temp-");
+            const isImage = msg.content.startsWith("[IMG]") && msg.content.endsWith("[/IMG]");
+            const imageUrl = isImage ? msg.content.slice(5, -6) : null;
+            return (
+              <div key={msg.id} className={cn("flex", isMine ? "justify-end" : "justify-start")}>
+                <div className="flex flex-col items-end gap-0.5">
+                  <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
+                    {msg.is_flagged ? (
+                      <span className="flex items-center gap-1 text-muted-foreground italic text-xs"><AlertTriangle className="w-3 h-3" /> Message removed</span>
+                    ) : isImage && imageUrl ? (
+                      <img src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
+                    ) : msg.content}
+                  </div>
+                  {isMine && (
+                    <div className="flex items-center gap-0.5 mr-1">
+                      {isTemp ? (
+                        <Check className="w-3 h-3 text-muted-foreground/50" />
+                      ) : msg.read ? (
+                        <CheckCheck className="w-3 h-3 text-blue-500" />
+                      ) : (
+                        <CheckCheck className="w-3 h-3 text-muted-foreground/50" />
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
+      {showFitPics && (
+        <div className="px-4 py-2 border-t border-border/40 bg-card max-h-[200px] overflow-y-auto">
+          <p className="text-xs font-medium text-foreground mb-2">Send a Fit Pic</p>
+          {loadingPics ? (
+            <div className="flex justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-accent" /></div>
+          ) : fitPics.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">No fit pics yet</p>
+          ) : (
+            <div className="grid grid-cols-4 gap-1">
+              {fitPics.map((pic: any) => (
+                <button key={pic.id} onClick={() => sendFitPic(pic.image_url)} className="aspect-square rounded-lg overflow-hidden">
+                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="px-4 py-3 border-t border-border/40 flex gap-2">
+        <Button variant="ghost" size="icon" className="rounded-xl shrink-0 h-10 w-10" onClick={() => { setShowFitPics(!showFitPics); if (!showFitPics) loadFitPics(); }}>
+          <Image className="w-4 h-4 text-muted-foreground" />
+        </Button>
         <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()} placeholder="Type a message..." className="rounded-xl bg-card text-sm" maxLength={2000} disabled={sending} />
         <Button onClick={handleSend} disabled={sending || !input.trim()} size="icon" className="rounded-xl bg-accent text-accent-foreground shrink-0">
           {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
