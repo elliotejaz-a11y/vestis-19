@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ArrowLeft, MessageCircle, Send, Loader2, AlertTriangle,
-  Search, UserPlus, UserCheck, Users, Bell, CheckCheck, Shirt, Compass, Sparkles
+  Search, UserPlus, UserCheck, Users, Bell, Check, CheckCheck, Shirt, Compass, Sparkles, Image
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
