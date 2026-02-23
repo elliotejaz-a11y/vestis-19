@@ -67,19 +67,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
   useEffect(() => {
     if (!user) return;
-    const fetchCounts = async () => {
-      const { count: followers } = await supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("following_id", user.id);
-      const { count: following } = await supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("follower_id", user.id);
-      setFollowerCount(followers || 0);
-      setFollowingCount(following || 0);
-    };
-    fetchCounts();
+    fetchFollowCounts();
     fetchFitPics();
   }, [user]);
 
