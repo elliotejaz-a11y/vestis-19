@@ -167,17 +167,22 @@ export function useChatMessages(friendId: string | null) {
             (msg.sender_id === friendId && msg.receiver_id === user.id)
           ) {
             setMessages((prev) => {
-              // Skip if already present (from optimistic update or duplicate)
               if (prev.some((m) => m.id === msg.id)) return prev;
-              // Remove any temp optimistic message from same sender with same content
               const filtered = prev.filter((m) => !m.id.startsWith("temp-") || m.sender_id !== msg.sender_id);
               return [...filtered, msg];
             });
-            // Auto mark as read if we're the receiver
             if (msg.receiver_id === user.id && !msg.read) {
               supabase.from("messages").update({ read: true }).eq("id", msg.id).then(() => {});
             }
           }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages" },
+        (payload) => {
+          const updated = payload.new as ChatMessage;
+          setMessages((prev) => prev.map((m) => m.id === updated.id ? { ...m, read: updated.read } : m));
         }
       )
       .subscribe();
