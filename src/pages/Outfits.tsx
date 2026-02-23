@@ -172,10 +172,10 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
 
       {/* Results */}
       <div className="px-5 space-y-4">
-        {latestOutfit && (
+        {latestOutfit && outfits.some(o => o.id === latestOutfit.id) && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Latest Suggestion</p>
-            <OutfitCard outfit={latestOutfit} onSave={onSave} onDelete={onDelete} onChat={setChatOutfit} />
+            <OutfitCard outfit={latestOutfit} onSave={onSave} onDelete={(id) => { if (id === latestOutfit?.id) setLatestOutfit(null); onDelete?.(id); }} onChat={setChatOutfit} />
           </div>
         )}
         {outfits.length > 0 && (
