@@ -110,16 +110,13 @@ export default function UserProfilePage() {
     if (!userId) return;
     setFollowAction("loading");
     if (isFollowing) {
+      setFollowersCount(prev => Math.max(0, prev - 1));
       await unfollowUser(userId);
     } else {
+      setFollowersCount(prev => prev + 1);
       await followUser(userId);
     }
     setFollowAction("none");
-    const { count } = await supabase
-      .from("follows")
-      .select("*", { count: "exact", head: true })
-      .eq("following_id", userId);
-    setFollowersCount(count || 0);
   };
 
   if (loading) {

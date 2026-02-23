@@ -41,6 +41,16 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
+
+  const fetchFollowCounts = async () => {
+    if (!user) return;
+    const [{ count: followers }, { count: following }] = await Promise.all([
+      supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", user.id),
+      supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", user.id),
+    ]);
+    setFollowerCount(followers || 0);
+    setFollowingCount(following || 0);
+  };
   const navigate = useNavigate();
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
@@ -57,19 +67,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
   useEffect(() => {
     if (!user) return;
-    const fetchCounts = async () => {
-      const { count: followers } = await supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("following_id", user.id);
-      const { count: following } = await supabase
-        .from("follows")
-        .select("*", { count: "exact", head: true })
-        .eq("follower_id", user.id);
-      setFollowerCount(followers || 0);
-      setFollowingCount(following || 0);
-    };
-    fetchCounts();
+    fetchFollowCounts();
     fetchFitPics();
   }, [user]);
 
@@ -406,7 +404,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       {user && (
         <FollowListSheet
           open={followSheet.open}
-          onOpenChange={(o) => setFollowSheet((prev) => ({ ...prev, open: o }))}
+          onOpenChange={(o) => {
+            setFollowSheet((prev) => ({ ...prev, open: o }));
+            if (!o) fetchFollowCounts();
+          }}
           userId={user.id}
           type={followSheet.type}
         />
