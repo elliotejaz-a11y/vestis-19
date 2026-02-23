@@ -303,7 +303,9 @@ export type Database = {
       outfits: {
         Row: {
           created_at: string
+          description: string | null
           id: string
+          name: string | null
           occasion: string
           reasoning: string
           saved: boolean | null
@@ -312,7 +314,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          description?: string | null
           id?: string
+          name?: string | null
           occasion: string
           reasoning?: string
           saved?: boolean | null
@@ -321,7 +325,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          description?: string | null
           id?: string
+          name?: string | null
           occasion?: string
           reasoning?: string
           saved?: boolean | null

@@ -51,6 +51,8 @@ export function useWardrobe() {
           const outfitClothes = dbItems.filter((i) => outfitItemIds.includes(i.id));
           return {
             id: o.id,
+            name: o.name || undefined,
+            description: o.description || undefined,
             occasion: o.occasion,
             items: outfitClothes,
             createdAt: new Date(o.created_at),
@@ -312,10 +314,13 @@ export function useWardrobe() {
   );
 
   const saveOutfit = useCallback(
-    async (id: string, saved: boolean) => {
+    async (id: string, saved: boolean, name?: string, description?: string) => {
       if (!user) return;
-      await supabase.from("outfits").update({ saved } as any).eq("id", id).eq("user_id", user.id);
-      setOutfits((prev) => prev.map((o) => (o.id === id ? { ...o, saved } : o)));
+      const update: Record<string, any> = { saved };
+      if (name !== undefined) update.name = name;
+      if (description !== undefined) update.description = description;
+      await supabase.from("outfits").update(update as any).eq("id", id).eq("user_id", user.id);
+      setOutfits((prev) => prev.map((o) => (o.id === id ? { ...o, saved, ...(name !== undefined ? { name } : {}), ...(description !== undefined ? { description } : {}) } : o)));
     },
     [user]
   );

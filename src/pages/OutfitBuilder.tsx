@@ -31,7 +31,7 @@ const ITEM_SIZES: Record<string, { w: number; h: number }> = {
 
 interface Props {
   items: ClothingItem[];
-  onSaveOutfit?: (id: string, saved: boolean) => void;
+  onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
 }
 
 export default function OutfitBuilder({ items, onSaveOutfit }: Props) {

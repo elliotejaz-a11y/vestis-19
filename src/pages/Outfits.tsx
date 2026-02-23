@@ -15,7 +15,7 @@ interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
   onGenerate: (occasion: string, weather?: { temp: number; description: string }) => Promise<Outfit | null>;
-  onSave?: (id: string, saved: boolean) => void;
+  onSave?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onDelete?: (id: string) => void;
 }
 
