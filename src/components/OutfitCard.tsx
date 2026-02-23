@@ -51,7 +51,7 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
         onClick={() => setDetailOpen(true)}
       >
         {/* Flat-lay outfit display */}
-        <div className="bg-white p-4">
+        <div className="bg-white dark:bg-neutral-800 p-4">
           <div className="flex flex-col items-center gap-1">
             {(() => {
               const outerwear = sorted.filter(i => i.category === "outerwear");

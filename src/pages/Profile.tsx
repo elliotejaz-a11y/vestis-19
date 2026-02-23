@@ -292,7 +292,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
             <div className="space-y-2">
               {deletedItems.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 p-2 rounded-xl bg-muted">
-                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-white flex-shrink-0">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-white dark:bg-neutral-800 flex-shrink-0">
                     <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex-1 min-w-0">

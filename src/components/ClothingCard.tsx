@@ -20,7 +20,7 @@ export function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemova
     <>
       <div className="group relative rounded-2xl overflow-hidden bg-card border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300">
         <div
-          className={`${compact ? "aspect-square" : "aspect-[3/4]"} bg-white cursor-pointer relative`}
+          className={`${compact ? "aspect-square" : "aspect-[3/4]"} bg-white dark:bg-neutral-800 cursor-pointer relative`}
           onClick={() => onDetail?.(item)}
         >
           <img
