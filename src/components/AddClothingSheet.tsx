@@ -33,7 +33,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [analyzing, setAnalyzing] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
-  const [processing, setProcessing] = useState(false); // unified "Processing…" state
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
@@ -110,59 +109,52 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       return;
     }
 
-    // Show original preview immediately & start processing state
-    const originalUrl = URL.createObjectURL(file);
-    setImageUrl(originalUrl);
-    setProcessing(true);
+    // Show original preview immediately
+    setImageUrl(URL.createObjectURL(file));
     setRemovingBg(true);
+    let cleanBlob: Blob;
+    try {
+      cleanBlob = await processClothingImage(file);
+      setImageUrl(URL.createObjectURL(cleanBlob));
+    } catch {
+      cleanBlob = file;
+    } finally {
+      setRemovingBg(false);
+    }
+
     setAnalyzing(true);
-
-    // Prepare a resized JPEG for AI analysis from the ORIGINAL file (runs instantly)
-    const analysisBlob = resizeImageForAnalysis(file, 1024);
-
-    // Run bg removal and AI analysis IN PARALLEL
-    const bgRemovalTask = processClothingImage(file)
-      .then((cleanBlob) => {
-        setImageUrl(URL.createObjectURL(cleanBlob));
-        setRemovingBg(false);
-        return cleanBlob;
-      })
-      .catch(() => {
-        setRemovingBg(false);
-        return file;
+    try {
+      // Resize image to max 1024px before sending to AI to stay under 10MB limit
+      const resizedBlob = await resizeImageForAnalysis(cleanBlob, 1024);
+      const base64 = await fileToBase64(new File([resizedBlob], file.name, { type: "image/jpeg" }));
+      const { data, error } = await supabase.functions.invoke("analyze-clothing", {
+        body: { imageBase64: base64 },
       });
 
-    const aiAnalysisTask = analysisBlob
-      .then((resized) => fileToBase64(new File([resized], file.name, { type: "image/jpeg" })))
-      .then((base64) => supabase.functions.invoke("analyze-clothing", { body: { imageBase64: base64 } }))
-      .then(({ data, error }) => {
-        if (error) throw error;
-        if (data) {
-          setName(data.name || "");
-          setCategory(data.category || "");
-          setColors(data.color ? [data.color] : []);
-          setFabric(data.fabric || "");
-          setTags(data.style_tags || []);
-          if (data.estimated_price_nzd) setEstimatedPrice(data.estimated_price_nzd);
-          toast({
-            title: "AI Analysis Complete ✨",
-            description: `Detected: ${data.name}${data.estimated_price_nzd ? ` — Vestis Price: $${data.estimated_price_nzd} NZD` : ""}`,
-          });
-        }
-      })
-      .catch((err: unknown) => {
-        console.error("AI analysis failed:", err);
-        toast({
-          title: "AI analysis failed",
-          description: "You can still fill in the details manually.",
-          variant: "destructive",
-        });
-      })
-      .finally(() => setAnalyzing(false));
+      if (error) throw error;
 
-    // Wait for both to settle
-    await Promise.allSettled([bgRemovalTask, aiAnalysisTask]);
-    setProcessing(false);
+      if (data) {
+        setName(data.name || "");
+        setCategory(data.category || "");
+        setColors(data.color ? [data.color] : []);
+        setFabric(data.fabric || "");
+        setTags(data.style_tags || []);
+        if (data.estimated_price_nzd) setEstimatedPrice(data.estimated_price_nzd);
+        toast({
+          title: "AI Analysis Complete ✨",
+          description: `Detected: ${data.name}${data.estimated_price_nzd ? ` — Vestis Price: $${data.estimated_price_nzd} NZD` : ""}`,
+        });
+      }
+    } catch (err) {
+      console.error("AI analysis failed:", err);
+      toast({
+        title: "AI analysis failed",
+        description: "You can still fill in the details manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const handleBackFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,7 +198,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
-    setTags([]); setNotes(""); setEstimatedPrice(undefined); setProcessing(false); setRemovingBg(false); setAnalyzing(false);
+    setTags([]); setNotes(""); setEstimatedPrice(undefined);
   };
 
   return (
@@ -231,24 +223,25 @@ export function AddClothingSheet({ onAdd, children }: Props) {
             </div>
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
-              <img src={imageUrl} alt="Preview" className={`w-full h-48 object-contain bg-white ${!processing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`} />
-              {processing && (
+              <img src={imageUrl} alt="Preview" className={`w-full h-48 object-contain bg-white ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`} />
+              {removingBg && (
+                <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground">Cleaning up image…</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">Removing background</p>
+                  </div>
+                </div>
+              )}
+              {!removingBg && analyzing && (
                 <div className="absolute inset-0 bg-background/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <Loader2 className="w-8 h-8 animate-spin text-accent" />
                   <div className="text-center">
                     <div className="flex items-center gap-1.5 text-sm font-semibold text-foreground justify-center">
-                      {removingBg ? (
-                        <>Processing…</>
-                      ) : (
-                        <><Sparkles className="w-4 h-4 text-accent" /> AI Analyzing Clothing</>
-                      )}
+                      <Sparkles className="w-4 h-4 text-accent" /> AI Analyzing Clothing
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      {removingBg && analyzing
-                        ? "Removing background & analyzing in parallel…"
-                        : removingBg
-                        ? "Removing background…"
-                        : "Detecting category, color, fabric & estimating value…"}
+                      Detecting category, color, fabric & estimating value…
                     </p>
                   </div>
                 </div>
@@ -359,7 +352,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
           <Button
             onClick={handleSave}
-            disabled={!imageUrl || !name || !category || processing}
+            disabled={!imageUrl || !name || !category || analyzing}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors"
           >
             <Sparkles className="w-4 h-4 mr-2" /> Save to Wardrobe
