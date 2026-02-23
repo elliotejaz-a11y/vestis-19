@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback } from "react";
-import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
+import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { Shuffle, Check, X, RotateCcw, Bookmark } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,9 +33,10 @@ const ITEM_SIZES: Record<string, { w: number; h: number }> = {
 interface Props {
   items: ClothingItem[];
   onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
+  onOutfitCreated?: (outfit: Outfit) => void;
 }
 
-export default function OutfitBuilder({ items, onSaveOutfit }: Props) {
+export default function OutfitBuilder({ items, onSaveOutfit, onOutfitCreated }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selected, setSelected] = useState<Record<string, ClothingItem | null>>({});
@@ -228,8 +229,19 @@ export default function OutfitBuilder({ items, onSaveOutfit }: Props) {
       );
 
       toast({ title: "Outfit saved! ✨", description: "Your outfit has been saved to your wardrobe." });
-      
-      if (onSaveOutfit) onSaveOutfit(outfitRow.id, true, name, description);
+
+      // Add to shared state so it appears in Saved Outfits immediately
+      const newOutfit: Outfit = {
+        id: outfitRow.id,
+        name: name || "",
+        description: description || "",
+        occasion: "Custom outfit",
+        items: selectedItems,
+        createdAt: new Date(outfitRow.created_at),
+        reasoning: "Created in Outfit Builder",
+        saved: true,
+      };
+      onOutfitCreated?.(newOutfit);
     } catch (err) {
       console.error("Save outfit failed:", err);
       toast({ title: "Failed to save outfit", variant: "destructive" });

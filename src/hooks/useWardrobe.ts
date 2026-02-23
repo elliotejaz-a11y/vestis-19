@@ -411,5 +411,12 @@ export function useWardrobe() {
     [user, items, profile]
   );
 
-  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, loading };
+  const addOutfitToState = useCallback((outfit: Outfit) => {
+    setOutfits((prev) => {
+      if (prev.some(o => o.id === outfit.id)) return prev;
+      return [outfit, ...prev];
+    });
+  }, []);
+
+  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, loading };
 }
