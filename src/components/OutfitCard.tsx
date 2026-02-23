@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
+import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
 
 const CATEGORY_ORDER = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
 
@@ -27,13 +28,13 @@ interface Props {
 export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props) {
   const sorted = sortItemsForFlatLay(outfit.items);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
 
-  const handleBookmarkClick = () => {
+  const handleBookmarkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (outfit.saved) {
-      // Unsaving - no dialog needed
       onSave?.(outfit.id, false);
     } else {
-      // Saving - show dialog
       setSaveDialogOpen(true);
     }
   };
@@ -45,7 +46,10 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
 
   return (
     <>
-      <div className="rounded-2xl bg-card border border-border/40 overflow-hidden shadow-sm">
+      <div
+        className="rounded-2xl bg-card border border-border/40 overflow-hidden shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
+        onClick={() => setDetailOpen(true)}
+      >
         {/* Flat-lay outfit display */}
         <div className="bg-white p-4">
           <div className="flex flex-col items-center gap-1">
@@ -56,13 +60,11 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
 
               return (
                 <>
-                  {/* Accessories at top */}
                   {sorted.filter(i => i.category === "accessories").map((item) => (
                     <div key={item.id} className="w-16 h-16 flex-shrink-0">
                       <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
                     </div>
                   ))}
-                  {/* Outerwear + Tops side by side */}
                   {(outerwear.length > 0 || tops.length > 0) && (
                     <div className="flex items-start justify-center gap-2">
                       {outerwear.map((item) => (
@@ -77,7 +79,6 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
                       ))}
                     </div>
                   )}
-                  {/* Dresses, bottoms, shoes */}
                   {rest.filter(i => i.category !== "accessories").map((item) => {
                     const isShoes = item.category === "shoes";
                     const size = isShoes ? "w-16 h-16" : "w-24 h-24";
@@ -105,7 +106,7 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
                 <span className="text-xs font-semibold text-foreground truncate">{outfit.occasion}</span>
               </div>
             </div>
-            <div className="flex items-center gap-0.5">
+            <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
               {onChat && (
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onChat(outfit)}>
                   <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
@@ -145,6 +146,8 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
           )}
         </div>
       </div>
+
+      <OutfitDetailSheet outfit={outfit} open={detailOpen} onOpenChange={setDetailOpen} />
 
       <SaveOutfitDialog
         open={saveDialogOpen}
