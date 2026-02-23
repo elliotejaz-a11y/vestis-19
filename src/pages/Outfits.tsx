@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Sparkles, Loader2, Cloud, Sun, CloudRain, Snowflake, ArrowLeft, Layers } from "lucide-react";
+import { Sparkles, Loader2, Cloud, Sun, CloudRain, Snowflake, ArrowLeft, Layers, Lightbulb, MessageCircle, Bookmark, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OutfitCard } from "@/components/OutfitCard";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 interface Props {
   items: ClothingItem[];
@@ -25,6 +26,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const [customOccasion, setCustomOccasion] = useState("");
   const [generating, setGenerating] = useState(false);
   const [latestOutfit, setLatestOutfit] = useState<Outfit | null>(null);
+  const [popupOutfit, setPopupOutfit] = useState<Outfit | null>(null);
   const [chatOutfit, setChatOutfit] = useState<Outfit | null>(null);
   const [weather, setWeather] = useState<{ temp: number; description: string } | null>(null);
   const { toast } = useToast();
@@ -65,6 +67,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
       const outfit = await onGenerate(activeOccasion, weather || undefined);
       setLatestOutfit(outfit);
       if (outfit) {
+        setPopupOutfit(outfit);
         toast({ title: "Outfit Created ✨", description: `Perfect look for "${activeOccasion}"` });
 
         // Auto-plan if coming from calendar
@@ -188,6 +191,68 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
           </div>
         )}
       </div>
+
+      {/* Generated outfit popup */}
+      <Dialog open={!!popupOutfit} onOpenChange={(open) => !open && setPopupOutfit(null)}>
+        <DialogContent className="max-w-[92vw] rounded-3xl p-0 overflow-hidden border-border/40 gap-0">
+          {popupOutfit && (
+            <>
+              {/* Flat-lay preview */}
+              <div className="bg-white dark:bg-neutral-800 p-6 flex flex-col items-center gap-1">
+                {popupOutfit.items.map((item) => {
+                  const isShoes = item.category === "shoes";
+                  const isAccessory = item.category === "accessories";
+                  const size = isShoes || isAccessory ? "w-16 h-16" : "w-24 h-24";
+                  return (
+                    <div key={item.id} className={cn("flex-shrink-0", size)}>
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="p-5 space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-accent" />
+                  <h3 className="text-base font-bold text-foreground">{popupOutfit.occasion}</h3>
+                </div>
+
+                <p className="text-sm text-muted-foreground leading-relaxed">{popupOutfit.reasoning}</p>
+
+                {popupOutfit.styleTips && (
+                  <div className="flex items-start gap-2 bg-accent/10 rounded-xl p-3">
+                    <Lightbulb className="w-3.5 h-3.5 text-accent mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-foreground leading-relaxed">{popupOutfit.styleTips}</p>
+                  </div>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-xl text-xs h-10"
+                    onClick={() => {
+                      const o = popupOutfit;
+                      setPopupOutfit(null);
+                      setChatOutfit(o);
+                    }}
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 mr-1.5" /> Chat about it
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-xl text-xs h-10 bg-accent text-accent-foreground hover:bg-accent/90"
+                    onClick={() => {
+                      onSave?.(popupOutfit.id, true);
+                      setPopupOutfit(null);
+                    }}
+                  >
+                    <Bookmark className="w-3.5 h-3.5 mr-1.5" /> Save Outfit
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Chat sheet */}
       {chatOutfit && (
