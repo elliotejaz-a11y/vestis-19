@@ -24,6 +24,8 @@ export interface ClothingItem {
 
 export interface Outfit {
   id: string;
+  name?: string;
+  description?: string;
   occasion: string;
   items: ClothingItem[];
   createdAt: Date;

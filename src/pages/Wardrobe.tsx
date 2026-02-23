@@ -15,7 +15,7 @@ interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
   onRemove: (id: string) => void;
   onUpdate: (item: ClothingItem) => void;
-  onSaveOutfit?: (id: string, saved: boolean) => void;
+  onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onDeleteOutfit?: (id: string) => void;
   onRetryBackgroundRemoval?: (id: string) => void;
 }

@@ -23,7 +23,7 @@ interface DeletedItem extends ClothingItem {
 interface Props {
   items: ClothingItem[];
   outfits?: Outfit[];
-  onSaveOutfit?: (id: string, saved: boolean) => void;
+  onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onDeleteOutfit?: (id: string) => void;
   deletedItems?: DeletedItem[];
   onRestoreItem?: (item: ClothingItem) => void;
