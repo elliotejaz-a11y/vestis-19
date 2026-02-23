@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 interface Props {
   items: ClothingItem[];
@@ -193,12 +193,13 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
       </div>
 
       {/* Generated outfit popup */}
-      <Dialog open={!!popupOutfit} onOpenChange={(open) => !open && setPopupOutfit(null)}>
-        <DialogContent className="max-w-[92vw] rounded-3xl p-0 overflow-hidden border-border/40 gap-0">
+      <Dialog open={!!popupOutfit} onOpenChange={(open) => { if (!open) setPopupOutfit(null); }}>
+        <DialogContent className="max-w-[92vw] rounded-3xl p-0 overflow-hidden border-border/40 gap-0 max-h-[85vh] overflow-y-auto">
+          <DialogTitle className="sr-only">Generated Outfit</DialogTitle>
           {popupOutfit && (
             <>
               {/* Flat-lay preview */}
-              <div className="bg-white dark:bg-neutral-800 p-6 flex flex-col items-center gap-1">
+              <div className="bg-muted p-6 flex flex-col items-center gap-1">
                 {popupOutfit.items.map((item) => {
                   const isShoes = item.category === "shoes";
                   const isAccessory = item.category === "accessories";
@@ -233,7 +234,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
                     onClick={() => {
                       const o = popupOutfit;
                       setPopupOutfit(null);
-                      setChatOutfit(o);
+                      setTimeout(() => setChatOutfit(o), 200);
                     }}
                   >
                     <MessageCircle className="w-3.5 h-3.5 mr-1.5" /> Chat about it
