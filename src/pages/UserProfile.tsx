@@ -55,6 +55,8 @@ export default function UserProfilePage() {
   const [showCategories, setShowCategories] = useState(false);
   const [showColors, setShowColors] = useState(false);
   const [userColors, setUserColors] = useState<[string, number][]>([]);
+  const [showReportSheet, setShowReportSheet] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
