@@ -27,13 +27,26 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
   const [picDate, setPicDate] = useState(defaultDate || new Date().toISOString().split("T")[0]);
   const [isPrivate, setIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [rotation, setRotation] = useState(0);
+  const fileInputRef = { current: null as HTMLInputElement | null };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImage(file);
       setPreview(URL.createObjectURL(file));
+      setRotation(0);
     }
+  };
+
+  const handleRetake = () => {
+    setImage(null);
+    setPreview(null);
+    setRotation(0);
+  };
+
+  const rotateImage = () => {
+    setRotation((prev) => (prev + 90) % 360);
   };
 
   const handleSave = async () => {
