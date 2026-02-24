@@ -100,8 +100,26 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
 
         <div className="mt-6 space-y-5">
           {item && (
-            <div className="rounded-2xl overflow-hidden bg-muted">
-              <img src={item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white dark:bg-neutral-800" />
+            <div className="relative rounded-2xl overflow-hidden bg-muted">
+              <img
+                src={newPreview || item.imageUrl}
+                alt={item.name}
+                className="w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-transform"
+                style={{ transform: `rotate(${rotation}deg)` }}
+              />
+              <div className="absolute top-2 right-2 flex gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setRotation((r) => (r + 90) % 360)}
+                  className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                </button>
+                <label className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center cursor-pointer">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <input type="file" accept="image/*" capture="environment" onChange={handleRetake} className="hidden" />
+                </label>
+              </div>
             </div>
           )}
 
