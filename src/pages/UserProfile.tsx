@@ -112,6 +112,17 @@ export default function UserProfilePage() {
         .order("pic_date", { ascending: false });
       setFitPics((pics || []) as FitPic[]);
 
+      // Check block status
+      if (!isOwnProfile && user) {
+        const { data: blockData } = await supabase
+          .from("blocked_users")
+          .select("id")
+          .eq("blocker_id", user.id)
+          .eq("blocked_id", userId)
+          .maybeSingle();
+        setIsBlocked(!!blockData);
+      }
+
       setLoading(false);
     };
     load();
