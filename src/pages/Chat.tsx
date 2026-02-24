@@ -826,6 +826,16 @@ function ChatView({
           {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </Button>
       </div>
+
+      {reportMsg && (
+        <ReportSheet
+          open={!!reportMsg}
+          onOpenChange={(o) => { if (!o) setReportMsg(null); }}
+          reportedUserId={reportMsg.senderId}
+          reportType="message"
+          referenceId={reportMsg.id}
+        />
+      )}
     </div>
   );
 }
