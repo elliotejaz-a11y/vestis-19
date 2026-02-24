@@ -141,6 +141,24 @@ export default function UserProfilePage() {
     setFollowAction("none");
   };
 
+  const handleBlock = async () => {
+    if (!userId) return;
+    if (isBlocked) {
+      await supabase.from("blocked_users").delete().match({ blocker_id: user!.id, blocked_id: userId });
+      setIsBlocked(false);
+      toast({ title: "User unblocked" });
+    } else {
+      await blockUser(userId);
+      setIsBlocked(true);
+      // Also unfollow if following
+      if (isFollowing) {
+        await unfollowUser(userId);
+        setFollowersCount(prev => Math.max(0, prev - 1));
+      }
+      toast({ title: "User blocked", description: "They won't be able to see your profile or interact with you." });
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -162,10 +180,27 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen pb-24">
-      <header className="px-5 pt-12 pb-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2 mb-2">
+      <header className="px-5 pt-12 pb-4 flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back
         </Button>
+        {!isOwnProfile && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowReportSheet(true)} className="text-destructive">
+                <Flag className="w-4 h-4 mr-2" /> Report User
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleBlock}>
+                <Ban className="w-4 h-4 mr-2" /> {isBlocked ? "Unblock User" : "Block User"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </header>
 
       {/* Profile header */}
