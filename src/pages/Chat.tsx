@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ArrowLeft, MessageCircle, Send, Loader2, AlertTriangle,
-  Search, UserPlus, UserCheck, Users, Bell, Check, CheckCheck, Shirt, Compass, Sparkles, Image
+  Search, UserPlus, UserCheck, Users, Bell, Check, CheckCheck, Shirt, Compass, Sparkles, Image, MoreVertical, Flag
 } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -16,6 +17,13 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/currency";
 import { ClothingItem } from "@/types/wardrobe";
+import { ReportSheet } from "@/components/ReportSheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ─── Friend Profile type ───
 interface FriendProfile {
@@ -691,6 +699,7 @@ function ChatView({
   const [showFitPics, setShowFitPics] = useState(false);
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [loadingPics, setLoadingPics] = useState(false);
+  const [reportMsg, setReportMsg] = useState<{ id: string; senderId: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -752,14 +761,24 @@ function ChatView({
             const isImage = msg.content.startsWith("[IMG]") && msg.content.endsWith("[/IMG]");
             const imageUrl = isImage ? msg.content.slice(5, -6) : null;
             return (
-              <div key={msg.id} className={cn("flex", isMine ? "justify-end" : "justify-start")}>
+              <div key={msg.id} className={cn("flex group", isMine ? "justify-end" : "justify-start")}>
                 <div className="flex flex-col items-end gap-0.5">
-                  <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
-                    {msg.is_flagged ? (
-                      <span className="flex items-center gap-1 text-muted-foreground italic text-xs"><AlertTriangle className="w-3 h-3" /> Message removed</span>
-                    ) : isImage && imageUrl ? (
-                      <img src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
-                    ) : msg.content}
+                  <div className="flex items-center gap-1">
+                    {!isMine && !msg.is_flagged && (
+                      <button
+                        onClick={() => setReportMsg({ id: msg.id, senderId: msg.sender_id })}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                      >
+                        <Flag className="w-3 h-3 text-muted-foreground" />
+                      </button>
+                    )}
+                    <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
+                      {msg.is_flagged ? (
+                        <span className="flex items-center gap-1 text-muted-foreground italic text-xs"><AlertTriangle className="w-3 h-3" /> Message removed</span>
+                      ) : isImage && imageUrl ? (
+                        <img src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
+                      ) : msg.content}
+                    </div>
                   </div>
                   {isMine && (
                     <div className="flex items-center gap-0.5 mr-1">
@@ -807,6 +826,16 @@ function ChatView({
           {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
         </Button>
       </div>
+
+      {reportMsg && (
+        <ReportSheet
+          open={!!reportMsg}
+          onOpenChange={(o) => { if (!o) setReportMsg(null); }}
+          reportedUserId={reportMsg.senderId}
+          reportType="message"
+          referenceId={reportMsg.id}
+        />
+      )}
     </div>
   );
 }

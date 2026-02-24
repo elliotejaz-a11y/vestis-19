@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Sparkles, Loader2, DollarSign } from "lucide-react";
+import { Upload, Sparkles, Loader2, DollarSign, RotateCw, RefreshCw } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -31,8 +31,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
+  const [priceInput, setPriceInput] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
+  const [rotation, setRotation] = useState(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
@@ -198,7 +200,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
-    setTags([]); setNotes(""); setEstimatedPrice(undefined);
+    setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
   };
 
   return (
@@ -227,7 +229,24 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 src={imageUrl}
                 alt="Preview"
                 className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
+                style={{ transform: `rotate(${rotation}deg)` }}
               />
+              {!removingBg && !analyzing && (
+                <div className="absolute top-2 right-2 flex gap-1.5">
+                  <button
+                    onClick={() => setRotation((prev) => (prev + 90) % 360)}
+                    className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => { resetForm(); }}
+                    className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
               {removingBg && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <div className="relative">
@@ -309,15 +328,31 @@ export function AddClothingSheet({ onAdd, children }: Props) {
           {estimatedPrice === undefined && imageUrl && !analyzing && (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Price (optional)</Label>
-              <Input
-                type="number"
-                placeholder="Add a value..."
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  if (!isNaN(val) && val > 0) setEstimatedPrice(val);
-                }}
-                className="rounded-xl bg-card"
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Add a value..."
+                  value={priceInput}
+                  onChange={(e) => setPriceInput(e.target.value)}
+                  className="rounded-xl bg-card flex-1"
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  disabled={!priceInput || isNaN(parseFloat(priceInput)) || parseFloat(priceInput) <= 0}
+                  onClick={() => {
+                    const val = parseFloat(priceInput);
+                    if (!isNaN(val) && val > 0) {
+                      setEstimatedPrice(val);
+                      setPriceInput("");
+                    }
+                  }}
+                  className="rounded-xl h-10 w-10 shrink-0"
+                >
+                  ✓
+                </Button>
+              </div>
             </div>
           )}
 

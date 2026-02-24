@@ -191,9 +191,26 @@ export function useSocial() {
     return data.publicUrl;
   };
 
+  const blockUser = async (targetId: string) => {
+    if (!user) return;
+    await supabase.from("blocked_users").insert({ blocker_id: user.id, blocked_id: targetId } as any);
+  };
+
+  const unblockUser = async (targetId: string) => {
+    if (!user) return;
+    await supabase.from("blocked_users").delete().match({ blocker_id: user.id, blocked_id: targetId });
+  };
+
+  const getBlockedIds = async (): Promise<string[]> => {
+    if (!user) return [];
+    const { data } = await supabase.from("blocked_users").select("blocked_id").eq("blocker_id", user.id);
+    return (data || []).map((b: any) => b.blocked_id);
+  };
+
   return {
     posts, stories, loading, followingIds,
     createPost, createStory, toggleLike, followUser, unfollowUser,
     deletePost, uploadSocialImage, refreshFeed: fetchFeed,
+    blockUser, unblockUser, getBlockedIds,
   };
 }

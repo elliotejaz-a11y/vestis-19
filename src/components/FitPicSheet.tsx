@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Camera, Loader2, Upload } from "lucide-react";
+import { Camera, Loader2, Upload, RotateCw, RefreshCw } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -27,13 +27,26 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
   const [picDate, setPicDate] = useState(defaultDate || new Date().toISOString().split("T")[0]);
   const [isPrivate, setIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [rotation, setRotation] = useState(0);
+  const fileInputRef = { current: null as HTMLInputElement | null };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setImage(file);
       setPreview(URL.createObjectURL(file));
+      setRotation(0);
     }
+  };
+
+  const handleRetake = () => {
+    setImage(null);
+    setPreview(null);
+    setRotation(0);
+  };
+
+  const rotateImage = () => {
+    setRotation((prev) => (prev + 90) % 360);
   };
 
   const handleSave = async () => {
@@ -83,13 +96,27 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
         <div className="space-y-4 mt-4">
           {preview ? (
             <div className="relative rounded-2xl overflow-hidden aspect-square max-w-xs mx-auto">
-              <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-              <button
-                onClick={() => { setImage(null); setPreview(null); }}
-                className="absolute top-2 right-2 bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center text-xs"
-              >
-                ✕
-              </button>
+              <img src={preview} alt="Preview" className="w-full h-full object-cover transition-transform" style={{ transform: `rotate(${rotation}deg)` }} />
+              <div className="absolute top-2 right-2 flex gap-1.5">
+                <button
+                  onClick={rotateImage}
+                  className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={handleRetake}
+                  className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => { setImage(null); setPreview(null); setRotation(0); }}
+                  className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center text-xs"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           ) : (
             <label className="flex flex-col items-center justify-center gap-2 p-8 rounded-2xl border-2 border-dashed border-border cursor-pointer hover:bg-muted/30 transition-colors">

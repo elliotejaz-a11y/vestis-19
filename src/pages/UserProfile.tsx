@@ -4,10 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera } from "lucide-react";
+import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban } from "lucide-react";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
+import { ReportSheet } from "@/components/ReportSheet";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 interface UserProfileData {
   id: string;
   display_name: string | null;
@@ -30,8 +38,9 @@ interface FitPic {
 export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const { user } = useAuth();
-  const { followingIds, followUser, unfollowUser } = useSocial();
+  const { followingIds, followUser, unfollowUser, blockUser } = useSocial();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [followAction, setFollowAction] = useState<"none" | "loading">("none");
@@ -46,6 +55,8 @@ export default function UserProfilePage() {
   const [showCategories, setShowCategories] = useState(false);
   const [showColors, setShowColors] = useState(false);
   const [userColors, setUserColors] = useState<[string, number][]>([]);
+  const [showReportSheet, setShowReportSheet] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -101,6 +112,17 @@ export default function UserProfilePage() {
         .order("pic_date", { ascending: false });
       setFitPics((pics || []) as FitPic[]);
 
+      // Check block status
+      if (!isOwnProfile && user) {
+        const { data: blockData } = await supabase
+          .from("blocked_users")
+          .select("id")
+          .eq("blocker_id", user.id)
+          .eq("blocked_id", userId)
+          .maybeSingle();
+        setIsBlocked(!!blockData);
+      }
+
       setLoading(false);
     };
     load();
@@ -117,6 +139,24 @@ export default function UserProfilePage() {
       await followUser(userId);
     }
     setFollowAction("none");
+  };
+
+  const handleBlock = async () => {
+    if (!userId) return;
+    if (isBlocked) {
+      await supabase.from("blocked_users").delete().match({ blocker_id: user!.id, blocked_id: userId });
+      setIsBlocked(false);
+      toast({ title: "User unblocked" });
+    } else {
+      await blockUser(userId);
+      setIsBlocked(true);
+      // Also unfollow if following
+      if (isFollowing) {
+        await unfollowUser(userId);
+        setFollowersCount(prev => Math.max(0, prev - 1));
+      }
+      toast({ title: "User blocked", description: "They won't be able to see your profile or interact with you." });
+    }
   };
 
   if (loading) {
@@ -140,10 +180,27 @@ export default function UserProfilePage() {
 
   return (
     <div className="min-h-screen pb-24">
-      <header className="px-5 pt-12 pb-4">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2 mb-2">
+      <header className="px-5 pt-12 pb-4 flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back
         </Button>
+        {!isOwnProfile && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setShowReportSheet(true)} className="text-destructive">
+                <Flag className="w-4 h-4 mr-2" /> Report User
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleBlock}>
+                <Ban className="w-4 h-4 mr-2" /> {isBlocked ? "Unblock User" : "Block User"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </header>
 
       {/* Profile header */}
@@ -307,9 +364,14 @@ export default function UserProfilePage() {
             userId={userId}
             displayName={profile?.display_name || profile?.username || "User"}
           />
+          <ReportSheet
+            open={showReportSheet}
+            onOpenChange={setShowReportSheet}
+            reportedUserId={userId}
+            reportType="user"
+          />
         </>
       )}
     </div>
   );
 }
-

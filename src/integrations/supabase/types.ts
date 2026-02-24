@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocked_users: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: []
+      }
       clothing_items: {
         Row: {
           back_image_url: string | null
@@ -437,6 +458,42 @@ export type Database = {
         }
         Relationships: []
       }
+      reports: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reference_id: string | null
+          report_type: string
+          reported_user_id: string
+          reporter_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reference_id?: string | null
+          report_type?: string
+          reported_user_id: string
+          reporter_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reference_id?: string | null
+          report_type?: string
+          reported_user_id?: string
+          reporter_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       social_comments: {
         Row: {
           content: string
@@ -669,6 +726,10 @@ export type Database = {
       increment_post_likes: {
         Args: { post_id_param: string }
         Returns: undefined
+      }
+      is_blocked: {
+        Args: { checker_id: string; target_id: string }
+        Returns: boolean
       }
     }
     Enums: {
