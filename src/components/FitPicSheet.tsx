@@ -96,13 +96,27 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
         <div className="space-y-4 mt-4">
           {preview ? (
             <div className="relative rounded-2xl overflow-hidden aspect-square max-w-xs mx-auto">
-              <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-              <button
-                onClick={() => { setImage(null); setPreview(null); }}
-                className="absolute top-2 right-2 bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center text-xs"
-              >
-                ✕
-              </button>
+              <img src={preview} alt="Preview" className="w-full h-full object-cover transition-transform" style={{ transform: `rotate(${rotation}deg)` }} />
+              <div className="absolute top-2 right-2 flex gap-1.5">
+                <button
+                  onClick={rotateImage}
+                  className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
+                >
+                  <RotateCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={handleRetake}
+                  className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => { setImage(null); setPreview(null); setRotation(0); }}
+                  className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center text-xs"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           ) : (
             <label className="flex flex-col items-center justify-center gap-2 p-8 rounded-2xl border-2 border-dashed border-border cursor-pointer hover:bg-muted/30 transition-colors">
