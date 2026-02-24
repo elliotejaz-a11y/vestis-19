@@ -61,10 +61,30 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!item || !name || !category) return;
+    let imageUrl = item.imageUrl;
+
+    if (newImage && user) {
+      setUploading(true);
+      try {
+        const processed = await processClothingImage(newImage);
+        const ext = newImage.name.split(".").pop() || "png";
+        const path = `${user.id}/${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("clothing-images").upload(path, processed);
+        if (!upErr) {
+          const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
+          imageUrl = urlData.publicUrl;
+        }
+      } catch (err) {
+        console.error("Image upload failed", err);
+      } finally {
+        setUploading(false);
+      }
+    }
+
     const priceNum = priceEnabled && estimatedPrice ? parseFloat(estimatedPrice) : (priceEnabled ? 0 : undefined);
-    onSave({ ...item, name, category, color: joinColors(colors), fabric, notes, estimatedPrice: priceNum, isPrivate });
+    onSave({ ...item, name, category, color: joinColors(colors), fabric, notes, estimatedPrice: priceNum, isPrivate, imageUrl });
     onOpenChange(false);
   };
 
