@@ -4,10 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera } from "lucide-react";
+import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban } from "lucide-react";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
+import { ReportSheet } from "@/components/ReportSheet";
+import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 interface UserProfileData {
   id: string;
   display_name: string | null;
