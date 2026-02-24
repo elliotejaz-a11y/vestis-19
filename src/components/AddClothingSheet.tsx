@@ -229,7 +229,24 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 src={imageUrl}
                 alt="Preview"
                 className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
+                style={{ transform: `rotate(${rotation}deg)` }}
               />
+              {!removingBg && !analyzing && (
+                <div className="absolute top-2 right-2 flex gap-1.5">
+                  <button
+                    onClick={() => setRotation((prev) => (prev + 90) % 360)}
+                    className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => { resetForm(); }}
+                    className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
               {removingBg && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <div className="relative">
