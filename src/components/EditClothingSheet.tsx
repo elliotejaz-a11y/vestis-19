@@ -196,8 +196,8 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
             <Switch checked={isPrivate} onCheckedChange={setIsPrivate} />
           </div>
 
-          <Button onClick={handleSave} disabled={!name || !category} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90">
-            <Sparkles className="w-4 h-4 mr-2" /> Save Changes
+          <Button onClick={handleSave} disabled={!name || !category || uploading} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90">
+            <Sparkles className="w-4 h-4 mr-2" /> {uploading ? "Uploading…" : "Save Changes"}
           </Button>
         </div>
       </SheetContent>
