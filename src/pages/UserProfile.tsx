@@ -364,9 +364,14 @@ export default function UserProfilePage() {
             userId={userId}
             displayName={profile?.display_name || profile?.username || "User"}
           />
+          <ReportSheet
+            open={showReportSheet}
+            onOpenChange={setShowReportSheet}
+            reportedUserId={userId}
+            reportType="user"
+          />
         </>
       )}
     </div>
   );
 }
-
