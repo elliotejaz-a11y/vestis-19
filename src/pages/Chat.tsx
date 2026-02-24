@@ -17,6 +17,13 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/currency";
 import { ClothingItem } from "@/types/wardrobe";
+import { ReportSheet } from "@/components/ReportSheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ─── Friend Profile type ───
 interface FriendProfile {
