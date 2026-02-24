@@ -328,15 +328,31 @@ export function AddClothingSheet({ onAdd, children }: Props) {
           {estimatedPrice === undefined && imageUrl && !analyzing && (
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-muted-foreground">Price (optional)</Label>
-              <Input
-                type="number"
-                placeholder="Add a value..."
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  if (!isNaN(val) && val > 0) setEstimatedPrice(val);
-                }}
-                className="rounded-xl bg-card"
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Add a value..."
+                  value={priceInput}
+                  onChange={(e) => setPriceInput(e.target.value)}
+                  className="rounded-xl bg-card flex-1"
+                />
+                <Button
+                  size="icon"
+                  variant="outline"
+                  disabled={!priceInput || isNaN(parseFloat(priceInput)) || parseFloat(priceInput) <= 0}
+                  onClick={() => {
+                    const val = parseFloat(priceInput);
+                    if (!isNaN(val) && val > 0) {
+                      setEstimatedPrice(val);
+                      setPriceInput("");
+                    }
+                  }}
+                  className="rounded-xl h-10 w-10 shrink-0"
+                >
+                  ✓
+                </Button>
+              </div>
             </div>
           )}
 
