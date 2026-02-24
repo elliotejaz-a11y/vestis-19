@@ -117,13 +117,16 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
               />
             </div>
             {priceEnabled && (
-              <Input
-                type="number"
-                value={estimatedPrice}
-                onChange={(e) => setEstimatedPrice(e.target.value)}
-                placeholder="e.g. 120"
-                className="rounded-xl bg-card"
-              />
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  value={estimatedPrice}
+                  onChange={(e) => setEstimatedPrice(e.target.value)}
+                  placeholder="e.g. 120"
+                  className="rounded-xl bg-card flex-1"
+                />
+              </div>
             )}
           </div>
 
