@@ -31,6 +31,11 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
   const [isPrivate, setIsPrivate] = useState(item?.isPrivate || false);
+  const [rotation, setRotation] = useState(0);
+  const [newImage, setNewImage] = useState<File | null>(null);
+  const [newPreview, setNewPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const { user } = useAuth();
 
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
@@ -42,7 +47,19 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setEstimatedPrice(item.estimatedPrice?.toString() || "");
     setPriceEnabled(item.estimatedPrice != null);
     setIsPrivate(item.isPrivate || false);
+    setRotation(0);
+    setNewImage(null);
+    setNewPreview(null);
   }
+
+  const handleRetake = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewImage(file);
+      setNewPreview(URL.createObjectURL(file));
+      setRotation(0);
+    }
+  };
 
   const handleSave = () => {
     if (!item || !name || !category) return;
