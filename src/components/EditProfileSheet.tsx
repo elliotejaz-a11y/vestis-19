@@ -40,6 +40,12 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
