@@ -327,6 +327,64 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
             </Select>
           </div>
 
+          {/* Change Password */}
+          <div className="space-y-3 pt-2 border-t border-border">
+            <div className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-accent" />
+              <Label className="text-xs font-semibold text-foreground">Change Password</Label>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Current Password</Label>
+              <div className="relative">
+                <Input
+                  type={showCurrentPw ? "text" : "password"}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="rounded-xl bg-card text-sm pr-10"
+                />
+                <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">New Password</Label>
+              <div className="relative">
+                <Input
+                  type={showNewPw ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="rounded-xl bg-card text-sm pr-10"
+                  minLength={6}
+                />
+                <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Confirm New Password</Label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="••••••••"
+                className="rounded-xl bg-card text-sm"
+              />
+            </div>
+            <Button
+              onClick={handleChangePassword}
+              disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+              variant="outline"
+              className="w-full h-10 rounded-2xl text-sm"
+            >
+              {changingPassword ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Update Password
+            </Button>
+          </div>
+
           <Button
             onClick={handleSave}
             disabled={saving}
