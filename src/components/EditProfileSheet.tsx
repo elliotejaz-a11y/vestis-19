@@ -148,6 +148,37 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
     onOpenChange(false);
   };
 
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      toast({ title: "Password too short", description: "Must be at least 6 characters.", variant: "destructive" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Passwords don't match", variant: "destructive" });
+      return;
+    }
+    setChangingPassword(true);
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user?.email || "",
+      password: currentPassword,
+    });
+    if (signInError) {
+      toast({ title: "Current password incorrect", variant: "destructive" });
+      setChangingPassword(false);
+      return;
+    }
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      toast({ title: "Failed to change password", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Password changed ✨" });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    setChangingPassword(false);
+  };
+
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen && profile) {
       setDisplayName(profile.display_name || "");
@@ -156,6 +187,9 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setAvatarUrl(profile.avatar_url || "");
       setAvatarPosition(profile.avatar_position || "50% 50%");
       setCurrencyPref(profile.currency_preference || "NZD");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
     }
     onOpenChange(isOpen);
   };
