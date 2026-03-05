@@ -19,6 +19,7 @@ import UserProfilePage from "./pages/UserProfile";
 import Friends from "./pages/Friends";
 import Chat from "./pages/Chat";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/policies/Terms";

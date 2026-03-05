@@ -247,6 +247,30 @@ export default function Auth() {
           >
             {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
           </Button>
+
+          {!isSignUp && (
+            <button
+              type="button"
+              onClick={async () => {
+                const resetEmail = emailOrUsername.includes("@") ? emailOrUsername.trim() : "";
+                if (!resetEmail) {
+                  toast({ title: "Enter your email", description: "Please enter your email address above, then tap Forgot Password.", variant: "destructive" });
+                  return;
+                }
+                const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                  redirectTo: `${window.location.origin}/reset-password`,
+                });
+                if (error) {
+                  toast({ title: "Error", description: error.message, variant: "destructive" });
+                } else {
+                  toast({ title: "Check your email ✉️", description: "We sent a password reset link to your email." });
+                }
+              }}
+              className="w-full text-center text-xs text-accent font-medium hover:underline"
+            >
+              Forgot Password?
+            </button>
+          )}
         </form>
 
         <p className="text-center text-xs text-muted-foreground">
