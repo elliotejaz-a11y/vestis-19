@@ -19,9 +19,17 @@ export default function ResetPassword() {
 
   useEffect(() => {
     // Listen for the PASSWORD_RECOVERY event from the auth state
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsRecovery(true);
+      }
+      // If we got a session via the recovery link (event may have fired before mount)
+      if (session && (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION")) {
+        // Check if this page was loaded for recovery purposes
+        const hash = window.location.hash;
+        if (hash.includes("type=recovery")) {
+          setIsRecovery(true);
+        }
       }
     });
 
@@ -30,6 +38,13 @@ export default function ResetPassword() {
     if (hash.includes("type=recovery")) {
       setIsRecovery(true);
     }
+
+    // Fallback: if there's already a session, the recovery event was likely already processed
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsRecovery(true);
+      }
+    });
 
     return () => subscription.unsubscribe();
   }, []);
