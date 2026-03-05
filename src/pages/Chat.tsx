@@ -761,18 +761,18 @@ function ChatView({
             const isImage = msg.content.startsWith("[IMG]") && msg.content.endsWith("[/IMG]");
             const imageUrl = isImage ? msg.content.slice(5, -6) : null;
             return (
-              <div key={msg.id} className={cn("flex group", isMine ? "justify-end" : "justify-start")}>
-                <div className="flex flex-col items-end gap-0.5">
-                  <div className="flex items-center gap-1">
+              <div key={msg.id} className={cn("flex group w-full", isMine ? "justify-end" : "justify-start")}>
+                <div className={cn("flex flex-col gap-0.5 max-w-[80%]", isMine ? "items-end" : "items-start")}>
+                  <div className="flex items-center gap-1 w-full">
                     {!isMine && !msg.is_flagged && (
                       <button
                         onClick={() => setReportMsg({ id: msg.id, senderId: msg.sender_id })}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 flex-shrink-0"
                       >
                         <Flag className="w-3 h-3 text-muted-foreground" />
                       </button>
                     )}
-                    <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
+                    <div className={cn("rounded-2xl px-3.5 py-2 text-sm break-words", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
                       {msg.is_flagged ? (
                         <span className="flex items-center gap-1 text-muted-foreground italic text-xs"><AlertTriangle className="w-3 h-3" /> Message removed</span>
                       ) : isImage && imageUrl ? (
