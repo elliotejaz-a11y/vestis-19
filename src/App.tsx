@@ -45,6 +45,11 @@ function AppRoutes() {
     );
   }
 
+  // Reset password must be accessible without auth
+  if (window.location.pathname === "/reset-password") return (
+    <Routes><Route path="/reset-password" element={<ResetPassword />} /></Routes>
+  );
+
   if (!user) return <Auth />;
   if (profile && !profile.onboarding_completed) return <Onboarding />;
   return <AuthenticatedApp />;
