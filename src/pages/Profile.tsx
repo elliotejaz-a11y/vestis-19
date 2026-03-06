@@ -425,6 +425,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <MessageSquare className="w-4 h-4 mr-2" /> Help & Feedback
         </Button>
 
+        <ChangePasswordSection />
+
         <Button variant="outline" onClick={signOut} className="w-full h-12 rounded-2xl text-sm">
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
