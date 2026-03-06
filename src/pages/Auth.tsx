@@ -6,13 +6,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Eye, EyeOff, Check, X, Loader2, Sun, Moon } from "lucide-react";
+import { Eye, EyeOff, Check, X, Loader2, Sun, Moon, ArrowLeft, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [signUpEmail, setSignUpEmail] = useState("");
   const { theme, setTheme } = useTheme();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -65,7 +68,8 @@ export default function Auth() {
       } else {
         localStorage.setItem("pending_username", username);
         localStorage.setItem("vestis_fresh_signup", "true");
-        toast({ title: "Check your email ✉️", description: "We sent a verification link to confirm your account." });
+        setSignUpEmail(email);
+        setShowVerification(true);
       }
     } else {
       let signInEmail = emailOrUsername.trim();
@@ -102,6 +106,16 @@ export default function Auth() {
     }
     setLoading(false);
   };
+
+  // Forgot password view
+  if (showForgotPassword) {
+    return <ForgotPasswordView onBack={() => setShowForgotPassword(false)} />;
+  }
+
+  // Email verification view
+  if (showVerification) {
+    return <VerificationView email={signUpEmail} onBack={() => setShowVerification(false)} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
@@ -247,6 +261,12 @@ export default function Auth() {
           >
             {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
           </Button>
+
+          {!isSignUp && (
+            <button type="button" onClick={() => setShowForgotPassword(true)} className="w-full text-center text-xs text-accent font-medium hover:underline">
+              Forgot Password?
+            </button>
+          )}
         </form>
 
         <p className="text-center text-xs text-muted-foreground">
@@ -258,6 +278,109 @@ export default function Auth() {
             {isSignUp ? "Sign In" : "Sign Up"}
           </button>
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ─── Forgot Password View ───
+function ForgotPasswordView({ onBack }: { onBack: () => void }) {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+  const { toast } = useToast();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setSent(true);
+    }
+    setLoading(false);
+  };
+
+  if (sent) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
+        <div className="w-full max-w-sm text-center space-y-4">
+          <Mail className="w-12 h-12 text-accent mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Check your email</h2>
+          <p className="text-sm text-muted-foreground">We sent a password reset link to <strong>{email}</strong></p>
+          <p className="text-xs text-muted-foreground">Don't see it? Check your spam or junk folder.</p>
+          <Button variant="outline" onClick={onBack} className="rounded-xl">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back to Sign In
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
+      <div className="w-full max-w-sm space-y-8">
+        <div className="text-center space-y-2">
+          <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Forgot Password</h2>
+          <p className="text-sm text-muted-foreground">Enter your email and we'll send you a reset link</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="mt-1 rounded-xl bg-card" required />
+          </div>
+          <Button type="submit" disabled={loading} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm">
+            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            {loading ? "Sending..." : "Send Reset Link"}
+          </Button>
+        </form>
+        <button onClick={onBack} className="w-full text-center text-xs text-accent font-semibold hover:underline flex items-center justify-center gap-1">
+          <ArrowLeft className="w-3 h-3" /> Back to Sign In
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Email Verification View ───
+function VerificationView({ email, onBack }: { email: string; onBack: () => void }) {
+  const [resending, setResending] = useState(false);
+  const [resent, setResent] = useState(false);
+  const { toast } = useToast();
+
+  const handleResend = async () => {
+    setResending(true);
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    if (error) {
+      toast({ title: "Failed to resend", description: error.message, variant: "destructive" });
+    } else {
+      setResent(true);
+      toast({ title: "Email resent ✉️" });
+      setTimeout(() => setResent(false), 30000);
+    }
+    setResending(false);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
+      <div className="w-full max-w-sm text-center space-y-4">
+        <Mail className="w-12 h-12 text-accent mx-auto" />
+        <h2 className="text-xl font-bold text-foreground">Check your email ✉️</h2>
+        <p className="text-sm text-muted-foreground">We sent a verification link to <strong>{email}</strong></p>
+        <p className="text-xs text-muted-foreground">Can't find it? <strong>Check your spam or junk folder.</strong></p>
+        <Button variant="outline" onClick={handleResend} disabled={resending || resent} className="rounded-xl text-sm">
+          {resending ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Mail className="w-4 h-4 mr-1" />}
+          {resent ? "Email Resent!" : "Resend Verification Email"}
+        </Button>
+        <div>
+          <button onClick={onBack} className="text-xs text-accent font-semibold hover:underline flex items-center justify-center gap-1 mx-auto">
+            <ArrowLeft className="w-3 h-3" /> Back to Sign In
+          </button>
+        </div>
       </div>
     </div>
   );

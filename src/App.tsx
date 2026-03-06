@@ -20,6 +20,7 @@ import Friends from "./pages/Friends";
 import Chat from "./pages/Chat";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/policies/Terms";
 import Privacy from "./pages/policies/Privacy";
@@ -43,6 +44,10 @@ function AppRoutes() {
       </div>
     );
   }
+
+  // Allow reset-password route even when not logged in
+  const isResetPassword = window.location.pathname === "/reset-password" || window.location.hash.includes("type=recovery");
+  if (isResetPassword) return <Routes><Route path="/reset-password" element={<ResetPassword />} /><Route path="*" element={<ResetPassword />} /></Routes>;
 
   if (!user) return <Auth />;
   if (profile && !profile.onboarding_completed) return <Onboarding />;
