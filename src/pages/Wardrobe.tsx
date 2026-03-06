@@ -26,9 +26,6 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
   const navigate = useNavigate();
 
-  // Pre-download bg-removal model so uploads are instant
-  useEffect(() => { preloadBgRemovalModel(); }, []);
-
   const savedOutfits = outfits.filter((o) => o.saved);
   const filtered = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
 
