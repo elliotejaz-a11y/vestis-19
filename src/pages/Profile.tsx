@@ -557,6 +557,10 @@ function ChangePasswordSection() {
         <button onClick={() => setOpen(false)} className="text-xs text-muted-foreground">Cancel</button>
       </div>
       <div>
+        <label className="text-xs text-muted-foreground">Current Password</label>
+        <Input type={showPassword ? "text" : "password"} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background" required />
+      </div>
+      <div>
         <label className="text-xs text-muted-foreground">New Password</label>
         <div className="relative">
           <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background pr-10" minLength={6} />
