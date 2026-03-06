@@ -70,10 +70,9 @@ export function useWardrobe() {
   }, [user]);
 
   const addItem = useCallback(
-    async (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => {
+    async (item: ClothingItem) => {
       if (!user) return;
 
-      const runBgRemoval = options?.runBackgroundRemoval === true;
       let imageUrl = item.imageUrl;
       let backImageUrl = item.backImageUrl || "";
       if (imageUrl.startsWith("blob:")) {
