@@ -6,13 +6,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Eye, EyeOff, Check, X, Loader2, Sun, Moon } from "lucide-react";
+import { Eye, EyeOff, Check, X, Loader2, Sun, Moon, ArrowLeft, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showVerification, setShowVerification] = useState(false);
+  const [signUpEmail, setSignUpEmail] = useState("");
   const { theme, setTheme } = useTheme();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
