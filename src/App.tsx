@@ -56,11 +56,8 @@ function AppRoutes() {
 }
 
 function AuthenticatedApp() {
-  const { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState } = useWardrobe();
+  const { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, addOutfitToState } = useWardrobe();
   const { deletedItems, addToDeleted, removeFromDeleted } = useRecentlyDeleted();
-
-  // Preload bg-removal model assets so first upload is fast
-  useEffect(() => { preloadBgRemovalModel(); }, []);
 
   const handleSoftRemove = useCallback((id: string) => {
     const item = items.find((i) => i.id === id);
