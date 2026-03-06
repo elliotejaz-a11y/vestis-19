@@ -261,6 +261,12 @@ export default function Auth() {
           >
             {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
           </Button>
+
+          {!isSignUp && (
+            <button type="button" onClick={() => setShowForgotPassword(true)} className="w-full text-center text-xs text-accent font-medium hover:underline">
+              Forgot Password?
+            </button>
+          )}
         </form>
 
         <p className="text-center text-xs text-muted-foreground">
