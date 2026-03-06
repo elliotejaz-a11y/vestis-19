@@ -263,7 +263,7 @@ function MessagesTab({
                       {conv.unreadCount}
                     </span>
                   ) : (
-                    <span className="text-[9px] text-muted-foreground/60 ml-2 flex-shrink-0">Read</span>
+                    <span className="ml-2 flex-shrink-0" />
                   )}
                 </div>
               </div>
