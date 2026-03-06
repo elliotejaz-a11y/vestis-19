@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { processClothingImage } from "@/lib/image-processing";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,12 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wardrobeImageProcessing";
-
+import { processClothingImage } from "@/lib/image-processing";
 
 const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
 
 interface Props {
-  onAdd: (item: ClothingItem) => void;
+  onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
   children: React.ReactNode;
 }
 
@@ -34,7 +33,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [priceInput, setPriceInput] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
-  
+  const [removingBg, setRemovingBg] = useState(false);
   const [rotation, setRotation] = useState(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -100,8 +99,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     return undefined;
   };
 
-  const [removingBg, setRemovingBg] = useState(false);
-
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -114,24 +111,23 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       return;
     }
 
-    // Step 1: Remove background
-    setRemovingBg(true);
+    // Show original preview immediately
     setImageUrl(URL.createObjectURL(file));
-    let processedBlob: Blob;
+    setRemovingBg(true);
+    let cleanBlob: Blob;
     try {
-      processedBlob = await processClothingImage(file);
-      const cleanUrl = URL.createObjectURL(processedBlob);
-      setImageUrl(cleanUrl);
+      cleanBlob = await processClothingImage(file);
+      setImageUrl(URL.createObjectURL(cleanBlob));
     } catch {
-      processedBlob = file;
+      cleanBlob = file;
     } finally {
       setRemovingBg(false);
     }
 
-    // Step 2: AI analysis on the clean image
     setAnalyzing(true);
     try {
-      const resizedBlob = await resizeImageForAnalysis(processedBlob, 1024);
+      // Resize image to max 1024px before sending to AI to stay under 10MB limit
+      const resizedBlob = await resizeImageForAnalysis(cleanBlob, 1024);
       const base64 = await fileToBase64(new File([resizedBlob], file.name, { type: "image/jpeg" }));
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
         body: { imageBase64: base64 },
@@ -173,19 +169,31 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const handleSave = async () => {
     if (!imageUrl || !name || !category) return;
     const color = joinColors(colors);
-    onAdd({
-      id: crypto.randomUUID(),
-      name,
-      category,
-      color,
-      fabric,
-      imageUrl,
-      backImageUrl: backImageUrl || undefined,
-      tags: [...tags, ...colors.map(c => c.toLowerCase()), fabric.toLowerCase(), category].filter(Boolean),
-      notes,
-      addedAt: new Date(),
-      estimatedPrice,
-    });
+    const isFileSourced = imageUrl.startsWith("blob:") || imageUrl.startsWith("data:");
+    let imageBase64ForProcessing: string | undefined;
+    if (isFileSourced) {
+      try {
+        imageBase64ForProcessing = await imageUrlToBase64(imageUrl);
+      } catch (e) {
+        console.warn("Could not get base64 for background removal:", e);
+      }
+    }
+    onAdd(
+      {
+        id: crypto.randomUUID(),
+        name,
+        category,
+        color,
+        fabric,
+        imageUrl,
+        backImageUrl: backImageUrl || undefined,
+        tags: [...tags, ...colors.map(c => c.toLowerCase()), fabric.toLowerCase(), category].filter(Boolean),
+        notes,
+        addedAt: new Date(),
+        estimatedPrice,
+      },
+      { runBackgroundRemoval: isFileSourced, imageBase64ForProcessing }
+    );
     resetForm();
     setOpen(false);
   };
@@ -220,7 +228,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               <img
                 src={imageUrl}
                 alt="Preview"
-                className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
+                className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
                 style={{ transform: `rotate(${rotation}deg)` }}
               />
               {!removingBg && !analyzing && (
@@ -241,10 +249,13 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               )}
               {removingBg && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                  <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+                    <Sparkles className="w-5 h-5 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
                   <div className="text-center">
-                    <p className="text-sm font-semibold text-white">Cleaning up image…</p>
-                    <p className="text-[11px] text-white/60 mt-1">Removing background for a cleaner look</p>
+                    <p className="text-sm font-semibold text-white">Removing Background</p>
+                    <p className="text-[11px] text-white/60 mt-1">This may take a moment…</p>
                   </div>
                 </div>
               )}

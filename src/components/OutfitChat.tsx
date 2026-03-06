@@ -126,13 +126,7 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
                     : "bg-card border border-border/40 text-foreground"
                 )}
               >
-                {msg.content.split(/(\*\*[^*]+\*\*)/).map((part, j) =>
-                  part.startsWith("**") && part.endsWith("**") ? (
-                    <strong key={j}>{part.slice(2, -2)}</strong>
-                  ) : (
-                    <span key={j}>{part}</span>
-                  )
-                )}
+                {msg.content}
               </div>
             </div>
           ))}

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Camera, Loader2, Move, Lock, Eye, EyeOff, KeyRound } from "lucide-react";
+import { User, Camera, Loader2, Move, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -40,12 +40,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPw, setShowCurrentPw] = useState(false);
-  const [showNewPw, setShowNewPw] = useState(false);
-  const [changingPassword, setChangingPassword] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -148,37 +142,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
     onOpenChange(false);
   };
 
-  const handleChangePassword = async () => {
-    if (newPassword.length < 6) {
-      toast({ title: "Password too short", description: "Must be at least 6 characters.", variant: "destructive" });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast({ title: "Passwords don't match", variant: "destructive" });
-      return;
-    }
-    setChangingPassword(true);
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: user?.email || "",
-      password: currentPassword,
-    });
-    if (signInError) {
-      toast({ title: "Current password incorrect", variant: "destructive" });
-      setChangingPassword(false);
-      return;
-    }
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) {
-      toast({ title: "Failed to change password", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Password changed ✨" });
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-    setChangingPassword(false);
-  };
-
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen && profile) {
       setDisplayName(profile.display_name || "");
@@ -187,9 +150,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setAvatarUrl(profile.avatar_url || "");
       setAvatarPosition(profile.avatar_position || "50% 50%");
       setCurrencyPref(profile.currency_preference || "NZD");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
     }
     onOpenChange(isOpen);
   };
@@ -325,64 +285,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                 <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          {/* Change Password */}
-          <div className="space-y-3 pt-2 border-t border-border">
-            <div className="flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-accent" />
-              <Label className="text-xs font-semibold text-foreground">Change Password</Label>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Current Password</Label>
-              <div className="relative">
-                <Input
-                  type={showCurrentPw ? "text" : "password"}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="rounded-xl bg-card text-sm pr-10"
-                />
-                <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">New Password</Label>
-              <div className="relative">
-                <Input
-                  type={showNewPw ? "text" : "password"}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="rounded-xl bg-card text-sm pr-10"
-                  minLength={6}
-                />
-                <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                  {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Confirm New Password</Label>
-              <Input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                className="rounded-xl bg-card text-sm"
-              />
-            </div>
-            <Button
-              onClick={handleChangePassword}
-              disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
-              variant="outline"
-              className="w-full h-10 rounded-2xl text-sm"
-            >
-              {changingPassword ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Update Password
-            </Button>
           </div>
 
           <Button

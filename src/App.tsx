@@ -19,7 +19,6 @@ import UserProfilePage from "./pages/UserProfile";
 import Friends from "./pages/Friends";
 import Chat from "./pages/Chat";
 import Auth from "./pages/Auth";
-import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import Terms from "./pages/policies/Terms";
@@ -29,7 +28,7 @@ import Cookies from "./pages/policies/Cookies";
 import { AppTutorial } from "@/components/AppTutorial";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect } from "react";
-
+import { preloadBgRemovalModel } from "@/lib/image-processing";
 import { ClothingItem } from "@/types/wardrobe";
 
 const queryClient = new QueryClient();
@@ -45,19 +44,17 @@ function AppRoutes() {
     );
   }
 
-  // Reset password must be accessible without auth
-  if (window.location.pathname === "/reset-password") return (
-    <Routes><Route path="/reset-password" element={<ResetPassword />} /></Routes>
-  );
-
   if (!user) return <Auth />;
   if (profile && !profile.onboarding_completed) return <Onboarding />;
   return <AuthenticatedApp />;
 }
 
 function AuthenticatedApp() {
-  const { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, addOutfitToState } = useWardrobe();
+  const { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState } = useWardrobe();
   const { deletedItems, addToDeleted, removeFromDeleted } = useRecentlyDeleted();
+
+  // Preload bg-removal model assets so first upload is fast
+  useEffect(() => { preloadBgRemovalModel(); }, []);
 
   const handleSoftRemove = useCallback((id: string) => {
     const item = items.find((i) => i.id === id);
@@ -88,7 +85,7 @@ function AuthenticatedApp() {
             onUpdate={updateItem}
             onSaveOutfit={saveOutfit}
             onDeleteOutfit={deleteOutfit}
-            
+            onRetryBackgroundRemoval={retryBackgroundRemoval}
           />
         } />
         <Route path="/add" element={<AddItem onAdd={addItem} />} />
