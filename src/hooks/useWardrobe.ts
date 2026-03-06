@@ -204,82 +204,9 @@ export function useWardrobe() {
         };
         setItems((prev) => [newItem, ...prev]);
 
-        if (runBgRemoval && data.id) {
-          processBackgroundRemoval({
-            itemId: data.id,
-            imageUrl,
-            userId: user.id,
-            imageBase64ForProcessing: options?.imageBase64ForProcessing,
-            onStatusUpdate: (payload) => {
-              setItems((prev) =>
-                prev.map((i) =>
-                  i.id === data.id
-                    ? {
-                        ...i,
-                        imageUrl: payload.imageUrl ?? i.imageUrl,
-                        imageStatus: payload.imageStatus,
-                        imageError: payload.imageError ?? i.imageError,
-                      }
-                    : i
-                )
-              );
-              if (payload.imageStatus === "failed") {
-                toast({
-                  title: "Background removal didn’t complete",
-                  description: payload.imageError || "Tap the card to retry.",
-                  variant: "destructive",
-                });
-              }
-            },
-          });
-        }
       }
     },
     [user, toast]
-  );
-
-  const retryBackgroundRemoval = useCallback(
-    async (itemId: string) => {
-      if (!user) return;
-      const item = items.find((i) => i.id === itemId);
-      if (!item) return;
-      const sourceUrl = item.imageOriginalUrl || item.imageUrl;
-      await supabase
-        .from("clothing_items")
-        .update({ image_status: "processing", image_error: null } as any)
-        .eq("id", itemId)
-        .eq("user_id", user.id);
-      setItems((prev) =>
-        prev.map((i) => (i.id === itemId ? { ...i, imageStatus: "processing" as const, imageError: undefined } : i))
-      );
-      processBackgroundRemoval({
-        itemId,
-        imageUrl: sourceUrl,
-        userId: user.id,
-        onStatusUpdate: (payload) => {
-          setItems((prev) =>
-            prev.map((i) =>
-              i.id === itemId
-                ? {
-                    ...i,
-                    imageUrl: payload.imageUrl ?? i.imageUrl,
-                    imageStatus: payload.imageStatus,
-                    imageError: payload.imageError ?? i.imageError,
-                  }
-                : i
-            )
-          );
-          if (payload.imageStatus === "failed") {
-            toast({
-              title: "Background removal didn’t complete",
-              description: payload.imageError || "Try again later.",
-              variant: "destructive",
-            });
-          }
-        },
-      });
-    },
-    [user, items, toast]
   );
 
   const updateItem = useCallback(
