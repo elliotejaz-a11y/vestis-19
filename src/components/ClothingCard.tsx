@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ClothingItem } from "@/types/wardrobe";
-import { Info, X, Loader2, RefreshCw } from "lucide-react";
+import { Info, X } from "lucide-react";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 interface Props {
