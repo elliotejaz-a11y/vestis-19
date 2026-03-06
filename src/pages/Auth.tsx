@@ -24,6 +24,9 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [signUpSuccess, setSignUpSuccess] = useState(false);
+  const [signUpEmail, setSignUpEmail] = useState("");
+  const [resending, setResending] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
 
@@ -65,7 +68,8 @@ export default function Auth() {
       } else {
         localStorage.setItem("pending_username", username);
         localStorage.setItem("vestis_fresh_signup", "true");
-        toast({ title: "Check your email ✉️", description: "We sent a verification link to confirm your account." });
+        setSignUpEmail(email);
+        setSignUpSuccess(true);
       }
     } else {
       let signInEmail = emailOrUsername.trim();
@@ -102,6 +106,57 @@ export default function Auth() {
     }
     setLoading(false);
   };
+
+  const handleResendVerification = async () => {
+    setResending(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: signUpEmail,
+      options: { emailRedirectTo: "https://vestis-19.lovable.app" },
+    });
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Email resent ✉️", description: "Check your inbox (and spam folder) for the verification link." });
+    }
+    setResending(false);
+  };
+
+  if (signUpSuccess) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
+        <div className="w-full max-w-sm space-y-6 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <img src={vestisLogo} alt="Vestis" className="h-12" />
+            <Badge variant="secondary" className="text-[10px] px-2 py-0.5 uppercase tracking-wider">Beta</Badge>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-xl font-semibold text-foreground">Check your email ✉️</h2>
+            <p className="text-sm text-muted-foreground">
+              We sent a verification link to <span className="font-medium text-foreground">{signUpEmail}</span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Don't see it? <span className="font-medium">Check your spam or junk folder.</span>
+            </p>
+          </div>
+          <Button
+            onClick={handleResendVerification}
+            disabled={resending}
+            variant="outline"
+            className="w-full h-11 rounded-2xl text-sm"
+          >
+            {resending ? "Resending..." : "Resend verification email"}
+          </Button>
+          <button
+            onClick={() => { setSignUpSuccess(false); setIsSignUp(false); }}
+            className="text-xs text-accent font-medium hover:underline"
+          >
+            Back to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
