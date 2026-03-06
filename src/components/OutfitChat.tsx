@@ -126,7 +126,7 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
                     : "bg-card border border-border/40 text-foreground"
                 )}
               >
-                {msg.content}
+                {renderBoldText(msg.content)}
               </div>
             </div>
           ))}
