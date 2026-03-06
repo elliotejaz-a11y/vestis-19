@@ -12,8 +12,6 @@ interface Props {
 
 export function ClothingCard({ item, onRemove, onDetail, compact }: Props) {
   const [showDelete, setShowDelete] = useState(false);
-  const isProcessing = item.imageStatus === "processing";
-  const isFailed = item.imageStatus === "failed";
 
   return (
     <>
