@@ -3,7 +3,7 @@ import { ClothingItem, Outfit } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
+
 
 export function useWardrobe() {
   const { user, profile } = useAuth();
