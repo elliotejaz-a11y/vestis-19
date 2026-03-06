@@ -488,4 +488,72 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   );
 }
 
+// ─── Change Password Section ───
+function ChangePasswordSection() {
+  const [open, setOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const { toast } = useToast();
+
+  const handleChange = async () => {
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Passwords don't match", variant: "destructive" });
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      toast({ title: "Failed to change password", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Password changed ✅" });
+      setOpen(false);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+    setLoading(false);
+  };
+
+  if (!open) {
+    return (
+      <Button variant="outline" onClick={() => setOpen(true)} className="w-full h-12 rounded-2xl text-sm">
+        <KeyRound className="w-4 h-4 mr-2" /> Change Password
+      </Button>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl bg-card border border-border/40 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-foreground flex items-center gap-2"><KeyRound className="w-4 h-4 text-accent" /> Change Password</p>
+        <button onClick={() => setOpen(false)} className="text-xs text-muted-foreground">Cancel</button>
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground">New Password</label>
+        <div className="relative">
+          <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background pr-10" minLength={6} />
+          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+      </div>
+      <div>
+        <label className="text-xs text-muted-foreground">Confirm New Password</label>
+        <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background" minLength={6} />
+      </div>
+      <Button onClick={handleChange} disabled={loading || !newPassword || !confirmPassword} className="w-full h-10 rounded-xl bg-accent text-accent-foreground text-sm font-semibold">
+        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+        {loading ? "Updating..." : "Update Password"}
+      </Button>
+    </div>
+  );
+}
+
 export default Profile;

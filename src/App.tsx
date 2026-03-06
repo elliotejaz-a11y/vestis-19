@@ -45,6 +45,10 @@ function AppRoutes() {
     );
   }
 
+  // Allow reset-password route even when not logged in
+  const isResetPassword = window.location.pathname === "/reset-password" || window.location.hash.includes("type=recovery");
+  if (isResetPassword) return <Routes><Route path="/reset-password" element={<ResetPassword />} /><Route path="*" element={<ResetPassword />} /></Routes>;
+
   if (!user) return <Auth />;
   if (profile && !profile.onboarding_completed) return <Onboarding />;
   return <AuthenticatedApp />;
