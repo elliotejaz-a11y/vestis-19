@@ -16,7 +16,7 @@ import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wa
 const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
 
 interface Props {
-  onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
+  onAdd: (item: ClothingItem) => void;
   children: React.ReactNode;
 }
 
