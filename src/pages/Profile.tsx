@@ -4,6 +4,7 @@ import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSq
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { OutfitCard } from "@/components/OutfitCard";
 import Onboarding from "@/pages/Onboarding";
