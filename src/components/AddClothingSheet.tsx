@@ -158,31 +158,19 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const handleSave = async () => {
     if (!imageUrl || !name || !category) return;
     const color = joinColors(colors);
-    const isFileSourced = imageUrl.startsWith("blob:") || imageUrl.startsWith("data:");
-    let imageBase64ForProcessing: string | undefined;
-    if (isFileSourced) {
-      try {
-        imageBase64ForProcessing = await imageUrlToBase64(imageUrl);
-      } catch (e) {
-        console.warn("Could not get base64 for background removal:", e);
-      }
-    }
-    onAdd(
-      {
-        id: crypto.randomUUID(),
-        name,
-        category,
-        color,
-        fabric,
-        imageUrl,
-        backImageUrl: backImageUrl || undefined,
-        tags: [...tags, ...colors.map(c => c.toLowerCase()), fabric.toLowerCase(), category].filter(Boolean),
-        notes,
-        addedAt: new Date(),
-        estimatedPrice,
-      },
-      { runBackgroundRemoval: isFileSourced, imageBase64ForProcessing }
-    );
+    onAdd({
+      id: crypto.randomUUID(),
+      name,
+      category,
+      color,
+      fabric,
+      imageUrl,
+      backImageUrl: backImageUrl || undefined,
+      tags: [...tags, ...colors.map(c => c.toLowerCase()), fabric.toLowerCase(), category].filter(Boolean),
+      notes,
+      addedAt: new Date(),
+      estimatedPrice,
+    });
     resetForm();
     setOpen(false);
   };
