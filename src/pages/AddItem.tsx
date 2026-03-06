@@ -5,7 +5,7 @@ import { ClothingItem } from "@/types/wardrobe";
 import { Camera, Upload, Sparkles, Package, Home } from "lucide-react";
 import heroImage from "@/assets/hero-wardrobe.jpg";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
-import { preloadBgRemovalModel } from "@/lib/image-processing";
+
 
 interface Props {
   onAdd: (item: ClothingItem) => void;
