@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { } from "react";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { PresetItemsSheet } from "@/components/PresetItemsSheet";
 import { ClothingItem } from "@/types/wardrobe";
