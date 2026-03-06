@@ -500,6 +500,10 @@ function ChangePasswordSection() {
   const { toast } = useToast();
 
   const handleChange = async () => {
+    if (!currentPassword) {
+      toast({ title: "Please enter your current password", variant: "destructive" });
+      return;
+    }
     if (newPassword !== confirmPassword) {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
@@ -509,6 +513,22 @@ function ChangePasswordSection() {
       return;
     }
     setLoading(true);
+    // Verify current password by re-authenticating
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      toast({ title: "Unable to verify identity", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+    if (signInError) {
+      toast({ title: "Current password is incorrect", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
       toast({ title: "Failed to change password", description: error.message, variant: "destructive" });
