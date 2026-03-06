@@ -100,6 +100,8 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     return undefined;
   };
 
+  const [removingBg, setRemovingBg] = useState(false);
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -112,12 +114,24 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       return;
     }
 
+    // Step 1: Remove background
+    setRemovingBg(true);
     setImageUrl(URL.createObjectURL(file));
+    let processedBlob: Blob;
+    try {
+      processedBlob = await processClothingImage(file);
+      const cleanUrl = URL.createObjectURL(processedBlob);
+      setImageUrl(cleanUrl);
+    } catch {
+      processedBlob = file;
+    } finally {
+      setRemovingBg(false);
+    }
 
+    // Step 2: AI analysis on the clean image
     setAnalyzing(true);
     try {
-      // Resize image to max 1024px before sending to AI to stay under 10MB limit
-      const resizedBlob = await resizeImageForAnalysis(file, 1024);
+      const resizedBlob = await resizeImageForAnalysis(processedBlob, 1024);
       const base64 = await fileToBase64(new File([resizedBlob], file.name, { type: "image/jpeg" }));
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
         body: { imageBase64: base64 },
