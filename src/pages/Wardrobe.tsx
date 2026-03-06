@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
@@ -7,27 +7,24 @@ import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { Plus, Shirt, Bookmark, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { preloadBgRemovalModel } from "@/lib/image-processing";
+
 
 interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
-  onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
+  onAdd: (item: ClothingItem) => void;
   onRemove: (id: string) => void;
   onUpdate: (item: ClothingItem) => void;
   onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onDeleteOutfit?: (id: string) => void;
-  onRetryBackgroundRemoval?: (id: string) => void;
+  
 }
 
-export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
+export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit }: Props) {
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
   const navigate = useNavigate();
-
-  // Pre-download bg-removal model so uploads are instant
-  useEffect(() => { preloadBgRemovalModel(); }, []);
 
   const savedOutfits = outfits.filter((o) => o.saved);
   const filtered = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
@@ -133,7 +130,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
           ) : (
             <div className="px-4 grid grid-cols-2 gap-3">
               {filtered.map((item) => (
-                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
+                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} />
               ))}
             </div>
           )}

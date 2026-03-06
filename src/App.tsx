@@ -29,7 +29,7 @@ import Cookies from "./pages/policies/Cookies";
 import { AppTutorial } from "@/components/AppTutorial";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect } from "react";
-import { preloadBgRemovalModel } from "@/lib/image-processing";
+
 import { ClothingItem } from "@/types/wardrobe";
 
 const queryClient = new QueryClient();
@@ -56,11 +56,8 @@ function AppRoutes() {
 }
 
 function AuthenticatedApp() {
-  const { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState } = useWardrobe();
+  const { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, addOutfitToState } = useWardrobe();
   const { deletedItems, addToDeleted, removeFromDeleted } = useRecentlyDeleted();
-
-  // Preload bg-removal model assets so first upload is fast
-  useEffect(() => { preloadBgRemovalModel(); }, []);
 
   const handleSoftRemove = useCallback((id: string) => {
     const item = items.find((i) => i.id === id);
@@ -91,7 +88,7 @@ function AuthenticatedApp() {
             onUpdate={updateItem}
             onSaveOutfit={saveOutfit}
             onDeleteOutfit={deleteOutfit}
-            onRetryBackgroundRemoval={retryBackgroundRemoval}
+            
           />
         } />
         <Route path="/add" element={<AddItem onAdd={addItem} />} />
