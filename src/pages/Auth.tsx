@@ -68,7 +68,8 @@ export default function Auth() {
       } else {
         localStorage.setItem("pending_username", username);
         localStorage.setItem("vestis_fresh_signup", "true");
-        toast({ title: "Check your email ✉️", description: "We sent a verification link to confirm your account." });
+        setSignUpEmail(email);
+        setShowVerification(true);
       }
     } else {
       let signInEmail = emailOrUsername.trim();
