@@ -17,7 +17,7 @@ interface Props {
   onUpdate: (item: ClothingItem) => void;
   onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onDeleteOutfit?: (id: string) => void;
-  onRetryBackgroundRemoval?: (id: string) => void;
+  
 }
 
 export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
