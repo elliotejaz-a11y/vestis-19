@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { processClothingImage } from "@/lib/image-processing";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,6 +100,8 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     return undefined;
   };
 
+  const [removingBg, setRemovingBg] = useState(false);
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -111,12 +114,24 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       return;
     }
 
+    // Step 1: Remove background
+    setRemovingBg(true);
     setImageUrl(URL.createObjectURL(file));
+    let processedBlob: Blob;
+    try {
+      processedBlob = await processClothingImage(file);
+      const cleanUrl = URL.createObjectURL(processedBlob);
+      setImageUrl(cleanUrl);
+    } catch {
+      processedBlob = file;
+    } finally {
+      setRemovingBg(false);
+    }
 
+    // Step 2: AI analysis on the clean image
     setAnalyzing(true);
     try {
-      // Resize image to max 1024px before sending to AI to stay under 10MB limit
-      const resizedBlob = await resizeImageForAnalysis(file, 1024);
+      const resizedBlob = await resizeImageForAnalysis(processedBlob, 1024);
       const base64 = await fileToBase64(new File([resizedBlob], file.name, { type: "image/jpeg" }));
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
         body: { imageBase64: base64 },
@@ -224,7 +239,13 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                   </button>
                 </div>
               )}
-              {analyzing && (
+              {removingBg && (
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+                  <p className="text-sm font-semibold text-white">Removing Background…</p>
+                </div>
+              )}
+              {!removingBg && analyzing && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <div className="relative">
                     <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
