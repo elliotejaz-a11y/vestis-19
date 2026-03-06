@@ -239,7 +239,13 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                   </button>
                 </div>
               )}
-              {analyzing && (
+              {removingBg && (
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+                  <p className="text-sm font-semibold text-white">Removing Background…</p>
+                </div>
+              )}
+              {!removingBg && analyzing && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <div className="relative">
                     <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
