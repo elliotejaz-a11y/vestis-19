@@ -24,6 +24,9 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [signUpSuccess, setSignUpSuccess] = useState(false);
+  const [signUpEmail, setSignUpEmail] = useState("");
+  const [resending, setResending] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
 
