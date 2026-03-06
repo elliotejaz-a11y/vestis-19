@@ -29,7 +29,7 @@ import Cookies from "./pages/policies/Cookies";
 import { AppTutorial } from "@/components/AppTutorial";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect } from "react";
-import { preloadBgRemovalModel } from "@/lib/image-processing";
+
 import { ClothingItem } from "@/types/wardrobe";
 
 const queryClient = new QueryClient();
