@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Sparkles, RotateCw, RefreshCw, Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { processClothingImage } from "@/lib/image-processing";
+
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
 
