@@ -7,7 +7,7 @@ import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { Plus, Shirt, Bookmark, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { preloadBgRemovalModel } from "@/lib/image-processing";
+
 
 interface Props {
   items: ClothingItem[];
