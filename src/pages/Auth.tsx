@@ -62,9 +62,17 @@ export default function Auth() {
         setLoading(false);
         return;
       }
-      const { error } = await signUp(email, password, displayName);
+      const { error, data } = await signUp(email, password, displayName);
       if (error) {
-        toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
+        const msg = error.message?.toLowerCase() || "";
+        if (msg.includes("already registered") || msg.includes("already been registered") || msg.includes("user already registered")) {
+          toast({ title: "Email already in use", description: "An account with this email already exists. Try signing in instead.", variant: "destructive" });
+        } else {
+          toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
+        }
+      } else if (data?.user?.identities?.length === 0) {
+        // Supabase returns empty identities when email is already taken (privacy mode)
+        toast({ title: "Email already in use", description: "An account with this email already exists. Try signing in instead.", variant: "destructive" });
       } else {
         localStorage.setItem("pending_username", username);
         localStorage.setItem("vestis_fresh_signup", "true");
