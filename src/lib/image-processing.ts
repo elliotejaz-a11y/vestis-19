@@ -3,7 +3,7 @@ import { removeBackground } from "@imgly/background-removal";
 export async function processClothingImage(file: File): Promise<Blob> {
   try {
     const blob = await removeBackground(file, {
-      output: { type: "image/png" },
+      output: { format: "image/png" },
     });
     return blob;
   } catch (error) {
