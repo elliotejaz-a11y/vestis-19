@@ -107,6 +107,16 @@ export default function Auth() {
     setLoading(false);
   };
 
+  // Forgot password view
+  if (showForgotPassword) {
+    return <ForgotPasswordView onBack={() => setShowForgotPassword(false)} />;
+  }
+
+  // Email verification view
+  if (showVerification) {
+    return <VerificationView email={signUpEmail} onBack={() => setShowVerification(false)} />;
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
       <div className="w-full max-w-sm space-y-8">
