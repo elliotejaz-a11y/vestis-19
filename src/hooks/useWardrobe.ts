@@ -419,5 +419,5 @@ export function useWardrobe() {
     });
   }, []);
 
-  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, loading };
+  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, addOutfitToState, loading };
 }

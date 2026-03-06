@@ -12,8 +12,6 @@ interface Props {
 }
 
 export function AddItem({ onAdd }: Props) {
-  // Pre-download bg-removal model so uploads are instant
-  useEffect(() => { preloadBgRemovalModel(); }, []);
 
   return (
     <div className="min-h-screen pb-24">

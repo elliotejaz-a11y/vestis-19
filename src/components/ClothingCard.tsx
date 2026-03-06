@@ -7,11 +7,10 @@ interface Props {
   item: ClothingItem;
   onRemove?: (id: string) => void;
   onDetail?: (item: ClothingItem) => void;
-  onRetryBackgroundRemoval?: (id: string) => void;
   compact?: boolean;
 }
 
-export function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemoval, compact }: Props) {
+export function ClothingCard({ item, onRemove, onDetail, compact }: Props) {
   const [showDelete, setShowDelete] = useState(false);
   const isProcessing = item.imageStatus === "processing";
   const isFailed = item.imageStatus === "failed";

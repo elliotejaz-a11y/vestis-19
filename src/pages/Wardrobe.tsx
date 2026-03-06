@@ -130,7 +130,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
           ) : (
             <div className="px-4 grid grid-cols-2 gap-3">
               {filtered.map((item) => (
-                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
+                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} />
               ))}
             </div>
           )}

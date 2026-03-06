@@ -68,7 +68,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     if (newImage && user) {
       setUploading(true);
       try {
-        const processed = await processClothingImage(newImage);
+        const processed = newImage;
         const ext = newImage.name.split(".").pop() || "png";
         const path = `${user.id}/${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage.from("clothing-images").upload(path, processed);
