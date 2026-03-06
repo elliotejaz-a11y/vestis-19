@@ -111,18 +111,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       return;
     }
 
-    // Show original preview immediately
     setImageUrl(URL.createObjectURL(file));
-    setRemovingBg(true);
-    let cleanBlob: Blob;
-    try {
-      cleanBlob = await processClothingImage(file);
-      setImageUrl(URL.createObjectURL(cleanBlob));
-    } catch {
-      cleanBlob = file;
-    } finally {
-      setRemovingBg(false);
-    }
 
     setAnalyzing(true);
     try {
