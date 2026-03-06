@@ -500,6 +500,10 @@ function ChangePasswordSection() {
   const { toast } = useToast();
 
   const handleChange = async () => {
+    if (!currentPassword) {
+      toast({ title: "Please enter your current password", variant: "destructive" });
+      return;
+    }
     if (newPassword !== confirmPassword) {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
@@ -509,6 +513,22 @@ function ChangePasswordSection() {
       return;
     }
     setLoading(true);
+    // Verify current password by re-authenticating
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user?.email) {
+      toast({ title: "Unable to verify identity", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+    if (signInError) {
+      toast({ title: "Current password is incorrect", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
       toast({ title: "Failed to change password", description: error.message, variant: "destructive" });
@@ -537,6 +557,10 @@ function ChangePasswordSection() {
         <button onClick={() => setOpen(false)} className="text-xs text-muted-foreground">Cancel</button>
       </div>
       <div>
+        <label className="text-xs text-muted-foreground">Current Password</label>
+        <Input type={showPassword ? "text" : "password"} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background" required />
+      </div>
+      <div>
         <label className="text-xs text-muted-foreground">New Password</label>
         <div className="relative">
           <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background pr-10" minLength={6} />
@@ -549,7 +573,7 @@ function ChangePasswordSection() {
         <label className="text-xs text-muted-foreground">Confirm New Password</label>
         <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background" minLength={6} />
       </div>
-      <Button onClick={handleChange} disabled={loading || !newPassword || !confirmPassword} className="w-full h-10 rounded-xl bg-accent text-accent-foreground text-sm font-semibold">
+      <Button onClick={handleChange} disabled={loading || !currentPassword || !newPassword || !confirmPassword} className="w-full h-10 rounded-xl bg-accent text-accent-foreground text-sm font-semibold">
         {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
         {loading ? "Updating..." : "Update Password"}
       </Button>
