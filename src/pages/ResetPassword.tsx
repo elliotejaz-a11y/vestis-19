@@ -80,7 +80,7 @@ export default function ResetPassword() {
                 placeholder="••••••••"
                 className="mt-1 rounded-xl bg-card pr-10"
                 required
-                minLength={6}
+                minLength={8}
               />
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -97,7 +97,7 @@ export default function ResetPassword() {
               placeholder="••••••••"
               className="mt-1 rounded-xl bg-card"
               required
-              minLength={6}
+              minLength={8}
             />
           </div>
 

@@ -207,7 +207,7 @@ export default function Auth() {
                 placeholder="••••••••"
                 className="mt-1 rounded-xl bg-card pr-10"
                 required
-                minLength={6}
+                minLength={8}
               />
               <button
                 type="button"
