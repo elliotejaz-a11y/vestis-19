@@ -63,6 +63,12 @@ export default function Auth() {
         setLoading(false);
         return;
       }
+      const pwError = validatePassword(password);
+      if (pwError) {
+        toast({ title: pwError, variant: "destructive" });
+        setLoading(false);
+        return;
+      }
       const { error } = await signUp(email, password, displayName);
       if (error) {
         toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
