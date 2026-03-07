@@ -30,8 +30,8 @@ export default function ResetPassword() {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
     }
-    if (password.length < 6) {
-      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
+    if (!isPasswordValid(password)) {
+      toast({ title: "Weak password", description: PASSWORD_REQUIREMENTS, variant: "destructive" });
       return;
     }
     setLoading(true);
