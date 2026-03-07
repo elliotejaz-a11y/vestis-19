@@ -63,6 +63,11 @@ export default function Auth() {
         setLoading(false);
         return;
       }
+      if (!isPasswordValid(password)) {
+        toast({ title: "Weak password", description: PASSWORD_REQUIREMENTS, variant: "destructive" });
+        setLoading(false);
+        return;
+      }
       const { error } = await signUp(email, password, displayName);
       if (error) {
         toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
