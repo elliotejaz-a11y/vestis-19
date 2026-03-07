@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Eye, EyeOff, Check, X, Loader2, Sun, Moon, ArrowLeft, Mail } from "lucide-react";
+import { validatePassword, PASSWORD_REQUIREMENTS } from "@/lib/password-validation";
 import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
