@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import vestisLogo from "@/assets/vestis-logo.png";
+import { isPasswordValid, PASSWORD_REQUIREMENTS } from "@/lib/password-validation";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
@@ -29,8 +30,8 @@ export default function ResetPassword() {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
     }
-    if (password.length < 6) {
-      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
+    if (!isPasswordValid(password)) {
+      toast({ title: "Weak password", description: PASSWORD_REQUIREMENTS, variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -79,7 +80,7 @@ export default function ResetPassword() {
                 placeholder="••••••••"
                 className="mt-1 rounded-xl bg-card pr-10"
                 required
-                minLength={6}
+                minLength={8}
               />
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -96,7 +97,7 @@ export default function ResetPassword() {
               placeholder="••••••••"
               className="mt-1 rounded-xl bg-card"
               required
-              minLength={6}
+              minLength={8}
             />
           </div>
 

@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Eye, EyeOff, Check, X, Loader2, Sun, Moon, ArrowLeft, Mail } from "lucide-react";
+import { isPasswordValid, PASSWORD_REQUIREMENTS } from "@/lib/password-validation";
 import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
@@ -59,6 +60,11 @@ export default function Auth() {
     if (isSignUp) {
       if (usernameAvailable === false) {
         toast({ title: "Username taken", description: "Please choose a different username.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      if (!isPasswordValid(password)) {
+        toast({ title: "Weak password", description: PASSWORD_REQUIREMENTS, variant: "destructive" });
         setLoading(false);
         return;
       }
@@ -201,7 +207,7 @@ export default function Auth() {
                 placeholder="••••••••"
                 className="mt-1 rounded-xl bg-card pr-10"
                 required
-                minLength={6}
+                minLength={8}
               />
               <button
                 type="button"
