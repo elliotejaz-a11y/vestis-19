@@ -564,7 +564,8 @@ function ChangePasswordSection() {
       <div>
         <label className="text-xs text-muted-foreground">New Password</label>
         <div className="relative">
-          <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background pr-10" minLength={6} />
+          <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background pr-10" minLength={8} />
+          <p className="text-[10px] text-muted-foreground mt-1">{PASSWORD_REQUIREMENTS}</p>
           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
