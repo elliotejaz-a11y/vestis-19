@@ -210,10 +210,6 @@ export default function Auth() {
                 required
                 minLength={8}
               />
-            </div>
-            {isSignUp && (
-              <p className="text-[10px] text-muted-foreground mt-1">{PASSWORD_REQUIREMENTS}</p>
-            )}
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
@@ -222,6 +218,9 @@ export default function Auth() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {isSignUp && (
+              <p className="text-[10px] text-muted-foreground mt-1">{PASSWORD_REQUIREMENTS}</p>
+            )}
           </div>
 
           {/* Theme toggle */}
