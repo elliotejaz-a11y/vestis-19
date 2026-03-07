@@ -508,8 +508,9 @@ function ChangePasswordSection() {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
     }
-    if (newPassword.length < 6) {
-      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
+    const pwError = validatePassword(newPassword);
+    if (pwError) {
+      toast({ title: pwError, variant: "destructive" });
       return;
     }
     setLoading(true);
