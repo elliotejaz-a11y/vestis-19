@@ -573,7 +573,7 @@ function ChangePasswordSection() {
       </div>
       <div>
         <label className="text-xs text-muted-foreground">Confirm New Password</label>
-        <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background" minLength={6} />
+        <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background" minLength={8} />
       </div>
       <Button onClick={handleChange} disabled={loading || !currentPassword || !newPassword || !confirmPassword} className="w-full h-10 rounded-xl bg-accent text-accent-foreground text-sm font-semibold">
         {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
