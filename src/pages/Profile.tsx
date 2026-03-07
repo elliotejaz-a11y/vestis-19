@@ -11,7 +11,6 @@ import Onboarding from "@/pages/Onboarding";
 import { EditProfileSheet } from "@/components/EditProfileSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
-import { isPasswordValid, PASSWORD_REQUIREMENTS } from "@/lib/password-validation";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
@@ -509,8 +508,8 @@ function ChangePasswordSection() {
       toast({ title: "Passwords don't match", variant: "destructive" });
       return;
     }
-    if (!isPasswordValid(newPassword)) {
-      toast({ title: "Weak password", description: PASSWORD_REQUIREMENTS, variant: "destructive" });
+    if (newPassword.length < 6) {
+      toast({ title: "Password must be at least 6 characters", variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -564,7 +563,7 @@ function ChangePasswordSection() {
       <div>
         <label className="text-xs text-muted-foreground">New Password</label>
         <div className="relative">
-          <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background pr-10" minLength={8} />
+          <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background pr-10" minLength={6} />
           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
@@ -572,7 +571,7 @@ function ChangePasswordSection() {
       </div>
       <div>
         <label className="text-xs text-muted-foreground">Confirm New Password</label>
-        <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background" minLength={8} />
+        <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background" minLength={6} />
       </div>
       <Button onClick={handleChange} disabled={loading || !currentPassword || !newPassword || !confirmPassword} className="w-full h-10 rounded-xl bg-accent text-accent-foreground text-sm font-semibold">
         {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
