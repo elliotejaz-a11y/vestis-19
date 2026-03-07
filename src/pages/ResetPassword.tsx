@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import vestisLogo from "@/assets/vestis-logo.png";
+import { validatePassword, PASSWORD_REQUIREMENTS } from "@/lib/password-validation";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
