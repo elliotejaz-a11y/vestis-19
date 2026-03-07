@@ -11,6 +11,7 @@ import Onboarding from "@/pages/Onboarding";
 import { EditProfileSheet } from "@/components/EditProfileSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
+import { isPasswordValid, PASSWORD_REQUIREMENTS } from "@/lib/password-validation";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
