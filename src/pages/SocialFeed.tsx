@@ -36,7 +36,7 @@ export default function SocialFeed() {
       .select("id, display_name, username, avatar_url")
       .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
       .limit(10);
-    setSearchResults(data || []);
+    setSearchResults((data || []).filter((u: any) => u.avatar_url && (u.display_name || u.username)));
     setSearching(false);
   };
 
