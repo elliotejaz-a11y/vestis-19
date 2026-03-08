@@ -501,8 +501,9 @@ function DiscoverTab() {
       .limit(50);
 
     if (profiles) {
-      // Shuffle to feel "personalized"
-      const shuffled = [...profiles].sort(() => Math.random() - 0.5);
+      // Filter out users without a profile picture or proper name, then shuffle
+      const valid = profiles.filter((p: any) => p.avatar_url && (p.display_name || p.username));
+      const shuffled = [...valid].sort(() => Math.random() - 0.5);
       setPeople(shuffled as FriendProfile[]);
     }
     setLoading(false);
