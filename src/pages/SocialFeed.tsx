@@ -41,7 +41,7 @@ export default function SocialFeed() {
   };
 
   const feedPosts = posts;
-  const discoverPosts = posts.filter(p => p.user_id !== user?.id);
+  const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.avatar_url && (p.user?.display_name || p.user?.username));
 
   return (
     <div className="min-h-screen pb-24">
