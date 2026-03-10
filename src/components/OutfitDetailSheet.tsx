@@ -50,11 +50,25 @@ export function OutfitDetailSheet({ outfit, open, onOpenChange }: Props) {
           <p className="text-sm text-foreground leading-relaxed mb-4">{outfit.description}</p>
         )}
 
+        {/* Head-to-toe preview */}
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-4 mb-4">
+          <div className="flex flex-col items-center gap-y-1">
+            {sortItemsHeadToToe(outfit.items).map((item) => {
+              const sizeClass = ITEM_MAX_SIZE[item.category] || "max-h-28 w-28";
+              return (
+                <div key={item.id} className={cn("flex-shrink-0", sizeClass)}>
+                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Items breakdown */}
         <div className="space-y-3 mb-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Items in this outfit</p>
           <div className="space-y-2">
-            {outfit.items.map((item) => (
+            {sortItemsHeadToToe(outfit.items).map((item) => (
               <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/50 border border-border/30">
                 <div className="w-14 h-14 rounded-lg bg-white dark:bg-neutral-800 flex-shrink-0 overflow-hidden">
                   <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />

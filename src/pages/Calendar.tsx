@@ -245,7 +245,7 @@ export function CalendarPage({ outfits }: Props) {
                     >
                       <p className="text-xs font-semibold text-foreground">{outfit.occasion}</p>
                       <div className="flex gap-1 mt-1">
-                        {outfit.items.slice(0, 4).map((item) => (
+                        {sortItemsHeadToToe(outfit.items).slice(0, 4).map((item) => (
                           <div key={item.id} className="w-8 h-8 rounded-lg overflow-hidden bg-muted">
                             <img src={item.imageUrl} alt="" className="w-full h-full object-contain" />
                           </div>
