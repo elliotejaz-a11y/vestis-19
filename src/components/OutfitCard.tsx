@@ -62,45 +62,15 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
       >
         {/* Flat-lay outfit display */}
         <div className="bg-white dark:bg-neutral-800 p-4">
-          <div className="flex flex-col items-center gap-1">
-            {(() => {
-              const outerwear = sorted.filter(i => i.category === "outerwear");
-              const tops = sorted.filter(i => i.category === "tops");
-              const rest = sorted.filter(i => i.category !== "outerwear" && i.category !== "tops");
-
+          <div className="flex flex-col items-center gap-y-1">
+            {sorted.map((item) => {
+              const sizeClass = ITEM_MAX_SIZE[item.category] || "max-h-28 w-28";
               return (
-                <>
-                  {sorted.filter(i => i.category === "accessories").map((item) => (
-                    <div key={item.id} className="w-16 h-16 flex-shrink-0">
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
-                  {(outerwear.length > 0 || tops.length > 0) && (
-                    <div className="flex items-start justify-center gap-2">
-                      {outerwear.map((item) => (
-                        <div key={item.id} className="w-20 h-20 flex-shrink-0 -mt-2">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                        </div>
-                      ))}
-                      {tops.map((item) => (
-                        <div key={item.id} className="w-24 h-24 flex-shrink-0">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {rest.filter(i => i.category !== "accessories").map((item) => {
-                    const isShoes = item.category === "shoes";
-                    const size = isShoes ? "w-16 h-16" : "w-24 h-24";
-                    return (
-                      <div key={item.id} className={cn("flex-shrink-0", size)}>
-                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                      </div>
-                    );
-                  })}
-                </>
+                <div key={item.id} className={cn("flex-shrink-0", sizeClass)}>
+                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                </div>
               );
-            })()}
+            })}
           </div>
         </div>
 
