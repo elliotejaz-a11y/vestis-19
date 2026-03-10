@@ -50,15 +50,16 @@ export function OutfitFlatLay({ items, height = 260 }: Props) {
 
         // Dynamic adjustments for better composition
         if (item.category === "bottoms" && !hasDress) {
-          top = "44%";
+          top = "52%";
         }
         if (item.category === "tops" && hasJumper) {
-          // Shift top slightly right when jumper present
-          left = "56%";
+          // Layer top centered over jumper, slightly higher
+          top = "20%";
+          zIndex = 2;
         }
-        if (item.category === "outerwear" && !hasTop && !hasJumper) {
-          // Center outerwear if no top/jumper
-          left = "50%";
+        if (item.category === "jumpers" && hasTop) {
+          // Push jumper slightly lower so top sits over it
+          top = "28%";
         }
 
         return (
