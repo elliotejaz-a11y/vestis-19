@@ -6,7 +6,26 @@ import { cn } from "@/lib/utils";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
-import { sortItemsHeadToToe, ITEM_MAX_SIZE } from "@/lib/outfit-utils";
+
+const HEAD_TO_TOE_ORDER = ["accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
+
+function sortItemsHeadToToe(items: ClothingItem[]): ClothingItem[] {
+  return [...items].sort((a, b) => {
+    const aIdx = HEAD_TO_TOE_ORDER.indexOf(a.category);
+    const bIdx = HEAD_TO_TOE_ORDER.indexOf(b.category);
+    return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+  });
+}
+
+const ITEM_MAX_SIZE: Record<string, string> = {
+  accessories: "max-h-16 w-16",
+  outerwear: "max-h-24 w-24",
+  jumpers: "max-h-28 w-28",
+  tops: "max-h-28 w-28",
+  dresses: "max-h-32 w-32",
+  bottoms: "max-h-28 w-28",
+  shoes: "max-h-16 w-16",
+};
 
 interface Props {
   outfit: Outfit;

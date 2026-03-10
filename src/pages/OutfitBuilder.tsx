@@ -7,9 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
-import { HEAD_TO_TOE_ORDER } from "@/lib/outfit-utils";
 
-const CATEGORY_ORDER = HEAD_TO_TOE_ORDER.slice().reverse();
+const CATEGORY_ORDER = ["shoes", "bottoms", "dresses", "tops", "jumpers", "outerwear", "accessories"];
 
 const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
   accessories: { x: 50, y: 5 },
