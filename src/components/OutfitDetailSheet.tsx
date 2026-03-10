@@ -1,6 +1,7 @@
 import { Outfit } from "@/types/wardrobe";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Sparkles, Lightbulb, Calendar } from "lucide-react";
+import { sortItemsHeadToToe } from "@/lib/outfit-utils";
 import { format } from "date-fns";
 
 interface Props {
@@ -52,7 +53,7 @@ export function OutfitDetailSheet({ outfit, open, onOpenChange }: Props) {
         <div className="space-y-3 mb-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Items in this outfit</p>
           <div className="space-y-2">
-            {outfit.items.map((item) => (
+            {sortItemsHeadToToe(outfit.items).map((item) => (
               <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/50 border border-border/30">
                 <div className="w-14 h-14 rounded-lg bg-white dark:bg-neutral-800 flex-shrink-0 overflow-hidden">
                   <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
