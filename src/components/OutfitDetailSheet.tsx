@@ -1,6 +1,7 @@
 import { Outfit } from "@/types/wardrobe";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Sparkles, Lightbulb, Calendar } from "lucide-react";
+import { sortItemsHeadToToe } from "@/lib/outfit-utils";
 import { format } from "date-fns";
 
 interface Props {
