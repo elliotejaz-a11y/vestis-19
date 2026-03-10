@@ -34,10 +34,17 @@ interface Props {
 export function OutfitFlatLay({ items, height = 260 }: Props) {
   const sorted = sortForFlatLay(items);
 
-  // When there's no dress, shift bottoms up a bit for a tighter composition
-  const hasDress = sorted.some((i) => i.category === "dresses");
-  const hasTop = sorted.some((i) => i.category === "tops");
-  const hasJumper = sorted.some((i) => i.category === "jumpers");
+  const has = (cat: string) => sorted.some((i) => i.category === cat);
+  const hasDress = has("dresses");
+  const hasTop = has("tops");
+  const hasJumper = has("jumpers");
+  const hasOuterwear = has("outerwear");
+  const hasBottoms = has("bottoms");
+  const hasShoes = has("shoes");
+  const hasAccessories = has("accessories");
+
+  // Whether there's a torso piece at all
+  const hasTorso = hasTop || hasJumper || hasOuterwear || hasDress;
 
   return (
     <div
@@ -48,18 +55,39 @@ export function OutfitFlatLay({ items, height = 260 }: Props) {
         const base = FLAT_LAY_LAYOUT[item.category] || FLAT_LAY_LAYOUT.tops;
         let { top, left, width, zIndex } = base;
 
-        // Dynamic adjustments for better composition
-        if (item.category === "bottoms" && !hasDress) {
-          top = "52%";
+        // ── Adaptive spacing to maintain silhouette ──
+
+        // Accessories: push down if no torso above
+        if (item.category === "accessories" && !hasTorso) {
+          top = "12%";
         }
+
+        // Tops + Jumpers layering
         if (item.category === "tops" && hasJumper) {
-          // Layer top centered over jumper, slightly higher
           top = "20%";
-          zIndex = 2;
         }
         if (item.category === "jumpers" && hasTop) {
-          // Push jumper slightly lower so top sits over it
           top = "28%";
+        }
+
+        // No top/jumper → pull bottoms up to close the gap
+        if (item.category === "bottoms") {
+          if (!hasTorso) {
+            top = "32%";
+          } else if (hasDress) {
+            top = "58%";
+          }
+        }
+
+        // Dress without bottoms → stretch lower
+        if (item.category === "dresses" && !hasBottoms) {
+          top = "42%";
+          width = "52%";
+        }
+
+        // Shoes: pull up if no bottoms to close gap
+        if (item.category === "shoes" && !hasBottoms && !hasDress) {
+          top = "68%";
         }
 
         return (
@@ -73,12 +101,13 @@ export function OutfitFlatLay({ items, height = 260 }: Props) {
               aspectRatio: "1",
               transform: "translate(-50%, -50%)",
               zIndex,
+              filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.12)) drop-shadow(0 1px 3px rgba(0,0,0,0.06))",
             }}
           >
             <img
               src={item.imageUrl}
               alt={item.name}
-              className="w-full h-full object-contain drop-shadow-md"
+              className="w-full h-full object-contain"
               draggable={false}
             />
           </div>
