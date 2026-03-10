@@ -8,13 +8,13 @@ const CATEGORY_ORDER = ["shoes", "bottoms", "dresses", "tops", "jumpers", "outer
  * Items layer bottom→top following CATEGORY_ORDER (shoes behind, accessories on top).
  */
 const FLAT_LAY_LAYOUT: Record<string, { top: string; left: string; width: string; zIndex: number }> = {
-  jumpers:     { top: "20%", left: "48%", width: "50%", zIndex: 1 },
-  outerwear:   { top: "18%", left: "28%", width: "40%", zIndex: 1 },
+  jumpers:     { top: "24%", left: "50%", width: "52%", zIndex: 1 },
+  outerwear:   { top: "22%", left: "50%", width: "48%", zIndex: 1 },
   tops:        { top: "22%", left: "50%", width: "48%", zIndex: 2 },
-  dresses:     { top: "32%", left: "50%", width: "54%", zIndex: 2 },
-  bottoms:     { top: "48%", left: "50%", width: "52%", zIndex: 3 },
-  shoes:       { top: "72%", left: "50%", width: "28%", zIndex: 4 },
-  accessories: { top: "2%",  left: "74%", width: "22%", zIndex: 4 },
+  dresses:     { top: "38%", left: "50%", width: "50%", zIndex: 2 },
+  bottoms:     { top: "52%", left: "50%", width: "48%", zIndex: 3 },
+  shoes:       { top: "82%", left: "50%", width: "26%", zIndex: 4 },
+  accessories: { top: "4%",  left: "50%", width: "20%", zIndex: 4 },
 };
 
 function sortForFlatLay(items: ClothingItem[]): ClothingItem[] {
