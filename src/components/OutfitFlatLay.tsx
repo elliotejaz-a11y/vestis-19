@@ -3,19 +3,29 @@ import { ClothingItem } from "@/types/wardrobe";
 const CATEGORY_ORDER = ["shoes", "bottoms", "dresses", "tops", "jumpers", "outerwear", "accessories"];
 
 /**
- * Position & size config for each category in the flat-lay.
- * Coordinates are percentages of the container.
- * Items layer bottom→top following CATEGORY_ORDER (shoes behind, accessories on top).
+ * Returns z-index, top (marginTop proxy), width, and left for a given category.
+ * Lower z-index = further back; higher = closer to viewer.
  */
-const FLAT_LAY_LAYOUT: Record<string, { top: string; left: string; width: string; zIndex: number }> = {
-  jumpers:     { top: "24%", left: "50%", width: "52%", zIndex: 1 },
-  outerwear:   { top: "22%", left: "50%", width: "48%", zIndex: 1 },
-  tops:        { top: "22%", left: "50%", width: "48%", zIndex: 2 },
-  dresses:     { top: "38%", left: "50%", width: "50%", zIndex: 2 },
-  bottoms:     { top: "52%", left: "50%", width: "48%", zIndex: 3 },
-  shoes:       { top: "82%", left: "50%", width: "26%", zIndex: 4 },
-  accessories: { top: "4%",  left: "50%", width: "20%", zIndex: 4 },
-};
+function getLayerClass(category: string): { top: string; left: string; width: string; zIndex: number } {
+  switch (category) {
+    case "jumpers":
+      return { top: "24%", left: "50%", width: "52%", zIndex: 1 };
+    case "outerwear":
+      return { top: "22%", left: "50%", width: "48%", zIndex: 1 };
+    case "tops":
+      return { top: "22%", left: "50%", width: "48%", zIndex: 2 };
+    case "dresses":
+      return { top: "38%", left: "50%", width: "50%", zIndex: 2 };
+    case "bottoms":
+      return { top: "52%", left: "50%", width: "48%", zIndex: 3 };
+    case "shoes":
+      return { top: "82%", left: "50%", width: "26%", zIndex: 4 };
+    case "accessories":
+      return { top: "4%",  left: "50%", width: "20%", zIndex: 4 };
+    default:
+      return { top: "22%", left: "50%", width: "48%", zIndex: 2 };
+  }
+}
 
 function sortForFlatLay(items: ClothingItem[]): ClothingItem[] {
   return [...items].sort((a, b) => {
