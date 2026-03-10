@@ -62,7 +62,7 @@ export function OutfitFlatLay({ items, height = 260 }: Props) {
       style={{ height }}
     >
       {sorted.map((item) => {
-        const base = FLAT_LAY_LAYOUT[item.category] || FLAT_LAY_LAYOUT.tops;
+        const base = getLayerClass(item.category);
         let { top, left, width, zIndex } = base;
 
         // ── Adaptive spacing to maintain silhouette ──
