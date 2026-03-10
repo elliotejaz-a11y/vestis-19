@@ -17,7 +17,7 @@ interface Props {
 }
 
 export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props) {
-  // sorted no longer needed - OutfitFlatLay handles it
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
 
