@@ -50,16 +50,13 @@ export function OutfitDetailSheet({ outfit, open, onOpenChange }: Props) {
         )}
 
         {/* Head-to-toe preview */}
-        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-4 mb-4">
-          <div className="flex flex-col items-center gap-y-1">
-            {sortItemsHeadToToe(outfit.items).map((item) => {
-              const sizeClass = ITEM_MAX_SIZE[item.category] || "max-h-28 w-28";
-              return (
-                <div key={item.id} className={cn("flex-shrink-0", sizeClass)}>
-                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                </div>
-              );
-            })}
+        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-4 mb-4 h-96 overflow-hidden">
+          <div className="flex flex-col items-center justify-center h-full gap-y-1">
+            {sortItemsHeadToToe(outfit.items).map((item) => (
+              <div key={item.id} className="flex-1 flex-shrink min-h-0 flex items-center justify-center w-full max-w-[10rem]">
+                <img src={item.imageUrl} alt={item.name} className="max-h-full max-w-full object-contain drop-shadow-sm" />
+              </div>
+            ))}
           </div>
         </div>
 
