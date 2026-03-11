@@ -42,13 +42,13 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
         onClick={() => setDetailOpen(true)}
       >
         {/* Flat-lay outfit display */}
-        <div className="bg-white dark:bg-neutral-800 p-4 h-64 overflow-hidden">
-          <div className="flex flex-col items-center justify-center h-full gap-y-1">
+        <div className="bg-white dark:bg-neutral-800 p-4">
+          <div className="flex flex-col items-center gap-y-1">
             {sorted.map((item) => {
-              const sizeClass = ITEM_MAX_SIZE[item.category] || "max-w-28";
+              const sizeClass = ITEM_MAX_SIZE[item.category] || "max-h-28 w-28";
               return (
-                <div key={item.id} className={cn("flex-shrink min-h-0", sizeClass)}>
-                  <img src={item.imageUrl} alt={item.name} className="max-h-full max-w-full object-contain drop-shadow-sm" />
+                <div key={item.id} className={cn("flex-shrink-0", sizeClass)}>
+                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
                 </div>
               );
             })}
