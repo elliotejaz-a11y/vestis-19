@@ -11,13 +11,13 @@ export const HEAD_TO_TOE_ORDER = [
 ];
 
 export const ITEM_MAX_SIZE: Record<string, string> = {
-  accessories: "max-h-16 w-16",
-  outerwear: "max-h-24 w-24",
-  jumpers: "max-h-28 w-28",
-  tops: "max-h-28 w-28",
-  dresses: "max-h-32 w-32",
-  bottoms: "max-h-28 w-28",
-  shoes: "max-h-16 w-16",
+  accessories: "max-w-14",
+  outerwear: "max-w-20",
+  jumpers: "max-w-24",
+  tops: "max-w-24",
+  dresses: "max-w-28",
+  bottoms: "max-w-24",
+  shoes: "max-w-14",
 };
 
 export function sortItemsHeadToToe(items: ClothingItem[]): ClothingItem[] {
