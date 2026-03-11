@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
-import { sortItemsHeadToToe, ITEM_MAX_SIZE } from "@/lib/outfit-display";
+import { sortItemsHeadToToe } from "@/lib/outfit-display";
 
 interface Props {
   outfit: Outfit;
