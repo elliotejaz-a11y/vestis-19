@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { sortItemsHeadToToe, ITEM_MAX_SIZE } from "@/lib/outfit-display";
+import { sortItemsHeadToToe } from "@/lib/outfit-display";
 
 interface Props {
   items: ClothingItem[];
