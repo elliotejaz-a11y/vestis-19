@@ -8,10 +8,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 
-const CATEGORY_ORDER = ["shoes", "bottoms", "dresses", "tops", "jumpers", "outerwear", "accessories"];
+const CATEGORY_ORDER = ["shoes", "bottoms", "dresses", "tops", "jumpers", "outerwear", "accessories", "hats"];
 
 const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
-  accessories: { x: 50, y: 5 },
+  hats: { x: 50, y: 3 },
+  accessories: { x: 50, y: 10 },
   outerwear: { x: 30, y: 25 },
   jumpers: { x: 42, y: 30 },
   tops: { x: 55, y: 28 },
@@ -21,6 +22,7 @@ const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
 };
 
 const ITEM_SIZES: Record<string, { w: number; h: number }> = {
+  hats: { w: 56, h: 56 },
   accessories: { w: 56, h: 56 },
   outerwear: { w: 80, h: 80 },
   jumpers: { w: 88, h: 88 },
