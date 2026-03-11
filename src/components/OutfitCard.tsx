@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
-import { sortItemsHeadToToe, ITEM_MAX_SIZE } from "@/lib/outfit-display";
+import { sortItemsHeadToToe } from "@/lib/outfit-display";
 
 interface Props {
   outfit: Outfit;
@@ -41,17 +41,14 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
         className="rounded-2xl bg-card border border-border/40 overflow-hidden shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
         onClick={() => setDetailOpen(true)}
       >
-        {/* Flat-lay outfit display */}
-        <div className="bg-white dark:bg-neutral-800 p-4">
-          <div className="flex flex-col items-center gap-y-1">
-            {sorted.map((item) => {
-              const sizeClass = ITEM_MAX_SIZE[item.category] || "max-h-28 w-28";
-              return (
-                <div key={item.id} className={cn("flex-shrink-0", sizeClass)}>
-                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                </div>
-              );
-            })}
+        {/* Head-to-toe outfit display */}
+        <div className="bg-white dark:bg-neutral-800 p-4 h-80 overflow-hidden relative">
+          <div className="flex flex-col items-center justify-center h-full gap-y-1">
+            {sorted.map((item) => (
+              <div key={item.id} className="flex-1 flex-shrink min-h-0 flex items-center justify-center w-full max-w-[8rem]">
+                <img src={item.imageUrl} alt={item.name} className="max-h-full max-w-full object-contain drop-shadow-sm" />
+              </div>
+            ))}
           </div>
         </div>
 
