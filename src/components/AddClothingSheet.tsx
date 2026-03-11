@@ -129,11 +129,16 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       // Resize image to max 1024px before sending to AI to stay under 10MB limit
       const resizedBlob = await resizeImageForAnalysis(cleanBlob, 1024);
       const base64 = await fileToBase64(new File([resizedBlob], file.name, { type: "image/jpeg" }));
+      console.log("[AddClothing] Calling analyze-clothing, base64 length:", base64.length);
+      
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
         body: { imageBase64: base64 },
       });
 
+      console.log("[AddClothing] Response - data:", JSON.stringify(data), "error:", error);
+
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       if (data) {
         setName(data.name || "");
@@ -147,11 +152,11 @@ export function AddClothingSheet({ onAdd, children }: Props) {
           description: `Detected: ${data.name}${data.estimated_price_nzd ? ` — Vestis Price: $${data.estimated_price_nzd} NZD` : ""}`,
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("AI analysis failed:", err);
       toast({
         title: "AI analysis failed",
-        description: "You can still fill in the details manually.",
+        description: err?.message || "You can still fill in the details manually.",
         variant: "destructive",
       });
     } finally {
