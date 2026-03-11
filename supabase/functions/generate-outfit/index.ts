@@ -36,8 +36,8 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
+    const { data, error: authError } = await supabase.auth.getClaims(token);
+    if (authError || !data?.claims) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -104,9 +104,7 @@ User profile:
 Available wardrobe items:
 ${wardrobeSummary}
 
-Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.
-
-IMPORTANT RULE: Every outfit MUST include at least one top (tops, jumpers, or outerwear) AND at least one bottom (bottoms or dresses). Never create an outfit that is missing either a top-half or bottom-half garment. A dress counts as covering both.`,
+Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.`,
           },
         ],
         tools: [
