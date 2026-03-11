@@ -2,8 +2,7 @@ import { Outfit } from "@/types/wardrobe";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Sparkles, Lightbulb, Calendar } from "lucide-react";
 import { format } from "date-fns";
-import { sortItemsHeadToToe, ITEM_MAX_SIZE } from "@/lib/outfit-display";
-import { cn } from "@/lib/utils";
+import { sortItemsHeadToToe } from "@/lib/outfit-display";
 
 interface Props {
   outfit: Outfit | null;
