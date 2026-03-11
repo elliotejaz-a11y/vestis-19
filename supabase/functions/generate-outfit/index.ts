@@ -104,7 +104,9 @@ User profile:
 Available wardrobe items:
 ${wardrobeSummary}
 
-Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.`,
+Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.
+
+IMPORTANT RULE: Every outfit MUST include at least one top (tops, jumpers, or outerwear) AND at least one bottom (bottoms or dresses). Never create an outfit that is missing either a top-half or bottom-half garment. A dress counts as covering both.`,
           },
         ],
         tools: [
