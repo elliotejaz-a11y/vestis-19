@@ -1,7 +1,6 @@
 import { ClothingItem } from "@/types/wardrobe";
 
 export const HEAD_TO_TOE_ORDER = [
-  "hats",
   "accessories",
   "outerwear",
   "jumpers",
@@ -12,7 +11,6 @@ export const HEAD_TO_TOE_ORDER = [
 ];
 
 export const ITEM_MAX_SIZE: Record<string, string> = {
-  hats: "max-w-14",
   accessories: "max-w-14",
   outerwear: "max-w-20",
   jumpers: "max-w-24",
