@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { sortItemsHeadToToe } from "@/lib/outfit-display";
+import { sortItemsHeadToToe, ITEM_MAX_SIZE } from "@/lib/outfit-display";
 
 interface Props {
   items: ClothingItem[];
@@ -203,13 +203,16 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
               return (
             <>
               {/* Head-to-toe preview */}
-              <div className="bg-muted dark:bg-neutral-800 p-4 h-80 overflow-hidden">
-                <div className="flex flex-col items-center justify-center h-full gap-y-1">
-                  {sorted.map((item) => (
-                    <div key={item.id} className="flex-1 flex-shrink min-h-0 flex items-center justify-center w-full max-w-[8rem]">
-                      <img src={item.imageUrl} alt={item.name} className="max-h-full max-w-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
+              <div className="bg-muted dark:bg-neutral-800 p-4">
+                <div className="flex flex-col items-center gap-y-1">
+                  {sorted.map((item) => {
+                    const sizeClass = ITEM_MAX_SIZE[item.category] || "max-h-28 w-28";
+                    return (
+                      <div key={item.id} className={cn("flex-shrink-0", sizeClass)}>
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
