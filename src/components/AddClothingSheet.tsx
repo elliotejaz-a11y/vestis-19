@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wardrobeImageProcessing";
-// processClothingImage removed — we now use the raw user image
+import { processClothingImage } from "@/lib/image-processing";
 
 const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
 
@@ -33,6 +33,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [priceInput, setPriceInput] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
   const [rotation, setRotation] = useState(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -110,14 +111,23 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       return;
     }
 
-    // Show user's raw image as the preview — no background removal or AI replacement
-    const rawUrl = URL.createObjectURL(file);
-    setImageUrl(rawUrl);
+    // Show original preview immediately
+    setImageUrl(URL.createObjectURL(file));
+    setRemovingBg(true);
+    let cleanBlob: Blob;
+    try {
+      cleanBlob = await processClothingImage(file);
+      setImageUrl(URL.createObjectURL(cleanBlob));
+    } catch {
+      cleanBlob = file;
+    } finally {
+      setRemovingBg(false);
+    }
 
     setAnalyzing(true);
     try {
       // Resize image to max 1024px before sending to AI to stay under 10MB limit
-      const resizedBlob = await resizeImageForAnalysis(file, 1024);
+      const resizedBlob = await resizeImageForAnalysis(cleanBlob, 1024);
       const base64 = await fileToBase64(new File([resizedBlob], file.name, { type: "image/jpeg" }));
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
         body: { imageBase64: base64 },
@@ -218,10 +228,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               <img
                 src={imageUrl}
                 alt="Preview"
-                className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${analyzing ? 'blur-[2px] scale-[1.02]' : 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]'}`}
+                className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
                 style={{ transform: `rotate(${rotation}deg)` }}
               />
-              {!analyzing && (
+              {!removingBg && !analyzing && (
                 <div className="absolute top-2 right-2 flex gap-1.5">
                   <button
                     onClick={() => setRotation((prev) => (prev + 90) % 360)}
@@ -237,7 +247,19 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                   </button>
                 </div>
               )}
-              {analyzing && (
+              {removingBg && (
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+                    <Sparkles className="w-5 h-5 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-white">Removing Background</p>
+                    <p className="text-[11px] text-white/60 mt-1">This may take a moment…</p>
+                  </div>
+                </div>
+              )}
+              {!removingBg && analyzing && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <div className="relative">
                     <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />

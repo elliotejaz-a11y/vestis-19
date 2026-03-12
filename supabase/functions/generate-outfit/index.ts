@@ -85,8 +85,6 @@ serve(async (req) => {
 - **Personal factors**: Consider the user's skin tone for flattering colors, body type for proportions, and personal style preference.
 - **User notes**: Pay attention to any notes the user has added about their clothes (comfort, fit, preferences) and factor them into your selection.
 
-**MANDATORY RULE**: Every outfit MUST include at least one top-half garment (from categories: tops, jumpers, or outerwear) AND at least one bottom-half garment (from categories: bottoms). The only exception is if a dress is selected — a dress counts as both top and bottom. You MUST NOT create an outfit without covering both top and bottom halves.
-
 Always pick items that genuinely look great together. Explain your reasoning with fashion expertise.`,
           },
           {
