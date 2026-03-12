@@ -85,11 +85,6 @@ serve(async (req) => {
 - **Personal factors**: Consider the user's skin tone for flattering colors, body type for proportions, and personal style preference.
 - **User notes**: Pay attention to any notes the user has added about their clothes (comfort, fit, preferences) and factor them into your selection.
 
-CRITICAL OUTFIT RULES:
-- Every outfit MUST include at least one top-half garment (from category: tops, jumpers, or outerwear) AND at least one bottom-half garment (from category: bottoms). 
-- The ONLY exception is if a dress is selected — a dress counts as both top and bottom, so no separate top or bottom is required when a dress is included.
-- NEVER create an outfit that has only accessories, shoes, or hats without the required top+bottom or dress.
-
 Always pick items that genuinely look great together. Explain your reasoning with fashion expertise.`,
           },
           {
