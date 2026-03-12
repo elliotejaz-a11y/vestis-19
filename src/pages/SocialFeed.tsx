@@ -36,12 +36,12 @@ export default function SocialFeed() {
       .select("id, display_name, username, avatar_url")
       .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
       .limit(10);
-    setSearchResults((data || []).filter((u: any) => u.avatar_url && (u.display_name || u.username)));
+    setSearchResults(data || []);
     setSearching(false);
   };
 
   const feedPosts = posts;
-  const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.avatar_url && (p.user?.display_name || p.user?.username));
+  const discoverPosts = posts.filter(p => p.user_id !== user?.id);
 
   return (
     <div className="min-h-screen pb-24">
