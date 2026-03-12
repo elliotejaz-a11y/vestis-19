@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, KeyRound, Loader2, Eye, EyeOff } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 import { OutfitCard } from "@/components/OutfitCard";
 import Onboarding from "@/pages/Onboarding";
 import { EditProfileSheet } from "@/components/EditProfileSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
-import { validatePassword, PASSWORD_REQUIREMENTS } from "@/lib/password-validation";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
@@ -427,8 +425,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <MessageSquare className="w-4 h-4 mr-2" /> Help & Feedback
         </Button>
 
-        <ChangePasswordSection />
-
         <Button variant="outline" onClick={signOut} className="w-full h-12 rounded-2xl text-sm">
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
@@ -486,100 +482,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         title="Delete permanently?"
         description="This item will be permanently removed and cannot be recovered."
       />
-    </div>
-  );
-}
-
-// ─── Change Password Section ───
-function ChangePasswordSection() {
-  const [open, setOpen] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const { toast } = useToast();
-
-  const handleChange = async () => {
-    if (!currentPassword) {
-      toast({ title: "Please enter your current password", variant: "destructive" });
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toast({ title: "Passwords don't match", variant: "destructive" });
-      return;
-    }
-    const pwError = validatePassword(newPassword);
-    if (pwError) {
-      toast({ title: pwError, variant: "destructive" });
-      return;
-    }
-    setLoading(true);
-    // Verify current password by re-authenticating
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.email) {
-      toast({ title: "Unable to verify identity", variant: "destructive" });
-      setLoading(false);
-      return;
-    }
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: currentPassword,
-    });
-    if (signInError) {
-      toast({ title: "Current password is incorrect", variant: "destructive" });
-      setLoading(false);
-      return;
-    }
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) {
-      toast({ title: "Failed to change password", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Password changed ✅" });
-      setOpen(false);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    }
-    setLoading(false);
-  };
-
-  if (!open) {
-    return (
-      <Button variant="outline" onClick={() => setOpen(true)} className="w-full h-12 rounded-2xl text-sm">
-        <KeyRound className="w-4 h-4 mr-2" /> Change Password
-      </Button>
-    );
-  }
-
-  return (
-    <div className="rounded-2xl bg-card border border-border/40 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-foreground flex items-center gap-2"><KeyRound className="w-4 h-4 text-accent" /> Change Password</p>
-        <button onClick={() => setOpen(false)} className="text-xs text-muted-foreground">Cancel</button>
-      </div>
-      <div>
-        <label className="text-xs text-muted-foreground">Current Password</label>
-        <Input type={showPassword ? "text" : "password"} value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background" required />
-      </div>
-      <div>
-        <label className="text-xs text-muted-foreground">New Password</label>
-        <div className="relative">
-          <Input type={showPassword ? "text" : "password"} value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background pr-10" minLength={8} />
-          <p className="text-[10px] text-muted-foreground mt-1">{PASSWORD_REQUIREMENTS}</p>
-          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-        </div>
-      </div>
-      <div>
-        <label className="text-xs text-muted-foreground">Confirm New Password</label>
-        <Input type={showPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="mt-1 rounded-xl bg-background" minLength={8} />
-      </div>
-      <Button onClick={handleChange} disabled={loading || !currentPassword || !newPassword || !confirmPassword} className="w-full h-10 rounded-xl bg-accent text-accent-foreground text-sm font-semibold">
-        {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-        {loading ? "Updating..." : "Update Password"}
-      </Button>
     </div>
   );
 }
