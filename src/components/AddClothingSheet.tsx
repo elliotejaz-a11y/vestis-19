@@ -160,15 +160,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const handleSave = async () => {
     if (!imageUrl || !name || !category) return;
     const color = joinColors(colors);
-    const isFileSourced = imageUrl.startsWith("blob:") || imageUrl.startsWith("data:");
-    let imageBase64ForProcessing: string | undefined;
-    if (isFileSourced) {
-      try {
-        imageBase64ForProcessing = await imageUrlToBase64(imageUrl);
-      } catch (e) {
-        console.warn("Could not get base64 for background removal:", e);
-      }
-    }
     onAdd(
       {
         id: crypto.randomUUID(),
