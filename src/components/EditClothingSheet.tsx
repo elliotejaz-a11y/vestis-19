@@ -6,10 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Sparkles, RotateCw, RefreshCw, Camera } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
-import { processClothingImage } from "@/lib/image-processing";
+import { Sparkles } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
 
@@ -31,11 +28,6 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
   const [isPrivate, setIsPrivate] = useState(item?.isPrivate || false);
-  const [rotation, setRotation] = useState(0);
-  const [newImage, setNewImage] = useState<File | null>(null);
-  const [newPreview, setNewPreview] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const { user } = useAuth();
 
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
@@ -47,50 +39,18 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setEstimatedPrice(item.estimatedPrice?.toString() || "");
     setPriceEnabled(item.estimatedPrice != null);
     setIsPrivate(item.isPrivate || false);
-    setRotation(0);
-    setNewImage(null);
-    setNewPreview(null);
   }
 
-  const handleRetake = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setNewImage(file);
-      setNewPreview(URL.createObjectURL(file));
-      setRotation(0);
-    }
-  };
-
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!item || !name || !category) return;
-    let imageUrl = item.imageUrl;
-
-    if (newImage && user) {
-      setUploading(true);
-      try {
-        const processed = await processClothingImage(newImage);
-        const ext = newImage.name.split(".").pop() || "png";
-        const path = `${user.id}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("clothing-images").upload(path, processed);
-        if (!upErr) {
-          const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-          imageUrl = urlData.publicUrl;
-        }
-      } catch (err) {
-        console.error("Image upload failed", err);
-      } finally {
-        setUploading(false);
-      }
-    }
-
     const priceNum = priceEnabled && estimatedPrice ? parseFloat(estimatedPrice) : (priceEnabled ? 0 : undefined);
-    onSave({ ...item, name, category, color: joinColors(colors), fabric, notes, estimatedPrice: priceNum, isPrivate, imageUrl });
+    onSave({ ...item, name, category, color: joinColors(colors), fabric, notes, estimatedPrice: priceNum, isPrivate });
     onOpenChange(false);
   };
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); setRotation(0); setNewImage(null); setNewPreview(null); }
+      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto bg-background">
@@ -100,26 +60,8 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
 
         <div className="mt-6 space-y-5">
           {item && (
-            <div className="relative rounded-2xl overflow-hidden bg-muted">
-              <img
-                src={newPreview || item.imageUrl}
-                alt={item.name}
-                className="w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-transform"
-                style={{ transform: `rotate(${rotation}deg)` }}
-              />
-              <div className="absolute top-2 right-2 flex gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setRotation((r) => (r + 90) % 360)}
-                  className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
-                >
-                  <RotateCw className="w-3.5 h-3.5" />
-                </button>
-                <label className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center cursor-pointer">
-                  <RefreshCw className="w-3.5 h-3.5" />
-                  <input type="file" accept="image/*" capture="environment" onChange={handleRetake} className="hidden" />
-                </label>
-              </div>
+            <div className="rounded-2xl overflow-hidden bg-muted">
+              <img src={item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white dark:bg-neutral-800" />
             </div>
           )}
 
@@ -196,8 +138,8 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
             <Switch checked={isPrivate} onCheckedChange={setIsPrivate} />
           </div>
 
-          <Button onClick={handleSave} disabled={!name || !category || uploading} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90">
-            <Sparkles className="w-4 h-4 mr-2" /> {uploading ? "Uploading…" : "Save Changes"}
+          <Button onClick={handleSave} disabled={!name || !category} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90">
+            <Sparkles className="w-4 h-4 mr-2" /> Save Changes
           </Button>
         </div>
       </SheetContent>
