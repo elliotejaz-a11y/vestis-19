@@ -218,10 +218,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               <img
                 src={imageUrl}
                 alt="Preview"
-                className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
+                className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${analyzing ? 'blur-[2px] scale-[1.02]' : 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]'}`}
                 style={{ transform: `rotate(${rotation}deg)` }}
               />
-              {!removingBg && !analyzing && (
+              {!analyzing && (
                 <div className="absolute top-2 right-2 flex gap-1.5">
                   <button
                     onClick={() => setRotation((prev) => (prev + 90) % 360)}
@@ -237,19 +237,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                   </button>
                 </div>
               )}
-              {removingBg && (
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                  <div className="relative">
-                    <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
-                    <Sparkles className="w-5 h-5 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-white">Removing Background</p>
-                    <p className="text-[11px] text-white/60 mt-1">This may take a moment…</p>
-                  </div>
-                </div>
-              )}
-              {!removingBg && analyzing && (
+              {analyzing && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <div className="relative">
                     <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
