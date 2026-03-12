@@ -33,7 +33,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [priceInput, setPriceInput] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
-  const [removingBg, setRemovingBg] = useState(false);
   const [rotation, setRotation] = useState(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
