@@ -112,17 +112,14 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     }
 
     // Show original preview immediately
-    setImageUrl(URL.createObjectURL(file));
-    setRemovingBg(true);
-    let cleanBlob: Blob;
-    try {
-      cleanBlob = await processClothingImage(file);
-      setImageUrl(URL.createObjectURL(cleanBlob));
-    } catch {
-      cleanBlob = file;
-    } finally {
-      setRemovingBg(false);
-    }
+    const originalBlobUrl = URL.createObjectURL(file);
+    setImageUrl(originalBlobUrl);
+
+    // Run bg removal only for AI analysis quality, but keep original as display
+    let analysisBlob: Blob = file;
+    setRemovingBg(false);
+
+    setAnalyzing(true);
 
     setAnalyzing(true);
     try {
