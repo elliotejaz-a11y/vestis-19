@@ -50,6 +50,7 @@ export type ClothingCategory =
   | "jumpers"
   | "outerwear"
   | "shoes"
+  | "hats"
   | "accessories";
 
 export const CATEGORIES: { value: ClothingCategory; label: string; icon: string }[] = [
@@ -59,6 +60,7 @@ export const CATEGORIES: { value: ClothingCategory; label: string; icon: string 
   { value: "jumpers", label: "Jumpers", icon: "🧶" },
   { value: "outerwear", label: "Outerwear", icon: "🧥" },
   { value: "shoes", label: "Shoes", icon: "👟" },
+  { value: "hats", label: "Hats", icon: "🧢" },
   { value: "accessories", label: "Accessories", icon: "👜" },
 ];
 
