@@ -58,7 +58,7 @@ serve(async (req) => {
     let isFlagged = false;
     let flagReason: string | null = null;
 
-    if (LOVABLE_API_KEY) {
+    if (LOVABLE_API_KEY && !isImageMessage) {
       try {
         const moderationResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
