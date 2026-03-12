@@ -11,7 +11,6 @@ import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isToday, isBefore } from "date-fns";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
-import { sortItemsHeadToToe } from "@/lib/outfit-display";
 
 interface Props {
   outfits: Outfit[];
@@ -246,7 +245,7 @@ export function CalendarPage({ outfits }: Props) {
                     >
                       <p className="text-xs font-semibold text-foreground">{outfit.occasion}</p>
                       <div className="flex gap-1 mt-1">
-                        {sortItemsHeadToToe(outfit.items).slice(0, 4).map((item) => (
+                        {outfit.items.slice(0, 4).map((item) => (
                           <div key={item.id} className="w-8 h-8 rounded-lg overflow-hidden bg-muted">
                             <img src={item.imageUrl} alt="" className="w-full h-full object-contain" />
                           </div>

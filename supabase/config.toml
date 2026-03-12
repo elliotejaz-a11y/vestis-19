@@ -2,15 +2,3 @@ project_id = "kvulebsvnmlxuhgtrney"
 
 [functions.moderate-message]
 verify_jwt = false
-
-[functions.analyze-clothing]
-verify_jwt = false
-
-[functions.generate-outfit]
-verify_jwt = false
-
-[functions.outfit-chat]
-verify_jwt = false
-
-[functions.remove-background]
-verify_jwt = false

@@ -2,8 +2,6 @@ import { Outfit } from "@/types/wardrobe";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Sparkles, Lightbulb, Calendar } from "lucide-react";
 import { format } from "date-fns";
-import { sortItemsHeadToToe, ITEM_MAX_SIZE } from "@/lib/outfit-display";
-import { cn } from "@/lib/utils";
 
 interface Props {
   outfit: Outfit | null;
@@ -50,25 +48,11 @@ export function OutfitDetailSheet({ outfit, open, onOpenChange }: Props) {
           <p className="text-sm text-foreground leading-relaxed mb-4">{outfit.description}</p>
         )}
 
-        {/* Head-to-toe preview */}
-        <div className="bg-white dark:bg-neutral-800 rounded-2xl p-4 mb-4 h-72 overflow-hidden">
-          <div className="flex flex-col items-center justify-center h-full gap-y-1">
-            {sortItemsHeadToToe(outfit.items).map((item) => {
-              const sizeClass = ITEM_MAX_SIZE[item.category] || "max-w-24";
-              return (
-                <div key={item.id} className={cn("flex-shrink min-h-0", sizeClass)}>
-                  <img src={item.imageUrl} alt={item.name} className="max-h-full max-w-full object-contain drop-shadow-sm mx-auto" />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Items breakdown */}
         <div className="space-y-3 mb-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Items in this outfit</p>
           <div className="space-y-2">
-            {sortItemsHeadToToe(outfit.items).map((item) => (
+            {outfit.items.map((item) => (
               <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/50 border border-border/30">
                 <div className="w-14 h-14 rounded-lg bg-white dark:bg-neutral-800 flex-shrink-0 overflow-hidden">
                   <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />

@@ -46,11 +46,7 @@ serve(async (req) => {
     }
 
     const trimmedContent = content.trim();
-
-    // Skip length check and moderation for image messages
-    const isImageMessage = trimmedContent.startsWith("[IMG]") && trimmedContent.endsWith("[/IMG]");
-
-    if (!isImageMessage && trimmedContent.length > 2000) {
+    if (trimmedContent.length > 2000) {
       return new Response(JSON.stringify({ error: "Message too long (max 2000 characters)" }), { status: 400, headers: corsHeaders });
     }
 
@@ -58,7 +54,7 @@ serve(async (req) => {
     let isFlagged = false;
     let flagReason: string | null = null;
 
-    if (LOVABLE_API_KEY && !isImageMessage) {
+    if (LOVABLE_API_KEY) {
       try {
         const moderationResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
