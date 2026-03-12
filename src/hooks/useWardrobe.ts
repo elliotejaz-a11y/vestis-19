@@ -3,7 +3,6 @@ import { ClothingItem, Outfit } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 
 export function useWardrobe() {
   const { user, profile } = useAuth();
@@ -73,7 +72,6 @@ export function useWardrobe() {
     async (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => {
       if (!user) return;
 
-      const runBgRemoval = options?.runBackgroundRemoval === true;
       let imageUrl = item.imageUrl;
       let backImageUrl = item.backImageUrl || "";
       if (imageUrl.startsWith("blob:")) {
@@ -204,83 +202,10 @@ export function useWardrobe() {
           isPrivate: data.is_private ?? false,
         };
         setItems((prev) => [newItem, ...prev]);
-
-        if (runBgRemoval && data.id) {
-          processBackgroundRemoval({
-            itemId: data.id,
-            imageUrl,
-            userId: user.id,
-            imageBase64ForProcessing: options?.imageBase64ForProcessing,
-            onStatusUpdate: (payload) => {
-              setItems((prev) =>
-                prev.map((i) =>
-                  i.id === data.id
-                    ? {
-                        ...i,
-                        imageUrl: payload.imageUrl ?? i.imageUrl,
-                        imageStatus: payload.imageStatus,
-                        imageError: payload.imageError ?? i.imageError,
-                      }
-                    : i
-                )
-              );
-              if (payload.imageStatus === "failed") {
-                toast({
-                  title: "Background removal didn’t complete",
-                  description: payload.imageError || "Tap the card to retry.",
-                  variant: "destructive",
-                });
-              }
-            },
-          });
-        }
+        // Raw user image is kept as-is — no background removal
       }
     },
     [user, toast]
-  );
-
-  const retryBackgroundRemoval = useCallback(
-    async (itemId: string) => {
-      if (!user) return;
-      const item = items.find((i) => i.id === itemId);
-      if (!item) return;
-      const sourceUrl = item.imageOriginalUrl || item.imageUrl;
-      await supabase
-        .from("clothing_items")
-        .update({ image_status: "processing", image_error: null } as any)
-        .eq("id", itemId)
-        .eq("user_id", user.id);
-      setItems((prev) =>
-        prev.map((i) => (i.id === itemId ? { ...i, imageStatus: "processing" as const, imageError: undefined } : i))
-      );
-      processBackgroundRemoval({
-        itemId,
-        imageUrl: sourceUrl,
-        userId: user.id,
-        onStatusUpdate: (payload) => {
-          setItems((prev) =>
-            prev.map((i) =>
-              i.id === itemId
-                ? {
-                    ...i,
-                    imageUrl: payload.imageUrl ?? i.imageUrl,
-                    imageStatus: payload.imageStatus,
-                    imageError: payload.imageError ?? i.imageError,
-                  }
-                : i
-            )
-          );
-          if (payload.imageStatus === "failed") {
-            toast({
-              title: "Background removal didn’t complete",
-              description: payload.imageError || "Try again later.",
-              variant: "destructive",
-            });
-          }
-        },
-      });
-    },
-    [user, items, toast]
   );
 
   const updateItem = useCallback(
@@ -420,5 +345,5 @@ export function useWardrobe() {
     });
   }, []);
 
-  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, loading };
+  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, addOutfitToState, loading };
 }
