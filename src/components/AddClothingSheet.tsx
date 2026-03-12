@@ -182,7 +182,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         addedAt: new Date(),
         estimatedPrice,
       },
-      { runBackgroundRemoval: false }
+      { runBackgroundRemoval: isFileSourced, imageBase64ForProcessing }
     );
     resetForm();
     setOpen(false);
