@@ -90,7 +90,6 @@ function AuthenticatedApp() {
             onUpdate={updateItem}
             onSaveOutfit={saveOutfit}
             onDeleteOutfit={deleteOutfit}
-            onRetryBackgroundRemoval={retryBackgroundRemoval}
           />
         } />
         <Route path="/add" element={<AddItem onAdd={addItem} />} />
