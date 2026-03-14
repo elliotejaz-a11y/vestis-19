@@ -17,7 +17,7 @@ function renderBoldText(text: string) {
   });
 }
 
-
+interface Props {
   outfit: Outfit;
   open: boolean;
   onOpenChange: (open: boolean) => void;
