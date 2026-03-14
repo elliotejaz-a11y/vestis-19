@@ -66,38 +66,47 @@ serve(async (req) => {
     }
     cleanBase64 = cleanBase64.replace(/\s/g, '');
 
-    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not configured');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    // Decode base64 to binary for the multipart form upload
-    const binaryStr = atob(cleanBase64);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-    const imageBlob = new Blob([bytes], { type: 'image/png' });
+    const imageDataUrl = `data:image/png;base64,${cleanBase64}`;
 
-    // Use OpenAI's gpt-image-1 model via the images/edits endpoint
-    const formData = new FormData();
-    formData.append('image', imageBlob, 'clothing.png');
-    formData.append('prompt', 'Of the clothes added please remove the background and make it that only the clothes which seem to have been intentionally added remain. Output a PNG with a fully transparent background.');
-    formData.append('model', 'gpt-image-1');
-    formData.append('size', '1024x1024');
+    console.log('[remove-background] Calling Lovable AI gateway (Gemini image model)...');
 
-    console.log('Calling OpenAI image edit API...');
-
-    const response = await fetch('https://api.openai.com/v1/images/edits', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-image',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Remove the background from this clothing item image. Keep ONLY the clothing item itself with a fully transparent/white background. Output just the clothing item cleanly isolated on a plain white background. Do not add any text or watermarks.',
+              },
+              {
+                type: 'image_url',
+                image_url: { url: imageDataUrl },
+              },
+            ],
+          },
+        ],
+        modalities: ['image', 'text'],
+      }),
     });
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('OpenAI image edit error:', response.status, errorBody);
+      console.error('[remove-background] AI gateway error:', response.status, errorBody);
 
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true, error: 'Rate limited' }), {
+      if (response.status === 429 || response.status === 402) {
+        console.log('[remove-background] Rate limited / credits, returning fallback');
+        return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -108,44 +117,28 @@ serve(async (req) => {
     }
 
     const result = await response.json();
-    console.log('OpenAI response received, data length:', result?.data?.length);
+    const images = result?.choices?.[0]?.message?.images;
 
-    // OpenAI returns data[0].b64_json or data[0].url
-    const imageData = result?.data?.[0];
-    if (imageData?.b64_json) {
-      console.log('Background removed successfully via OpenAI (b64_json)');
-      return new Response(JSON.stringify({ imageBase64: imageData.b64_json }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (imageData?.url) {
-      // Download the image from URL and convert to base64
-      console.log('OpenAI returned URL, downloading...');
-      const imgResp = await fetch(imageData.url);
-      if (imgResp.ok) {
-        const imgBuffer = await imgResp.arrayBuffer();
-        const imgBytes = new Uint8Array(imgBuffer);
-        let b64 = '';
-        const chunkSize = 8192;
-        for (let i = 0; i < imgBytes.length; i += chunkSize) {
-          b64 += String.fromCharCode(...imgBytes.slice(i, i + chunkSize));
+    if (images && images.length > 0) {
+      const resultUrl = images[0]?.image_url?.url;
+      if (resultUrl && resultUrl.startsWith('data:')) {
+        const resultBase64 = resultUrl.split(',')[1];
+        if (resultBase64) {
+          console.log('[remove-background] Background removed successfully');
+          return new Response(JSON.stringify({ imageBase64: resultBase64 }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         }
-        const outputBase64 = btoa(b64);
-        console.log('Background removed successfully via OpenAI (url download)');
-        return new Response(JSON.stringify({ imageBase64: outputBase64 }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
       }
     }
 
     // Fallback: return original
-    console.log('Could not extract processed image from OpenAI response');
+    console.log('[remove-background] No processed image in response, returning fallback');
     return new Response(JSON.stringify({ imageBase64: cleanBase64, fallback: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('remove-background error:', error);
+    console.error('[remove-background] Error:', error);
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
