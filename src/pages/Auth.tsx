@@ -24,8 +24,42 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [signUpSuccess, setSignUpSuccess] = useState(false);
+  const [signUpEmail, setSignUpEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
+
+  const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim()) return;
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Check your email ✉️", description: "We sent a password reset link. Check your spam folder too!" });
+      setShowForgotPassword(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    const { error } = await supabase.auth.resend({ type: "signup", email: signUpEmail });
+    setResendLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Email resent ✉️", description: "Check your inbox and spam folder." });
+    }
+  };
 
   const checkUsername = async (value: string) => {
     if (value.length < 3) { setUsernameAvailable(null); return; }
