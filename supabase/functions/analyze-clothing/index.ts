@@ -1,49 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ALLOWED_ORIGINS = [
-  'https://vestis-19.lovable.app',
-  'https://id-preview--1830068e-1c44-4713-a94f-43ffd21bb2c7.lovable.app',
-  'https://1830068e-1c44-4713-a94f-43ffd21bb2c7.lovableproject.com',
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get('Origin') || '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  };
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
 
 serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace('Bearer ', '');
-    const { data, error: authError } = await supabase.auth.getClaims(token);
-    if (authError || !data?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const { imageBase64 } = await req.json();
     if (!imageBase64 || typeof imageBase64 !== 'string') {
       return new Response(JSON.stringify({ error: 'No image provided' }), {
@@ -102,9 +69,9 @@ serve(async (req) => {
                   name: { type: 'string', description: 'Descriptive name like "Navy Linen Blazer" or "Black Leather Boots"' },
                   category: { type: 'string', enum: ['tops', 'bottoms', 'dresses', 'jumpers', 'outerwear', 'shoes', 'accessories'], description: 'Clothing category. Use "jumpers" for sweaters, jumpers, knit pullovers, cardigans, and similar knitwear.' },
                   color: { type: 'string', description: 'Primary color of the item' },
-                  fabric: { type: 'string', enum: ['Cotton', 'Silk', 'Linen', 'Denim', 'Wool', 'Polyester', 'Leather', 'Cashmere', 'Suede', 'Knit', 'Chiffon', 'Velvet', 'Nylon', 'Canvas', 'Metal', 'Silver', 'Gold', 'Stainless Steel', 'Titanium', 'Platinum', 'Rubber', 'Satin', 'Faux Leather', 'Gore-Tex', 'Mesh'], description: 'Primary fabric/material. Use Metal/Silver/Gold/Stainless Steel/Titanium/Platinum for jewelry, watches, and metal accessories.' },
+                  fabric: { type: 'string', enum: ['Cotton', 'Silk', 'Linen', 'Denim', 'Wool', 'Polyester', 'Leather', 'Cashmere', 'Suede', 'Knit', 'Chiffon', 'Velvet', 'Nylon', 'Canvas', 'Metal', 'Silver', 'Gold', 'Stainless Steel', 'Titanium', 'Platinum', 'Rubber', 'Satin', 'Faux Leather', 'Gore-Tex', 'Mesh'], description: 'Primary fabric/material.' },
                   style_tags: { type: 'array', items: { type: 'string' }, description: 'Style descriptors like casual, formal, streetwear, vintage, bohemian, preppy, sporty, elegant' },
-                  estimated_price_nzd: { type: 'number', description: 'Estimated retail value in New Zealand Dollars (NZD). Consider fabric quality, style, and typical retail pricing.' },
+                  estimated_price_nzd: { type: 'number', description: 'Estimated retail value in New Zealand Dollars (NZD).' },
                 },
                 required: ['name', 'category', 'color', 'fabric', 'style_tags', 'estimated_price_nzd'],
                 additionalProperties: false,
