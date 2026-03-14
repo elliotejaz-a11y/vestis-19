@@ -296,9 +296,16 @@ export default function Auth() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="mt-1 rounded-xl bg-card pr-10"
-              required
+                required
                 minLength={8}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
             {isSignUp && password.length > 0 && (
               <div className="space-y-1 mt-1">
@@ -315,15 +322,7 @@ export default function Auth() {
                   {/[^a-zA-Z0-9]/.test(password) ? "✓" : "○"} Contains a special character
                 </p>
               </div>
-            )
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
+            )}
           </div>
 
           {/* Theme toggle */}
