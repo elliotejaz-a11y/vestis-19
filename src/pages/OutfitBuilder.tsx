@@ -22,6 +22,7 @@ const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
 };
 
 const ITEM_SIZES: Record<string, { w: number; h: number }> = {
+  hats: { w: 60, h: 60 },
   accessories: { w: 56, h: 56 },
   outerwear: { w: 80, h: 80 },
   jumpers: { w: 88, h: 88 },
