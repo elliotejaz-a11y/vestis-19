@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 
-const CATEGORY_ORDER = ["accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
+const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
 
 const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
   accessories: { x: 50, y: 5 },
