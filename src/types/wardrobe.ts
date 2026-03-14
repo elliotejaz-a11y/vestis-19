@@ -44,6 +44,7 @@ export interface PlannedOutfit {
 }
 
 export type ClothingCategory =
+  | "hats"
   | "tops"
   | "bottoms"
   | "dresses"
@@ -53,6 +54,7 @@ export type ClothingCategory =
   | "accessories";
 
 export const CATEGORIES: { value: ClothingCategory; label: string; icon: string }[] = [
+  { value: "hats", label: "Hats", icon: "🧢" },
   { value: "tops", label: "Tops", icon: "👕" },
   { value: "bottoms", label: "Bottoms", icon: "👖" },
   { value: "dresses", label: "Dresses", icon: "👗" },
