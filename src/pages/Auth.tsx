@@ -147,6 +147,72 @@ export default function Auth() {
     setLoading(false);
   };
 
+  if (signUpSuccess) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
+        <div className="w-full max-w-sm space-y-6 text-center">
+          <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Check your email ✉️</h2>
+          <p className="text-sm text-muted-foreground">We sent a verification link to <span className="font-medium text-foreground">{signUpEmail}</span></p>
+          <div className="rounded-2xl bg-card border border-border/40 p-4 text-left space-y-2">
+            <p className="text-xs text-muted-foreground">• Check your <span className="font-medium text-foreground">spam/junk</span> folder if you don't see it</p>
+            <p className="text-xs text-muted-foreground">• The link expires in 24 hours</p>
+          </div>
+          <Button
+            onClick={handleResendVerification}
+            disabled={resendLoading}
+            variant="outline"
+            className="w-full h-12 rounded-2xl text-sm"
+          >
+            {resendLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Resend Verification Email
+          </Button>
+          <button onClick={() => { setSignUpSuccess(false); setIsSignUp(false); }} className="text-xs text-accent font-semibold hover:underline">
+            Back to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-center space-y-2">
+            <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
+            <h2 className="text-xl font-bold text-foreground">Reset Password</h2>
+            <p className="text-sm text-muted-foreground">Enter your email and we'll send you a reset link</p>
+          </div>
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+            <Input
+              type="email"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="mt-1 rounded-xl bg-card"
+              required
+            />
+          </div>
+          <Button
+            onClick={handleForgotPassword}
+            disabled={forgotLoading || !forgotEmail.trim()}
+            className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
+          >
+            {forgotLoading ? "Sending..." : "Send Reset Link"}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            Remember your password?{" "}
+            <button onClick={() => setShowForgotPassword(false)} className="text-accent font-semibold hover:underline">
+              Sign In
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
       <div className="w-full max-w-sm space-y-8">
