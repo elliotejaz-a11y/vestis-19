@@ -25,6 +25,7 @@ import Terms from "./pages/policies/Terms";
 import Privacy from "./pages/policies/Privacy";
 import Community from "./pages/policies/Community";
 import Cookies from "./pages/policies/Cookies";
+import ResetPassword from "./pages/ResetPassword";
 import { AppTutorial } from "@/components/AppTutorial";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect } from "react";
