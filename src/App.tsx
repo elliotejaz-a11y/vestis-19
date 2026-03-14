@@ -47,12 +47,10 @@ function AppRoutes() {
 
   if (!user) {
     return (
-      <BrowserRouter>
-        <Routes>
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="*" element={<Auth />} />
-        </Routes>
-      </BrowserRouter>
+      <Routes>
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="*" element={<Auth />} />
+      </Routes>
     );
   }
   if (profile && !profile.onboarding_completed) return <Onboarding />;
