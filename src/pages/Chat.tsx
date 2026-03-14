@@ -25,6 +25,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// ─── Bold text helper ───
+function renderBoldText(text: string) {
+  const parts = text.split(/(\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+      return <strong key={i}>{part.slice(1, -1)}</strong>;
+    }
+    return part;
+  });
+}
+
 // ─── Friend Profile type ───
 interface FriendProfile {
   id: string;
@@ -258,12 +269,10 @@ function MessagesTab({
                   <p className={cn("text-xs truncate", conv.unreadCount > 0 ? "text-foreground font-medium" : "text-muted-foreground")}>
                     {conv.lastMessage.startsWith("[IMG]") ? "📷 Photo" : conv.lastMessage}
                   </p>
-                  {conv.unreadCount > 0 ? (
+                    {conv.unreadCount > 0 && (
                     <span className="w-5 h-5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center flex-shrink-0 ml-2">
                       {conv.unreadCount}
                     </span>
-                  ) : (
-                    <span className="text-[9px] text-muted-foreground/60 ml-2 flex-shrink-0">Read</span>
                   )}
                 </div>
               </div>
@@ -772,12 +781,12 @@ function ChatView({
                         <Flag className="w-3 h-3 text-muted-foreground" />
                       </button>
                     )}
-                    <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
+                    <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm break-words whitespace-pre-wrap", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
                       {msg.is_flagged ? (
                         <span className="flex items-center gap-1 text-muted-foreground italic text-xs"><AlertTriangle className="w-3 h-3" /> Message removed</span>
                       ) : isImage && imageUrl ? (
                         <img src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
-                      ) : msg.content}
+                      ) : renderBoldText(msg.content)}
                     </div>
                   </div>
                   {isMine && (

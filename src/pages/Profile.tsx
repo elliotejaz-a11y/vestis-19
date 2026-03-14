@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
 import FollowListSheet from "@/components/FollowListSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
+import { ChangePasswordSheet } from "@/components/ChangePasswordSheet";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -41,6 +42,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const touchStartY = useRef(0);
@@ -425,6 +427,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <MessageSquare className="w-4 h-4 mr-2" /> Help & Feedback
         </Button>
 
+        <Button variant="outline" onClick={() => setShowChangePassword(true)} className="w-full h-12 rounded-2xl text-sm">
+          <Lock className="w-4 h-4 mr-2" /> Change Password
+        </Button>
+
         <Button variant="outline" onClick={signOut} className="w-full h-12 rounded-2xl text-sm">
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
@@ -449,6 +455,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       </div>
 
       <EditProfileSheet open={showEditSheet} onOpenChange={setShowEditSheet} />
+      <ChangePasswordSheet open={showChangePassword} onOpenChange={setShowChangePassword} />
 
       {user && (
         <FollowListSheet

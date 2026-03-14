@@ -25,6 +25,7 @@ import Terms from "./pages/policies/Terms";
 import Privacy from "./pages/policies/Privacy";
 import Community from "./pages/policies/Community";
 import Cookies from "./pages/policies/Cookies";
+import ResetPassword from "./pages/ResetPassword";
 import { AppTutorial } from "@/components/AppTutorial";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect } from "react";
@@ -44,7 +45,14 @@ function AppRoutes() {
     );
   }
 
-  if (!user) return <Auth />;
+  if (!user) {
+    return (
+      <Routes>
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="*" element={<Auth />} />
+      </Routes>
+    );
+  }
   if (profile && !profile.onboarding_completed) return <Onboarding />;
   return <AuthenticatedApp />;
 }

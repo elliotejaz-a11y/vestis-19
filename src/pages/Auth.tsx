@@ -24,8 +24,42 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [signUpSuccess, setSignUpSuccess] = useState(false);
+  const [signUpEmail, setSignUpEmail] = useState("");
+  const [resendLoading, setResendLoading] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
+
+  const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim()) return;
+    setForgotLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setForgotLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Check your email ✉️", description: "We sent a password reset link. Check your spam folder too!" });
+      setShowForgotPassword(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    const { error } = await supabase.auth.resend({ type: "signup", email: signUpEmail });
+    setResendLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Email resent ✉️", description: "Check your inbox and spam folder." });
+    }
+  };
 
   const checkUsername = async (value: string) => {
     if (value.length < 3) { setUsernameAvailable(null); return; }
@@ -59,13 +93,23 @@ export default function Auth() {
         setLoading(false);
         return;
       }
+      if (!passwordValid(password)) {
+        toast({ title: "Weak password", description: "Password must be 8+ characters with letters, numbers, and a special character.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
       const { error } = await signUp(email, password, displayName);
       if (error) {
-        toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
+        if (error.message?.toLowerCase().includes("already registered") || error.message?.toLowerCase().includes("already been registered")) {
+          toast({ title: "Email already in use", description: "An account with this email already exists. Please sign in instead.", variant: "destructive" });
+        } else {
+          toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
+        }
       } else {
         localStorage.setItem("pending_username", username);
         localStorage.setItem("vestis_fresh_signup", "true");
-        toast({ title: "Check your email ✉️", description: "We sent a verification link to confirm your account." });
+        setSignUpEmail(email);
+        setSignUpSuccess(true);
       }
     } else {
       let signInEmail = emailOrUsername.trim();
@@ -102,6 +146,72 @@ export default function Auth() {
     }
     setLoading(false);
   };
+
+  if (signUpSuccess) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
+        <div className="w-full max-w-sm space-y-6 text-center">
+          <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Check your email ✉️</h2>
+          <p className="text-sm text-muted-foreground">We sent a verification link to <span className="font-medium text-foreground">{signUpEmail}</span></p>
+          <div className="rounded-2xl bg-card border border-border/40 p-4 text-left space-y-2">
+            <p className="text-xs text-muted-foreground">• Check your <span className="font-medium text-foreground">spam/junk</span> folder if you don't see it</p>
+            <p className="text-xs text-muted-foreground">• The link expires in 24 hours</p>
+          </div>
+          <Button
+            onClick={handleResendVerification}
+            disabled={resendLoading}
+            variant="outline"
+            className="w-full h-12 rounded-2xl text-sm"
+          >
+            {resendLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Resend Verification Email
+          </Button>
+          <button onClick={() => { setSignUpSuccess(false); setIsSignUp(false); }} className="text-xs text-accent font-semibold hover:underline">
+            Back to Sign In
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (showForgotPassword) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-center space-y-2">
+            <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
+            <h2 className="text-xl font-bold text-foreground">Reset Password</h2>
+            <p className="text-sm text-muted-foreground">Enter your email and we'll send you a reset link</p>
+          </div>
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+            <Input
+              type="email"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              placeholder="you@example.com"
+              className="mt-1 rounded-xl bg-card"
+              required
+            />
+          </div>
+          <Button
+            onClick={handleForgotPassword}
+            disabled={forgotLoading || !forgotEmail.trim()}
+            className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
+          >
+            {forgotLoading ? "Sending..." : "Send Reset Link"}
+          </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            Remember your password?{" "}
+            <button onClick={() => setShowForgotPassword(false)} className="text-accent font-semibold hover:underline">
+              Sign In
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
@@ -187,7 +297,7 @@ export default function Auth() {
                 placeholder="••••••••"
                 className="mt-1 rounded-xl bg-card pr-10"
                 required
-                minLength={6}
+                minLength={8}
               />
               <button
                 type="button"
@@ -197,6 +307,22 @@ export default function Auth() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {isSignUp && password.length > 0 && (
+              <div className="space-y-1 mt-1">
+                <p className={`text-[10px] ${password.length >= 8 ? "text-accent" : "text-muted-foreground"}`}>
+                  {password.length >= 8 ? "✓" : "○"} At least 8 characters
+                </p>
+                <p className={`text-[10px] ${/[a-zA-Z]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
+                  {/[a-zA-Z]/.test(password) ? "✓" : "○"} Contains a letter
+                </p>
+                <p className={`text-[10px] ${/[0-9]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
+                  {/[0-9]/.test(password) ? "✓" : "○"} Contains a number
+                </p>
+                <p className={`text-[10px] ${/[^a-zA-Z0-9]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
+                  {/[^a-zA-Z0-9]/.test(password) ? "✓" : "○"} Contains a special character
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Theme toggle */}
@@ -226,17 +352,22 @@ export default function Auth() {
             </div>
           )}
 
-          {/* Remember me - only on sign in */}
+          {/* Remember me & forgot password - only on sign in */}
           {!isSignUp && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked === true)}
-              />
-              <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer">
-                Remember me
-              </label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                />
+                <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer">
+                  Remember me
+                </label>
+              </div>
+              <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-accent font-medium hover:underline">
+                Forgot password?
+              </button>
             </div>
           )}
 

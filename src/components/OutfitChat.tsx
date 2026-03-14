@@ -7,6 +7,16 @@ import { Send, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
+function renderBoldText(text: string) {
+  const parts = text.split(/(\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+      return <strong key={i}>{part.slice(1, -1)}</strong>;
+    }
+    return part;
+  });
+}
+
 interface Props {
   outfit: Outfit;
   open: boolean;
@@ -120,13 +130,13 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
             <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
               <div
                 className={cn(
-                  "max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                  "max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words",
                   msg.role === "user"
                     ? "bg-accent text-accent-foreground"
                     : "bg-card border border-border/40 text-foreground"
                 )}
               >
-                {msg.content}
+                {renderBoldText(msg.content)}
               </div>
             </div>
           ))}
