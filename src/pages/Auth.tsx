@@ -296,9 +296,26 @@ export default function Auth() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="mt-1 rounded-xl bg-card pr-10"
-                required
-                minLength={6}
+              required
+                minLength={8}
               />
+            </div>
+            {isSignUp && password.length > 0 && (
+              <div className="space-y-1 mt-1">
+                <p className={`text-[10px] ${password.length >= 8 ? "text-accent" : "text-muted-foreground"}`}>
+                  {password.length >= 8 ? "✓" : "○"} At least 8 characters
+                </p>
+                <p className={`text-[10px] ${/[a-zA-Z]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
+                  {/[a-zA-Z]/.test(password) ? "✓" : "○"} Contains a letter
+                </p>
+                <p className={`text-[10px] ${/[0-9]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
+                  {/[0-9]/.test(password) ? "✓" : "○"} Contains a number
+                </p>
+                <p className={`text-[10px] ${/[^a-zA-Z0-9]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
+                  {/[^a-zA-Z0-9]/.test(password) ? "✓" : "○"} Contains a special character
+                </p>
+              </div>
+            )
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
