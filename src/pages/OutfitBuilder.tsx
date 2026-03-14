@@ -11,7 +11,7 @@ import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
 
 const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
-  hats: { x: 50, y: 3 },
+  hats: { x: 50, y: 10 },
   accessories: { x: 75, y: 5 },
   outerwear: { x: 30, y: 25 },
   jumpers: { x: 42, y: 30 },
