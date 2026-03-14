@@ -1,47 +1,16 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const ALLOWED_ORIGINS = [
-  'https://vestis-19.lovable.app',
-  'https://id-preview--1830068e-1c44-4713-a94f-43ffd21bb2c7.lovable.app',
-  'https://1830068e-1c44-4713-a94f-43ffd21bb2c7.lovableproject.com',
-];
-
-function getCorsHeaders(req: Request) {
-  const origin = req.headers.get('Origin') || '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  };
-}
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+};
 
 serve(async (req) => {
-  const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const token = authHeader.replace('Bearer ', '');
-    const { data, error: authError } = await supabase.auth.getClaims(token);
-    if (authError || !data?.claims) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const { messages, outfitContext } = await req.json();
 
     if (!Array.isArray(messages) || messages.length === 0 || messages.length > 50) {
@@ -49,6 +18,7 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
     for (const msg of messages) {
       if (!msg.role || !msg.content || typeof msg.content !== 'string' || msg.content.length > 2000) {
         return new Response(JSON.stringify({ error: 'Invalid message format' }), {
@@ -56,6 +26,7 @@ serve(async (req) => {
         });
       }
     }
+
     if (!outfitContext || typeof outfitContext.occasion !== 'string') {
       return new Response(JSON.stringify({ error: 'Invalid outfit context' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -100,7 +71,7 @@ Help the user refine this outfit. You can suggest color alternatives, item swaps
         });
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI usage limit reached. Please add credits.' }), {
+        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please top up in Settings → Workspace → Usage.' }), {
           status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
