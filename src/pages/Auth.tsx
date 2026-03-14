@@ -93,13 +93,23 @@ export default function Auth() {
         setLoading(false);
         return;
       }
+      if (!passwordValid(password)) {
+        toast({ title: "Weak password", description: "Password must be 8+ characters with letters, numbers, and a special character.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
       const { error } = await signUp(email, password, displayName);
       if (error) {
-        toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
+        if (error.message?.toLowerCase().includes("already registered") || error.message?.toLowerCase().includes("already been registered")) {
+          toast({ title: "Email already in use", description: "An account with this email already exists. Please sign in instead.", variant: "destructive" });
+        } else {
+          toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
+        }
       } else {
         localStorage.setItem("pending_username", username);
         localStorage.setItem("vestis_fresh_signup", "true");
-        toast({ title: "Check your email ✉️", description: "We sent a verification link to confirm your account." });
+        setSignUpEmail(email);
+        setSignUpSuccess(true);
       }
     } else {
       let signInEmail = emailOrUsername.trim();
