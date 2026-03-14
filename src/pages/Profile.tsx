@@ -455,6 +455,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       </div>
 
       <EditProfileSheet open={showEditSheet} onOpenChange={setShowEditSheet} />
+      <ChangePasswordSheet open={showChangePassword} onOpenChange={setShowChangePassword} />
 
       {user && (
         <FollowListSheet

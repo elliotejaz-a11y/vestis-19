@@ -45,7 +45,16 @@ function AppRoutes() {
     );
   }
 
-  if (!user) return <Auth />;
+  if (!user) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="*" element={<Auth />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
   if (profile && !profile.onboarding_completed) return <Onboarding />;
   return <AuthenticatedApp />;
 }
