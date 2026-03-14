@@ -770,12 +770,12 @@ function ChatView({
                         <Flag className="w-3 h-3 text-muted-foreground" />
                       </button>
                     )}
-                    <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
+                    <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm break-words whitespace-pre-wrap", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
                       {msg.is_flagged ? (
                         <span className="flex items-center gap-1 text-muted-foreground italic text-xs"><AlertTriangle className="w-3 h-3" /> Message removed</span>
                       ) : isImage && imageUrl ? (
                         <img src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
-                      ) : msg.content}
+                      ) : renderBoldText(msg.content)}
                     </div>
                   </div>
                   {isMine && (
