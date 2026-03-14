@@ -25,6 +25,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// ─── Bold text helper ───
+function renderBoldText(text: string) {
+  const parts = text.split(/(\*[^*]+\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("*") && part.endsWith("*") && part.length > 2) {
+      return <strong key={i}>{part.slice(1, -1)}</strong>;
+    }
+    return part;
+  });
+}
+
 // ─── Friend Profile type ───
 interface FriendProfile {
   id: string;

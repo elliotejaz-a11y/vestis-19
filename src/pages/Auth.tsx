@@ -353,17 +353,22 @@ export default function Auth() {
             </div>
           )}
 
-          {/* Remember me - only on sign in */}
+          {/* Remember me & forgot password - only on sign in */}
           {!isSignUp && (
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked === true)}
-              />
-              <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer">
-                Remember me
-              </label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                />
+                <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer">
+                  Remember me
+                </label>
+              </div>
+              <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-accent font-medium hover:underline">
+                Forgot password?
+              </button>
             </div>
           )}
 
