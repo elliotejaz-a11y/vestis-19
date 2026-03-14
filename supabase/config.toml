@@ -2,3 +2,6 @@ project_id = "kvulebsvnmlxuhgtrney"
 
 [functions.moderate-message]
 verify_jwt = false
+
+[functions.analyze-clothing]
+verify_jwt = false
