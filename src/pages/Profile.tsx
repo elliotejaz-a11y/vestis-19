@@ -16,6 +16,7 @@ import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
 import FollowListSheet from "@/components/FollowListSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
+import { ChangePasswordSheet } from "@/components/ChangePasswordSheet";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
