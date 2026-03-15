@@ -172,6 +172,24 @@ Select 3-6 items that create a cohesive, stylish outfit. You MUST include at lea
       .filter((idx: number) => idx >= 1 && idx <= items.length)
       .map((idx: number) => items[idx - 1]);
 
+    // Validate mandatory categories
+    const categories = selectedItems.map((item: any) => String(item.category || '').toLowerCase());
+    const hasTop = categories.some((c: string) => c === 'tops' || c === 'jumpers' || c === 'dresses');
+    const hasBottom = categories.some((c: string) => c === 'bottoms' || c === 'dresses');
+    const hasShoes = categories.some((c: string) => c === 'shoes');
+
+    if (!hasTop || !hasBottom || !hasShoes) {
+      const missing = [];
+      if (!hasTop) missing.push('a top/jumper');
+      if (!hasBottom) missing.push('bottoms');
+      if (!hasShoes) missing.push('shoes');
+      return new Response(JSON.stringify({ 
+        error: `Could not generate a complete outfit — your wardrobe is missing ${missing.join(', ')}. Please add more items and try again.` 
+      }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     return new Response(JSON.stringify({
       items: selectedItems,
       reasoning: result.reasoning,
