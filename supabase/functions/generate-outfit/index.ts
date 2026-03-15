@@ -110,7 +110,7 @@ User profile:
 Available wardrobe items:
 ${wardrobeSummary}
 
-Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.`,
+Select 3-6 items that create a cohesive, stylish outfit. You MUST include at least one tops/jumpers item (or a dress), at least one bottoms item (or a dress), and exactly one shoes item. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.`,
           },
         ],
         tools: [
