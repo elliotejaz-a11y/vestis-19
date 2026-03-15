@@ -85,6 +85,12 @@ serve(async (req) => {
 - **Personal factors**: Consider the user's skin tone for flattering colors, body type for proportions, and personal style preference.
 - **User notes**: Pay attention to any notes the user has added about their clothes (comfort, fit, preferences) and factor them into your selection.
 
+**MANDATORY RULES — every outfit MUST include ALL of the following:**
+1. A "tops" or "jumpers" item (at least one top-half garment). A "dresses" item satisfies this requirement.
+2. A "bottoms" item (at least one bottom-half garment). A "dresses" item satisfies this requirement.
+3. A "shoes" item (exactly one pair of shoes).
+Beyond these three required slots, you MAY add hats, outerwear, or accessories based on the occasion and style — but the three above are non-negotiable.
+
 Always pick items that genuinely look great together. Explain your reasoning with fashion expertise.`,
           },
           {
@@ -104,7 +110,7 @@ User profile:
 Available wardrobe items:
 ${wardrobeSummary}
 
-Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.`,
+Select 3-6 items that create a cohesive, stylish outfit. You MUST include at least one tops/jumpers item (or a dress), at least one bottoms item (or a dress), and exactly one shoes item. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.`,
           },
         ],
         tools: [
@@ -165,6 +171,24 @@ Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers
     const selectedItems = result.selected_indices
       .filter((idx: number) => idx >= 1 && idx <= items.length)
       .map((idx: number) => items[idx - 1]);
+
+    // Validate mandatory categories
+    const categories = selectedItems.map((item: any) => String(item.category || '').toLowerCase());
+    const hasTop = categories.some((c: string) => c === 'tops' || c === 'jumpers' || c === 'dresses');
+    const hasBottom = categories.some((c: string) => c === 'bottoms' || c === 'dresses');
+    const hasShoes = categories.some((c: string) => c === 'shoes');
+
+    if (!hasTop || !hasBottom || !hasShoes) {
+      const missing = [];
+      if (!hasTop) missing.push('a top/jumper');
+      if (!hasBottom) missing.push('bottoms');
+      if (!hasShoes) missing.push('shoes');
+      return new Response(JSON.stringify({ 
+        error: `Could not generate a complete outfit — your wardrobe is missing ${missing.join(', ')}. Please add more items and try again.` 
+      }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     return new Response(JSON.stringify({
       items: selectedItems,
