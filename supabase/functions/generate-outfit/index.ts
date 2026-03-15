@@ -85,6 +85,12 @@ serve(async (req) => {
 - **Personal factors**: Consider the user's skin tone for flattering colors, body type for proportions, and personal style preference.
 - **User notes**: Pay attention to any notes the user has added about their clothes (comfort, fit, preferences) and factor them into your selection.
 
+**MANDATORY RULES — every outfit MUST include ALL of the following:**
+1. A "tops" or "jumpers" item (at least one top-half garment). A "dresses" item satisfies this requirement.
+2. A "bottoms" item (at least one bottom-half garment). A "dresses" item satisfies this requirement.
+3. A "shoes" item (exactly one pair of shoes).
+Beyond these three required slots, you MAY add hats, outerwear, or accessories based on the occasion and style — but the three above are non-negotiable.
+
 Always pick items that genuinely look great together. Explain your reasoning with fashion expertise.`,
           },
           {
