@@ -10,6 +10,32 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+const compressImage = (file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas context failed"));
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("Compression failed"))),
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => reject(new Error("Image load failed"));
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 interface FitPicSheetProps {
   children: React.ReactNode;
   outfitId?: string;
@@ -53,9 +79,12 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
     if (!user || !image) return;
     setSaving(true);
     try {
-      const ext = image.name.split(".").pop();
-      const path = `${user.id}/fit-pics/${Date.now()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("social-media").upload(path, image);
+      // Compress image before upload to avoid size issues
+      const compressed = await compressImage(image);
+      const path = `${user.id}/fit-pics/${Date.now()}.jpg`;
+      const { error: uploadErr } = await supabase.storage
+        .from("social-media")
+        .upload(path, compressed, { contentType: "image/jpeg", cacheControl: "3600" });
       if (uploadErr) throw uploadErr;
 
       const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
@@ -78,9 +107,9 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
       setDescription("");
       setIsPrivate(false);
       onSaved?.();
-    } catch (err) {
-      console.error(err);
-      toast({ title: "Failed to save", variant: "destructive" });
+    } catch (err: any) {
+      console.error("Fit pic save error:", err);
+      toast({ title: err?.message || "Failed to save", variant: "destructive" });
     } finally {
       setSaving(false);
     }
