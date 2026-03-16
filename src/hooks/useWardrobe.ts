@@ -416,7 +416,7 @@ export function useWardrobe() {
 
         if (outfitErr || !outfitRow) throw outfitErr;
 
-        const selectedItems: ClothingItem[] = ensureOutfitHasShoes((data.items || []) as ClothingItem[], items);
+        const selectedItems: ClothingItem[] = ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
         if (selectedItems.length > 0) {
           await supabase.from("outfit_items").insert(
             selectedItems.map((si: ClothingItem) => ({ outfit_id: outfitRow.id, clothing_item_id: si.id }))
