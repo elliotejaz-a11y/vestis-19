@@ -78,6 +78,7 @@ function normalizeSelectionWithRequiredCore(selected: any[], allItems: any[]): a
   }
 
   const replacementPriority = ['accessories', 'hats', 'outerwear'];
+  next = ensureRequiredCategory(next, allItems, isTopHalf, replacementPriority);
   next = ensureRequiredCategory(next, allItems, isBottom, replacementPriority);
   next = ensureRequiredCategory(next, allItems, isShoe, replacementPriority);
 
