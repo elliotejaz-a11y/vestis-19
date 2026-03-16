@@ -198,21 +198,27 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
           <DialogTitle className="sr-only">Generated Outfit</DialogTitle>
           {popupOutfit && (() => {
               const sorted = [...popupOutfit.items].sort((a, b) => {
-                const order = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
+                const order = ["hats", "accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
                 const aIdx = order.indexOf(a.category);
                 const bIdx = order.indexOf(b.category);
                 return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
               });
+              const hats = sorted.filter(i => i.category === "hats");
               const outerwear = sorted.filter(i => i.category === "outerwear");
               const tops = sorted.filter(i => i.category === "tops");
               const accessories = sorted.filter(i => i.category === "accessories");
-              const rest = sorted.filter(i => !["outerwear", "tops", "accessories"].includes(i.category));
+              const rest = sorted.filter(i => !["hats", "outerwear", "tops", "accessories"].includes(i.category));
 
               return (
             <>
               {/* Flat-lay preview - matches OutfitCard layout */}
               <div className="bg-muted dark:bg-neutral-800 p-4">
                 <div className="flex flex-col items-center gap-1">
+                  {hats.map((item) => (
+                    <div key={item.id} className="w-16 h-16 flex-shrink-0">
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                    </div>
+                  ))}
                   {accessories.map((item) => (
                     <div key={item.id} className="w-16 h-16 flex-shrink-0">
                       <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />

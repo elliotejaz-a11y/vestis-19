@@ -7,7 +7,7 @@ import { FitPicSheet } from "@/components/FitPicSheet";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
 
-const CATEGORY_ORDER = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
+const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
 
 function sortItemsForFlatLay(items: ClothingItem[]): ClothingItem[] {
   return [...items].sort((a, b) => {
@@ -53,14 +53,21 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
         {/* Flat-lay outfit display */}
         <div className="bg-white dark:bg-neutral-800 p-4">
           <div className="flex flex-col items-center gap-1">
-            {(() => {
+              {(() => {
+              const hats = sorted.filter(i => i.category === "hats");
+              const accessories = sorted.filter(i => i.category === "accessories");
               const outerwear = sorted.filter(i => i.category === "outerwear");
               const tops = sorted.filter(i => i.category === "tops");
-              const rest = sorted.filter(i => i.category !== "outerwear" && i.category !== "tops");
+              const rest = sorted.filter(i => !["hats", "accessories", "outerwear", "tops"].includes(i.category));
 
               return (
                 <>
-                  {sorted.filter(i => i.category === "accessories").map((item) => (
+                  {hats.map((item) => (
+                    <div key={item.id} className="w-16 h-16 flex-shrink-0">
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                    </div>
+                  ))}
+                  {accessories.map((item) => (
                     <div key={item.id} className="w-16 h-16 flex-shrink-0">
                       <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
                     </div>
@@ -79,7 +86,7 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
                       ))}
                     </div>
                   )}
-                  {rest.filter(i => i.category !== "accessories").map((item) => {
+                  {rest.map((item) => {
                     const isShoes = item.category === "shoes";
                     const size = isShoes ? "w-16 h-16" : "w-24 h-24";
                     return (
