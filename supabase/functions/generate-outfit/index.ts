@@ -120,6 +120,18 @@ serve(async (req) => {
       });
     }
 
+    if (!items.some(isShoe)) {
+      return new Response(JSON.stringify({ error: 'At least one shoe item is required to generate an outfit.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!items.some(isBottom)) {
+      return new Response(JSON.stringify({ error: 'At least one bottoms item is required to generate an outfit.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
