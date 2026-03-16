@@ -431,17 +431,23 @@ export function useWardrobe() {
         return outfit;
       } catch (err) {
         console.error("AI outfit generation failed:", err);
-        const nonShoesCategories = [...new Set(items.filter((i) => !isShoesCategory(i.category)).map((i) => i.category))];
+        const nonCoreCategories = [...new Set(
+          items
+            .filter((i) => !isShoesCategory(i.category) && !isBottomsCategory(i.category))
+            .map((i) => i.category)
+        )];
         const selected: ClothingItem[] = [];
-        for (const cat of nonShoesCategories) {
+        for (const cat of nonCoreCategories) {
           const catItems = items.filter((i) => i.category === cat);
           if (catItems.length > 0) selected.push(catItems[Math.floor(Math.random() * catItems.length)]);
           if (selected.length >= 3) break;
         }
         const baseFallback = selected.length >= 1
           ? selected
-          : [...items.filter((i) => !isShoesCategory(i.category))].sort(() => Math.random() - 0.5).slice(0, 2);
-        const fallbackItems = ensureOutfitHasShoes(baseFallback, items);
+          : [...items.filter((i) => !isShoesCategory(i.category) && !isBottomsCategory(i.category))]
+              .sort(() => Math.random() - 0.5)
+              .slice(0, 2);
+        const fallbackItems = ensureOutfitHasCorePieces(baseFallback, items);
 
         const { data: outfitRow } = await supabase
           .from("outfits")

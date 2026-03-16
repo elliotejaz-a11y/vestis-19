@@ -240,7 +240,7 @@ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one p
     const result = JSON.parse(toolCall.function.arguments);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
-    const selectedItems = normalizeSelectionWithShoes(
+    const selectedItems = normalizeSelectionWithRequiredCore(
       rawSelectedIndices
         .map((idx: unknown) => Number(idx))
         .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= items.length)
