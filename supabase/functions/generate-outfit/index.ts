@@ -24,6 +24,10 @@ function isShoe(item: any): boolean {
   return normalizeCategory(item?.category) === 'shoes';
 }
 
+function isBottom(item: any): boolean {
+  return normalizeCategory(item?.category) === 'bottoms';
+}
+
 function dedupeById(items: any[]): any[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -35,26 +39,42 @@ function dedupeById(items: any[]): any[] {
   });
 }
 
-function normalizeSelectionWithShoes(selected: any[], allItems: any[]): any[] {
-  const availableShoes = allItems.filter(isShoe);
+function ensureRequiredCategory(
+  selected: any[],
+  allItems: any[],
+  predicate: (item: any) => boolean,
+  replacementPriority: string[]
+): any[] {
+  const available = allItems.filter(predicate);
+  if (available.length === 0 || selected.some(predicate)) return selected;
+
+  const replaceIndex = selected.findIndex((item) => replacementPriority.includes(normalizeCategory(item?.category)));
+
+  if (replaceIndex >= 0) {
+    const next = [...selected];
+    next[replaceIndex] = available[0];
+    return next;
+  }
+
+  if (selected.length >= 5) {
+    const next = [...selected];
+    next[next.length - 1] = available[0];
+    return next;
+  }
+
+  return [...selected, available[0]];
+}
+
+function normalizeSelectionWithRequiredCore(selected: any[], allItems: any[]): any[] {
   let next = dedupeById(selected.filter(Boolean));
 
   if (next.length === 0 && allItems.length > 0) {
     next = allItems.slice(0, Math.min(4, allItems.length));
   }
 
-  if (availableShoes.length > 0 && !next.some(isShoe)) {
-    const replacementPriority = ['accessories', 'hats', 'outerwear'];
-    const replaceIndex = next.findIndex((item) => replacementPriority.includes(normalizeCategory(item?.category)));
-
-    if (replaceIndex >= 0) {
-      next[replaceIndex] = availableShoes[0];
-    } else if (next.length >= 5) {
-      next[next.length - 1] = availableShoes[0];
-    } else {
-      next.push(availableShoes[0]);
-    }
-  }
+  const replacementPriority = ['accessories', 'hats', 'outerwear'];
+  next = ensureRequiredCategory(next, allItems, isBottom, replacementPriority);
+  next = ensureRequiredCategory(next, allItems, isShoe, replacementPriority);
 
   return dedupeById(next).slice(0, 5);
 }
@@ -96,6 +116,18 @@ serve(async (req) => {
     }
     if (!Array.isArray(items) || items.length === 0 || items.length > 200) {
       return new Response(JSON.stringify({ error: 'Invalid items' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!items.some(isShoe)) {
+      return new Response(JSON.stringify({ error: 'At least one shoe item is required to generate an outfit.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!items.some(isBottom)) {
+      return new Response(JSON.stringify({ error: 'At least one bottoms item is required to generate an outfit.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -149,7 +181,7 @@ ${wardrobeSummary}
 
 Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.
 
-MANDATORY: Every outfit MUST include exactly one pair of shoes. Never generate an outfit without shoes — scan the wardrobe and always select the most appropriate footwear.`,
+MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes. Never generate an outfit without bottoms and shoes — scan the wardrobe and always select the most appropriate pieces.`,
           },
         ],
         tools: [
@@ -208,7 +240,7 @@ MANDATORY: Every outfit MUST include exactly one pair of shoes. Never generate a
     const result = JSON.parse(toolCall.function.arguments);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
-    const selectedItems = normalizeSelectionWithShoes(
+    const selectedItems = normalizeSelectionWithRequiredCore(
       rawSelectedIndices
         .map((idx: unknown) => Number(idx))
         .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= items.length)

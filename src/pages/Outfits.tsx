@@ -37,6 +37,8 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
 
   const activeOccasion = customOccasion.trim() || selectedOccasion;
   const hasShoes = items.some((item) => item.category === "shoes");
+  const hasBottoms = items.some((item) => item.category === "bottoms");
+  const missingRequiredPieces = [!hasBottoms ? "bottoms" : null, !hasShoes ? "shoes" : null].filter(Boolean).join(" and ");
 
   // Fetch weather
   useEffect(() => {
@@ -63,7 +65,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
     : weather?.description === "Cloudy" ? Cloud : Sun;
 
   const handleGenerate = async () => {
-    if (!activeOccasion || items.length < 2 || !hasShoes) return;
+    if (!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms) return;
     setGenerating(true);
     try {
       const outfit = await onGenerate(activeOccasion, weather || undefined);
@@ -158,7 +160,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
       <div className="px-5 mb-6">
         <Button
           onClick={handleGenerate}
-          disabled={!activeOccasion || items.length < 2 || !hasShoes || generating}
+          disabled={!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms || generating}
           className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
         >
           {generating ? (
@@ -170,8 +172,8 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         {items.length < 2 && (
           <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 2 items to your wardrobe first</p>
         )}
-        {items.length >= 2 && !hasShoes && (
-          <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 1 pair of shoes to generate an outfit</p>
+        {items.length >= 2 && (!hasShoes || !hasBottoms) && (
+          <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 1 {missingRequiredPieces} item to generate an outfit</p>
         )}
       </div>
 
