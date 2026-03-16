@@ -104,12 +104,7 @@ User profile:
 Available wardrobe items:
 ${wardrobeSummary}
 
-Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.
-
-MANDATORY RULES:
-1. Every outfit MUST include exactly one pair of shoes. Never skip shoes.
-2. Every outfit MUST include a top-half garment (tops, jumpers, or dresses) and a bottom-half garment (bottoms or dresses). A single dress satisfies both.
-3. If no shoes are available in the wardrobe, still pick the best outfit but mention the missing shoes in your reasoning.`,
+Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.`,
           },
         ],
         tools: [
