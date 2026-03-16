@@ -35,6 +35,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const planDate = searchParams.get("planDate");
 
   const activeOccasion = customOccasion.trim() || selectedOccasion;
+  const hasShoes = items.some((item) => item.category === "shoes");
 
   // Fetch weather
   useEffect(() => {

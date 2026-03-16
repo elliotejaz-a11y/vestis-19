@@ -16,6 +16,49 @@ function getCorsHeaders(req: Request) {
   };
 }
 
+function normalizeCategory(category: unknown): string {
+  return String(category || '').trim().toLowerCase();
+}
+
+function isShoe(item: any): boolean {
+  return normalizeCategory(item?.category) === 'shoes';
+}
+
+function dedupeById(items: any[]): any[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const id = String(item?.id || '');
+    if (!id) return true;
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+
+function normalizeSelectionWithShoes(selected: any[], allItems: any[]): any[] {
+  const availableShoes = allItems.filter(isShoe);
+  let next = dedupeById(selected.filter(Boolean));
+
+  if (next.length === 0 && allItems.length > 0) {
+    next = allItems.slice(0, Math.min(4, allItems.length));
+  }
+
+  if (availableShoes.length > 0 && !next.some(isShoe)) {
+    const replacementPriority = ['accessories', 'hats', 'outerwear'];
+    const replaceIndex = next.findIndex((item) => replacementPriority.includes(normalizeCategory(item?.category)));
+
+    if (replaceIndex >= 0) {
+      next[replaceIndex] = availableShoes[0];
+    } else if (next.length >= 5) {
+      next[next.length - 1] = availableShoes[0];
+    } else {
+      next.push(availableShoes[0]);
+    }
+  }
+
+  return dedupeById(next).slice(0, 5);
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') {

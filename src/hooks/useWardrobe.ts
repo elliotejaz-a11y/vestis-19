@@ -5,6 +5,31 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 
+const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
+
+function ensureOutfitHasShoes(selectedItems: ClothingItem[], allItems: ClothingItem[]): ClothingItem[] {
+  const shoes = allItems.filter((item) => isShoesCategory(item.category));
+  if (shoes.length === 0) return selectedItems.slice(0, 5);
+
+  const deduped = selectedItems.filter((item, index, arr) => arr.findIndex((x) => x.id === item.id) === index);
+  if (deduped.some((item) => isShoesCategory(item.category))) return deduped.slice(0, 5);
+
+  const replacementPriority = ["accessories", "hats", "outerwear"];
+  const replaceIndex = deduped.findIndex((item) => replacementPriority.includes((item.category || "").toLowerCase()));
+
+  if (replaceIndex >= 0) {
+    deduped[replaceIndex] = shoes[0];
+    return deduped.slice(0, 5);
+  }
+
+  if (deduped.length >= 5) {
+    deduped[deduped.length - 1] = shoes[0];
+    return deduped;
+  }
+
+  return [...deduped, shoes[0]].slice(0, 5);
+}
+
 export function useWardrobe() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
