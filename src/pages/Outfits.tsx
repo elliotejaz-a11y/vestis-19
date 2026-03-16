@@ -161,7 +161,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
       <div className="px-5 mb-6">
         <Button
           onClick={handleGenerate}
-          disabled={!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms || generating}
+          disabled={!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms || !hasTopHalf || generating}
           className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
         >
           {generating ? (
