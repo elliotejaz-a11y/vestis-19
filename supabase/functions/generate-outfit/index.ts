@@ -28,6 +28,11 @@ function isBottom(item: any): boolean {
   return normalizeCategory(item?.category) === 'bottoms';
 }
 
+function isTopHalf(item: any): boolean {
+  const cat = normalizeCategory(item?.category);
+  return cat === 'tops' || cat === 'jumpers';
+}
+
 function dedupeById(items: any[]): any[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -73,6 +78,7 @@ function normalizeSelectionWithRequiredCore(selected: any[], allItems: any[]): a
   }
 
   const replacementPriority = ['accessories', 'hats', 'outerwear'];
+  next = ensureRequiredCategory(next, allItems, isTopHalf, replacementPriority);
   next = ensureRequiredCategory(next, allItems, isBottom, replacementPriority);
   next = ensureRequiredCategory(next, allItems, isShoe, replacementPriority);
 
@@ -128,6 +134,12 @@ serve(async (req) => {
 
     if (!items.some(isBottom)) {
       return new Response(JSON.stringify({ error: 'At least one bottoms item is required to generate an outfit.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (!items.some(isTopHalf)) {
+      return new Response(JSON.stringify({ error: 'At least one tops or jumpers item is required to generate an outfit.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
