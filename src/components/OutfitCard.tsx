@@ -1,21 +1,12 @@
 import { useState } from "react";
-import { Outfit, ClothingItem } from "@/types/wardrobe";
+import { Outfit } from "@/types/wardrobe";
 import { Sparkles, Lightbulb, Bookmark, MessageCircle, Trash2, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
-
-const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
-
-function sortItemsForFlatLay(items: ClothingItem[]): ClothingItem[] {
-  return [...items].sort((a, b) => {
-    const aIdx = CATEGORY_ORDER.indexOf(a.category);
-    const bIdx = CATEGORY_ORDER.indexOf(b.category);
-    return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
-  });
-}
+import { OutfitCollagePreview } from "@/components/OutfitCollagePreview";
 
 interface Props {
   outfit: Outfit;
@@ -26,7 +17,7 @@ interface Props {
 }
 
 export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props) {
-  const sorted = sortItemsForFlatLay(outfit.items);
+  
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -51,54 +42,8 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
         onClick={() => setDetailOpen(true)}
       >
         {/* Flat-lay outfit display */}
-        <div className="bg-white dark:bg-neutral-800 p-4">
-          <div className="flex flex-col items-center gap-1">
-              {(() => {
-              const hats = sorted.filter(i => i.category === "hats");
-              const accessories = sorted.filter(i => i.category === "accessories");
-              const outerwear = sorted.filter(i => i.category === "outerwear");
-              const tops = sorted.filter(i => i.category === "tops");
-              const rest = sorted.filter(i => !["hats", "accessories", "outerwear", "tops"].includes(i.category));
-
-              return (
-                <>
-                  {hats.map((item) => (
-                    <div key={item.id} className="w-16 h-16 flex-shrink-0">
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
-                  {accessories.map((item) => (
-                    <div key={item.id} className="w-16 h-16 flex-shrink-0">
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
-                  {(outerwear.length > 0 || tops.length > 0) && (
-                    <div className="flex items-start justify-center gap-2">
-                      {outerwear.map((item) => (
-                        <div key={item.id} className="w-20 h-20 flex-shrink-0 -mt-2">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                        </div>
-                      ))}
-                      {tops.map((item) => (
-                        <div key={item.id} className="w-24 h-24 flex-shrink-0">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {rest.map((item) => {
-                    const isShoes = item.category === "shoes";
-                    const size = isShoes ? "w-16 h-16" : "w-24 h-24";
-                    return (
-                      <div key={item.id} className={cn("flex-shrink-0", size)}>
-                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                      </div>
-                    );
-                  })}
-                </>
-              );
-            })()}
-          </div>
+        <div className="bg-muted/40 p-4">
+          <OutfitCollagePreview items={outfit.items} canvasClassName="h-[280px] bg-card" />
         </div>
 
         {/* Info section */}
