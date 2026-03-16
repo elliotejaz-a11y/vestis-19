@@ -6,16 +6,7 @@ import { cn } from "@/lib/utils";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
-
-const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
-
-function sortItemsForFlatLay(items: ClothingItem[]): ClothingItem[] {
-  return [...items].sort((a, b) => {
-    const aIdx = CATEGORY_ORDER.indexOf(a.category);
-    const bIdx = CATEGORY_ORDER.indexOf(b.category);
-    return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
-  });
-}
+import { OutfitCollagePreview } from "@/components/OutfitCollagePreview";
 
 interface Props {
   outfit: Outfit;
