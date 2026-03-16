@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OutfitCard } from "@/components/OutfitCard";
 import { OutfitChat } from "@/components/OutfitChat";
+import { OutfitCollagePreview } from "@/components/OutfitCollagePreview";
 import { ClothingItem, Outfit, OCCASIONS } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
