@@ -80,10 +80,17 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
     if (!user || !image) return;
     setSaving(true);
     try {
-      const ext = image.name.split(".").pop();
-      const path = `${user.id}/fit-pics/${Date.now()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("social-media").upload(path, image);
-      if (uploadErr) throw uploadErr;
+      // Compress image to avoid upload size issues
+      const compressed = await compressImage(image);
+      const path = `${user.id}/fit-pics/${Date.now()}.jpeg`;
+      
+      const { error: uploadErr } = await supabase.storage
+        .from("social-media")
+        .upload(path, compressed, { contentType: "image/jpeg" });
+      if (uploadErr) {
+        console.error("[fit-pic] Upload error:", uploadErr);
+        throw uploadErr;
+      }
 
       const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
       const imageUrl = urlData.publicUrl;
@@ -96,7 +103,10 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
         is_private: isPrivate,
         outfit_id: outfitId || null,
       });
-      if (insertErr) throw insertErr;
+      if (insertErr) {
+        console.error("[fit-pic] Insert error:", insertErr);
+        throw insertErr;
+      }
 
       toast({ title: "Fit pic saved! 📸" });
       setOpen(false);
@@ -105,9 +115,9 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
       setDescription("");
       setIsPrivate(false);
       onSaved?.();
-    } catch (err) {
-      console.error(err);
-      toast({ title: "Failed to save", variant: "destructive" });
+    } catch (err: any) {
+      console.error("[fit-pic] Save failed:", err);
+      toast({ title: "Failed to save fit pic", description: err?.message || "Please try again", variant: "destructive" });
     } finally {
       setSaving(false);
     }
