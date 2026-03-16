@@ -251,8 +251,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
                 </div>
               </div>
             </>
-              );
-            })()}
+          )}
         </DialogContent>
       </Dialog>
 
