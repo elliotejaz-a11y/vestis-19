@@ -197,53 +197,51 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         <DialogContent className="max-w-[92vw] rounded-3xl p-0 overflow-hidden border-border/40 gap-0 max-h-[85vh] overflow-y-auto">
           <DialogTitle className="sr-only">Generated Outfit</DialogTitle>
           {popupOutfit && (() => {
-              const POSITIONS: Record<string, { x: number; y: number }> = {
-                hats: { x: 50, y: 8 },
-                accessories: { x: 78, y: 10 },
-                outerwear: { x: 28, y: 28 },
-                jumpers: { x: 40, y: 32 },
-                tops: { x: 55, y: 30 },
-                dresses: { x: 50, y: 45 },
-                bottoms: { x: 50, y: 60 },
-                shoes: { x: 50, y: 86 },
-              };
-              const SIZES: Record<string, { w: number; h: number }> = {
-                hats: { w: 60, h: 60 },
-                accessories: { w: 52, h: 52 },
-                outerwear: { w: 80, h: 80 },
-                jumpers: { w: 88, h: 88 },
-                tops: { w: 96, h: 96 },
-                dresses: { w: 96, h: 112 },
-                bottoms: { w: 96, h: 96 },
-                shoes: { w: 56, h: 56 },
-              };
-              const Z_ORDER = ["bottoms", "dresses", "tops", "jumpers", "outerwear", "shoes", "hats", "accessories"];
+              const sorted = [...popupOutfit.items].sort((a, b) => {
+                const order = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
+                const aIdx = order.indexOf(a.category);
+                const bIdx = order.indexOf(b.category);
+                return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+              });
+              const outerwear = sorted.filter(i => i.category === "outerwear");
+              const tops = sorted.filter(i => i.category === "tops");
+              const accessories = sorted.filter(i => i.category === "accessories");
+              const rest = sorted.filter(i => !["outerwear", "tops", "accessories"].includes(i.category));
 
               return (
             <>
-              {/* Flat-lay preview - positioned like outfit builder */}
-              <div className="bg-muted dark:bg-neutral-800 relative" style={{ height: 280 }}>
-                {popupOutfit.items.map((item) => {
-                  const pos = POSITIONS[item.category] || { x: 50, y: 50 };
-                  const size = SIZES[item.category] || { w: 72, h: 72 };
-                  const zIdx = Z_ORDER.indexOf(item.category);
-                  return (
-                    <div
-                      key={item.id}
-                      className="absolute"
-                      style={{
-                        left: `${pos.x}%`,
-                        top: `${pos.y}%`,
-                        transform: 'translate(-50%, -50%)',
-                        width: size.w,
-                        height: size.h,
-                        zIndex: zIdx === -1 ? 0 : zIdx,
-                      }}
-                    >
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-md" />
+              {/* Flat-lay preview - matches OutfitCard layout */}
+              <div className="bg-muted dark:bg-neutral-800 p-4">
+                <div className="flex flex-col items-center gap-1">
+                  {accessories.map((item) => (
+                    <div key={item.id} className="w-16 h-16 flex-shrink-0">
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
                     </div>
-                  );
-                })}
+                  ))}
+                  {(outerwear.length > 0 || tops.length > 0) && (
+                    <div className="flex items-start justify-center gap-2">
+                      {outerwear.map((item) => (
+                        <div key={item.id} className="w-20 h-20 flex-shrink-0 -mt-2">
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                        </div>
+                      ))}
+                      {tops.map((item) => (
+                        <div key={item.id} className="w-24 h-24 flex-shrink-0">
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {rest.map((item) => {
+                    const isShoes = item.category === "shoes";
+                    const size = isShoes ? "w-16 h-16" : "w-24 h-24";
+                    return (
+                      <div key={item.id} className={cn("flex-shrink-0", size)}>
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="p-5 space-y-3">
