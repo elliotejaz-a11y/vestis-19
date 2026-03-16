@@ -7,7 +7,15 @@ import { FitPicSheet } from "@/components/FitPicSheet";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
 
-const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
+const CATEGORY_ORDER = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
+
+function sortItemsForFlatLay(items: ClothingItem[]): ClothingItem[] {
+  return [...items].sort((a, b) => {
+    const aIdx = CATEGORY_ORDER.indexOf(a.category);
+    const bIdx = CATEGORY_ORDER.indexOf(b.category);
+    return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
+  });
+}
 
 interface Props {
   outfit: Outfit;
@@ -18,7 +26,7 @@ interface Props {
 }
 
 export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props) {
-  
+  const sorted = sortItemsForFlatLay(outfit.items);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -42,31 +50,46 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
         className="rounded-2xl bg-card border border-border/40 overflow-hidden shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
         onClick={() => setDetailOpen(true)}
       >
-        {/* Vertical stack outfit display */}
-        <div className="bg-card p-4">
+        {/* Flat-lay outfit display */}
+        <div className="bg-white dark:bg-neutral-800 p-4">
           <div className="flex flex-col items-center gap-1">
             {(() => {
-              const allItems = outfit.items;
-              const hats = allItems.filter(i => i.category === "hats");
-              const outerwear = allItems.filter(i => i.category === "outerwear");
-              const jumpers = allItems.filter(i => i.category === "jumpers");
-              const tops = allItems.filter(i => i.category === "tops");
-              const dresses = allItems.filter(i => i.category === "dresses");
-              const accessories = allItems.filter(i => i.category === "accessories");
-              const bottoms = allItems.filter(i => i.category === "bottoms");
-              const shoes = allItems.filter(i => i.category === "shoes");
-              const mainPieces = [...jumpers, ...outerwear];
-              const ordered = [...accessories, ...hats, ...mainPieces, ...tops, ...dresses, ...bottoms, ...shoes];
+              const outerwear = sorted.filter(i => i.category === "outerwear");
+              const tops = sorted.filter(i => i.category === "tops");
+              const rest = sorted.filter(i => i.category !== "outerwear" && i.category !== "tops");
 
-              return ordered.map((item) => {
-                const isSmall = item.category === "accessories" || item.category === "hats" || item.category === "shoes";
-                const isMed = item.category === "tops";
-                return (
-                  <div key={item.id} className={cn("flex-shrink-0", isSmall ? "w-14 h-14" : isMed ? "w-24 h-24" : "w-28 h-28")}>
-                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                  </div>
-                );
-              });
+              return (
+                <>
+                  {sorted.filter(i => i.category === "accessories").map((item) => (
+                    <div key={item.id} className="w-16 h-16 flex-shrink-0">
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                    </div>
+                  ))}
+                  {(outerwear.length > 0 || tops.length > 0) && (
+                    <div className="flex items-start justify-center gap-2">
+                      {outerwear.map((item) => (
+                        <div key={item.id} className="w-20 h-20 flex-shrink-0 -mt-2">
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                        </div>
+                      ))}
+                      {tops.map((item) => (
+                        <div key={item.id} className="w-24 h-24 flex-shrink-0">
+                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {rest.filter(i => i.category !== "accessories").map((item) => {
+                    const isShoes = item.category === "shoes";
+                    const size = isShoes ? "w-16 h-16" : "w-24 h-24";
+                    return (
+                      <div key={item.id} className={cn("flex-shrink-0", size)}>
+                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                      </div>
+                    );
+                  })}
+                </>
+              );
             })()}
           </div>
         </div>
