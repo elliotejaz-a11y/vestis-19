@@ -197,50 +197,73 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         <DialogContent className="max-w-[92vw] rounded-3xl p-0 overflow-hidden border-border/40 gap-0 max-h-[85vh] overflow-y-auto">
           <DialogTitle className="sr-only">Generated Outfit</DialogTitle>
           {popupOutfit && (() => {
-              const sorted = [...popupOutfit.items].sort((a, b) => {
-                const order = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
-                const aIdx = order.indexOf(a.category);
-                const bIdx = order.indexOf(b.category);
-                return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
-              });
-              const outerwear = sorted.filter(i => i.category === "outerwear");
-              const tops = sorted.filter(i => i.category === "tops");
-              const accessories = sorted.filter(i => i.category === "accessories");
-              const rest = sorted.filter(i => !["outerwear", "tops", "accessories"].includes(i.category));
+              const allItems = popupOutfit.items;
+              const hats = allItems.filter(i => i.category === "hats");
+              const outerwear = allItems.filter(i => i.category === "outerwear");
+              const jumpers = allItems.filter(i => i.category === "jumpers");
+              const tops = allItems.filter(i => i.category === "tops");
+              const dresses = allItems.filter(i => i.category === "dresses");
+              const accessories = allItems.filter(i => i.category === "accessories");
+              const bottoms = allItems.filter(i => i.category === "bottoms");
+              const shoes = allItems.filter(i => i.category === "shoes");
+
+              // Main torso pieces (jumpers/outerwear shown larger, tops behind)
+              const mainPieces = [...jumpers, ...outerwear];
+              const secondaryTops = tops;
 
               return (
             <>
-              {/* Flat-lay preview - matches OutfitCard layout */}
+              {/* Flat-lay preview — scattered layout matching screenshot */}
               <div className="bg-muted dark:bg-neutral-800 p-4">
-                <div className="flex flex-col items-center gap-1">
-                  {accessories.map((item) => (
-                    <div key={item.id} className="w-16 h-16 flex-shrink-0">
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                <div className="relative w-full" style={{ height: 300 }}>
+                  {/* Main piece: jumper/outerwear — center-left, largest */}
+                  {mainPieces.map((item, i) => (
+                    <div key={item.id} className="absolute" style={{ left: '10%', top: '8%', width: 140, height: 140 }}>
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-md" />
                     </div>
                   ))}
-                  {(outerwear.length > 0 || tops.length > 0) && (
-                    <div className="flex items-start justify-center gap-2">
-                      {outerwear.map((item) => (
-                        <div key={item.id} className="w-20 h-20 flex-shrink-0 -mt-2">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                        </div>
-                      ))}
-                      {tops.map((item) => (
-                        <div key={item.id} className="w-24 h-24 flex-shrink-0">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                        </div>
-                      ))}
+
+                  {/* Secondary top — offset right, slightly behind/overlapping */}
+                  {secondaryTops.map((item, i) => (
+                    <div key={item.id} className="absolute" style={{ left: mainPieces.length > 0 ? '38%' : '15%', top: '5%', width: mainPieces.length > 0 ? 110 : 140, height: mainPieces.length > 0 ? 110 : 140 }}>
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-md" />
                     </div>
-                  )}
-                  {rest.map((item) => {
-                    const isShoes = item.category === "shoes";
-                    const size = isShoes ? "w-16 h-16" : "w-24 h-24";
-                    return (
-                      <div key={item.id} className={cn("flex-shrink-0", size)}>
-                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                      </div>
-                    );
-                  })}
+                  ))}
+
+                  {/* Dresses — center if present */}
+                  {dresses.map((item) => (
+                    <div key={item.id} className="absolute" style={{ left: '20%', top: '5%', width: 150, height: 180 }}>
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-md" />
+                    </div>
+                  ))}
+
+                  {/* Hat — top-right area */}
+                  {hats.map((item) => (
+                    <div key={item.id} className="absolute" style={{ right: '12%', top: '2%', width: 70, height: 70 }}>
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-md" />
+                    </div>
+                  ))}
+
+                  {/* Accessories — far right middle */}
+                  {accessories.map((item, i) => (
+                    <div key={item.id} className="absolute" style={{ right: '5%', top: `${30 + i * 22}%`, width: 60, height: 60 }}>
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-md" />
+                    </div>
+                  ))}
+
+                  {/* Bottoms — center, flowing down */}
+                  {bottoms.map((item) => (
+                    <div key={item.id} className="absolute" style={{ left: '22%', top: '42%', width: 130, height: 150 }}>
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-md" />
+                    </div>
+                  ))}
+
+                  {/* Shoes — bottom-right */}
+                  {shoes.map((item, i) => (
+                    <div key={item.id} className="absolute" style={{ right: '15%', bottom: '2%', width: 75, height: 75 }}>
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-md" />
+                    </div>
+                  ))}
                 </div>
               </div>
 
