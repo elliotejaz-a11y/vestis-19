@@ -198,15 +198,16 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
           <DialogTitle className="sr-only">Generated Outfit</DialogTitle>
           {popupOutfit && (() => {
               const sorted = [...popupOutfit.items].sort((a, b) => {
-                const order = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
+                const order = ["hats", "accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
                 const aIdx = order.indexOf(a.category);
                 const bIdx = order.indexOf(b.category);
                 return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
               });
+              const hats = sorted.filter(i => i.category === "hats");
               const outerwear = sorted.filter(i => i.category === "outerwear");
               const tops = sorted.filter(i => i.category === "tops");
               const accessories = sorted.filter(i => i.category === "accessories");
-              const rest = sorted.filter(i => !["outerwear", "tops", "accessories"].includes(i.category));
+              const rest = sorted.filter(i => !["hats", "outerwear", "tops", "accessories"].includes(i.category));
 
               return (
             <>
