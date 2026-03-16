@@ -376,10 +376,15 @@ export function useWardrobe() {
   const generateOutfit = useCallback(
     async (occasion: string, weather?: { temp: number; description: string }): Promise<Outfit | null> => {
       if (!user || items.length < 2) return null;
-      if (!items.some((item) => isShoesCategory(item.category))) {
+
+      const missingCore: string[] = [];
+      if (!items.some((item) => isBottomsCategory(item.category))) missingCore.push("bottoms");
+      if (!items.some((item) => isShoesCategory(item.category))) missingCore.push("shoes");
+
+      if (missingCore.length > 0) {
         toast({
-          title: "Add shoes to generate outfits",
-          description: "Every outfit requires at least one pair of shoes.",
+          title: "Add required items to generate outfits",
+          description: `Every outfit requires at least one ${missingCore.join(" and ")} item.`,
           variant: "destructive",
         });
         return null;
