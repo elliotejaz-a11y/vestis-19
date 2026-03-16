@@ -10,6 +10,33 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+const compressImage = (file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      let w = img.width;
+      let h = img.height;
+      if (w > maxWidth) {
+        h = Math.round((h * maxWidth) / w);
+        w = maxWidth;
+      }
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas not supported"));
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("Compression failed"))),
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
+};
+
 interface FitPicSheetProps {
   children: React.ReactNode;
   outfitId?: string;
@@ -53,10 +80,17 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
     if (!user || !image) return;
     setSaving(true);
     try {
-      const ext = image.name.split(".").pop();
-      const path = `${user.id}/fit-pics/${Date.now()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("social-media").upload(path, image);
-      if (uploadErr) throw uploadErr;
+      // Compress image to avoid upload size issues
+      const compressed = await compressImage(image);
+      const path = `${user.id}/fit-pics/${Date.now()}.jpeg`;
+      
+      const { error: uploadErr } = await supabase.storage
+        .from("social-media")
+        .upload(path, compressed, { contentType: "image/jpeg" });
+      if (uploadErr) {
+        console.error("[fit-pic] Upload error:", uploadErr);
+        throw uploadErr;
+      }
 
       const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
       const imageUrl = urlData.publicUrl;
@@ -69,7 +103,10 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
         is_private: isPrivate,
         outfit_id: outfitId || null,
       });
-      if (insertErr) throw insertErr;
+      if (insertErr) {
+        console.error("[fit-pic] Insert error:", insertErr);
+        throw insertErr;
+      }
 
       toast({ title: "Fit pic saved! 📸" });
       setOpen(false);
@@ -78,9 +115,9 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
       setDescription("");
       setIsPrivate(false);
       onSaved?.();
-    } catch (err) {
-      console.error(err);
-      toast({ title: "Failed to save", variant: "destructive" });
+    } catch (err: any) {
+      console.error("[fit-pic] Save failed:", err);
+      toast({ title: "Failed to save fit pic", description: err?.message || "Please try again", variant: "destructive" });
     } finally {
       setSaving(false);
     }
