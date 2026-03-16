@@ -24,6 +24,10 @@ function isShoe(item: any): boolean {
   return normalizeCategory(item?.category) === 'shoes';
 }
 
+function isBottom(item: any): boolean {
+  return normalizeCategory(item?.category) === 'bottoms';
+}
+
 function dedupeById(items: any[]): any[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -35,26 +39,42 @@ function dedupeById(items: any[]): any[] {
   });
 }
 
-function normalizeSelectionWithShoes(selected: any[], allItems: any[]): any[] {
-  const availableShoes = allItems.filter(isShoe);
+function ensureRequiredCategory(
+  selected: any[],
+  allItems: any[],
+  predicate: (item: any) => boolean,
+  replacementPriority: string[]
+): any[] {
+  const available = allItems.filter(predicate);
+  if (available.length === 0 || selected.some(predicate)) return selected;
+
+  const replaceIndex = selected.findIndex((item) => replacementPriority.includes(normalizeCategory(item?.category)));
+
+  if (replaceIndex >= 0) {
+    const next = [...selected];
+    next[replaceIndex] = available[0];
+    return next;
+  }
+
+  if (selected.length >= 5) {
+    const next = [...selected];
+    next[next.length - 1] = available[0];
+    return next;
+  }
+
+  return [...selected, available[0]];
+}
+
+function normalizeSelectionWithRequiredCore(selected: any[], allItems: any[]): any[] {
   let next = dedupeById(selected.filter(Boolean));
 
   if (next.length === 0 && allItems.length > 0) {
     next = allItems.slice(0, Math.min(4, allItems.length));
   }
 
-  if (availableShoes.length > 0 && !next.some(isShoe)) {
-    const replacementPriority = ['accessories', 'hats', 'outerwear'];
-    const replaceIndex = next.findIndex((item) => replacementPriority.includes(normalizeCategory(item?.category)));
-
-    if (replaceIndex >= 0) {
-      next[replaceIndex] = availableShoes[0];
-    } else if (next.length >= 5) {
-      next[next.length - 1] = availableShoes[0];
-    } else {
-      next.push(availableShoes[0]);
-    }
-  }
+  const replacementPriority = ['accessories', 'hats', 'outerwear'];
+  next = ensureRequiredCategory(next, allItems, isBottom, replacementPriority);
+  next = ensureRequiredCategory(next, allItems, isShoe, replacementPriority);
 
   return dedupeById(next).slice(0, 5);
 }

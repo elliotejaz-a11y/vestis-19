@@ -6,28 +6,39 @@ import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
+const isBottomsCategory = (category?: string) => (category || "").trim().toLowerCase() === "bottoms";
 
-function ensureOutfitHasShoes(selectedItems: ClothingItem[], allItems: ClothingItem[]): ClothingItem[] {
-  const shoes = allItems.filter((item) => isShoesCategory(item.category));
-  if (shoes.length === 0) return selectedItems.slice(0, 5);
-
-  const deduped = selectedItems.filter((item, index, arr) => arr.findIndex((x) => x.id === item.id) === index);
-  if (deduped.some((item) => isShoesCategory(item.category))) return deduped.slice(0, 5);
+function ensureCategoryRequirement(
+  selectedItems: ClothingItem[],
+  allItems: ClothingItem[],
+  predicate: (item: ClothingItem) => boolean
+): ClothingItem[] {
+  const available = allItems.filter(predicate);
+  if (available.length === 0 || selectedItems.some(predicate)) return selectedItems;
 
   const replacementPriority = ["accessories", "hats", "outerwear"];
-  const replaceIndex = deduped.findIndex((item) => replacementPriority.includes((item.category || "").toLowerCase()));
+  const replaceIndex = selectedItems.findIndex((item) => replacementPriority.includes((item.category || "").toLowerCase()));
 
   if (replaceIndex >= 0) {
-    deduped[replaceIndex] = shoes[0];
-    return deduped.slice(0, 5);
+    const next = [...selectedItems];
+    next[replaceIndex] = available[0];
+    return next;
   }
 
-  if (deduped.length >= 5) {
-    deduped[deduped.length - 1] = shoes[0];
-    return deduped;
+  if (selectedItems.length >= 5) {
+    const next = [...selectedItems];
+    next[next.length - 1] = available[0];
+    return next;
   }
 
-  return [...deduped, shoes[0]].slice(0, 5);
+  return [...selectedItems, available[0]];
+}
+
+function ensureOutfitHasCorePieces(selectedItems: ClothingItem[], allItems: ClothingItem[]): ClothingItem[] {
+  const deduped = selectedItems.filter((item, index, arr) => arr.findIndex((x) => x.id === item.id) === index);
+  const withBottoms = ensureCategoryRequirement(deduped, allItems, (item) => isBottomsCategory(item.category));
+  const withShoes = ensureCategoryRequirement(withBottoms, allItems, (item) => isShoesCategory(item.category));
+  return withShoes.slice(0, 5);
 }
 
 export function useWardrobe() {
