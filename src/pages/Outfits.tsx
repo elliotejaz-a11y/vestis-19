@@ -62,7 +62,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
     : weather?.description === "Cloudy" ? Cloud : Sun;
 
   const handleGenerate = async () => {
-    if (!activeOccasion || items.length < 2) return;
+    if (!activeOccasion || items.length < 2 || !hasShoes) return;
     setGenerating(true);
     try {
       const outfit = await onGenerate(activeOccasion, weather || undefined);
