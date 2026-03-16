@@ -169,6 +169,9 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         {items.length < 2 && (
           <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 2 items to your wardrobe first</p>
         )}
+        {items.length >= 2 && !hasShoes && (
+          <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 1 pair of shoes to generate an outfit</p>
+        )}
       </div>
 
       {/* Results */}

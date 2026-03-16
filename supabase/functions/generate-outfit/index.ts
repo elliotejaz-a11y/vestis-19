@@ -207,9 +207,14 @@ MANDATORY: Every outfit MUST include exactly one pair of shoes. Never generate a
 
     const result = JSON.parse(toolCall.function.arguments);
 
-    const selectedItems = result.selected_indices
-      .filter((idx: number) => idx >= 1 && idx <= items.length)
-      .map((idx: number) => items[idx - 1]);
+    const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
+    const selectedItems = normalizeSelectionWithShoes(
+      rawSelectedIndices
+        .map((idx: unknown) => Number(idx))
+        .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= items.length)
+        .map((idx: number) => items[idx - 1]),
+      items
+    );
 
     return new Response(JSON.stringify({
       items: selectedItems,

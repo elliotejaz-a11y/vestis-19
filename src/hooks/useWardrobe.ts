@@ -446,7 +446,7 @@ export function useWardrobe() {
         return outfit;
       }
     },
-    [user, items, profile]
+    [user, items, profile, toast]
   );
 
   const addOutfitToState = useCallback((outfit: Outfit) => {
