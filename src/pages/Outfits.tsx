@@ -214,6 +214,11 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
               {/* Flat-lay preview - matches OutfitCard layout */}
               <div className="bg-muted dark:bg-neutral-800 p-4">
                 <div className="flex flex-col items-center gap-1">
+                  {hats.map((item) => (
+                    <div key={item.id} className="w-16 h-16 flex-shrink-0">
+                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                    </div>
+                  ))}
                   {accessories.map((item) => (
                     <div key={item.id} className="w-16 h-16 flex-shrink-0">
                       <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
