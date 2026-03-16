@@ -42,9 +42,9 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
         className="rounded-2xl bg-card border border-border/40 overflow-hidden shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
         onClick={() => setDetailOpen(true)}
       >
-        {/* Flat-lay outfit display — scattered layout */}
-        <div className="bg-white dark:bg-neutral-800 p-4">
-          <div className="relative w-full" style={{ height: 220 }}>
+        {/* Vertical stack outfit display */}
+        <div className="bg-card p-4">
+          <div className="flex flex-col items-center gap-1">
             {(() => {
               const allItems = outfit.items;
               const hats = allItems.filter(i => i.category === "hats");
@@ -56,46 +56,17 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
               const bottoms = allItems.filter(i => i.category === "bottoms");
               const shoes = allItems.filter(i => i.category === "shoes");
               const mainPieces = [...jumpers, ...outerwear];
+              const ordered = [...accessories, ...hats, ...mainPieces, ...tops, ...dresses, ...bottoms, ...shoes];
 
-              return (
-                <>
-                  {mainPieces.map((item) => (
-                    <div key={item.id} className="absolute" style={{ left: '8%', top: '6%', width: 110, height: 110 }}>
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
-                  {tops.map((item) => (
-                    <div key={item.id} className="absolute" style={{ left: mainPieces.length > 0 ? '35%' : '12%', top: '4%', width: mainPieces.length > 0 ? 90 : 110, height: mainPieces.length > 0 ? 90 : 110 }}>
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
-                  {dresses.map((item) => (
-                    <div key={item.id} className="absolute" style={{ left: '15%', top: '4%', width: 120, height: 140 }}>
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
-                  {hats.map((item) => (
-                    <div key={item.id} className="absolute" style={{ right: '10%', top: '0%', width: 55, height: 55 }}>
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
-                  {accessories.map((item, i) => (
-                    <div key={item.id} className="absolute" style={{ right: '5%', top: `${28 + i * 22}%`, width: 48, height: 48 }}>
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
-                  {bottoms.map((item) => (
-                    <div key={item.id} className="absolute" style={{ left: '18%', top: '42%', width: 105, height: 120 }}>
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
-                  {shoes.map((item) => (
-                    <div key={item.id} className="absolute" style={{ right: '12%', bottom: '2%', width: 60, height: 60 }}>
-                      <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
-                    </div>
-                  ))}
-                </>
-              );
+              return ordered.map((item) => {
+                const isSmall = item.category === "accessories" || item.category === "hats" || item.category === "shoes";
+                const isMed = item.category === "tops";
+                return (
+                  <div key={item.id} className={cn("flex-shrink-0", isSmall ? "w-14 h-14" : isMed ? "w-24 h-24" : "w-28 h-28")}>
+                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain drop-shadow-sm" />
+                  </div>
+                );
+              });
             })()}
           </div>
         </div>
