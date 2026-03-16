@@ -7,15 +7,27 @@ import { FitPicSheet } from "@/components/FitPicSheet";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
 
-const CATEGORY_ORDER = ["accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
-
-function sortItemsForFlatLay(items: ClothingItem[]): ClothingItem[] {
-  return [...items].sort((a, b) => {
-    const aIdx = CATEGORY_ORDER.indexOf(a.category);
-    const bIdx = CATEGORY_ORDER.indexOf(b.category);
-    return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
-  });
-}
+const POSITIONS: Record<string, { x: number; y: number }> = {
+  hats: { x: 50, y: 10 },
+  accessories: { x: 78, y: 12 },
+  outerwear: { x: 28, y: 30 },
+  jumpers: { x: 40, y: 34 },
+  tops: { x: 55, y: 32 },
+  dresses: { x: 50, y: 45 },
+  bottoms: { x: 50, y: 62 },
+  shoes: { x: 50, y: 88 },
+};
+const SIZES: Record<string, { w: number; h: number }> = {
+  hats: { w: 48, h: 48 },
+  accessories: { w: 40, h: 40 },
+  outerwear: { w: 64, h: 64 },
+  jumpers: { w: 72, h: 72 },
+  tops: { w: 76, h: 76 },
+  dresses: { w: 76, h: 88 },
+  bottoms: { w: 76, h: 76 },
+  shoes: { w: 44, h: 44 },
+};
+const Z_ORDER = ["bottoms", "dresses", "tops", "jumpers", "outerwear", "shoes", "hats", "accessories"];
 
 interface Props {
   outfit: Outfit;
