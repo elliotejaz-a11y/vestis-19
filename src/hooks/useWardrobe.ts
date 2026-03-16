@@ -5,6 +5,31 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 
+const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
+
+function ensureOutfitHasShoes(selectedItems: ClothingItem[], allItems: ClothingItem[]): ClothingItem[] {
+  const shoes = allItems.filter((item) => isShoesCategory(item.category));
+  if (shoes.length === 0) return selectedItems.slice(0, 5);
+
+  const deduped = selectedItems.filter((item, index, arr) => arr.findIndex((x) => x.id === item.id) === index);
+  if (deduped.some((item) => isShoesCategory(item.category))) return deduped.slice(0, 5);
+
+  const replacementPriority = ["accessories", "hats", "outerwear"];
+  const replaceIndex = deduped.findIndex((item) => replacementPriority.includes((item.category || "").toLowerCase()));
+
+  if (replaceIndex >= 0) {
+    deduped[replaceIndex] = shoes[0];
+    return deduped.slice(0, 5);
+  }
+
+  if (deduped.length >= 5) {
+    deduped[deduped.length - 1] = shoes[0];
+    return deduped;
+  }
+
+  return [...deduped, shoes[0]].slice(0, 5);
+}
+
 export function useWardrobe() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -340,6 +365,14 @@ export function useWardrobe() {
   const generateOutfit = useCallback(
     async (occasion: string, weather?: { temp: number; description: string }): Promise<Outfit | null> => {
       if (!user || items.length < 2) return null;
+      if (!items.some((item) => isShoesCategory(item.category))) {
+        toast({
+          title: "Add shoes to generate outfits",
+          description: "Every outfit requires at least one pair of shoes.",
+          variant: "destructive",
+        });
+        return null;
+      }
 
       try {
         const { data, error } = await supabase.functions.invoke("generate-outfit", {
@@ -367,7 +400,7 @@ export function useWardrobe() {
 
         if (outfitErr || !outfitRow) throw outfitErr;
 
-        const selectedItems: ClothingItem[] = data.items || [];
+        const selectedItems: ClothingItem[] = ensureOutfitHasShoes((data.items || []) as ClothingItem[], items);
         if (selectedItems.length > 0) {
           await supabase.from("outfit_items").insert(
             selectedItems.map((si: ClothingItem) => ({ outfit_id: outfitRow.id, clothing_item_id: si.id }))
@@ -382,14 +415,17 @@ export function useWardrobe() {
         return outfit;
       } catch (err) {
         console.error("AI outfit generation failed:", err);
-        const categories = [...new Set(items.map((i) => i.category))];
+        const nonShoesCategories = [...new Set(items.filter((i) => !isShoesCategory(i.category)).map((i) => i.category))];
         const selected: ClothingItem[] = [];
-        for (const cat of categories) {
+        for (const cat of nonShoesCategories) {
           const catItems = items.filter((i) => i.category === cat);
           if (catItems.length > 0) selected.push(catItems[Math.floor(Math.random() * catItems.length)]);
-          if (selected.length >= 4) break;
+          if (selected.length >= 3) break;
         }
-        const fallbackItems = selected.length >= 2 ? selected : [...items].sort(() => Math.random() - 0.5).slice(0, 3);
+        const baseFallback = selected.length >= 1
+          ? selected
+          : [...items.filter((i) => !isShoesCategory(i.category))].sort(() => Math.random() - 0.5).slice(0, 2);
+        const fallbackItems = ensureOutfitHasShoes(baseFallback, items);
 
         const { data: outfitRow } = await supabase
           .from("outfits")
@@ -410,7 +446,7 @@ export function useWardrobe() {
         return outfit;
       }
     },
-    [user, items, profile]
+    [user, items, profile, toast]
   );
 
   const addOutfitToState = useCallback((outfit: Outfit) => {

@@ -35,6 +35,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const planDate = searchParams.get("planDate");
 
   const activeOccasion = customOccasion.trim() || selectedOccasion;
+  const hasShoes = items.some((item) => item.category === "shoes");
 
   // Fetch weather
   useEffect(() => {
@@ -61,7 +62,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
     : weather?.description === "Cloudy" ? Cloud : Sun;
 
   const handleGenerate = async () => {
-    if (!activeOccasion || items.length < 2) return;
+    if (!activeOccasion || items.length < 2 || !hasShoes) return;
     setGenerating(true);
     try {
       const outfit = await onGenerate(activeOccasion, weather || undefined);
@@ -156,7 +157,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
       <div className="px-5 mb-6">
         <Button
           onClick={handleGenerate}
-          disabled={!activeOccasion || items.length < 2 || generating}
+          disabled={!activeOccasion || items.length < 2 || !hasShoes || generating}
           className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
         >
           {generating ? (
@@ -167,6 +168,9 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         </Button>
         {items.length < 2 && (
           <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 2 items to your wardrobe first</p>
+        )}
+        {items.length >= 2 && !hasShoes && (
+          <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 1 pair of shoes to generate an outfit</p>
         )}
       </div>
 
