@@ -201,20 +201,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
       <Dialog open={!!popupOutfit} onOpenChange={(open) => { if (!open) setPopupOutfit(null); }}>
         <DialogContent className="max-w-[92vw] rounded-3xl p-0 overflow-hidden border-border/40 gap-0 max-h-[85vh] overflow-y-auto">
           <DialogTitle className="sr-only">Generated Outfit</DialogTitle>
-          {popupOutfit && (() => {
-              const sorted = [...popupOutfit.items].sort((a, b) => {
-                const order = ["hats", "accessories", "outerwear", "tops", "dresses", "bottoms", "shoes"];
-                const aIdx = order.indexOf(a.category);
-                const bIdx = order.indexOf(b.category);
-                return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
-              });
-              const hats = sorted.filter(i => i.category === "hats");
-              const outerwear = sorted.filter(i => i.category === "outerwear");
-              const tops = sorted.filter(i => i.category === "tops");
-              const accessories = sorted.filter(i => i.category === "accessories");
-              const rest = sorted.filter(i => !["hats", "outerwear", "tops", "accessories"].includes(i.category));
-
-              return (
+          {popupOutfit && (
             <>
               {/* Screenshot-style outfit collage */}
               <div className="bg-muted/40 p-4">
