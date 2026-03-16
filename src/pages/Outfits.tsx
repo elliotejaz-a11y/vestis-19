@@ -38,7 +38,8 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const activeOccasion = customOccasion.trim() || selectedOccasion;
   const hasShoes = items.some((item) => item.category === "shoes");
   const hasBottoms = items.some((item) => item.category === "bottoms");
-  const missingRequiredPieces = [!hasBottoms ? "bottoms" : null, !hasShoes ? "shoes" : null].filter(Boolean).join(" and ");
+  const hasTopHalf = items.some((item) => item.category === "tops" || item.category === "jumpers");
+  const missingRequiredPieces = [!hasTopHalf ? "tops/jumpers" : null, !hasBottoms ? "bottoms" : null, !hasShoes ? "shoes" : null].filter(Boolean).join(" and ");
 
   // Fetch weather
   useEffect(() => {
