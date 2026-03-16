@@ -365,6 +365,14 @@ export function useWardrobe() {
   const generateOutfit = useCallback(
     async (occasion: string, weather?: { temp: number; description: string }): Promise<Outfit | null> => {
       if (!user || items.length < 2) return null;
+      if (!items.some((item) => isShoesCategory(item.category))) {
+        toast({
+          title: "Add shoes to generate outfits",
+          description: "Every outfit requires at least one pair of shoes.",
+          variant: "destructive",
+        });
+        return null;
+      }
 
       try {
         const { data, error } = await supabase.functions.invoke("generate-outfit", {
