@@ -28,6 +28,11 @@ function isBottom(item: any): boolean {
   return normalizeCategory(item?.category) === 'bottoms';
 }
 
+function isTopHalf(item: any): boolean {
+  const cat = normalizeCategory(item?.category);
+  return cat === 'tops' || cat === 'jumpers';
+}
+
 function dedupeById(items: any[]): any[] {
   const seen = new Set<string>();
   return items.filter((item) => {
