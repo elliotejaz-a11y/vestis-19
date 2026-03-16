@@ -104,7 +104,9 @@ User profile:
 Available wardrobe items:
 ${wardrobeSummary}
 
-Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.`,
+Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.
+
+IMPORTANT: Every outfit MUST include exactly one pair of shoes. This is mandatory — never generate an outfit without shoes.`,
           },
         ],
         tools: [
