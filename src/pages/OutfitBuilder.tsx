@@ -11,25 +11,25 @@ import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
 
 const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
-  hats: { x: 50, y: 10 },
-  accessories: { x: 75, y: 5 },
-  outerwear: { x: 30, y: 25 },
-  jumpers: { x: 42, y: 30 },
-  tops: { x: 55, y: 28 },
-  dresses: { x: 50, y: 45 },
-  bottoms: { x: 50, y: 58 },
-  shoes: { x: 50, y: 85 },
+  hats: { x: 58, y: 10 },
+  accessories: { x: 82, y: 42 },
+  outerwear: { x: 35, y: 28 },
+  jumpers: { x: 35, y: 30 },
+  tops: { x: 52, y: 25 },
+  dresses: { x: 42, y: 45 },
+  bottoms: { x: 45, y: 65 },
+  shoes: { x: 68, y: 82 },
 };
 
 const ITEM_SIZES: Record<string, { w: number; h: number }> = {
-  hats: { w: 60, h: 60 },
-  accessories: { w: 56, h: 56 },
-  outerwear: { w: 80, h: 80 },
-  jumpers: { w: 88, h: 88 },
-  tops: { w: 96, h: 96 },
-  dresses: { w: 96, h: 112 },
-  bottoms: { w: 96, h: 96 },
-  shoes: { w: 56, h: 56 },
+  hats: { w: 64, h: 64 },
+  accessories: { w: 52, h: 52 },
+  outerwear: { w: 110, h: 110 },
+  jumpers: { w: 120, h: 110 },
+  tops: { w: 100, h: 90 },
+  dresses: { w: 100, h: 120 },
+  bottoms: { w: 105, h: 105 },
+  shoes: { w: 64, h: 64 },
 };
 
 interface Props {
