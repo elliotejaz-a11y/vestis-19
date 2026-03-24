@@ -33,8 +33,7 @@ export default function Auth() {
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
 
-  const passwordValid = (pw: string) =>
-    pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
+  const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
@@ -46,10 +45,7 @@ export default function Auth() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({
-        title: "Check your email ✉️",
-        description: "We sent a password reset link. Check your spam folder too!",
-      });
+      toast({ title: "Check your email ✉️", description: "We sent a password reset link. Check your spam folder too!" });
       setShowForgotPassword(false);
     }
   };
@@ -66,12 +62,13 @@ export default function Auth() {
   };
 
   const checkUsername = async (value: string) => {
-    if (value.length < 3) {
-      setUsernameAvailable(null);
-      return;
-    }
+    if (value.length < 3) { setUsernameAvailable(null); return; }
     setCheckingUsername(true);
-    const { data } = await supabase.from("profiles").select("id").ilike("username", value).limit(1);
+    const { data } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("username", value)
+      .limit(1);
     setUsernameAvailable(!data || data.length === 0);
     setCheckingUsername(false);
   };
@@ -97,25 +94,14 @@ export default function Auth() {
         return;
       }
       if (!passwordValid(password)) {
-        toast({
-          title: "Weak password",
-          description: "Password must be 8+ characters with letters, numbers, and a special character.",
-          variant: "destructive",
-        });
+        toast({ title: "Weak password", description: "Password must be 8+ characters with letters, numbers, and a special character.", variant: "destructive" });
         setLoading(false);
         return;
       }
       const { error } = await signUp(email, password, displayName);
       if (error) {
-        if (
-          error.message?.toLowerCase().includes("already registered") ||
-          error.message?.toLowerCase().includes("already been registered")
-        ) {
-          toast({
-            title: "Email already in use",
-            description: "An account with this email already exists. Please sign in instead.",
-            variant: "destructive",
-          });
+        if (error.message?.toLowerCase().includes("already registered") || error.message?.toLowerCase().includes("already been registered")) {
+          toast({ title: "Email already in use", description: "An account with this email already exists. Please sign in instead.", variant: "destructive" });
         } else {
           toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
         }
@@ -139,11 +125,7 @@ export default function Auth() {
           .single();
 
         if (!profileData?.email) {
-          toast({
-            title: "User not found",
-            description: "No account found with that email or username.",
-            variant: "destructive",
-          });
+          toast({ title: "User not found", description: "No account found with that email or username.", variant: "destructive" });
           setLoading(false);
           return;
         }
@@ -171,13 +153,9 @@ export default function Auth() {
         <div className="w-full max-w-sm space-y-6 text-center">
           <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Check your email ✉️</h2>
-          <p className="text-sm text-muted-foreground">
-            We sent a verification link to <span className="font-medium text-foreground">{signUpEmail}</span>
-          </p>
+          <p className="text-sm text-muted-foreground">We sent a verification link to <span className="font-medium text-foreground">{signUpEmail}</span></p>
           <div className="rounded-2xl bg-card border border-border/40 p-4 text-left space-y-2">
-            <p className="text-xs text-muted-foreground">
-              • Check your <span className="font-medium text-foreground">spam/junk</span> folder if you don't see it
-            </p>
+            <p className="text-xs text-muted-foreground">• Check your <span className="font-medium text-foreground">spam/junk</span> folder if you don't see it</p>
             <p className="text-xs text-muted-foreground">• The link expires in 24 hours</p>
           </div>
           <Button
@@ -189,13 +167,7 @@ export default function Auth() {
             {resendLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
             Resend Verification Email
           </Button>
-          <button
-            onClick={() => {
-              setSignUpSuccess(false);
-              setIsSignUp(false);
-            }}
-            className="text-xs text-accent font-semibold hover:underline"
-          >
+          <button onClick={() => { setSignUpSuccess(false); setIsSignUp(false); }} className="text-xs text-accent font-semibold hover:underline">
             Back to Sign In
           </button>
         </div>
@@ -247,6 +219,7 @@ export default function Auth() {
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
             <img src={vestisLogo} alt="Vestis" className="h-12" />
+            <Badge variant="secondary" className="text-[10px] px-2 py-0.5 uppercase tracking-wider">Beta</Badge>
           </div>
           <p className="text-sm text-muted-foreground">Your AI-powered wardrobe stylist</p>
         </div>
@@ -361,9 +334,7 @@ export default function Auth() {
                   type="button"
                   onClick={() => setTheme("light")}
                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                    theme === "light"
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-card text-muted-foreground border border-border"
+                    theme === "light" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
                   }`}
                 >
                   <Sun className="w-3.5 h-3.5" /> Light
@@ -372,9 +343,7 @@ export default function Auth() {
                   type="button"
                   onClick={() => setTheme("dark")}
                   className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                    theme === "dark"
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-card text-muted-foreground border border-border"
+                    theme === "dark" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
                   }`}
                 >
                   <Moon className="w-3.5 h-3.5" /> Dark
@@ -396,11 +365,7 @@ export default function Auth() {
                   Remember me
                 </label>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowForgotPassword(true)}
-                className="text-xs text-accent font-medium hover:underline"
-              >
+              <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-accent font-medium hover:underline">
                 Forgot password?
               </button>
             </div>
@@ -408,9 +373,7 @@ export default function Auth() {
 
           <Button
             type="submit"
-            disabled={
-              loading || (isSignUp && (!displayName.trim() || username.length < 3 || usernameAvailable === false))
-            }
+            disabled={loading || (isSignUp && (!displayName.trim() || username.length < 3 || usernameAvailable === false))}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
           >
             {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
@@ -419,7 +382,10 @@ export default function Auth() {
 
         <p className="text-center text-xs text-muted-foreground">
           {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
-          <button onClick={() => setIsSignUp(!isSignUp)} className="text-accent font-semibold hover:underline">
+          <button
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="text-accent font-semibold hover:underline"
+          >
             {isSignUp ? "Sign In" : "Sign Up"}
           </button>
         </p>
