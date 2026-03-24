@@ -467,6 +467,28 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       <EditProfileSheet open={showEditSheet} onOpenChange={setShowEditSheet} />
       <ChangePasswordSheet open={showChangePassword} onOpenChange={setShowChangePassword} />
 
+      <DeleteConfirmDialog
+        open={showDeleteAccount}
+        onOpenChange={setShowDeleteAccount}
+        onConfirm={async () => {
+          setDeletingAccount(true);
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) throw new Error("Not authenticated");
+            const res = await supabase.functions.invoke("delete-account");
+            if (res.error) throw res.error;
+            await signOut();
+            toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
+          } catch (err: any) {
+            toast({ title: "Failed to delete account", description: err.message || "Please try again.", variant: "destructive" });
+          } finally {
+            setDeletingAccount(false);
+          }
+        }}
+        title="Delete your account?"
+        description="This will permanently delete your account and all your data including wardrobe items, outfits, fit pics, and social posts. This action cannot be undone."
+      />
+
       {user && (
         <FollowListSheet
           open={followSheet.open}
