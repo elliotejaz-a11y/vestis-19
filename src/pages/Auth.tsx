@@ -219,7 +219,6 @@ export default function Auth() {
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
             <img src={vestisLogo} alt="Vestis" className="h-12" />
-            <Badge variant="secondary" className="text-[10px] px-2 py-0.5 uppercase tracking-wider">Beta</Badge>
           </div>
           <p className="text-sm text-muted-foreground">Your AI-powered wardrobe stylist</p>
         </div>
