@@ -217,10 +217,7 @@ export default function Auth() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <img src={vestisLogo} alt="Vestis" className="h-12" />
-            <Badge variant="secondary" className="text-[10px] px-2 py-0.5 uppercase tracking-wider">Beta</Badge>
-          </div>
+          <img src={vestisLogo} alt="Vestis" className="h-12 mb-2" />
           <p className="text-sm text-muted-foreground">Your AI-powered wardrobe stylist</p>
         </div>
 
