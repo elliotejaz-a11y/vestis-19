@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, UserX } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -43,8 +43,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
   const [showChangePassword, setShowChangePassword] = useState(false);
-  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
-  const [deletingAccount, setDeletingAccount] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const touchStartY = useRef(0);
@@ -437,14 +435,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
 
-        <Button
-          variant="outline"
-          onClick={() => setShowDeleteAccount(true)}
-          className="w-full h-12 rounded-2xl text-sm text-destructive border-destructive/30 hover:bg-destructive/10"
-        >
-          <UserX className="w-4 h-4 mr-2" /> Delete Account
-        </Button>
-
         {/* Policies */}
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-2 pb-4">
           {[
@@ -466,28 +456,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
       <EditProfileSheet open={showEditSheet} onOpenChange={setShowEditSheet} />
       <ChangePasswordSheet open={showChangePassword} onOpenChange={setShowChangePassword} />
-
-      <DeleteConfirmDialog
-        open={showDeleteAccount}
-        onOpenChange={setShowDeleteAccount}
-        onConfirm={async () => {
-          setDeletingAccount(true);
-          try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) throw new Error("Not authenticated");
-            const res = await supabase.functions.invoke("delete-account");
-            if (res.error) throw res.error;
-            await signOut();
-            toast({ title: "Account deleted", description: "Your account has been permanently deleted." });
-          } catch (err: any) {
-            toast({ title: "Failed to delete account", description: err.message || "Please try again.", variant: "destructive" });
-          } finally {
-            setDeletingAccount(false);
-          }
-        }}
-        title="Delete your account?"
-        description="This will permanently delete your account and all your data including wardrobe items, outfits, fit pics, and social posts. This action cannot be undone."
-      />
 
       {user && (
         <FollowListSheet
