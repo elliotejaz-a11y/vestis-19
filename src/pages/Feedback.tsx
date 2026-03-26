@@ -134,7 +134,7 @@ export function FeedbackPage() {
               <Plus className="w-5 h-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="rounded-t-3xl bg-background">
+          <SheetContent side="bottom" className="rounded-t-3xl bg-background pb-24">
             <SheetHeader>
               <SheetTitle className="text-lg font-bold">Share Feedback</SheetTitle>
             </SheetHeader>
