@@ -95,7 +95,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   };
 
   return (
-    <div className="min-h-screen pb-24" style={{ paddingBottom: '120px' }}>
+    <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-4">
         {planDate && (
           <Button variant="ghost" size="sm" className="mb-2 -ml-2 text-xs" onClick={() => navigate("/calendar")}>
