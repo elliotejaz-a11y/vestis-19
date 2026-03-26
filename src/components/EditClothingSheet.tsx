@@ -53,7 +53,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
       if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); }
       onOpenChange(o);
     }}>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto bg-background">
         <SheetHeader>
           <SheetTitle className="text-lg font-bold tracking-tight">Edit Item</SheetTitle>
         </SheetHeader>
