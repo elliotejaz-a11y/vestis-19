@@ -22,7 +22,7 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh] overflow-y-auto bg-background">
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh] overflow-y-auto bg-background pb-24">
         <SheetHeader>
           <div className="flex items-center justify-between">
             <SheetTitle className="text-lg font-bold tracking-tight">Notifications</SheetTitle>

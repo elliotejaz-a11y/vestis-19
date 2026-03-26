@@ -40,7 +40,7 @@ export default function UserWardrobeSheet({ open, onOpenChange, userId, displayN
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh] overflow-y-auto">
+      <SheetContent side="bottom" className="rounded-t-2xl max-h-[80vh] overflow-y-auto pb-24">
         <SheetHeader>
           <SheetTitle className="text-base">{displayName}'s Wardrobe</SheetTitle>
         </SheetHeader>

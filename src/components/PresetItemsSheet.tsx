@@ -44,7 +44,7 @@ export function PresetItemsSheet({ onAdd, children }: Props) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{children}</SheetTrigger>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background">
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background pb-24">
         <SheetHeader>
           <SheetTitle className="text-lg font-bold tracking-tight flex items-center gap-2">
             <Package className="w-5 h-5 text-accent" /> Wardrobe Essentials
