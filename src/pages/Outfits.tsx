@@ -179,7 +179,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
       </div>
 
       {/* Results */}
-      <div className="px-5 space-y-4">
+      <div className="px-5 space-y-4 pb-28">
         {latestOutfit && outfits.some(o => o.id === latestOutfit.id) && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Latest Suggestion</p>
