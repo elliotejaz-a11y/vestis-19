@@ -24,7 +24,7 @@ export function OutfitDetailSheet({ outfit, open, onOpenChange }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto pb-10">
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto pb-20">
         <SheetHeader className="text-left pb-2">
           <SheetTitle className="text-lg font-bold">
             {outfit.name || outfit.occasion}
@@ -53,7 +53,7 @@ export function OutfitDetailSheet({ outfit, open, onOpenChange }: Props) {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Items in this outfit</p>
           <div className="space-y-2">
             {outfit.items.map((item) => (
-              <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/50 border border-border/30">
+              <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/50 border border-border/30 overflow-hidden">
                 <div className="w-14 h-14 rounded-lg bg-white dark:bg-neutral-800 flex-shrink-0 overflow-hidden">
                   <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
                 </div>
