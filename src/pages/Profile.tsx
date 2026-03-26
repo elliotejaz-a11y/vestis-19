@@ -43,6 +43,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const touchStartY = useRef(0);
@@ -435,6 +437,14 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
 
+        <Button
+          variant="outline"
+          onClick={() => setShowDeleteAccount(true)}
+          className="w-full h-12 rounded-2xl text-sm text-destructive border-destructive/30 hover:bg-destructive/10"
+        >
+          <Trash2 className="w-4 h-4 mr-2" /> Delete Account
+        </Button>
+
         {/* Policies */}
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-2 pb-4">
           {[
@@ -474,6 +484,30 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         open={!!selectedFitPic}
         onOpenChange={(o) => { if (!o) setSelectedFitPic(null); }}
         onUpdated={() => { setSelectedFitPic(null); fetchFitPics(); }}
+      />
+
+      <DeleteConfirmDialog
+        open={showDeleteAccount}
+        onOpenChange={setShowDeleteAccount}
+        onConfirm={async () => {
+          setDeletingAccount(true);
+          try {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await supabase.functions.invoke("delete-account", {
+              headers: { Authorization: `Bearer ${session?.access_token}` },
+            });
+            if (res.error) throw res.error;
+            toast({ title: "Account deleted", description: "Your account and all data have been permanently removed." });
+            await signOut();
+          } catch (e: any) {
+            toast({ title: "Error", description: e.message || "Failed to delete account", variant: "destructive" });
+          } finally {
+            setDeletingAccount(false);
+            setShowDeleteAccount(false);
+          }
+        }}
+        title="Delete your account?"
+        description="This will permanently delete your account, wardrobe, outfits, and all associated data. This action cannot be undone."
       />
 
       <DeleteConfirmDialog
