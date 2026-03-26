@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outfit } from "@/types/wardrobe";
-import { Sparkles, Lightbulb, Bookmark, MessageCircle, Trash2, Camera } from "lucide-react";
+import { Sparkles, Lightbulb, Bookmark, MessageCircle, Trash2, Camera, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FitPicSheet } from "@/components/FitPicSheet";
@@ -17,9 +17,11 @@ interface Props {
 }
 
 export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props) {
-  
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   const handleBookmarkClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -69,6 +71,15 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
                   <Camera className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
               </FitPicSheet>
+              {outfit.saved && onSave && (
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                  setEditName(outfit.name || outfit.occasion);
+                  setEditDescription(outfit.description || "");
+                  setEditDialogOpen(true);
+                }}>
+                  <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                </Button>
+              )}
               {onSave && (
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleBookmarkClick}>
                   <Bookmark className={cn("w-3.5 h-3.5", outfit.saved ? "fill-accent text-accent" : "text-muted-foreground")} />
@@ -106,6 +117,18 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
         onOpenChange={setSaveDialogOpen}
         onConfirm={handleSaveConfirm}
         defaultName={outfit.occasion}
+      />
+
+      <SaveOutfitDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onConfirm={(name, description) => {
+          onSave?.(outfit.id, true, name || undefined, description || undefined);
+          setEditDialogOpen(false);
+        }}
+        defaultName={editName}
+        defaultDescription={editDescription}
+        editMode
       />
     </>
   );

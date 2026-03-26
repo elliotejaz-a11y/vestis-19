@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,18 +10,30 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onConfirm: (name: string, description: string) => void;
   defaultName?: string;
+  defaultDescription?: string;
+  editMode?: boolean;
 }
 
-export function SaveOutfitDialog({ open, onOpenChange, onConfirm, defaultName = "" }: Props) {
+export function SaveOutfitDialog({ open, onOpenChange, onConfirm, defaultName = "", defaultDescription = "", editMode }: Props) {
   const [name, setName] = useState(defaultName);
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(defaultDescription);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onConfirm(name.trim(), description.trim());
-    setName("");
-    setDescription("");
+    if (!editMode) {
+      setName("");
+      setDescription("");
+    }
   };
+
+  // Sync state when dialog opens with new defaults
+  React.useEffect(() => {
+    if (open) {
+      setName(defaultName);
+      setDescription(defaultDescription);
+    }
+  }, [open, defaultName, defaultDescription]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -29,7 +41,7 @@ export function SaveOutfitDialog({ open, onOpenChange, onConfirm, defaultName = 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Bookmark className="w-4 h-4 text-accent" />
-            Save Outfit
+            {editMode ? "Edit Outfit" : "Save Outfit"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -56,7 +68,7 @@ export function SaveOutfitDialog({ open, onOpenChange, onConfirm, defaultName = 
           </div>
           <DialogFooter>
             <Button type="submit" className="w-full rounded-xl bg-accent text-accent-foreground text-sm font-semibold">
-              Save Outfit
+              {editMode ? "Save Changes" : "Save Outfit"}
             </Button>
           </DialogFooter>
         </form>
