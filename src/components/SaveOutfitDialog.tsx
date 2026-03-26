@@ -10,11 +10,13 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onConfirm: (name: string, description: string) => void;
   defaultName?: string;
+  defaultDescription?: string;
+  editMode?: boolean;
 }
 
-export function SaveOutfitDialog({ open, onOpenChange, onConfirm, defaultName = "" }: Props) {
+export function SaveOutfitDialog({ open, onOpenChange, onConfirm, defaultName = "", defaultDescription = "", editMode }: Props) {
   const [name, setName] = useState(defaultName);
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState(defaultDescription);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
