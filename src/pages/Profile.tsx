@@ -45,6 +45,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -497,6 +498,27 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         }}
         title="Delete permanently?"
         description="This item will be permanently removed and cannot be recovered."
+      />
+
+      <DeleteConfirmDialog
+        open={showDeleteAccount}
+        onOpenChange={setShowDeleteAccount}
+        onConfirm={async () => {
+          setDeletingAccount(true);
+          try {
+            const { error } = await supabase.functions.invoke("delete-account");
+            if (error) throw error;
+            toast({ title: "Account deleted", description: "Your account has been permanently removed." });
+            await signOut();
+          } catch (e: any) {
+            toast({ title: "Error", description: "Failed to delete account. Please try again.", variant: "destructive" });
+          } finally {
+            setDeletingAccount(false);
+            setShowDeleteAccount(false);
+          }
+        }}
+        title="Delete your account?"
+        description="This will permanently delete your account, wardrobe, outfits, and all associated data. This action cannot be undone."
       />
     </div>
   );
