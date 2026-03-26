@@ -36,9 +36,10 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const planDate = searchParams.get("planDate");
 
   const activeOccasion = customOccasion.trim() || selectedOccasion;
+  const hasShoes = items.some((item) => item.category === "shoes");
   const hasBottoms = items.some((item) => item.category === "bottoms");
   const hasTopHalf = items.some((item) => item.category === "tops" || item.category === "jumpers");
-  const missingRequiredPieces = [!hasTopHalf ? "tops/jumpers" : null, !hasBottoms ? "bottoms" : null].filter(Boolean).join(" and ");
+  const missingRequiredPieces = [!hasTopHalf ? "tops/jumpers" : null, !hasBottoms ? "bottoms" : null, !hasShoes ? "shoes" : null].filter(Boolean).join(" and ");
 
   // Fetch weather
   useEffect(() => {
@@ -65,7 +66,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
     : weather?.description === "Cloudy" ? Cloud : Sun;
 
   const handleGenerate = async () => {
-    if (!activeOccasion || items.length < 2 || !hasBottoms || !hasTopHalf) return;
+    if (!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms || !hasTopHalf) return;
     setGenerating(true);
     try {
       const outfit = await onGenerate(activeOccasion, weather || undefined);
@@ -160,7 +161,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
       <div className="px-5 mb-6">
         <Button
           onClick={handleGenerate}
-          disabled={!activeOccasion || items.length < 2 || !hasBottoms || !hasTopHalf || generating}
+          disabled={!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms || !hasTopHalf || generating}
           className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
         >
           {generating ? (
@@ -172,7 +173,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         {items.length < 2 && (
           <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 2 items to your wardrobe first</p>
         )}
-        {items.length >= 2 && (!hasBottoms || !hasTopHalf) && (
+        {items.length >= 2 && (!hasShoes || !hasBottoms || !hasTopHalf) && (
           <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 1 {missingRequiredPieces} item to generate an outfit</p>
         )}
       </div>
