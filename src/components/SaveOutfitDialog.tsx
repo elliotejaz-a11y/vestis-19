@@ -41,7 +41,7 @@ export function SaveOutfitDialog({ open, onOpenChange, onConfirm, defaultName = 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Bookmark className="w-4 h-4 text-accent" />
-            Save Outfit
+            {editMode ? "Edit Outfit" : "Save Outfit"}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
