@@ -65,7 +65,7 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto bg-background" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 2rem))' }}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
           <SheetHeader>
             <SheetTitle className="text-lg font-bold tracking-tight">{item.name}</SheetTitle>
           </SheetHeader>
