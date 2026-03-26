@@ -277,7 +277,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const current = steps[step];
 
   return (
-    <div className="min-h-screen flex flex-col px-6 py-12 bg-background">
+    <div className="min-h-screen flex flex-col px-6 py-12 pb-28 bg-background">
       <div className="flex gap-1.5 mb-8">
         {steps.map((_, i) => (
           <div

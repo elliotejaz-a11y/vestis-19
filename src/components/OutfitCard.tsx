@@ -17,9 +17,11 @@ interface Props {
 }
 
 export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props) {
-  
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   const handleBookmarkClick = (e: React.MouseEvent) => {
     e.stopPropagation();
