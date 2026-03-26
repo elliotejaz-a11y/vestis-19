@@ -11,27 +11,30 @@ serve(async (req) => {
   }
 
   try {
-    // Fetch live rates from frankfurter.app (free, no API key needed, ECB data)
-    const response = await fetch('https://api.frankfurter.app/latest?from=NZD&to=USD,EUR');
-    
+    // Use exchangerate.host (free, no key required)
+    const response = await fetch('https://open.er-api.com/v6/latest/NZD');
+
     if (!response.ok) {
-      throw new Error(`Frankfurter API error: ${response.status}`);
+      throw new Error(`Exchange rate API error: ${response.status}`);
     }
 
     const data = await response.json();
-    
+
+    if (data.result !== 'success') {
+      throw new Error('API returned unsuccessful result');
+    }
+
     const rates: Record<string, number> = {
       NZD: 1,
       USD: data.rates.USD,
       EUR: data.rates.EUR,
     };
 
-    return new Response(JSON.stringify({ rates, date: data.date }), {
+    return new Response(JSON.stringify({ rates, date: data.time_last_update_utc }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' },
     });
   } catch (error) {
     console.error('Exchange rate fetch error:', error);
-    // Fallback rates if API fails
     return new Response(JSON.stringify({ 
       rates: { NZD: 1, USD: 0.56, EUR: 0.52 }, 
       date: null, 
