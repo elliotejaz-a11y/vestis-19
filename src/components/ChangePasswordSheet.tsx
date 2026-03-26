@@ -73,7 +73,7 @@ export function ChangePasswordSheet({ open, onOpenChange }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl">
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto pb-24">
         <SheetHeader>
           <SheetTitle className="text-base font-bold">Change Password</SheetTitle>
         </SheetHeader>

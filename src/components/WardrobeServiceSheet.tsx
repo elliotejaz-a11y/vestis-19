@@ -63,7 +63,7 @@ export function WardrobeServiceSheet({ children }: Props) {
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>{children}</SheetTrigger>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto">
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto pb-24">
         {submitted ? (
           <div className="flex flex-col items-center py-8 gap-4">
             <div className="w-16 h-16 rounded-full bg-accent/15 flex items-center justify-center">
