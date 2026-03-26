@@ -24,7 +24,7 @@ export function OutfitDetailSheet({ outfit, open, onOpenChange }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto pb-20">
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
         <SheetHeader className="text-left pb-2">
           <SheetTitle className="text-lg font-bold">
             {outfit.name || outfit.occasion}
