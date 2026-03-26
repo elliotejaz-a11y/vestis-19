@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,9 +21,19 @@ export function SaveOutfitDialog({ open, onOpenChange, onConfirm, defaultName = 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onConfirm(name.trim(), description.trim());
-    setName("");
-    setDescription("");
+    if (!editMode) {
+      setName("");
+      setDescription("");
+    }
   };
+
+  // Sync state when dialog opens with new defaults
+  React.useEffect(() => {
+    if (open) {
+      setName(defaultName);
+      setDescription(defaultDescription);
+    }
+  }, [open, defaultName, defaultDescription]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
