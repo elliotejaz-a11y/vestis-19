@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Outfit } from "@/types/wardrobe";
-import { Sparkles, Lightbulb, Bookmark, MessageCircle, Trash2, Camera } from "lucide-react";
+import { Sparkles, Lightbulb, Bookmark, MessageCircle, Trash2, Camera, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { FitPicSheet } from "@/components/FitPicSheet";
