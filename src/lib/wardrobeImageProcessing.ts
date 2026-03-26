@@ -153,77 +153,10 @@ function getStoragePathFromPublicUrl(publicUrl: string): string | null {
  * On failure: update row with status failed and error; onStatusUpdate(..., 'failed', error).
  */
 export async function processBackgroundRemoval(options: ProcessBackgroundRemovalOptions): Promise<void> {
-  const { itemId, imageUrl, userId, imageBase64ForProcessing, onStatusUpdate } = options;
+  const { onStatusUpdate } = options;
 
-  try {
-    let blob: Blob;
-    if (imageBase64ForProcessing && imageBase64ForProcessing.length > 0) {
-      console.log("[BG removal] Using provided base64 (no fetch)");
-      const byteChars = atob(imageBase64ForProcessing.replace(/\s/g, ""));
-      const byteArr = new Uint8Array(byteChars.length);
-      for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-      blob = new Blob([byteArr], { type: "image/png" });
-    } else {
-      let resp: Response | null = null;
-      try {
-        resp = await fetch(imageUrl, { mode: "cors" });
-      } catch (fetchErr) {
-        console.warn("[BG removal] Fetch image failed (likely CORS), trying Supabase storage download:", fetchErr);
-      }
-      if (resp?.ok) {
-        blob = await resp.blob();
-        console.log("[BG removal] Fetched image from URL");
-      } else {
-        const path = getStoragePathFromPublicUrl(imageUrl);
-        if (!path) throw new Error("Could not load image (fetch failed and no storage path)");
-        const { data, error } = await supabase.storage.from("clothing-images").download(path);
-        if (error || !data) throw new Error(error?.message || "Storage download failed");
-        blob = data;
-        console.log("[BG removal] Loaded image via storage.download");
-      }
-    }
-
-    // Skip hash-cache lookup (image_hash column not in schema)
-
-    const pngBlob = await downscaleToPng(blob);
-    const base64 = await blobToBase64(pngBlob);
-    const { imageBase64: resultBase64, fallback } = await removeBackgroundWithRetry(base64);
-    if (fallback) console.warn("[BG removal] Edge function returned fallback (original image)");
-
-    if (fallback) {
-      console.warn("[BG removal] Fallback – using original image as-is");
-      onStatusUpdate?.({ imageStatus: "ready" });
-      return;
-    }
-
-    const byteChars = atob(resultBase64);
-    const byteArr = new Uint8Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-    const resultBlob = new Blob([byteArr], { type: "image/png" });
-    const path = `${userId}/${crypto.randomUUID()}_processed.png`;
-    const { error: uploadError } = await supabase.storage
-      .from("clothing-images")
-      .upload(path, resultBlob, { contentType: "image/png", upsert: false });
-    if (uploadError) {
-      console.error("[BG removal] Upload failed:", uploadError.message);
-      onStatusUpdate?.({ imageStatus: "failed", imageError: "Upload failed" });
-      return;
-    }
-
-    const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-    const processedUrl = urlData.publicUrl;
-
-    await supabase
-      .from("clothing_items")
-      .update({ image_url: processedUrl })
-      .eq("id", itemId)
-      .eq("user_id", userId);
-
-    console.log("[BG removal] Done – processed image saved");
-    onStatusUpdate?.({ imageUrl: processedUrl, imageStatus: "ready" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Background removal failed";
-    console.error("[BG removal] Error:", message, err);
-    onStatusUpdate?.({ imageStatus: "failed", imageError: message });
-  }
+  // Client-side background removal (@imgly/background-removal) already handled.
+  // Skip the server-side OpenAI gpt-image-1 call and mark as ready immediately.
+  console.log("[BG removal] Skipping server-side AI processing – using client-side result as-is");
+  onStatusUpdate?.({ imageStatus: "ready" });
 }
