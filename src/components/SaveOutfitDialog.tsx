@@ -68,7 +68,7 @@ export function SaveOutfitDialog({ open, onOpenChange, onConfirm, defaultName = 
           </div>
           <DialogFooter>
             <Button type="submit" className="w-full rounded-xl bg-accent text-accent-foreground text-sm font-semibold">
-              Save Outfit
+              {editMode ? "Save Changes" : "Save Outfit"}
             </Button>
           </DialogFooter>
         </form>
