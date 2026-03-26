@@ -265,20 +265,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           </div>
         )}
 
-        {/* Saved Outfits */}
-        {savedOutfits.length > 0 && (
-          <div className="rounded-2xl bg-card border border-border/40 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Bookmark className="w-4 h-4 text-accent" />
-              <p className="text-sm font-semibold text-foreground">Saved Outfits</p>
-            </div>
-            <div className="space-y-3">
-              {savedOutfits.map((outfit) => (
-                <OutfitCard key={outfit.id} outfit={outfit} onSave={onSaveOutfit} onDelete={onDeleteOutfit} />
-              ))}
-            </div>
-          </div>
-        )}
+
+
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
