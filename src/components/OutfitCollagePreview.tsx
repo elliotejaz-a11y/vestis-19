@@ -13,7 +13,7 @@ const BASE_LAYOUT: Record<string, Layout> = {
   tops: { x: 52, y: 36, w: 112, h: 112, z: 35 },
   dresses: { x: 50, y: 52, w: 118, h: 146, z: 26 },
   bottoms: { x: 50, y: 70, w: 122, h: 148, z: 24 },
-  shoes: { x: 70, y: 82, w: 74, h: 74, z: 55 },
+  shoes: { x: 50, y: 82, w: 74, h: 74, z: 20 },
 };
 
 const SPREAD = [-8, 0, 8, -14, 14];
