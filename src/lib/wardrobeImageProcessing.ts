@@ -185,21 +185,9 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
 
     // Skip hash-cache lookup (image_hash column not in schema)
 
-    const pngBlob = await downscaleToPng(blob);
-    const base64 = await blobToBase64(pngBlob);
-    const { imageBase64: resultBase64, fallback } = await removeBackgroundWithRetry(base64);
-    if (fallback) console.warn("[BG removal] Edge function returned fallback (original image)");
-
-    if (fallback) {
-      console.warn("[BG removal] Fallback – using original image as-is");
-      onStatusUpdate?.({ imageStatus: "ready" });
-      return;
-    }
-
-    const byteChars = atob(resultBase64);
-    const byteArr = new Uint8Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-    const resultBlob = new Blob([byteArr], { type: "image/png" });
+    // Client-side @imgly/background-removal already processed the image.
+    // Just downscale and upload – no server-side AI transformation needed.
+    const resultBlob = await downscaleToPng(blob);
     const path = `${userId}/${crypto.randomUUID()}_processed.png`;
     const { error: uploadError } = await supabase.storage
       .from("clothing-images")
