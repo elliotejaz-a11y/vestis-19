@@ -435,6 +435,14 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <LogOut className="w-4 h-4 mr-2" /> Sign Out
         </Button>
 
+        <Button
+          variant="outline"
+          onClick={() => setShowDeleteAccount(true)}
+          className="w-full h-12 rounded-2xl text-sm text-destructive border-destructive/30 hover:bg-destructive/10"
+        >
+          <Trash2 className="w-4 h-4 mr-2" /> Delete Account
+        </Button>
+
         {/* Policies */}
         <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 pt-2 pb-4">
           {[
