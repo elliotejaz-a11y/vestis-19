@@ -118,7 +118,7 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{children}</SheetTrigger>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto">
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto pb-24">
         <SheetHeader>
           <SheetTitle className="text-lg">Take a Fit Pic</SheetTitle>
         </SheetHeader>

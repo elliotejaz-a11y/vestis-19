@@ -25,7 +25,7 @@ export function SaveOutfitDialog({ open, onOpenChange, onConfirm, defaultName = 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[340px] rounded-2xl">
+      <DialogContent className="max-w-[340px] rounded-2xl z-[10001]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <Bookmark className="w-4 h-4 text-accent" />

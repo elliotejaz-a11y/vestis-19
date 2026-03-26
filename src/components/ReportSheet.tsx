@@ -58,7 +58,7 @@ export function ReportSheet({ open, onOpenChange, reportedUserId, reportType, re
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh] overflow-y-auto">
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh] overflow-y-auto pb-24">
         <SheetHeader>
           <SheetTitle className="text-lg flex items-center gap-2">
             <Flag className="w-4 h-4 text-destructive" /> Report {reportType}

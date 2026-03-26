@@ -78,7 +78,7 @@ export default function FollowListSheet({ open, onOpenChange, userId, type }: Fo
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
+      <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto pb-24">
         <SheetHeader>
           <SheetTitle className="text-base">{type === "followers" ? "Followers" : "Following"}</SheetTitle>
         </SheetHeader>

@@ -78,7 +78,7 @@ export function FitPicDetailSheet({ pic, open, onOpenChange, onUpdated }: FitPic
   return (
     <>
       <Sheet open={open} onOpenChange={(o) => { if (!o) setEditing(false); onOpenChange(o); }}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto">
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto pb-24">
           <SheetHeader>
             <SheetTitle className="text-base">Fit Pic</SheetTitle>
           </SheetHeader>
