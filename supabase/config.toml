@@ -1,11 +1,10 @@
 project_id = "kvulebsvnmlxuhgtrney"
 
-[functions]
-  [functions.analyze-clothing]
-    verify_jwt = false
-  [functions.auth-email-hook]
-    verify_jwt = false
-  [functions.moderate-message]
-    verify_jwt = false
-  [functions.outfit-chat]
-    verify_jwt = false
+[functions.moderate-message]
+verify_jwt = false
+
+[functions.analyze-clothing]
+verify_jwt = false
+
+[functions.outfit-chat]
+verify_jwt = false
