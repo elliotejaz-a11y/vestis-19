@@ -149,7 +149,7 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-border/40 flex gap-2">
+        <div className="px-5 py-3 pb-24 border-t border-border/40 flex gap-2">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
