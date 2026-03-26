@@ -156,7 +156,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background">
+      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background pb-24">
         <SheetHeader>
           <SheetTitle className="text-lg font-bold tracking-tight">Edit Profile</SheetTitle>
         </SheetHeader>
