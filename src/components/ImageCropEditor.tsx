@@ -269,7 +269,7 @@ export function ImageCropEditor({
             top: "50%",
             transform: `translate(calc(-50% + ${translate.x}px), calc(-50% + ${translate.y}px))`,
           }}
-      </div>
+        />
       </div>
       <div className="flex gap-2 w-full max-w-[320px]">
         <Button
