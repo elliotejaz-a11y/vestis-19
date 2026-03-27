@@ -20,10 +20,11 @@ export function SwipeNavigator({ children }: { children: React.ReactNode }) {
     if (swipeDisabled) return;
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     swiped.current = false;
-  }, []);
+  }, [swipeDisabled]);
 
   const onTouchMove = useCallback(
     (e: React.TouchEvent) => {
+      if (swipeDisabled) return;
       if (!touchStart.current || swiped.current || currentIndex === -1) return;
 
       const dx = e.touches[0].clientX - touchStart.current.x;

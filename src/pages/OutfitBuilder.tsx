@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
+import { OutfitBuilderErrorBoundary } from "@/components/OutfitBuilderErrorBoundary";
 
 const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
 
@@ -32,13 +33,19 @@ const ITEM_SIZES: Record<string, { w: number; h: number }> = {
   shoes: { w: 56, h: 56 },
 };
 
+/** Clamp a number, returning fallback if NaN/Infinity */
+function safeClamp(val: number, min: number, max: number, fallback: number): number {
+  if (!Number.isFinite(val)) return fallback;
+  return Math.max(min, Math.min(max, val));
+}
+
 interface Props {
   items: ClothingItem[];
   onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onOutfitCreated?: (outfit: Outfit) => void;
 }
 
-export default function OutfitBuilder({ items, onSaveOutfit, onOutfitCreated }: Props) {
+function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selected, setSelected] = useState<Record<string, ClothingItem | null>>({});
@@ -53,6 +60,11 @@ export default function OutfitBuilder({ items, onSaveOutfit, onOutfitCreated }: 
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const zCounterRef = useRef(1);
+  // Use a ref for positions so gesture callbacks always read the latest value
+  const positionsRef = useRef(positions);
+  positionsRef.current = positions;
+  const scalesRef = useRef(scales);
+  scalesRef.current = scales;
 
   const categorizedItems = useMemo(() => {
     const map: Record<string, ClothingItem[]> = {};
@@ -63,10 +75,13 @@ export default function OutfitBuilder({ items, onSaveOutfit, onOutfitCreated }: 
     return map;
   }, [items]);
 
-  const getItemPos = (item: ClothingItem) =>
-    positions[item.id] || DEFAULT_POSITIONS[item.category] || { x: 50, y: 50 };
+  const getItemPos = useCallback((item: ClothingItem) =>
+    positionsRef.current[item.id] || DEFAULT_POSITIONS[item.category] || { x: 50, y: 50 }, []);
 
-  const getItemScale = (id: string) => scales[id] ?? 1;
+  const getItemScale = useCallback((id: string) => {
+    const s = scalesRef.current[id] ?? 1;
+    return Number.isFinite(s) && s > 0 ? s : 1;
+  }, []);
 
   const toggleItem = (item: ClothingItem) => {
     setSelected((prev) => {
@@ -109,47 +124,58 @@ export default function OutfitBuilder({ items, onSaveOutfit, onOutfitCreated }: 
     return az - bz;
   });
 
-  const bringToFront = (id: string) => {
+  const bringToFront = useCallback((id: string) => {
     zCounterRef.current += 1;
     setZOrder((prev) => ({ ...prev, [id]: zCounterRef.current + 10 }));
-  };
+  }, []);
 
   const SCALE_STEPS = [1, 1.4, 1.8, 0.6];
-  const handleDoubleTap = (id: string) => {
+  const handleDoubleTap = useCallback((id: string) => {
     setScales((prev) => {
       const current = prev[id] ?? 1;
       const idx = SCALE_STEPS.findIndex((s) => Math.abs(s - current) < 0.05);
       const next = SCALE_STEPS[(idx + 1) % SCALE_STEPS.length];
       return { ...prev, [id]: next };
     });
-  };
+  }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent, item: ClothingItem) => {
-    e.preventDefault();
-    e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
-    const pos = getItemPos(item);
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: pos.x, startPosY: pos.y };
-    setDraggingId(item.id);
-    bringToFront(item.id);
+    try {
+      e.preventDefault();
+      e.stopPropagation();
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      const pos = positionsRef.current[item.id] || DEFAULT_POSITIONS[item.category] || { x: 50, y: 50 };
+      dragRef.current = { startX: e.clientX, startY: e.clientY, startPosX: pos.x, startPosY: pos.y };
+      setDraggingId(item.id);
+      bringToFront(item.id);
 
-    const now = Date.now();
-    if (lastTapRef.current && lastTapRef.current.id === item.id && now - lastTapRef.current.time < 300) {
-      handleDoubleTap(item.id);
-      lastTapRef.current = null;
-    } else {
-      lastTapRef.current = { id: item.id, time: now };
+      const now = Date.now();
+      if (lastTapRef.current && lastTapRef.current.id === item.id && now - lastTapRef.current.time < 300) {
+        handleDoubleTap(item.id);
+        lastTapRef.current = null;
+      } else {
+        lastTapRef.current = { id: item.id, time: now };
+      }
+    } catch (err) {
+      console.warn("[OutfitBuilder] pointerDown error:", err);
+      dragRef.current = null;
+      setDraggingId(null);
     }
-  }, [positions]);
+  }, [bringToFront, handleDoubleTap]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!dragRef.current || !draggingId || !canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const dx = ((e.clientX - dragRef.current.startX) / rect.width) * 100;
-    const dy = ((e.clientY - dragRef.current.startY) / rect.height) * 100;
-    const newX = Math.max(0, Math.min(100, dragRef.current.startPosX + dx));
-    const newY = Math.max(0, Math.min(100, dragRef.current.startPosY + dy));
-    setPositions((prev) => ({ ...prev, [draggingId]: { x: newX, y: newY } }));
+    try {
+      if (!dragRef.current || !draggingId || !canvasRef.current) return;
+      const rect = canvasRef.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const dx = ((e.clientX - dragRef.current.startX) / rect.width) * 100;
+      const dy = ((e.clientY - dragRef.current.startY) / rect.height) * 100;
+      const newX = safeClamp(dragRef.current.startPosX + dx, 0, 100, 50);
+      const newY = safeClamp(dragRef.current.startPosY + dy, 0, 100, 50);
+      setPositions((prev) => ({ ...prev, [draggingId]: { x: newX, y: newY } }));
+    } catch (err) {
+      console.warn("[OutfitBuilder] pointerMove error:", err);
+    }
   }, [draggingId]);
 
   const handlePointerUp = useCallback(() => {
@@ -157,44 +183,65 @@ export default function OutfitBuilder({ items, onSaveOutfit, onOutfitCreated }: 
     setDraggingId(null);
   }, []);
 
-  const getTouchDist = (t: React.TouchList) =>
-    Math.hypot(t[1].clientX - t[0].clientX, t[1].clientY - t[0].clientY);
-
-  const findItemUnderTouch = (t: React.TouchList): string | null => {
-    if (!canvasRef.current) return null;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const cx = ((t[0].clientX + t[1].clientX) / 2 - rect.left) / rect.width * 100;
-    const cy = ((t[0].clientY + t[1].clientY) / 2 - rect.top) / rect.height * 100;
-    let best: { id: string; z: number } | null = null;
-    for (const item of selectedItems) {
-      const pos = getItemPos(item);
-      const size = ITEM_SIZES[item.category] || { w: 80, h: 80 };
-      const halfW = (size.w / rect.width) * 100 * 1.5;
-      const halfH = (size.h / rect.height) * 100 * 1.5;
-      if (Math.abs(cx - pos.x) < halfW && Math.abs(cy - pos.y) < halfH) {
-        const z = zOrder[item.id] || CATEGORY_ORDER.indexOf(item.category);
-        if (!best || z > best.z) best = { id: item.id, z };
-      }
-    }
-    return best?.id ?? null;
+  const getTouchDist = (t: React.TouchList): number => {
+    if (t.length < 2) return 0;
+    return Math.hypot(t[1].clientX - t[0].clientX, t[1].clientY - t[0].clientY);
   };
 
-  const onTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const itemId = findItemUnderTouch(e.touches);
-      if (itemId) {
-        pinchRef.current = { itemId, startDist: getTouchDist(e.touches), startScale: getItemScale(itemId) };
+  const findItemUnderTouch = useCallback((t: React.TouchList): string | null => {
+    try {
+      if (!canvasRef.current || t.length < 2) return null;
+      const rect = canvasRef.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return null;
+      const cx = ((t[0].clientX + t[1].clientX) / 2 - rect.left) / rect.width * 100;
+      const cy = ((t[0].clientY + t[1].clientY) / 2 - rect.top) / rect.height * 100;
+      const currentSelected = Object.values(selected).filter(Boolean) as ClothingItem[];
+      let best: { id: string; z: number } | null = null;
+      for (const item of currentSelected) {
+        const pos = positionsRef.current[item.id] || DEFAULT_POSITIONS[item.category] || { x: 50, y: 50 };
+        const size = ITEM_SIZES[item.category] || { w: 80, h: 80 };
+        const halfW = (size.w / rect.width) * 100 * 1.5;
+        const halfH = (size.h / rect.height) * 100 * 1.5;
+        if (Math.abs(cx - pos.x) < halfW && Math.abs(cy - pos.y) < halfH) {
+          const z = zOrder[item.id] || CATEGORY_ORDER.indexOf(item.category);
+          if (!best || z > best.z) best = { id: item.id, z };
+        }
       }
+      return best?.id ?? null;
+    } catch (err) {
+      console.warn("[OutfitBuilder] findItemUnderTouch error:", err);
+      return null;
     }
-  }, [selectedItems, positions, scales, zOrder]);
+  }, [selected, zOrder]);
+
+  const onTouchStart = useCallback((e: React.TouchEvent) => {
+    try {
+      if (e.touches.length === 2) {
+        const itemId = findItemUnderTouch(e.touches);
+        if (itemId) {
+          const dist = getTouchDist(e.touches);
+          if (dist < 1) return; // too close, skip
+          pinchRef.current = { itemId, startDist: dist, startScale: getItemScale(itemId) };
+        }
+      }
+    } catch (err) {
+      console.warn("[OutfitBuilder] touchStart error:", err);
+      pinchRef.current = null;
+    }
+  }, [findItemUnderTouch, getItemScale]);
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2 && pinchRef.current) {
-      e.preventDefault();
-      const dist = getTouchDist(e.touches);
-      const ratio = dist / pinchRef.current.startDist;
-      const newScale = Math.min(2.5, Math.max(0.3, pinchRef.current.startScale * ratio));
-      setScales((prev) => ({ ...prev, [pinchRef.current!.itemId]: newScale }));
+    try {
+      if (e.touches.length === 2 && pinchRef.current) {
+        e.preventDefault();
+        const dist = getTouchDist(e.touches);
+        if (pinchRef.current.startDist < 1) return;
+        const ratio = dist / pinchRef.current.startDist;
+        const newScale = safeClamp(pinchRef.current.startScale * ratio, 0.3, 2.5, 1);
+        setScales((prev) => ({ ...prev, [pinchRef.current!.itemId]: newScale }));
+      }
+    } catch (err) {
+      console.warn("[OutfitBuilder] touchMove error:", err);
     }
   }, []);
 
@@ -232,7 +279,6 @@ export default function OutfitBuilder({ items, onSaveOutfit, onOutfitCreated }: 
 
       toast({ title: "Outfit saved! ✨", description: "Your outfit has been saved to your wardrobe." });
 
-      // Add to shared state so it appears in Saved Outfits immediately
       const newOutfit: Outfit = {
         id: outfitRow.id,
         name: name || "",
@@ -401,5 +447,13 @@ export default function OutfitBuilder({ items, onSaveOutfit, onOutfitCreated }: 
         defaultName="Custom outfit"
       />
     </div>
+  );
+}
+
+export default function OutfitBuilder(props: Props) {
+  return (
+    <OutfitBuilderErrorBoundary>
+      <OutfitBuilderInner {...props} />
+    </OutfitBuilderErrorBoundary>
   );
 }
