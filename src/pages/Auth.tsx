@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { Eye, EyeOff, Check, X, Loader2, Sun, Moon } from "lucide-react";
+import { RiAppleFill } from "react-icons/ri";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import vestisLogo from "@/assets/vestis-logo.png";
@@ -429,9 +430,7 @@ export default function Auth() {
             {socialLoading === "apple" ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <svg width="16" height="20" viewBox="0 0 814 1000" fill="currentColor" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
-                <path d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76 0-103.7 40.8-165.9 40.8s-105-57.8-155.5-127.4C46 790.7 0 663 0 541.8c0-207.8 135.4-317.7 268.5-317.7 70.8 0 129.7 46.4 173.4 46.4 42.1 0 108.6-49.1 190.5-49.1zm-5.6-161.7c-3.5-17.7-10.9-57.8-41.8-99.1-30.4-39.8-77.7-67.9-122.5-67.9-1.9 0-3.8.2-5.7.5 3.5 22.4 17.9 64.8 49.8 105.9 30.2 39.1 75.7 67 120.2 67 0 0 0-.1 0-.1z"/>
-              </svg>
+              <RiAppleFill className="w-5 h-5 shrink-0" aria-hidden="true" />
             )}
             Continue with Apple
           </button>
