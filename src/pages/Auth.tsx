@@ -15,6 +15,7 @@ import { useTheme } from "next-themes";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
