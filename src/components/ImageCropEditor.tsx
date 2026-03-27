@@ -261,11 +261,15 @@ export function ImageCropEditor({
           alt="Crop preview"
           className="absolute pointer-events-none"
           draggable={false}
+          onLoad={updateImgSize}
           style={{
-            /* Size the image to always cover the container at the current scale,
-               then translate. No object-cover needed — we control dimensions directly. */
-            width: "var(--img-w)",
-            height: "var(--img-h)",
+            width: imgSize.w,
+            height: imgSize.h,
+            left: "50%",
+            top: "50%",
+            transform: `translate(calc(-50% + ${translate.x}px), calc(-50% + ${translate.y}px))`,
+          }}
+        />
             left: "50%",
             top: "50%",
             transform: `translate(calc(-50% + ${translate.x}px), calc(-50% + ${translate.y}px))`,
