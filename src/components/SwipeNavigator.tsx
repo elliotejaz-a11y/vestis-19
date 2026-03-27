@@ -12,7 +12,12 @@ export function SwipeNavigator({ children }: { children: React.ReactNode }) {
 
   const currentIndex = TAB_ORDER.indexOf(location.pathname);
 
+  // Disable swipe on routes with their own gesture handling (e.g. outfit builder)
+  const SWIPE_DISABLED_ROUTES = ["/builder"];
+  const swipeDisabled = SWIPE_DISABLED_ROUTES.includes(location.pathname);
+
   const onTouchStart = useCallback((e: React.TouchEvent) => {
+    if (swipeDisabled) return;
     touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
     swiped.current = false;
   }, []);
