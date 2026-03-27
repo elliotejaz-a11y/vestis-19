@@ -5,36 +5,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Camera, Loader2, Upload, RotateCw, RefreshCw } from "lucide-react";
+import { Camera, Loader2, Upload } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
-const compressImage = (file: File, maxWidth = 1200, quality = 0.8): Promise<Blob> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      let { width, height } = img;
-      if (width > maxWidth) {
-        height = (height * maxWidth) / width;
-        width = maxWidth;
-      }
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return reject(new Error("Canvas context failed"));
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => (blob ? resolve(blob) : reject(new Error("Compression failed"))),
-        "image/jpeg",
-        quality
-      );
-    };
-    img.onerror = () => reject(new Error("Image load failed"));
-    img.src = URL.createObjectURL(file);
-  });
-};
+import { ImageCropEditor } from "@/components/ImageCropEditor";
 
 interface FitPicSheetProps {
   children: React.ReactNode;
@@ -47,44 +22,57 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
   const { user } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [image, setImage] = useState<File | null>(null);
+  const [croppedBlob, setCroppedBlob] = useState<Blob | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [rawPreview, setRawPreview] = useState<string | null>(null);
   const [description, setDescription] = useState("");
   const [picDate, setPicDate] = useState(defaultDate || new Date().toISOString().split("T")[0]);
   const [isPrivate, setIsPrivate] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [rotation, setRotation] = useState(0);
-  const fileInputRef = { current: null as HTMLInputElement | null };
+  const [isCropping, setIsCropping] = useState(false);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImage(file);
-      setPreview(URL.createObjectURL(file));
-      setRotation(0);
+      const url = URL.createObjectURL(file);
+      setRawPreview(url);
+      setIsCropping(true);
+    }
+  };
+
+  const handleCropConfirm = (blob: Blob) => {
+    setCroppedBlob(blob);
+    setPreview(URL.createObjectURL(blob));
+    setIsCropping(false);
+    if (rawPreview) {
+      URL.revokeObjectURL(rawPreview);
+      setRawPreview(null);
+    }
+  };
+
+  const handleCropCancel = () => {
+    setIsCropping(false);
+    if (rawPreview) {
+      URL.revokeObjectURL(rawPreview);
+      setRawPreview(null);
     }
   };
 
   const handleRetake = () => {
-    setImage(null);
+    setCroppedBlob(null);
     setPreview(null);
-    setRotation(0);
-  };
-
-  const rotateImage = () => {
-    setRotation((prev) => (prev + 90) % 360);
+    setRawPreview(null);
+    setIsCropping(false);
   };
 
   const handleSave = async () => {
-    if (!user || !image) return;
+    if (!user || !croppedBlob) return;
     setSaving(true);
     try {
-      // Compress image before upload to avoid size issues
-      const compressed = await compressImage(image);
       const path = `${user.id}/fit-pics/${Date.now()}.jpg`;
       const { error: uploadErr } = await supabase.storage
         .from("social-media")
-        .upload(path, compressed, { contentType: "image/jpeg", cacheControl: "3600" });
+        .upload(path, croppedBlob, { contentType: "image/jpeg", cacheControl: "3600" });
       if (uploadErr) throw uploadErr;
 
       const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
@@ -102,7 +90,7 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
 
       toast({ title: "Fit pic saved! 📸" });
       setOpen(false);
-      setImage(null);
+      setCroppedBlob(null);
       setPreview(null);
       setDescription("");
       setIsPrivate(false);
@@ -123,24 +111,19 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
           <SheetTitle className="text-lg">Take a Fit Pic</SheetTitle>
         </SheetHeader>
         <div className="space-y-4 mt-4">
-          {preview ? (
+          {isCropping && rawPreview ? (
+            <ImageCropEditor
+              imageUrl={rawPreview}
+              aspectRatio={1}
+              onConfirm={handleCropConfirm}
+              onCancel={handleCropCancel}
+            />
+          ) : preview ? (
             <div className="relative rounded-2xl overflow-hidden aspect-square max-w-xs mx-auto">
-              <img src={preview} alt="Preview" className="w-full h-full object-cover transition-transform" style={{ transform: `rotate(${rotation}deg)` }} />
+              <img src={preview} alt="Preview" className="w-full h-full object-cover" />
               <div className="absolute top-2 right-2 flex gap-1.5">
                 <button
-                  onClick={rotateImage}
-                  className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
-                >
-                  <RotateCw className="w-3.5 h-3.5" />
-                </button>
-                <button
                   onClick={handleRetake}
-                  className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center"
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => { setImage(null); setPreview(null); setRotation(0); }}
                   className="bg-foreground/60 text-background rounded-full w-7 h-7 flex items-center justify-center text-xs"
                 >
                   ✕
@@ -160,43 +143,47 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
             </label>
           )}
 
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground">Description (optional)</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What are you wearing today?"
-              className="mt-1 rounded-xl bg-card text-sm"
-              rows={2}
-            />
-          </div>
+          {!isCropping && (
+            <>
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Description (optional)</Label>
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="What are you wearing today?"
+                  className="mt-1 rounded-xl bg-card text-sm"
+                  rows={2}
+                />
+              </div>
 
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground">Date</Label>
-            <Input
-              type="date"
-              value={picDate}
-              onChange={(e) => setPicDate(e.target.value)}
-              className="mt-1 rounded-xl bg-card"
-            />
-          </div>
+              <div>
+                <Label className="text-xs font-medium text-muted-foreground">Date</Label>
+                <Input
+                  type="date"
+                  value={picDate}
+                  onChange={(e) => setPicDate(e.target.value)}
+                  className="mt-1 rounded-xl bg-card"
+                />
+              </div>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-foreground">Private</p>
-              <p className="text-[10px] text-muted-foreground">Only visible to you</p>
-            </div>
-            <Switch checked={isPrivate} onCheckedChange={setIsPrivate} />
-          </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Private</p>
+                  <p className="text-[10px] text-muted-foreground">Only visible to you</p>
+                </div>
+                <Switch checked={isPrivate} onCheckedChange={setIsPrivate} />
+              </div>
 
-          <Button
-            onClick={handleSave}
-            disabled={!image || saving}
-            className="w-full h-11 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
-          >
-            {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
-            {saving ? "Saving..." : "Save Fit Pic"}
-          </Button>
+              <Button
+                onClick={handleSave}
+                disabled={!croppedBlob || saving}
+                className="w-full h-11 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+                {saving ? "Saving..." : "Save Fit Pic"}
+              </Button>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>
