@@ -148,29 +148,17 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
-              <label className="flex flex-col items-center justify-center gap-2 p-6 rounded-2xl border-2 border-dashed border-border cursor-pointer hover:bg-muted/30 transition-colors">
-                <Camera className="w-8 h-8 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Take a photo</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </label>
-              <label className="flex flex-col items-center justify-center gap-2 p-6 rounded-2xl border-2 border-dashed border-border cursor-pointer hover:bg-muted/30 transition-colors">
-                <Upload className="w-8 h-8 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Choose from files</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                />
-              </label>
-            </div>
+            <label className="flex flex-col items-center justify-center gap-2 p-8 rounded-2xl border-2 border-dashed border-border cursor-pointer hover:bg-muted/30 transition-colors">
+              <Camera className="w-8 h-8 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Tap to take or upload a photo</span>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </label>
           )}
 
           <div>
