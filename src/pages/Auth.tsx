@@ -38,6 +38,17 @@ export default function Auth() {
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
+  const handleSocialSignIn = async (provider: "google" | "apple") => {
+    setSocialLoading(provider);
+    const { error } = await lovable.auth.signInWithOAuth(provider, {
+      redirect_uri: window.location.origin,
+    });
+    if (error) {
+      toast({ title: "Sign in failed", description: String(error), variant: "destructive" });
+    }
+    setSocialLoading(null);
+  };
+
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
