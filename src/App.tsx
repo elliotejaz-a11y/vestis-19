@@ -92,45 +92,47 @@ function AuthenticatedApp() {
 
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
-      <Routes>
-        <Route path="/" element={
-          <Wardrobe
-            items={items}
-            outfits={outfits}
-            onAdd={addItem}
-            onRemove={handleSoftRemove}
-            onUpdate={updateItem}
-            onSaveOutfit={saveOutfit}
-            onDeleteOutfit={deleteOutfit}
-            onRetryBackgroundRemoval={retryBackgroundRemoval}
-          />
-        } />
-        <Route path="/add" element={<AddItem onAdd={addItem} />} />
-        <Route path="/outfits" element={<Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />} />
-        <Route path="/builder" element={<OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />} />
-        <Route path="/friends" element={<Friends />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/calendar" element={<CalendarPage outfits={outfits} />} />
-        <Route path="/profile" element={
-          <Profile
-            items={items}
-            outfits={outfits}
-            onSaveOutfit={saveOutfit}
-            onDeleteOutfit={deleteOutfit}
-            deletedItems={deletedItems}
-            onRestoreItem={handleRestore}
-            onPermanentDelete={handlePermanentDelete}
-          />
-        } />
-        <Route path="/social" element={<SocialFeed />} />
-        <Route path="/user/:userId" element={<UserProfilePage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/policies/terms" element={<Terms />} />
-        <Route path="/policies/privacy" element={<Privacy />} />
-        <Route path="/policies/community" element={<Community />} />
-        <Route path="/policies/cookies" element={<Cookies />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <SwipeNavigator>
+        <Routes>
+          <Route path="/" element={
+            <Wardrobe
+              items={items}
+              outfits={outfits}
+              onAdd={addItem}
+              onRemove={handleSoftRemove}
+              onUpdate={updateItem}
+              onSaveOutfit={saveOutfit}
+              onDeleteOutfit={deleteOutfit}
+              onRetryBackgroundRemoval={retryBackgroundRemoval}
+            />
+          } />
+          <Route path="/add" element={<AddItem onAdd={addItem} />} />
+          <Route path="/outfits" element={<Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />} />
+          <Route path="/builder" element={<OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />} />
+          <Route path="/friends" element={<Friends />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/calendar" element={<CalendarPage outfits={outfits} />} />
+          <Route path="/profile" element={
+            <Profile
+              items={items}
+              outfits={outfits}
+              onSaveOutfit={saveOutfit}
+              onDeleteOutfit={deleteOutfit}
+              deletedItems={deletedItems}
+              onRestoreItem={handleRestore}
+              onPermanentDelete={handlePermanentDelete}
+            />
+          } />
+          <Route path="/social" element={<SocialFeed />} />
+          <Route path="/user/:userId" element={<UserProfilePage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/policies/terms" element={<Terms />} />
+          <Route path="/policies/privacy" element={<Privacy />} />
+          <Route path="/policies/community" element={<Community />} />
+          <Route path="/policies/cookies" element={<Cookies />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </SwipeNavigator>
       <BottomNav />
       <AppTutorial />
     </div>
