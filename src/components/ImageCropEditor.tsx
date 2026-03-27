@@ -22,6 +22,27 @@ export function ImageCropEditor({
   // Transform state
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
+  const [imgSize, setImgSize] = useState<{ w: string; h: string }>({ w: "100%", h: "100%" });
+
+  // Recompute cover-fit dimensions whenever scale or image loads
+  const updateImgSize = useCallback(() => {
+    const container = containerRef.current;
+    const img = imgRef.current;
+    if (!container || !img || !img.naturalWidth) return;
+    const cW = container.clientWidth;
+    const cH = container.clientHeight;
+    const imgAspect = img.naturalWidth / img.naturalHeight;
+    const containerAspect = cW / cH;
+    let w: number, h: number;
+    if (imgAspect > containerAspect) {
+      h = cH * scale;
+      w = h * imgAspect;
+    } else {
+      w = cW * scale;
+      h = w / imgAspect;
+    }
+    setImgSize({ w: `${w}px`, h: `${h}px` });
+  }, [scale]);
 
   // Drag state
   const dragging = useRef(false);
@@ -89,6 +110,11 @@ export function ImageCropEditor({
     el.addEventListener("wheel", handleWheel, { passive: false });
     return () => el.removeEventListener("wheel", handleWheel);
   }, [handleWheel]);
+
+  // Recalculate image cover size when scale changes
+  useEffect(() => {
+    updateImgSize();
+  }, [updateImgSize]);
 
   // Pointer drag
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
@@ -238,11 +264,15 @@ export function ImageCropEditor({
           ref={imgRef}
           src={imageUrl}
           alt="Crop preview"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          className="absolute pointer-events-none"
           draggable={false}
+          onLoad={updateImgSize}
           style={{
-            transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-            transformOrigin: "center center",
+            width: imgSize.w,
+            height: imgSize.h,
+            left: "50%",
+            top: "50%",
+            transform: `translate(calc(-50% + ${translate.x}px), calc(-50% + ${translate.y}px))`,
           }}
         />
       </div>
