@@ -64,14 +64,6 @@ function AuthenticatedApp() {
   // Preload bg-removal model assets so first upload is fast
   useEffect(() => { preloadBgRemovalModel(); }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
-  }
-
   const handleSoftRemove = useCallback((id: string) => {
     const item = items.find((i) => i.id === id);
     if (item) {
@@ -88,6 +80,14 @@ function AuthenticatedApp() {
   const handlePermanentDelete = useCallback((id: string) => {
     removeFromDeleted(id);
   }, [removeFromDeleted]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
