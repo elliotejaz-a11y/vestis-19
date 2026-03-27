@@ -92,6 +92,7 @@ function AuthenticatedApp() {
 
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
+      <SwipeNavigator>
       <Routes>
         <Route path="/" element={
           <Wardrobe
