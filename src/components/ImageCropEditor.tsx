@@ -238,11 +238,16 @@ export function ImageCropEditor({
           ref={imgRef}
           src={imageUrl}
           alt="Crop preview"
-          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          className="absolute pointer-events-none"
           draggable={false}
           style={{
-            transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-            transformOrigin: "center center",
+            /* Size the image to always cover the container at the current scale,
+               then translate. No object-cover needed — we control dimensions directly. */
+            width: "var(--img-w)",
+            height: "var(--img-h)",
+            left: "50%",
+            top: "50%",
+            transform: `translate(calc(-50% + ${translate.x}px), calc(-50% + ${translate.y}px))`,
           }}
         />
       </div>
