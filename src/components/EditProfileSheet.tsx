@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
+import { ImageCropEditor } from "@/components/ImageCropEditor";
 
 interface Props {
   open: boolean;
@@ -21,7 +22,6 @@ function parsePosition(pos: string): { x: number; y: number } {
   if (!pos) return { x: 50, y: 50 };
   const match = pos.match(/([\d.]+)%\s+([\d.]+)%/);
   if (match) return { x: parseFloat(match[1]), y: parseFloat(match[2]) };
-  // Legacy keyword fallback
   const map: Record<string, { x: number; y: number }> = {
     "top left": { x: 0, y: 0 }, "top center": { x: 50, y: 0 }, "top right": { x: 100, y: 0 },
     "center left": { x: 0, y: 50 }, center: { x: 50, y: 50 }, "center right": { x: 100, y: 50 },
@@ -40,10 +40,11 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [cropPreview, setCropPreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Drag state
+  // Drag state for existing avatar repositioning
   const dragContainerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const startPos = useRef({ x: 0, y: 0 });
@@ -51,7 +52,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
 
   const posObj = parsePosition(avatarPosition);
 
-  // Username cooldown: locked for 14 days after last change
   const usernameLockedUntil = profile?.username_changed_at
     ? new Date(new Date(profile.username_changed_at).getTime() + 14 * 24 * 60 * 60 * 1000)
     : null;
@@ -74,7 +74,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
     const rect = dragContainerRef.current.getBoundingClientRect();
     const dx = e.clientX - startPos.current.x;
     const dy = e.clientY - startPos.current.y;
-    // Invert: dragging right moves image left (decreases x%)
     const newX = clamp(startOffset.current.x - (dx / rect.width) * 100);
     const newY = clamp(startOffset.current.y - (dy / rect.height) * 100);
     setAvatarPosition(`${newX.toFixed(1)}% ${newY.toFixed(1)}%`);
@@ -84,13 +83,23 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
     dragging.current = false;
   }, []);
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !user) return;
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setCropPreview(url);
+    // Reset the input so the same file can be re-selected
+    e.target.value = "";
+  };
+
+  const handleCropConfirm = async (blob: Blob) => {
+    if (!user) return;
+    setCropPreview(null);
     setUploading(true);
-    const ext = file.name.split(".").pop();
-    const path = `${user.id}/avatar-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("social-media").upload(path, file);
+    const path = `${user.id}/avatar-${Date.now()}.jpg`;
+    const { error } = await supabase.storage.from("social-media").upload(path, blob, {
+      contentType: "image/jpeg",
+    });
     if (error) {
       toast({ title: "Upload failed", variant: "destructive" });
     } else {
@@ -101,13 +110,17 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
     setUploading(false);
   };
 
+  const handleCropCancel = () => {
+    if (cropPreview) URL.revokeObjectURL(cropPreview);
+    setCropPreview(null);
+  };
+
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
 
     const usernameChanged = username !== (profile?.username || "");
 
-    // Check uniqueness if username changed
     if (usernameChanged && username.length >= 3) {
       const { data: existing } = await supabase
         .from("profiles")
@@ -150,6 +163,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setAvatarUrl(profile.avatar_url || "");
       setAvatarPosition(profile.avatar_position || "50% 50%");
       setCurrencyPref(profile.currency_preference || "NZD");
+      setCropPreview(null);
     }
     onOpenChange(isOpen);
   };
@@ -162,139 +176,151 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
         </SheetHeader>
 
         <div className="mt-4 space-y-5">
-          {/* Avatar with drag-to-reposition */}
-          <div className="flex flex-col items-center gap-2">
-            <div
-              ref={dragContainerRef}
-              className="relative w-28 h-28 rounded-full bg-card border-2 border-border overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none"
-              onPointerDown={avatarUrl ? handlePointerDown : undefined}
-              onPointerMove={avatarUrl ? handlePointerMove : undefined}
-              onPointerUp={avatarUrl ? handlePointerUp : undefined}
-            >
-              {avatarUrl ? (
-                <img
-                  src={avatarUrl}
-                  alt="Avatar"
-                  className="w-full h-full object-cover pointer-events-none"
-                  style={{ objectPosition: avatarPosition }}
-                  draggable={false}
-                />
-              ) : (
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="w-full h-full flex items-center justify-center"
+          {/* Avatar crop editor */}
+          {cropPreview ? (
+            <ImageCropEditor
+              imageUrl={cropPreview}
+              aspectRatio={1}
+              onConfirm={handleCropConfirm}
+              onCancel={handleCropCancel}
+            />
+          ) : (
+            <>
+              {/* Avatar with drag-to-reposition */}
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  ref={dragContainerRef}
+                  className="relative w-28 h-28 rounded-full bg-card border-2 border-border overflow-hidden cursor-grab active:cursor-grabbing touch-none select-none"
+                  onPointerDown={avatarUrl ? handlePointerDown : undefined}
+                  onPointerMove={avatarUrl ? handlePointerMove : undefined}
+                  onPointerUp={avatarUrl ? handlePointerUp : undefined}
                 >
-                  <User className="w-10 h-10 text-muted-foreground" />
-                </button>
-              )}
-              {avatarUrl && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <Move className="w-5 h-5 text-background/70 drop-shadow-md" />
+                  {avatarUrl ? (
+                    <img
+                      src={avatarUrl}
+                      alt="Avatar"
+                      className="w-full h-full object-cover pointer-events-none"
+                      style={{ objectPosition: avatarPosition }}
+                      draggable={false}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => fileRef.current?.click()}
+                      className="w-full h-full flex items-center justify-center"
+                    >
+                      <User className="w-10 h-10 text-muted-foreground" />
+                    </button>
+                  )}
+                  {avatarUrl && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <Move className="w-5 h-5 text-background/70 drop-shadow-md" />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-            {avatarUrl ? (
-              <div className="text-center space-y-1">
-                <p className="text-[10px] text-muted-foreground">Drag to reposition photo</p>
-                <div className="flex gap-2">
+                <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+                {avatarUrl ? (
+                  <div className="text-center space-y-1">
+                    <p className="text-[10px] text-muted-foreground">Drag to reposition photo</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => fileRef.current?.click()}
+                        className="text-[10px] text-accent font-medium hover:underline"
+                        disabled={uploading}
+                      >
+                        {uploading ? "Uploading..." : "Change photo"}
+                      </button>
+                      <button
+                        onClick={() => setAvatarPosition("50% 50%")}
+                        className="text-[10px] text-muted-foreground hover:underline"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <button
                     onClick={() => fileRef.current?.click()}
-                    className="text-[10px] text-accent font-medium hover:underline"
+                    className="text-[10px] text-muted-foreground"
                     disabled={uploading}
                   >
-                    {uploading ? "Uploading..." : "Change photo"}
+                    {uploading ? "Uploading..." : "Tap to add photo"}
                   </button>
-                  <button
-                    onClick={() => setAvatarPosition("50% 50%")}
-                    className="text-[10px] text-muted-foreground hover:underline"
-                  >
-                    Reset
-                  </button>
+                )}
+              </div>
+
+              {/* Display Name */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Display Name</Label>
+                <Input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Your name"
+                  className="rounded-xl bg-card text-sm"
+                  maxLength={50}
+                />
+              </div>
+
+              {/* Username */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  Username
+                  {isUsernameLocked && (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/70">
+                      <Lock className="w-3 h-3" /> Locked for {daysRemaining} more {daysRemaining === 1 ? "day" : "days"}
+                    </span>
+                  )}
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/60 select-none">@</span>
+                  <Input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                    placeholder="username"
+                    className="rounded-xl bg-card text-sm pl-7"
+                    maxLength={30}
+                    disabled={isUsernameLocked}
+                  />
                 </div>
               </div>
-            ) : (
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="text-[10px] text-muted-foreground"
-                disabled={uploading}
+
+              {/* Bio */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Bio</Label>
+                <Textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Tell people about yourself..."
+                  className="rounded-xl bg-card text-sm min-h-[80px]"
+                  maxLength={160}
+                />
+                <p className="text-[10px] text-muted-foreground text-right">{bio.length}/160</p>
+              </div>
+
+              {/* Currency Preference */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Currency</Label>
+                <Select value={currencyPref} onValueChange={setCurrencyPref}>
+                  <SelectTrigger className="rounded-xl bg-card text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="NZD">🇳🇿 NZD</SelectItem>
+                    <SelectItem value="USD">🇺🇸 USD</SelectItem>
+                    <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button
+                onClick={handleSave}
+                disabled={saving}
+                className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
               >
-                {uploading ? "Uploading..." : "Tap to add photo"}
-              </button>
-            )}
-          </div>
-
-          {/* Display Name */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Display Name</Label>
-            <Input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Your name"
-              className="rounded-xl bg-card text-sm"
-              maxLength={50}
-            />
-          </div>
-
-          {/* Username */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-              Username
-              {isUsernameLocked && (
-                <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground/70">
-                  <Lock className="w-3 h-3" /> Locked for {daysRemaining} more {daysRemaining === 1 ? "day" : "days"}
-                </span>
-              )}
-            </Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/60 select-none">@</span>
-              <Input
-                value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
-                placeholder="username"
-                className="rounded-xl bg-card text-sm pl-7"
-                maxLength={30}
-                disabled={isUsernameLocked}
-              />
-            </div>
-          </div>
-
-          {/* Bio */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Bio</Label>
-            <Textarea
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell people about yourself..."
-              className="rounded-xl bg-card text-sm min-h-[80px]"
-              maxLength={160}
-            />
-            <p className="text-[10px] text-muted-foreground text-right">{bio.length}/160</p>
-          </div>
-
-          {/* Currency Preference */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Currency</Label>
-            <Select value={currencyPref} onValueChange={setCurrencyPref}>
-              <SelectTrigger className="rounded-xl bg-card text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="NZD">🇳🇿 NZD</SelectItem>
-                <SelectItem value="USD">🇺🇸 USD</SelectItem>
-                <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
-          >
-            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            Save Changes
-          </Button>
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Save Changes
+              </Button>
+            </>
+          )}
         </div>
       </SheetContent>
     </Sheet>
