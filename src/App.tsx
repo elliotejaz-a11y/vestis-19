@@ -132,6 +132,7 @@ function AuthenticatedApp() {
         <Route path="/policies/cookies" element={<Cookies />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </SwipeNavigator>
       <BottomNav />
       <AppTutorial />
     </div>
