@@ -153,8 +153,7 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
               <span className="text-xs text-muted-foreground">Tap to take or upload a photo</span>
               <input
                 type="file"
-                accept="image/*"
-                capture="environment"
+                accept="image/jpeg,image/png,image/webp"
                 onChange={handleImageChange}
                 className="hidden"
               />
