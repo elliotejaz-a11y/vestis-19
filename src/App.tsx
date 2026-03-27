@@ -27,6 +27,7 @@ import Community from "./pages/policies/Community";
 import Cookies from "./pages/policies/Cookies";
 import ResetPassword from "./pages/ResetPassword";
 import { AppTutorial } from "@/components/AppTutorial";
+import { SwipeNavigator } from "@/components/SwipeNavigator";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { preloadBgRemovalModel } from "@/lib/image-processing";
