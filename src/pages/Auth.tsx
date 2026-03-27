@@ -6,8 +6,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { Eye, EyeOff, Check, X, Loader2, Sun, Moon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
 
