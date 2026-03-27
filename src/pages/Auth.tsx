@@ -10,6 +10,7 @@ import { Eye, EyeOff, Check, X, Loader2, Sun, Moon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
+import { lovable } from "@/integrations/lovable/index";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
