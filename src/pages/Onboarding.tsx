@@ -283,10 +283,9 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           <div
             key={i}
             className={cn(
-              "h-1 rounded-full flex-1",
+              "h-1 rounded-full flex-1 transition-all",
               i <= step ? "bg-accent" : "bg-border"
             )}
-            style={{ transition: 'background-color 500ms cubic-bezier(0.4, 0, 0.2, 1)' }}
           />
         ))}
       </div>
