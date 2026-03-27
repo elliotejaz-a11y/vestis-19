@@ -27,6 +27,7 @@ import Community from "./pages/policies/Community";
 import Cookies from "./pages/policies/Cookies";
 import ResetPassword from "./pages/ResetPassword";
 import { AppTutorial } from "@/components/AppTutorial";
+import { SwipeNavigator } from "@/components/SwipeNavigator";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { preloadBgRemovalModel } from "@/lib/image-processing";
@@ -91,6 +92,7 @@ function AuthenticatedApp() {
 
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
+      <SwipeNavigator>
       <Routes>
         <Route path="/" element={
           <Wardrobe
@@ -130,6 +132,7 @@ function AuthenticatedApp() {
         <Route path="/policies/cookies" element={<Cookies />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </SwipeNavigator>
       <BottomNav />
       <AppTutorial />
     </div>
