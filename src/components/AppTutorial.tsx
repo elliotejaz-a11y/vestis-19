@@ -106,7 +106,7 @@ export function AppTutorial() {
           </button>
           <div className="flex gap-1.5 mb-5">
             {TUTORIAL_STEPS.map((_, i) => (
-              <div key={i} className={cn("h-1 rounded-full flex-1 transition-all", i <= step ? "bg-accent" : "bg-border")} />
+              <div key={i} className={cn("h-1 rounded-full flex-1", i <= step ? "bg-accent" : "bg-border")} style={{ transition: 'background-color 500ms cubic-bezier(0.4, 0, 0.2, 1)' }} />
             ))}
           </div>
           <div className="w-14 h-14 rounded-2xl bg-accent/15 flex items-center justify-center mb-4">
