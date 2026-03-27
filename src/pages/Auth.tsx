@@ -6,13 +6,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { Eye, EyeOff, Check, X, Loader2, Sun, Moon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const { theme, setTheme } = useTheme();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -34,6 +37,17 @@ export default function Auth() {
   const { toast } = useToast();
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
+
+  const handleSocialSignIn = async (provider: "google" | "apple") => {
+    setSocialLoading(provider);
+    const { error } = await lovable.auth.signInWithOAuth(provider, {
+      redirect_uri: window.location.origin,
+    });
+    if (error) {
+      toast({ title: "Sign in failed", description: String(error), variant: "destructive" });
+    }
+    setSocialLoading(null);
+  };
 
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
@@ -379,6 +393,49 @@ export default function Auth() {
             {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
           </Button>
         </form>
+
+        <div className="flex items-center gap-3">
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <Separator className="flex-1" />
+        </div>
+
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => handleSocialSignIn("google")}
+            disabled={!!socialLoading}
+            className="w-full h-12 rounded-2xl border border-border bg-card flex items-center justify-center gap-3 text-sm font-medium text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            {socialLoading === "google" ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+                <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
+                <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/>
+                <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
+                <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 6.29C4.672 4.163 6.656 3.58 9 3.58Z" fill="#EA4335"/>
+              </svg>
+            )}
+            Continue with Google
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSocialSignIn("apple")}
+            disabled={!!socialLoading}
+            className="w-full h-12 rounded-2xl bg-foreground text-background flex items-center justify-center gap-3 text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+          >
+            {socialLoading === "apple" ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <svg width="16" height="20" viewBox="0 0 16 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <path d="M15.545 15.467c-.36.83-.78 1.593-1.264 2.293-.66.953-1.2 1.612-1.616 1.977-.645.599-1.337.905-2.08.924-.533 0-1.175-.152-1.924-.46-.752-.306-1.443-.458-2.075-.458-.66 0-1.368.152-2.122.458-.756.308-1.365.469-1.83.485-.714.03-1.422-.284-2.126-.945-.45-.396-1.012-1.074-1.688-2.035C-1.87 16.556-.93 15.208-.93 13.63c0-1.398.47-2.527 1.41-3.383a5.19 5.19 0 0 1 3.456-1.39c.565 0 1.306.175 2.228.519.92.345 1.51.52 1.768.52.192 0 .845-.204 1.955-.611 1.05-.378 1.937-.534 2.664-.472 1.968.159 3.446.934 4.427 2.333-1.76 1.067-2.63 2.562-2.612 4.48.017 1.493.557 2.736 1.617 3.72.481.457 1.018.81 1.613 1.062-.129.376-.265.736-.41 1.083ZM11.73.4c0 1.17-.428 2.264-1.28 3.275-1.03 1.204-2.275 1.899-3.625 1.79a3.645 3.645 0 0 1-.027-.444c0-1.124.489-2.328 1.357-3.312.434-.498.986-.912 1.655-1.243C10.478.137 11.107-.012 11.7 0c.02.134.03.268.03.4Z"/>
+              </svg>
+            )}
+            Continue with Apple
+          </button>
+        </div>
 
         <p className="text-center text-xs text-muted-foreground">
           {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
