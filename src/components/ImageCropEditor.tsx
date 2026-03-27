@@ -111,6 +111,11 @@ export function ImageCropEditor({
     return () => el.removeEventListener("wheel", handleWheel);
   }, [handleWheel]);
 
+  // Recalculate image cover size when scale changes
+  useEffect(() => {
+    updateImgSize();
+  }, [updateImgSize]);
+
   // Pointer drag
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     if (e.pointerType === "touch") return; // handled by touch events
