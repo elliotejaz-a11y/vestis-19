@@ -76,7 +76,9 @@ interface OnboardingProps {
 export default function Onboarding({ editMode = false, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
+  const [profileError, setProfileError] = useState("");
   const [skinTone, setSkinTone] = useState(50);
   const [styles, setStyles] = useState<string[]>([]);
   const [customStyle, setCustomStyle] = useState("");
@@ -92,6 +94,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   useEffect(() => {
     if (editMode && profile) {
       setAvatarUrl(profile.avatar_url || "");
+      setUsername(profile.username || "");
       setBio(profile.bio || "");
       setSkinTone(profile.skin_tone ? parseInt(profile.skin_tone) || 50 : 50);
       // Parse comma-separated styles
@@ -168,6 +171,19 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
             <p className="text-xs text-muted-foreground">{uploading ? "Uploading..." : "Tap to add a profile picture"}</p>
           </div>
           <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Username</p>
+            <Input
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setProfileError(""); }}
+              placeholder="Choose a username"
+              className="rounded-xl bg-card text-sm"
+              maxLength={30}
+            />
+          </div>
+          {profileError && (
+            <p className="text-xs text-destructive font-medium">{profileError}</p>
+          )}
+          <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">Bio</p>
             <Textarea
               value={bio}
@@ -180,7 +196,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           </div>
         </div>
       ),
-      valid: !!avatarUrl,
+      valid: !!avatarUrl && !!username.trim(),
     },
     {
       title: "What's your skin tone?",
@@ -251,6 +267,15 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     },
   ];
 
+  const handleNext = () => {
+    if (step === 0) {
+      if (!avatarUrl) { setProfileError("Please add a profile picture"); return; }
+      if (!username.trim()) { setProfileError("Please choose a username"); return; }
+      setProfileError("");
+    }
+    setStep(step + 1);
+  };
+
   const handleFinish = async () => {
     setSaving(true);
     try {
@@ -265,6 +290,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         display_name: profile?.display_name || null,
         avatar_url: avatarUrl || null,
         bio: bio || null,
+        username: username.trim() || null,
       } as any);
       toast({ title: editMode ? "Profile updated! ✨" : "Welcome to Vestis! ✨", description: editMode ? "Your style preferences have been saved." : "Your profile is set up." });
       onComplete?.();
@@ -311,7 +337,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           )}
           {step < steps.length - 1 ? (
             <Button
-              onClick={() => setStep(step + 1)}
+              onClick={handleNext}
               disabled={!current.valid}
               className="h-12 rounded-2xl flex-1 bg-accent text-accent-foreground hover:bg-accent/90"
             >
