@@ -135,6 +135,18 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       }
     }
 
+    if (!avatarUrl) {
+      toast({ title: "Profile picture required", description: "Please add a profile picture before saving.", variant: "destructive" });
+      setSaving(false);
+      return;
+    }
+
+    if (!username || username.length < 3) {
+      toast({ title: "Username required", description: "Please set a username (at least 3 characters).", variant: "destructive" });
+      setSaving(false);
+      return;
+    }
+
     const updateData: any = {
       display_name: displayName || null,
       username: username || null,
