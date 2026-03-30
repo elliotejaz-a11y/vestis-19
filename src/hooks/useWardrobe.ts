@@ -126,7 +126,7 @@ export function useWardrobe() {
             imageUrl = urlData.publicUrl;
           }
         } catch (err) {
-          console.error("Image upload failed:", err);
+          // Image upload failed
         }
       } else if (imageUrl.startsWith("data:image/svg+xml")) {
         try {
@@ -141,7 +141,7 @@ export function useWardrobe() {
             imageUrl = urlData.publicUrl;
           }
         } catch (err) {
-          console.error("SVG upload failed:", err);
+          // SVG upload failed
         }
       } else if (imageUrl.startsWith("data:")) {
         try {
@@ -162,7 +162,7 @@ export function useWardrobe() {
             imageUrl = urlData.publicUrl;
           }
         } catch (err) {
-          console.error("Base64 upload failed:", err);
+          // Base64 upload failed
         }
       } else if (!imageUrl.startsWith("http")) {
         // Vite bundled asset (relative path) - fetch and upload
