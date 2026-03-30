@@ -379,7 +379,7 @@ function FriendsTab() {
           <div className="grid grid-cols-3 gap-1">
             {friendWardrobe.map((item) => (
               <div key={item.id} className="aspect-square rounded-xl overflow-hidden bg-card border border-border/40 relative">
-                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
                   <p className="text-[10px] text-white font-medium truncate">{item.name}</p>
                   <p className="text-[9px] text-white/70">{item.category} • {item.color}</p>
