@@ -844,7 +844,7 @@ function ChatView({
             <div className="grid grid-cols-4 gap-1">
               {fitPics.map((pic: any) => (
                 <button key={pic.id} onClick={() => sendFitPic(pic.image_url)} className="aspect-square rounded-lg overflow-hidden">
-                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>
