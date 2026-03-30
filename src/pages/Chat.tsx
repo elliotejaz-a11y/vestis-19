@@ -709,7 +709,9 @@ function ChatView({
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [loadingPics, setLoadingPics] = useState(false);
   const [reportMsg, setReportMsg] = useState<{ id: string; senderId: string } | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const loadFitPics = async () => {
