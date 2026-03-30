@@ -96,7 +96,7 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
       setIsPrivate(false);
       onSaved?.();
     } catch (err: any) {
-      console.error("Fit pic save error:", err);
+      // Fit pic save error handled by toast
       toast({ title: err?.message || "Failed to save", variant: "destructive" });
     } finally {
       setSaving(false);

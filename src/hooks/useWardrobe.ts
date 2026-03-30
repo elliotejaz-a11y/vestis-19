@@ -55,7 +55,7 @@ export function useWardrobe() {
       setLoading(true);
       const { data: clothingData } = await supabase
         .from("clothing_items")
-        .select("*")
+        .select("id, name, category, color, fabric, image_url, back_image_url, tags, notes, created_at, estimated_price, is_private")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 

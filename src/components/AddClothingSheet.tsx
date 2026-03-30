@@ -148,7 +148,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         });
       }
     } catch (err) {
-      console.error("AI analysis failed:", err);
+      // AI analysis failed silently
       toast({
         title: "AI analysis failed",
         description: "You can still fill in the details manually.",
@@ -175,7 +175,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       try {
         imageBase64ForProcessing = await imageUrlToBase64(imageUrl);
       } catch (e) {
-        console.warn("Could not get base64 for background removal:", e);
+        // Could not get base64 for background removal
       }
     }
     onAdd(

@@ -157,6 +157,6 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
 
   // Client-side background removal (@imgly/background-removal) already handled.
   // Skip the server-side OpenAI gpt-image-1 call and mark as ready immediately.
-  console.log("[BG removal] Skipping server-side AI processing – using client-side result as-is");
+  onStatusUpdate?.({ imageStatus: "ready" });
   onStatusUpdate?.({ imageStatus: "ready" });
 }
