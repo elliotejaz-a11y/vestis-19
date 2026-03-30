@@ -346,7 +346,7 @@ function FriendsTab() {
   const viewFriendWardrobe = async (friend: FriendProfile) => {
     setSelectedFriend(friend);
     setLoadingWardrobe(true);
-    const { data } = await supabase.from("clothing_items").select("id, name, category, color, fabric, image_url, back_image_url, tags, notes, created_at, estimated_price, is_private").eq("user_id", friend.id);
+    const { data } = await supabase.from("clothing_items").select("*").eq("user_id", friend.id);
     const items: ClothingItem[] = (data || []).map((r: any) => ({
       id: r.id, name: r.name, category: r.category, color: r.color, fabric: r.fabric,
       imageUrl: r.image_url, backImageUrl: r.back_image_url || undefined,
@@ -379,7 +379,7 @@ function FriendsTab() {
           <div className="grid grid-cols-3 gap-1">
             {friendWardrobe.map((item) => (
               <div key={item.id} className="aspect-square rounded-xl overflow-hidden bg-card border border-border/40 relative">
-                <img loading="lazy" src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
                   <p className="text-[10px] text-white font-medium truncate">{item.name}</p>
                   <p className="text-[9px] text-white/70">{item.category} • {item.color}</p>
@@ -648,7 +648,7 @@ function NotificationsTab() {
               >
                 <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {n.from_profile?.avatar_url ? (
-                    <img loading="lazy" src={n.from_profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    <img src={n.from_profile.avatar_url} alt="" className="w-full h-full object-cover" />
                   ) : (
                     getIcon(n.type)
                   )}
@@ -810,7 +810,7 @@ function ChatView({
                       {msg.is_flagged ? (
                         <span className="flex items-center gap-1 text-muted-foreground italic text-xs"><AlertTriangle className="w-3 h-3" /> Message removed</span>
                       ) : isImage && imageUrl ? (
-                        <img loading="lazy" src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
+                        <img src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
                       ) : renderBoldText(msg.content)}
                     </div>
                   </div>
@@ -843,7 +843,7 @@ function ChatView({
             <div className="grid grid-cols-4 gap-1">
               {fitPics.map((pic: any) => (
                 <button key={pic.id} onClick={() => sendFitPic(pic.image_url)} className="aspect-square rounded-lg overflow-hidden">
-                  <img loading="lazy" src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -886,7 +886,7 @@ function Avatar({ url, name, size = "w-11 h-11" }: { url: string | null; name: s
   return (
     <div className={cn(size, "rounded-full overflow-hidden bg-muted border border-border flex-shrink-0")}>
       {url ? (
-        <img loading="lazy" src={url} alt="" className="w-full h-full object-cover" />
+        <img src={url} alt="" className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm font-semibold">
           {name.charAt(0).toUpperCase()}

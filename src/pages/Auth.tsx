@@ -169,7 +169,7 @@ export default function Auth() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
         <div className="w-full max-w-sm space-y-6 text-center">
-          <img loading="lazy" src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
+          <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Enter verification code</h2>
           <p className="text-sm text-muted-foreground">We sent a 6-digit code to <span className="font-medium text-foreground">{signUpEmail}</span></p>
           <div>
@@ -218,7 +218,7 @@ export default function Auth() {
       <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-2">
-            <img loading="lazy" src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
+            <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
             <h2 className="text-xl font-bold text-foreground">Reset Password</h2>
             <p className="text-sm text-muted-foreground">Enter your email and we'll send you a reset link</p>
           </div>
@@ -256,7 +256,7 @@ export default function Auth() {
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <img loading="lazy" src={vestisLogo} alt="Vestis" className="h-12" />
+            <img src={vestisLogo} alt="Vestis" className="h-12" />
             
           </div>
           <p className="text-sm text-muted-foreground">Your AI-powered wardrobe stylist</p>

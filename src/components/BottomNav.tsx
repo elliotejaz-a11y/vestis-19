@@ -33,7 +33,7 @@ export function BottomNav() {
                   "w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all",
                   "bg-card border border-border"
                 )}>
-                  <img loading="lazy" src={active ? vestisIcon : vestisIconGrey} alt="Outfits" className="w-7 h-7" />
+                  <img src={active ? vestisIcon : vestisIconGrey} alt="Outfits" className="w-7 h-7" />
                 </div>
                 <span className={cn("text-[9px] font-medium tracking-wide", active ? "text-accent" : "text-muted-foreground")}>{label}</span>
               </button>

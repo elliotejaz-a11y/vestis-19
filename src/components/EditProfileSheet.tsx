@@ -197,7 +197,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                 >
                   {avatarUrl ? (
                     <img
-                loading="lazy"
                       src={avatarUrl}
                       alt="Avatar"
                       className="w-full h-full object-cover pointer-events-none"

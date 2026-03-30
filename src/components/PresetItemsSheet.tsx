@@ -87,7 +87,7 @@ export function PresetItemsSheet({ onAdd, children }: Props) {
                 >
                   <div className="aspect-square rounded-xl bg-muted flex items-center justify-center mb-2 overflow-hidden">
                     {imgSrc ? (
-                      <img loading="lazy" src={imgSrc} alt={preset.name} className="w-full h-full object-cover" />
+                      <img src={imgSrc} alt={preset.name} className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-2xl">👕</span>
                     )}

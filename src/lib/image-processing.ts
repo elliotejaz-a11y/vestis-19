@@ -14,7 +14,11 @@ const bgRemovalConfig: Config = {
     format: "image/png",
     quality: 0.9,
   },
-  progress: () => {},
+  progress: (key, current, total) => {
+    if (total > 0) {
+      console.log(`[bg-removal] ${key}: ${Math.round((current / total) * 100)}%`);
+    }
+  },
 };
 
 /** Singleton warm-up promise so model assets are fetched once & cached. */
@@ -37,9 +41,9 @@ export function preloadBgRemovalModel(): void {
         canvas.toBlob((b) => res(b!), "image/png")
       );
       await removeBackground(blob, bgRemovalConfig);
-      // Model preloaded & cached
-    } catch {
-      preloadPromise = null;
+      console.log("[bg-removal] Model preloaded & cached");
+    } catch (err) {
+      console.warn("[bg-removal] Preload failed (non-fatal):", err);
       preloadPromise = null; // allow retry
     }
   })();
@@ -56,7 +60,7 @@ export function preloadBgRemovalModel(): void {
  */
 export async function processClothingImage(file: File): Promise<Blob> {
   try {
-    // Starting background removal
+    console.log("[processClothingImage] Starting background removal (small model)…");
 
     const removalPromise = removeBackground(file, bgRemovalConfig);
     const timeoutPromise = new Promise<never>((_, reject) =>
@@ -64,9 +68,10 @@ export async function processClothingImage(file: File): Promise<Blob> {
     );
 
     const result = await Promise.race([removalPromise, timeoutPromise]);
+    console.log("[processClothingImage] Background removal succeeded");
     return result;
-  } catch {
-    return file;
+  } catch (err) {
+    console.warn("[processClothingImage] Background removal failed, returning original:", err);
     return file;
   }
 }

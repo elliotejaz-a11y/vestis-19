@@ -109,7 +109,7 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
         }
       }
     } catch (e) {
-      // Error handled by UI message
+      console.error(e);
       setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
     } finally {
       setIsStreaming(false);

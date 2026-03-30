@@ -55,7 +55,7 @@ export function useWardrobe() {
       setLoading(true);
       const { data: clothingData } = await supabase
         .from("clothing_items")
-        .select("id, name, category, color, fabric, image_url, back_image_url, tags, notes, created_at, estimated_price, is_private")
+        .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -126,7 +126,7 @@ export function useWardrobe() {
             imageUrl = urlData.publicUrl;
           }
         } catch (err) {
-          // Image upload failed
+          console.error("Image upload failed:", err);
         }
       } else if (imageUrl.startsWith("data:image/svg+xml")) {
         try {
@@ -141,7 +141,7 @@ export function useWardrobe() {
             imageUrl = urlData.publicUrl;
           }
         } catch (err) {
-          // SVG upload failed
+          console.error("SVG upload failed:", err);
         }
       } else if (imageUrl.startsWith("data:")) {
         try {
@@ -162,7 +162,7 @@ export function useWardrobe() {
             imageUrl = urlData.publicUrl;
           }
         } catch (err) {
-          // Base64 upload failed
+          console.error("Base64 upload failed:", err);
         }
       } else if (!imageUrl.startsWith("http")) {
         // Vite bundled asset (relative path) - fetch and upload

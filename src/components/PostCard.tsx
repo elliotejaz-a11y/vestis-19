@@ -33,7 +33,7 @@ export function PostCard({ post, onLike, onDelete, isOwn }: Props) {
             className="w-8 h-8 rounded-full overflow-hidden bg-muted flex-shrink-0"
           >
             {post.user?.avatar_url ? (
-              <img loading="lazy" src={post.user.avatar_url} alt="" className="w-full h-full object-cover" />
+              <img src={post.user.avatar_url} alt="" className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="w-4 h-4 text-muted-foreground" />
@@ -75,7 +75,6 @@ export function PostCard({ post, onLike, onDelete, isOwn }: Props) {
         {/* Images */}
         <div className="relative aspect-square bg-muted">
           <img
-                loading="lazy"
             src={post.image_urls[currentImage]}
             alt=""
             className="w-full h-full object-cover"

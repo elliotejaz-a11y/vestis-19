@@ -41,7 +41,7 @@ export function StoriesBar({ stories, onAdd, onView }: Props) {
           <div className="w-16 h-16 rounded-full border-2 border-accent p-0.5">
             <div className="w-full h-full rounded-full overflow-hidden bg-card">
               {user?.avatar_url ? (
-                <img loading="lazy" src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <User className="w-5 h-5 text-muted-foreground" />

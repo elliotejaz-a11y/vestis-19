@@ -56,7 +56,7 @@ export function useSocial() {
     // Fetch posts (from followed users + own + public)
     const { data: postData } = await supabase
       .from("social_posts")
-      .select("id, user_id, image_urls, caption, likes_count, comments_count, outfit_id, created_at")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(50);
 
@@ -86,7 +86,7 @@ export function useSocial() {
     // Fetch active stories
     const { data: storyData } = await supabase
       .from("social_stories")
-      .select("id, user_id, image_url, caption, created_at, expires_at")
+      .select("*")
       .gt("expires_at", new Date().toISOString())
       .order("created_at", { ascending: false });
 
