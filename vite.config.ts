@@ -5,6 +5,14 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  optimizeDeps: {
+    exclude: ["onnxruntime-web"],
+  },
+  build: {
+    rollupOptions: {
+      external: ["onnxruntime-web/webgpu"],
+    },
+  },
   server: {
     host: "::",
     port: 8080,
