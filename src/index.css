@@ -98,3 +98,10 @@
     @apply bg-card/80 backdrop-blur-md border border-border/50 shadow-sm;
   }
 }
+
+/* iOS keyboard fix: prevent auto-zoom on focus */
+input, textarea, select {
+  font-size: 16px !important;
+  user-select: auto !important;
+  pointer-events: auto !important;
+}
