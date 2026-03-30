@@ -510,8 +510,9 @@ function DiscoverTab() {
       .limit(50);
 
     if (profiles) {
-      // Shuffle to feel "personalized"
-      const shuffled = [...profiles].sort(() => Math.random() - 0.5);
+      // Filter out incomplete profiles, then shuffle
+      const filtered = profiles.filter((p: any) => p.avatar_url && p.username && !/^user\d*$/i.test(p.username));
+      const shuffled = [...filtered].sort(() => Math.random() - 0.5);
       setPeople(shuffled as FriendProfile[]);
     }
     setLoading(false);

@@ -92,7 +92,7 @@ export default function Friends() {
       .neq("id", user.id)
       .limit(10);
 
-    setSearchResults((data || []) as FriendProfile[]);
+    setSearchResults(((data || []) as FriendProfile[]).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
     setSearching(false);
   };
 
