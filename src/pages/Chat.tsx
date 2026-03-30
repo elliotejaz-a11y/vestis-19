@@ -178,8 +178,10 @@ function MessagesTab({
   const fetchFriends = useCallback(async () => {
     if (!user) return;
     setLoadingFriends(true);
-    const { data: following } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
-    const { data: followers } = await supabase.from("follows").select("follower_id").eq("following_id", user.id);
+    const [{ data: following }, { data: followers }] = await Promise.all([
+      supabase.from("follows").select("following_id").eq("follower_id", user.id),
+      supabase.from("follows").select("follower_id").eq("following_id", user.id),
+    ]);
     const myFollowing = (following || []).map((f: any) => f.following_id);
     const myFollowers = (followers || []).map((f: any) => f.follower_id);
     const mutualIds = myFollowing.filter((id: string) => myFollowers.includes(id));
@@ -304,8 +306,10 @@ function FriendsTab() {
   const fetchFriends = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const { data: following } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
-    const { data: followers } = await supabase.from("follows").select("follower_id").eq("following_id", user.id);
+    const [{ data: following }, { data: followers }] = await Promise.all([
+      supabase.from("follows").select("following_id").eq("follower_id", user.id),
+      supabase.from("follows").select("follower_id").eq("following_id", user.id),
+    ]);
     const myFollowing = (following || []).map((f: any) => f.following_id);
     const myFollowers = (followers || []).map((f: any) => f.follower_id);
     setFollowingIds(myFollowing);
@@ -346,7 +350,7 @@ function FriendsTab() {
   const viewFriendWardrobe = async (friend: FriendProfile) => {
     setSelectedFriend(friend);
     setLoadingWardrobe(true);
-    const { data } = await supabase.from("clothing_items").select("*").eq("user_id", friend.id);
+    const { data } = await supabase.from("clothing_items").select("id, name, category, color, fabric, image_url, back_image_url, tags, notes, created_at, estimated_price, is_private").eq("user_id", friend.id);
     const items: ClothingItem[] = (data || []).map((r: any) => ({
       id: r.id, name: r.name, category: r.category, color: r.color, fabric: r.fabric,
       imageUrl: r.image_url, backImageUrl: r.back_image_url || undefined,

@@ -44,20 +44,14 @@ export default function Friends() {
     if (!user) return;
     setLoading(true);
 
-    // Get people I follow
-    const { data: following } = await supabase
-      .from("follows")
-      .select("following_id")
-      .eq("follower_id", user.id);
+    // Fetch following and followers in parallel
+    const [{ data: following }, { data: followers }] = await Promise.all([
+      supabase.from("follows").select("following_id").eq("follower_id", user.id),
+      supabase.from("follows").select("follower_id").eq("following_id", user.id),
+    ]);
     const myFollowing = (following || []).map((f: any) => f.following_id);
-    setFollowingIds(myFollowing);
-
-    // Get people who follow me
-    const { data: followers } = await supabase
-      .from("follows")
-      .select("follower_id")
-      .eq("following_id", user.id);
     const myFollowers = (followers || []).map((f: any) => f.follower_id);
+    setFollowingIds(myFollowing);
     setFollowerIds(myFollowers);
 
     // Mutual = intersection
@@ -113,7 +107,7 @@ export default function Friends() {
 
     const { data } = await supabase
       .from("clothing_items")
-      .select("*")
+      .select("id, name, category, color, fabric, image_url, back_image_url, tags, notes, created_at, estimated_price, is_private")
       .eq("user_id", friend.id);
 
     const items: ClothingItem[] = (data || []).map((r: any) => ({
