@@ -96,7 +96,7 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
       setIsPrivate(false);
       onSaved?.();
     } catch (err: any) {
-      console.error("Fit pic save error:", err);
+      // Fit pic save error handled by toast
       toast({ title: err?.message || "Failed to save", variant: "destructive" });
     } finally {
       setSaving(false);
@@ -120,7 +120,7 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
             />
           ) : preview ? (
             <div className="relative rounded-2xl overflow-hidden aspect-square max-w-xs mx-auto">
-              <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+              <img loading="lazy" src={preview} alt="Preview" className="w-full h-full object-cover" />
               <div className="absolute top-2 right-2 flex gap-1.5">
                 <button
                   onClick={handleRetake}

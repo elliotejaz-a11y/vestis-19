@@ -157,7 +157,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
         lastTapRef.current = { id: item.id, time: now };
       }
     } catch (err) {
-      console.warn("[OutfitBuilder] pointerDown error:", err);
+      // pointerDown error caught
       dragRef.current = null;
       setDraggingId(null);
     }
@@ -174,7 +174,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
       const newY = safeClamp(dragRef.current.startPosY + dy, 0, 100, 50);
       setPositions((prev) => ({ ...prev, [draggingId]: { x: newX, y: newY } }));
     } catch (err) {
-      console.warn("[OutfitBuilder] pointerMove error:", err);
+      // pointerMove error caught
     }
   }, [draggingId]);
 
@@ -209,7 +209,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
       }
       return best?.id ?? null;
     } catch (err) {
-      console.warn("[OutfitBuilder] findItemUnderTouch error:", err);
+      // findItemUnderTouch error caught
       return null;
     }
   }, [selected, zOrder]);
@@ -225,7 +225,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
         }
       }
     } catch (err) {
-      console.warn("[OutfitBuilder] touchStart error:", err);
+      // touchStart error caught
       pinchRef.current = null;
     }
   }, [findItemUnderTouch, getItemScale]);
@@ -241,7 +241,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
         setScales((prev) => ({ ...prev, [pinchRef.current!.itemId]: newScale }));
       }
     } catch (err) {
-      console.warn("[OutfitBuilder] touchMove error:", err);
+      // touchMove error caught
     }
   }, []);
 
@@ -291,7 +291,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
       };
       onOutfitCreated?.(newOutfit);
     } catch (err) {
-      console.error("Save outfit failed:", err);
+      // Save outfit error handled by toast
       toast({ title: "Failed to save outfit", variant: "destructive" });
     } finally {
       setSaving(false);
@@ -354,6 +354,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
                     }}
                   >
                     <img
+                loading="lazy"
                       src={item.imageUrl}
                       alt={item.name}
                       className="w-full h-full object-contain drop-shadow-sm pointer-events-none"
@@ -420,7 +421,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
               )}
             >
               <div className="aspect-square bg-white dark:bg-neutral-800">
-                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                <img loading="lazy" src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
               </div>
               <p className="text-[9px] text-muted-foreground p-1.5 truncate text-center">{item.name}</p>
               {isSelected && (

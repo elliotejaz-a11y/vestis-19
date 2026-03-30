@@ -20,7 +20,7 @@ async function fetchLiveRates(): Promise<void> {
       lastFetchedAt = Date.now();
     }
   } catch (e) {
-    console.warn('Failed to fetch live exchange rates, using cached/fallback rates', e);
+    // Failed to fetch live exchange rates, using cached/fallback
   } finally {
     fetchPromise = null;
   }

@@ -24,10 +24,10 @@ export function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemova
           onClick={() => onDetail?.(item)}
         >
           <img
+            loading="lazy"
             src={item.imageUrl}
             alt={item.name}
             className="w-full h-full object-contain"
-            loading="lazy"
           />
           {isProcessing && (
             <div className="absolute inset-0 bg-background/75 backdrop-blur-sm flex flex-col items-center justify-center gap-2">

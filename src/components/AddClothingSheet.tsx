@@ -148,7 +148,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         });
       }
     } catch (err) {
-      console.error("AI analysis failed:", err);
+      // AI analysis failed silently
       toast({
         title: "AI analysis failed",
         description: "You can still fill in the details manually.",
@@ -175,7 +175,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       try {
         imageBase64ForProcessing = await imageUrlToBase64(imageUrl);
       } catch (e) {
-        console.warn("Could not get base64 for background removal:", e);
+        // Could not get base64 for background removal
       }
     }
     onAdd(
@@ -226,6 +226,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
               <img
+                loading="lazy"
                 src={imageUrl}
                 alt="Preview"
                 className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
@@ -290,7 +291,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 </button>
               ) : (
                 <div className="relative rounded-xl overflow-hidden bg-white dark:bg-neutral-800 h-24">
-                  <img src={backImageUrl} alt="Back" className="w-full h-full object-contain" />
+                  <img loading="lazy" src={backImageUrl} alt="Back" className="w-full h-full object-contain" />
                   <button onClick={() => setBackImageUrl("")} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center text-foreground text-xs">✕</button>
                 </div>
               )}

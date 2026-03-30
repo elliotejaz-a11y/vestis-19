@@ -16,7 +16,7 @@ export class OutfitBuilderErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.warn("[OutfitBuilder] Caught error:", error.message, info.componentStack);
+    // Caught error in OutfitBuilder boundary
   }
 
   render() {

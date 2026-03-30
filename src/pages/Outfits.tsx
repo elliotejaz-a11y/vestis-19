@@ -87,7 +87,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         }
       }
     } catch (err) {
-      console.error(err);
+      // Error handled by toast
       toast({ title: "Failed to generate outfit", variant: "destructive" });
     } finally {
       setGenerating(false);
