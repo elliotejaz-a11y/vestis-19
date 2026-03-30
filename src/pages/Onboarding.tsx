@@ -162,7 +162,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
               className="w-24 h-24 rounded-full border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-accent transition-colors"
             >
               {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                <img loading="lazy" src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
                 <Camera className="w-8 h-8 text-muted-foreground" />
               )}

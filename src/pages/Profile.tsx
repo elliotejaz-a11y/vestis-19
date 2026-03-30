@@ -158,7 +158,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         <div className="flex flex-col items-center gap-3">
           <div className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
             {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
+              <img loading="lazy" src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
               <User className="w-8 h-8 text-muted-foreground" />
             )}
@@ -227,7 +227,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   onClick={() => setSelectedFitPic(pic)}
                   className="aspect-square rounded-xl overflow-hidden relative"
                 >
-                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                  <img loading="lazy" src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
                   {pic.is_private && (
                     <div className="absolute top-1 right-1 bg-foreground/60 rounded-full px-1.5 py-0.5">
                       <span className="text-[8px] text-background">Private</span>
@@ -332,7 +332,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               {deletedItems.map((item) => (
                 <div key={item.id} className="flex items-center gap-3 p-2 rounded-xl bg-muted">
                   <div className="w-12 h-12 rounded-lg overflow-hidden bg-white dark:bg-neutral-800 flex-shrink-0">
-                    <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                    <img loading="lazy" src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-foreground truncate">{item.name}</p>

@@ -55,7 +55,7 @@ export default function UserWardrobeSheet({ open, onOpenChange, userId, displayN
             {items.map((item) => (
               <div key={item.id} className="rounded-xl overflow-hidden bg-card border border-border/40">
                 <div className="aspect-square">
-                  <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                  <img loading="lazy" src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
                 </div>
                 <div className="p-2">
                   <p className="text-[10px] font-medium text-foreground truncate">{item.name}</p>

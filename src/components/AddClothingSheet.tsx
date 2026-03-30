@@ -290,7 +290,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                 </button>
               ) : (
                 <div className="relative rounded-xl overflow-hidden bg-white dark:bg-neutral-800 h-24">
-                  <img src={backImageUrl} alt="Back" className="w-full h-full object-contain" />
+                  <img loading="lazy" src={backImageUrl} alt="Back" className="w-full h-full object-contain" />
                   <button onClick={() => setBackImageUrl("")} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center text-foreground text-xs">✕</button>
                 </div>
               )}

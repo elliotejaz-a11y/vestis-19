@@ -208,7 +208,7 @@ export default function UserProfilePage() {
         <div className="flex flex-col items-center gap-3">
           <div className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
             {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
+              <img loading="lazy" src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="w-8 h-8 text-muted-foreground" />
@@ -342,7 +342,7 @@ export default function UserProfilePage() {
               <div className="grid grid-cols-3 gap-0.5">
                 {fitPics.map((pic) => (
                   <div key={pic.id} className="aspect-square relative">
-                    <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
+                    <img loading="lazy" src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
                   </div>
                 ))}
               </div>

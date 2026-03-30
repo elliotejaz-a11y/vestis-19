@@ -101,7 +101,7 @@ export default function SocialFeed() {
                 >
                   <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
                     {u.avatar_url ? (
-                      <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                      <img loading="lazy" src={u.avatar_url} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <User className="w-4 h-4 text-muted-foreground" />
@@ -174,7 +174,7 @@ export default function SocialFeed() {
           <div className="flex items-center gap-3 px-4 py-3">
             <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
               {viewingStory.user?.avatar_url ? (
-                <img src={viewingStory.user.avatar_url} alt="" className="w-full h-full object-cover" />
+                <img loading="lazy" src={viewingStory.user.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <User className="w-4 h-4 text-muted-foreground" />

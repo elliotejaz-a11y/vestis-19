@@ -194,7 +194,7 @@ export function CalendarPage({ outfits }: Props) {
                 <div className="grid grid-cols-3 gap-1.5">
                   {dateFitPics.map((pic: any) => (
                     <button key={pic.id} onClick={() => setSelectedFitPic(pic)} className="aspect-square rounded-xl overflow-hidden relative">
-                      <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                      <img loading="lazy" src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -247,7 +247,7 @@ export function CalendarPage({ outfits }: Props) {
                       <div className="flex gap-1 mt-1">
                         {outfit.items.slice(0, 4).map((item) => (
                           <div key={item.id} className="w-8 h-8 rounded-lg overflow-hidden bg-muted">
-                            <img src={item.imageUrl} alt="" className="w-full h-full object-contain" />
+                            <img loading="lazy" src={item.imageUrl} alt="" className="w-full h-full object-contain" />
                           </div>
                         ))}
                       </div>

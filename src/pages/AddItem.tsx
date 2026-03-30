@@ -23,7 +23,7 @@ export function AddItem({ onAdd }: Props) {
       </header>
 
       <div className="mx-5 rounded-3xl overflow-hidden relative h-52 mb-6">
-        <img src={heroImage} alt="Fashion" className="w-full h-full object-cover" />
+        <img loading="lazy" src={heroImage} alt="Fashion" className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 to-transparent" />
         <div className="absolute bottom-4 left-4 right-4">
           <div className="flex items-center gap-1.5 text-primary-foreground">

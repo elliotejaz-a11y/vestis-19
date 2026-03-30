@@ -420,7 +420,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
               )}
             >
               <div className="aspect-square bg-white dark:bg-neutral-800">
-                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                <img loading="lazy" src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
               </div>
               <p className="text-[9px] text-muted-foreground p-1.5 truncate text-center">{item.name}</p>
               {isSelected && (
