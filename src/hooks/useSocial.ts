@@ -43,69 +43,65 @@ export function useSocial() {
 
   const fetchFeed = useCallback(async () => {
     if (!user) return;
+    setLoading(true);
 
-    // Stale-while-revalidate: show cached data, skip loading on revisit
-    const cacheKey = `swr_social_${user.id}`;
-    const hasCached = posts.length > 0;
-    if (!hasCached) {
-      try {
-        const cached = sessionStorage.getItem(cacheKey);
-        if (cached) {
-          const { posts: cp, stories: cs, followingIds: cf } = JSON.parse(cached);
-          if (cp?.length) setPosts(cp);
-          if (cs?.length) setStories(cs);
-          if (cf?.length) setFollowingIds(cf);
-          setLoading(false);
-        } else {
-          setLoading(true);
-        }
-      } catch { setLoading(true); }
-    }
-
-    // Fetch all independent data in parallel
-    const [{ data: followData }, { data: postData }, { data: storyData }, { data: myLikes }] = await Promise.all([
-      supabase.from("follows").select("following_id").eq("follower_id", user.id),
-      supabase.from("social_posts").select("id, user_id, caption, image_urls, outfit_id, likes_count, comments_count, created_at").order("created_at", { ascending: false }).limit(50),
-      supabase.from("social_stories").select("id, user_id, image_url, caption, expires_at, created_at").gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false }),
-      supabase.from("social_likes").select("post_id").eq("user_id", user.id),
-    ]);
-
+    // Fetch following IDs
+    const { data: followData } = await supabase
+      .from("follows")
+      .select("following_id")
+      .eq("follower_id", user.id);
     const fIds = (followData || []).map((f: any) => f.following_id);
     setFollowingIds(fIds);
 
-    // Collect all user IDs needed for profiles, fetch once
-    const postUserIds = (postData || []).map((p: any) => p.user_id);
-    const storyUserIds = (storyData || []).map((s: any) => s.user_id);
-    const allUserIds = [...new Set([...postUserIds, ...storyUserIds])];
+    // Fetch posts (from followed users + own + public)
+    const { data: postData } = await supabase
+      .from("social_posts")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(50);
 
-    let profileMap = new Map<string, any>();
-    if (allUserIds.length > 0) {
+    if (postData) {
+      // Fetch profiles for post authors
+      const userIds = [...new Set(postData.map((p: any) => p.user_id))];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, display_name, username, avatar_url")
-        .in("id", allUserIds);
-      profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+        .in("id", userIds);
+
+      // Check which posts I liked
+      const { data: myLikes } = await supabase
+        .from("social_likes")
+        .select("post_id")
+        .eq("user_id", user.id);
+      const likedPostIds = new Set((myLikes || []).map((l: any) => l.post_id));
+
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      setPosts(postData.map((p: any) => ({
+        ...p,
+        user: profileMap.get(p.user_id),
+        liked_by_me: likedPostIds.has(p.id),
+      })));
     }
 
-    const likedPostIds = new Set((myLikes || []).map((l: any) => l.post_id));
+    // Fetch active stories
+    const { data: storyData } = await supabase
+      .from("social_stories")
+      .select("*")
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false });
 
-    const newPosts = (postData || []).map((p: any) => ({
-      ...p,
-      user: profileMap.get(p.user_id),
-      liked_by_me: likedPostIds.has(p.id),
-    }));
-    setPosts(newPosts);
-
-    const newStories = (storyData || []).map((s: any) => ({
-      ...s,
-      user: profileMap.get(s.user_id),
-    }));
-    setStories(newStories);
-
-    // Cache for SWR
-    try {
-      sessionStorage.setItem(cacheKey, JSON.stringify({ posts: newPosts, stories: newStories, followingIds: fIds }));
-    } catch {}
+    if (storyData) {
+      const userIds = [...new Set(storyData.map((s: any) => s.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, display_name, username, avatar_url")
+        .in("id", userIds);
+      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      setStories(storyData.map((s: any) => ({
+        ...s,
+        user: profileMap.get(s.user_id),
+      })));
+    }
 
     setLoading(false);
   }, [user]);
