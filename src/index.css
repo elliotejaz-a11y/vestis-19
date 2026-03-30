@@ -87,9 +87,20 @@
     @apply border-border;
   }
 
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv11", "ss01";
+  }
+
+  input:focus,
+  textarea:focus {
+    scroll-margin-bottom: 1rem;
+    scroll-behavior: smooth;
   }
 }
 
