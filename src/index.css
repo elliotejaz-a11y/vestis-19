@@ -87,44 +87,10 @@
     @apply border-border;
   }
 
-  html, body, #root {
-    height: 100dvh;
-    overflow: hidden;
-  }
-
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "cv11", "ss01";
   }
-
-  #root {
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    overscroll-behavior: none;
-    -webkit-overflow-scrolling: touch;
-  }
-}
-
-/* iOS keyboard: prevent viewport resize and keep inputs visible */
-@supports (-webkit-touch-callout: none) {
-  html, body {
-    height: 100dvh;
-    height: -webkit-fill-available;
-  }
-
-  #root {
-    min-height: 100dvh;
-    min-height: -webkit-fill-available;
-  }
-}
-
-/* Smooth scroll-into-view for focused inputs */
-input:focus,
-textarea:focus,
-select:focus,
-[contenteditable="true"]:focus {
-  scroll-margin-bottom: 16rem;
 }
 
 @layer utilities {
