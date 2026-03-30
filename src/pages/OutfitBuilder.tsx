@@ -131,12 +131,17 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
 
   const SCALE_STEPS = [1, 1.4, 1.8, 0.6];
   const handleDoubleTap = useCallback((id: string) => {
-    setScales((prev) => {
-      const current = prev[id] ?? 1;
-      const idx = SCALE_STEPS.findIndex((s) => Math.abs(s - current) < 0.05);
-      const next = SCALE_STEPS[(idx + 1) % SCALE_STEPS.length];
-      return { ...prev, [id]: next };
-    });
+    try {
+      if (!id) return;
+      setScales((prev) => {
+        const current = prev[id] ?? 1;
+        const idx = SCALE_STEPS.findIndex((s) => Math.abs(s - current) < 0.05);
+        const next = SCALE_STEPS[(idx + 1) % SCALE_STEPS.length];
+        return { ...prev, [id]: next };
+      });
+    } catch (err) {
+      console.warn("[OutfitBuilder] doubleTap error:", err);
+    }
   }, []);
 
   const handlePointerDown = useCallback((e: React.PointerEvent, item: ClothingItem) => {
@@ -172,7 +177,14 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
       const dy = ((e.clientY - dragRef.current.startY) / rect.height) * 100;
       const newX = safeClamp(dragRef.current.startPosX + dx, 0, 100, 50);
       const newY = safeClamp(dragRef.current.startPosY + dy, 0, 100, 50);
-      setPositions((prev) => ({ ...prev, [draggingId]: { x: newX, y: newY } }));
+      const currentDraggingId = draggingId;
+      setPositions((prev) => {
+        const current = prev[currentDraggingId];
+        if (current && Math.abs(current.x - newX) < 0.01 && Math.abs(current.y - newY) < 0.01) {
+          return prev;
+        }
+        return { ...prev, [currentDraggingId]: { x: newX, y: newY } };
+      });
     } catch (err) {
       console.warn("[OutfitBuilder] pointerMove error:", err);
     }
@@ -234,22 +246,34 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
   const onTouchMove = useCallback((e: React.TouchEvent) => {
     try {
       e.stopPropagation();
-      if (e.touches.length === 2 && pinchRef.current) {
-        e.preventDefault();
-        const dist = getTouchDist(e.touches);
-        if (pinchRef.current.startDist < 1) return;
-        const ratio = dist / pinchRef.current.startDist;
-        const newScale = safeClamp(pinchRef.current.startScale * ratio, 0.3, 2.5, 1);
-        setScales((prev) => ({ ...prev, [pinchRef.current!.itemId]: newScale }));
-      }
+      const pinch = pinchRef.current;
+      if (e.touches.length !== 2 || !pinch) return;
+      e.preventDefault();
+      const dist = getTouchDist(e.touches);
+      if (pinch.startDist < 1) return;
+      const ratio = dist / pinch.startDist;
+      const newScale = safeClamp(pinch.startScale * ratio, 0.3, 2.5, 1);
+      const itemId = pinch.itemId;
+      if (!itemId || !Number.isFinite(newScale)) return;
+      setScales((prev) => {
+        const current = prev[itemId] ?? pinch.startScale;
+        if (Math.abs(current - newScale) < 0.001) return prev;
+        return { ...prev, [itemId]: newScale };
+      });
     } catch (err) {
       console.warn("[OutfitBuilder] touchMove error:", err);
+      pinchRef.current = null;
     }
   }, []);
 
   const onTouchEnd = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation();
-    pinchRef.current = null;
+    try {
+      e.stopPropagation();
+      pinchRef.current = null;
+    } catch (err) {
+      console.warn("[OutfitBuilder] touchEnd error:", err);
+      pinchRef.current = null;
+    }
   }, []);
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
