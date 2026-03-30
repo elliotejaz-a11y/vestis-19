@@ -734,6 +734,29 @@ function ChatView({
     setShowFitPics(false);
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    e.target.value = "";
+    setUploadingImage(true);
+    try {
+      const path = `${user.id}/chat-images/${Date.now()}-${file.name}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("social-media")
+        .upload(path, file, { contentType: file.type, cacheControl: "3600" });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
+      const { error } = await sendMessage(`[IMG]${urlData.publicUrl}[/IMG]`);
+      if (error) {
+        toast({ title: "Failed to send image", description: error, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err?.message || "Could not upload image", variant: "destructive" });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
