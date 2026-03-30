@@ -138,7 +138,7 @@ export default function Friends() {
   const renderAvatar = (profile: FriendProfile, size = "w-12 h-12") => (
     <div className={cn(size, "rounded-full overflow-hidden bg-card border border-border flex-shrink-0")}>
       {profile.avatar_url ? (
-        <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+        <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <Users className="w-5 h-5 text-muted-foreground" />
