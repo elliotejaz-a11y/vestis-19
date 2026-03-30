@@ -63,10 +63,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
 
-  const handleRefresh = useCallback(async () => {
+  const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    await Promise.all([fetchFollowCounts(), fetchFitPics(), refreshProfile()]);
-    setRefreshing(false);
+    Promise.all([fetchFollowCounts(), fetchFitPics(), refreshProfile()])
+      .finally(() => setRefreshing(false));
   }, [user]);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
