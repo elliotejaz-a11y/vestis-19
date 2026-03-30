@@ -150,7 +150,7 @@ export default function Auth() {
   };
 
   const handleVerifyOtp = async () => {
-    if (otpCode.length !== 6) return;
+    if (otpCode.length !== 8) return;
     setVerifyingOtp(true);
     const { error } = await supabase.auth.verifyOtp({
       email: signUpEmail,
@@ -171,22 +171,22 @@ export default function Auth() {
         <div className="w-full max-w-sm space-y-6 text-center">
           <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Enter verification code</h2>
-          <p className="text-sm text-muted-foreground">We sent a 6-digit code to <span className="font-medium text-foreground">{signUpEmail}</span></p>
+          <p className="text-sm text-muted-foreground">We sent an 8-digit code to <span className="font-medium text-foreground">{signUpEmail}</span></p>
           <div>
             <Input
               type="text"
               inputMode="numeric"
-              maxLength={6}
+              maxLength={8}
               value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 8))}
+              placeholder="00000000"
               className="text-center text-2xl tracking-[0.5em] font-mono rounded-xl bg-card h-14"
               autoFocus
             />
           </div>
           <Button
             onClick={handleVerifyOtp}
-            disabled={otpCode.length !== 6 || verifyingOtp}
+            disabled={otpCode.length !== 8 || verifyingOtp}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
           >
             {verifyingOtp ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
