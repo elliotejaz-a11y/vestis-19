@@ -146,7 +146,6 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
 
   const handlePointerDown = useCallback((e: React.PointerEvent, item: ClothingItem) => {
     try {
-      if (item.category === "shoes" || item.category === "footwear") return;
       e.preventDefault();
       e.stopPropagation();
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
