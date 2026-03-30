@@ -54,7 +54,7 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
               >
                 <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
                   {n.from_profile?.avatar_url ? (
-                    <img src={n.from_profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    <img src={n.from_profile.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                   ) : (
                     getIcon(n.type)
                   )}

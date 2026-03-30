@@ -85,7 +85,7 @@ export function FitPicDetailSheet({ pic, open, onOpenChange, onUpdated }: FitPic
 
           <div className="space-y-4 mt-3">
             <div className="rounded-2xl overflow-hidden aspect-square max-w-xs mx-auto relative">
-              <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+              <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" loading="lazy" />
               {pic.is_private && (
                 <div className="absolute top-2 left-2 bg-foreground/60 rounded-full px-2 py-0.5 flex items-center gap-1">
                   <Lock className="w-2.5 h-2.5 text-background" />

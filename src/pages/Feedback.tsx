@@ -44,7 +44,7 @@ export function FeedbackPage() {
 
   const fetchFeedback = async () => {
     if (!user) return;
-    const { data: feedbackData } = await supabase.from("feedback").select("*").order("votes", { ascending: false });
+    const { data: feedbackData } = await supabase.from("feedback").select("id, user_id, type, title, description, votes, created_at").order("votes", { ascending: false });
     const { data: votesData } = await supabase.from("feedback_votes").select("feedback_id").eq("user_id", user.id);
     const votedIds = new Set((votesData || []).map((v: any) => v.feedback_id));
     setItems((feedbackData || []).map((f: any) => ({ ...f, hasVoted: votedIds.has(f.id) })));

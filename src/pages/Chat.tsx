@@ -346,7 +346,7 @@ function FriendsTab() {
   const viewFriendWardrobe = async (friend: FriendProfile) => {
     setSelectedFriend(friend);
     setLoadingWardrobe(true);
-    const { data } = await supabase.from("clothing_items").select("*").eq("user_id", friend.id);
+    const { data } = await supabase.from("clothing_items").select("id, name, category, color, fabric, image_url, back_image_url, tags, notes, created_at, estimated_price, is_private").eq("user_id", friend.id);
     const items: ClothingItem[] = (data || []).map((r: any) => ({
       id: r.id, name: r.name, category: r.category, color: r.color, fabric: r.fabric,
       imageUrl: r.image_url, backImageUrl: r.back_image_url || undefined,
@@ -379,7 +379,7 @@ function FriendsTab() {
           <div className="grid grid-cols-3 gap-1">
             {friendWardrobe.map((item) => (
               <div key={item.id} className="aspect-square rounded-xl overflow-hidden bg-card border border-border/40 relative">
-                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
                   <p className="text-[10px] text-white font-medium truncate">{item.name}</p>
                   <p className="text-[9px] text-white/70">{item.category} • {item.color}</p>
@@ -844,7 +844,7 @@ function ChatView({
             <div className="grid grid-cols-4 gap-1">
               {fitPics.map((pic: any) => (
                 <button key={pic.id} onClick={() => sendFitPic(pic.image_url)} className="aspect-square rounded-lg overflow-hidden">
-                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" loading="lazy" />
                 </button>
               ))}
             </div>
