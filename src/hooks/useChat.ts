@@ -34,7 +34,7 @@ export function useChat() {
     // Get all messages involving this user
     const { data: messages } = await supabase
       .from("messages")
-      .select("*")
+      .select("id, sender_id, receiver_id, content, created_at, read, is_flagged")
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
 
@@ -125,7 +125,7 @@ export function useChatMessages(friendId: string | null) {
 
     const { data } = await supabase
       .from("messages")
-      .select("*")
+      .select("id, sender_id, receiver_id, content, created_at, read, is_flagged")
       .or(
         `and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`
       )

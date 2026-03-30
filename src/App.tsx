@@ -7,54 +7,60 @@ import { BottomNav } from "@/components/BottomNav";
 import { useWardrobe } from "@/hooks/useWardrobe";
 import { useRecentlyDeleted } from "@/hooks/useRecentlyDeleted";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import Wardrobe from "./pages/Wardrobe";
-import AddItem from "./pages/AddItem";
-import Outfits from "./pages/Outfits";
-import OutfitBuilder from "./pages/OutfitBuilder";
-import Profile from "./pages/Profile";
-import CalendarPage from "./pages/Calendar";
-import FeedbackPage from "./pages/Feedback";
-import SocialFeed from "./pages/SocialFeed";
-import UserProfilePage from "./pages/UserProfile";
-import Friends from "./pages/Friends";
-import Chat from "./pages/Chat";
-import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
-import NotFound from "./pages/NotFound";
-import Terms from "./pages/policies/Terms";
-import Privacy from "./pages/policies/Privacy";
-import Community from "./pages/policies/Community";
-import Cookies from "./pages/policies/Cookies";
-import ResetPassword from "./pages/ResetPassword";
 import { AppTutorial } from "@/components/AppTutorial";
 import { SwipeNavigator } from "@/components/SwipeNavigator";
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect } from "react";
+import { lazy, Suspense, useCallback, useEffect } from "react";
 import { preloadBgRemovalModel } from "@/lib/image-processing";
 import { ClothingItem } from "@/types/wardrobe";
 
+// Lazy-loaded page components
+const Wardrobe = lazy(() => import("./pages/Wardrobe"));
+const AddItem = lazy(() => import("./pages/AddItem"));
+const Outfits = lazy(() => import("./pages/Outfits"));
+const OutfitBuilder = lazy(() => import("./pages/OutfitBuilder"));
+const Profile = lazy(() => import("./pages/Profile"));
+const CalendarPage = lazy(() => import("./pages/Calendar"));
+const FeedbackPage = lazy(() => import("./pages/Feedback"));
+const SocialFeed = lazy(() => import("./pages/SocialFeed"));
+const UserProfilePage = lazy(() => import("./pages/UserProfile"));
+const Friends = lazy(() => import("./pages/Friends"));
+const Chat = lazy(() => import("./pages/Chat"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Terms = lazy(() => import("./pages/policies/Terms"));
+const Privacy = lazy(() => import("./pages/policies/Privacy"));
+const Community = lazy(() => import("./pages/policies/Community"));
+const Cookies = lazy(() => import("./pages/policies/Cookies"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+
 const queryClient = new QueryClient();
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <Loader2 className="w-8 h-8 animate-spin text-accent" />
+  </div>
+);
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   if (!user) {
     return (
-      <Routes>
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="*" element={<Auth />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="*" element={<Auth />} />
+        </Routes>
+      </Suspense>
     );
   }
-  if (profile && !profile.onboarding_completed) return <Onboarding />;
+  if (profile && !profile.onboarding_completed) return <Suspense fallback={<PageLoader />}><Onboarding /></Suspense>;
   return <AuthenticatedApp />;
 }
 
@@ -83,16 +89,13 @@ function AuthenticatedApp() {
   }, [removeFromDeleted]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
       <SwipeNavigator>
+      <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={
           <Wardrobe
@@ -132,6 +135,7 @@ function AuthenticatedApp() {
         <Route path="/policies/cookies" element={<Cookies />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
       </SwipeNavigator>
       <BottomNav />
       <AppTutorial />
