@@ -30,8 +30,6 @@ export default function Auth() {
   const [signUpSuccess, setSignUpSuccess] = useState(false);
   const [signUpEmail, setSignUpEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
 
@@ -149,52 +147,16 @@ export default function Auth() {
     setLoading(false);
   };
 
-  const handleVerifyOtp = async () => {
-    if (otpCode.length !== 6) return;
-    setVerifyingOtp(true);
-    const { error } = await supabase.auth.verifyOtp({
-      email: signUpEmail,
-      token: otpCode,
-      type: "signup",
-    });
-    setVerifyingOtp(false);
-    if (error) {
-      toast({ title: "Invalid code", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Email verified! ✨", description: "Welcome to Vestis!" });
-    }
-  };
-
   if (signUpSuccess) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
         <div className="w-full max-w-sm space-y-6 text-center">
           <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
-          <h2 className="text-xl font-bold text-foreground">Enter verification code</h2>
-          <p className="text-sm text-muted-foreground">We sent a 6-digit code to <span className="font-medium text-foreground">{signUpEmail}</span></p>
-          <div>
-            <Input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="000000"
-              className="text-center text-2xl tracking-[0.5em] font-mono rounded-xl bg-card h-14"
-              autoFocus
-            />
-          </div>
-          <Button
-            onClick={handleVerifyOtp}
-            disabled={otpCode.length !== 6 || verifyingOtp}
-            className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
-          >
-            {verifyingOtp ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            {verifyingOtp ? "Verifying..." : "Verify Email"}
-          </Button>
+          <h2 className="text-xl font-bold text-foreground">Check your email ✉️</h2>
+          <p className="text-sm text-muted-foreground">We sent a verification link to <span className="font-medium text-foreground">{signUpEmail}</span></p>
           <div className="rounded-2xl bg-card border border-border/40 p-4 text-left space-y-2">
             <p className="text-xs text-muted-foreground">• Check your <span className="font-medium text-foreground">spam/junk</span> folder if you don't see it</p>
-            <p className="text-xs text-muted-foreground">• The code expires in 24 hours</p>
+            <p className="text-xs text-muted-foreground">• The link expires in 24 hours</p>
           </div>
           <Button
             onClick={handleResendVerification}
@@ -203,9 +165,9 @@ export default function Auth() {
             className="w-full h-12 rounded-2xl text-sm"
           >
             {resendLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Resend Code
+            Resend Verification Email
           </Button>
-          <button onClick={() => { setSignUpSuccess(false); setIsSignUp(false); setOtpCode(""); }} className="text-xs text-accent font-semibold hover:underline">
+          <button onClick={() => { setSignUpSuccess(false); setIsSignUp(false); }} className="text-xs text-accent font-semibold hover:underline">
             Back to Sign In
           </button>
         </div>
