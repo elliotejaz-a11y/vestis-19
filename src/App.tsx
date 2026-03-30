@@ -7,31 +7,34 @@ import { BottomNav } from "@/components/BottomNav";
 import { useWardrobe } from "@/hooks/useWardrobe";
 import { useRecentlyDeleted } from "@/hooks/useRecentlyDeleted";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import Wardrobe from "./pages/Wardrobe";
-import AddItem from "./pages/AddItem";
-import Outfits from "./pages/Outfits";
-import OutfitBuilder from "./pages/OutfitBuilder";
-import Profile from "./pages/Profile";
-import CalendarPage from "./pages/Calendar";
-import FeedbackPage from "./pages/Feedback";
-import SocialFeed from "./pages/SocialFeed";
-import UserProfilePage from "./pages/UserProfile";
-import Friends from "./pages/Friends";
-import Chat from "./pages/Chat";
-import Auth from "./pages/Auth";
-import Onboarding from "./pages/Onboarding";
-import NotFound from "./pages/NotFound";
-import Terms from "./pages/policies/Terms";
-import Privacy from "./pages/policies/Privacy";
-import Community from "./pages/policies/Community";
-import Cookies from "./pages/policies/Cookies";
-import ResetPassword from "./pages/ResetPassword";
 import { AppTutorial } from "@/components/AppTutorial";
 import { SwipeNavigator } from "@/components/SwipeNavigator";
+import { PageSkeleton } from "@/components/PageSkeleton";
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect } from "react";
-import { preloadBgRemovalModel } from "@/lib/image-processing";
+import { lazy, Suspense, useCallback, useEffect } from "react";
 import { ClothingItem } from "@/types/wardrobe";
+import { ThemeProvider } from "next-themes";
+
+// Lazy-loaded page components
+const Wardrobe = lazy(() => import("./pages/Wardrobe"));
+const AddItem = lazy(() => import("./pages/AddItem"));
+const Outfits = lazy(() => import("./pages/Outfits"));
+const OutfitBuilder = lazy(() => import("./pages/OutfitBuilder"));
+const Profile = lazy(() => import("./pages/Profile"));
+const CalendarPage = lazy(() => import("./pages/Calendar"));
+const FeedbackPage = lazy(() => import("./pages/Feedback"));
+const SocialFeed = lazy(() => import("./pages/SocialFeed"));
+const UserProfilePage = lazy(() => import("./pages/UserProfile"));
+const Friends = lazy(() => import("./pages/Friends"));
+const Chat = lazy(() => import("./pages/Chat"));
+const Auth = lazy(() => import("./pages/Auth"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Terms = lazy(() => import("./pages/policies/Terms"));
+const Privacy = lazy(() => import("./pages/policies/Privacy"));
+const Community = lazy(() => import("./pages/policies/Community"));
+const Cookies = lazy(() => import("./pages/policies/Cookies"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 const queryClient = new QueryClient();
 
@@ -48,22 +51,21 @@ function AppRoutes() {
 
   if (!user) {
     return (
-      <Routes>
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="*" element={<Auth />} />
-      </Routes>
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>}>
+        <Routes>
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="*" element={<Auth />} />
+        </Routes>
+      </Suspense>
     );
   }
-  if (profile && !profile.onboarding_completed) return <Onboarding />;
+  if (profile && !profile.onboarding_completed) return <Suspense fallback={<PageSkeleton />}><Onboarding /></Suspense>;
   return <AuthenticatedApp />;
 }
 
 function AuthenticatedApp() {
   const { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, loading } = useWardrobe();
   const { deletedItems, addToDeleted, removeFromDeleted } = useRecentlyDeleted();
-
-  // Preload bg-removal model assets so first upload is fast
-  useEffect(() => { preloadBgRemovalModel(); }, []);
 
   const handleSoftRemove = useCallback((id: string) => {
     const item = items.find((i) => i.id === id);
@@ -82,19 +84,13 @@ function AuthenticatedApp() {
     removeFromDeleted(id);
   }, [removeFromDeleted]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
       <SwipeNavigator>
+      <Suspense fallback={<PageSkeleton />}>
       <Routes>
         <Route path="/" element={
+          loading ? <PageSkeleton /> :
           <Wardrobe
             items={items}
             outfits={outfits}
@@ -107,12 +103,22 @@ function AuthenticatedApp() {
           />
         } />
         <Route path="/add" element={<AddItem onAdd={addItem} />} />
-        <Route path="/outfits" element={<Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />} />
-        <Route path="/builder" element={<OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />} />
+        <Route path="/outfits" element={
+          loading ? <PageSkeleton /> :
+          <Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />
+        } />
+        <Route path="/builder" element={
+          loading ? <PageSkeleton /> :
+          <OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />
+        } />
         <Route path="/friends" element={<Friends />} />
         <Route path="/chat" element={<Chat />} />
-        <Route path="/calendar" element={<CalendarPage outfits={outfits} />} />
+        <Route path="/calendar" element={
+          loading ? <PageSkeleton /> :
+          <CalendarPage outfits={outfits} />
+        } />
         <Route path="/profile" element={
+          loading ? <PageSkeleton /> :
           <Profile
             items={items}
             outfits={outfits}
@@ -132,14 +138,13 @@ function AuthenticatedApp() {
         <Route path="/policies/cookies" element={<Cookies />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </Suspense>
       </SwipeNavigator>
       <BottomNav />
       <AppTutorial />
     </div>
   );
 }
-
-import { ThemeProvider } from "next-themes";
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
