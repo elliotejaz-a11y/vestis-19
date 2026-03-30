@@ -216,7 +216,6 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     try {
-      e.stopPropagation();
       if (e.touches.length === 2) {
         const itemId = findItemUnderTouch(e.touches);
         if (itemId) {
@@ -233,7 +232,6 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
 
   const onTouchMove = useCallback((e: React.TouchEvent) => {
     try {
-      e.stopPropagation();
       if (e.touches.length === 2 && pinchRef.current) {
         e.preventDefault();
         const dist = getTouchDist(e.touches);
@@ -247,8 +245,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
     }
   }, []);
 
-  const onTouchEnd = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation();
+  const onTouchEnd = useCallback(() => {
     pinchRef.current = null;
   }, []);
 
