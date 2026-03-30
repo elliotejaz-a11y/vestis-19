@@ -34,7 +34,7 @@ export function useChat() {
     // Get all messages involving this user
     const { data: messages } = await supabase
       .from("messages")
-      .select("*")
+      .select("id, sender_id, receiver_id, content, created_at, read")
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order("created_at", { ascending: false });
 

@@ -51,13 +51,32 @@ export function useWardrobe() {
   useEffect(() => {
     if (!user) { setItems([]); setOutfits([]); setLoading(false); return; }
 
+    // Stale-while-revalidate: show cached data instantly
+    const cacheKey = `swr_wardrobe_${user.id}`;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const { items: cachedItems, outfits: cachedOutfits } = JSON.parse(cached);
+        if (cachedItems?.length) setItems(cachedItems);
+        if (cachedOutfits?.length) setOutfits(cachedOutfits);
+        setLoading(false);
+      }
+    } catch {}
+
     const fetchAll = async () => {
-      setLoading(true);
-      const { data: clothingData } = await supabase
-        .from("clothing_items")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+      // Fetch clothing and outfits in parallel
+      const [{ data: clothingData }, { data: outfitData }] = await Promise.all([
+        supabase
+          .from("clothing_items")
+          .select("id, name, category, color, fabric, image_url, back_image_url, tags, notes, created_at, estimated_price, is_private")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("outfits")
+          .select("id, name, description, occasion, reasoning, style_tips, saved, created_at, outfit_items(clothing_item_id)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
 
       const dbItems: ClothingItem[] = (clothingData || []).map((r: any) => ({
         id: r.id,
@@ -74,12 +93,6 @@ export function useWardrobe() {
         isPrivate: r.is_private || false,
       }));
       setItems(dbItems);
-
-      const { data: outfitData } = await supabase
-        .from("outfits")
-        .select("*, outfit_items(clothing_item_id)")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
 
       if (outfitData) {
         const dbOutfits: Outfit[] = outfitData.map((o: any) => {
@@ -98,6 +111,11 @@ export function useWardrobe() {
           };
         });
         setOutfits(dbOutfits);
+
+        // Cache for SWR
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ items: dbItems, outfits: dbOutfits }));
+        } catch {}
       }
       setLoading(false);
     };
