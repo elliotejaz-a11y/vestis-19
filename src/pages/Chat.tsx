@@ -709,7 +709,9 @@ function ChatView({
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [loadingPics, setLoadingPics] = useState(false);
   const [reportMsg, setReportMsg] = useState<{ id: string; senderId: string } | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const loadFitPics = async () => {
@@ -730,6 +732,29 @@ function ChatView({
       toast({ title: "Failed to send", description: error, variant: "destructive" });
     }
     setShowFitPics(false);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    e.target.value = "";
+    setUploadingImage(true);
+    try {
+      const path = `${user.id}/chat-images/${Date.now()}-${file.name}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("social-media")
+        .upload(path, file, { contentType: file.type, cacheControl: "3600" });
+      if (uploadErr) throw uploadErr;
+      const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
+      const { error } = await sendMessage(`[IMG]${urlData.publicUrl}[/IMG]`);
+      if (error) {
+        toast({ title: "Failed to send image", description: error, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err?.message || "Could not upload image", variant: "destructive" });
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   useEffect(() => {
@@ -827,8 +852,15 @@ function ChatView({
       )}
 
       <div className="px-4 py-3 border-t border-border/40 flex gap-2">
-        <Button variant="ghost" size="icon" className="rounded-xl shrink-0 h-10 w-10" onClick={() => { setShowFitPics(!showFitPics); if (!showFitPics) loadFitPics(); }}>
-          <Image className="w-4 h-4 text-muted-foreground" />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
+        <Button variant="ghost" size="icon" className="rounded-xl shrink-0 h-10 w-10" onClick={() => imageInputRef.current?.click()} disabled={uploadingImage}>
+          {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : <Image className="w-4 h-4 text-muted-foreground" />}
         </Button>
         <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()} placeholder="Type a message..." className="rounded-xl bg-card text-sm" maxLength={2000} disabled={sending} />
         <Button onClick={handleSend} disabled={sending || !input.trim()} size="icon" className="rounded-xl bg-accent text-accent-foreground shrink-0">
