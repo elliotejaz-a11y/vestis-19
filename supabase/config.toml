@@ -1,8 +1,5 @@
 project_id = "kvulebsvnmlxuhgtrney"
 
-[auth.email]
-otp_length = 6
-
 [functions]
   [functions.analyze-clothing]
     verify_jwt = false
