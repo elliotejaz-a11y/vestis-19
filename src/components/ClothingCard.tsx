@@ -24,6 +24,7 @@ export function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemova
           onClick={() => onDetail?.(item)}
         >
           <img
+                loading="lazy"
             src={item.imageUrl}
             alt={item.name}
             className="w-full h-full object-contain"

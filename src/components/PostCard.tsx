@@ -75,6 +75,7 @@ export function PostCard({ post, onLike, onDelete, isOwn }: Props) {
         {/* Images */}
         <div className="relative aspect-square bg-muted">
           <img
+                loading="lazy"
             src={post.image_urls[currentImage]}
             alt=""
             className="w-full h-full object-cover"

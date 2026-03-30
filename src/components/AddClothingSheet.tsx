@@ -226,6 +226,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
               <img
+                loading="lazy"
                 src={imageUrl}
                 alt="Preview"
                 className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}

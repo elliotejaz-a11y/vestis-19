@@ -190,6 +190,7 @@ export default function SocialFeed() {
           </div>
           <div className="flex-1 relative">
             <img
+                loading="lazy"
               src={viewingStory.image_url}
               alt=""
               className="w-full h-full object-contain"

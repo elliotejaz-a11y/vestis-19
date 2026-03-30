@@ -354,6 +354,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
                     }}
                   >
                     <img
+                loading="lazy"
                       src={item.imageUrl}
                       alt={item.name}
                       className="w-full h-full object-contain drop-shadow-sm pointer-events-none"
