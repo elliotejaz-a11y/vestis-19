@@ -852,8 +852,15 @@ function ChatView({
       )}
 
       <div className="px-4 py-3 border-t border-border/40 flex gap-2">
-        <Button variant="ghost" size="icon" className="rounded-xl shrink-0 h-10 w-10" onClick={() => { setShowFitPics(!showFitPics); if (!showFitPics) loadFitPics(); }}>
-          <Image className="w-4 h-4 text-muted-foreground" />
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="hidden"
+          onChange={handleImageUpload}
+        />
+        <Button variant="ghost" size="icon" className="rounded-xl shrink-0 h-10 w-10" onClick={() => imageInputRef.current?.click()} disabled={uploadingImage}>
+          {uploadingImage ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> : <Image className="w-4 h-4 text-muted-foreground" />}
         </Button>
         <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()} placeholder="Type a message..." className="rounded-xl bg-card text-sm" maxLength={2000} disabled={sending} />
         <Button onClick={handleSend} disabled={sending || !input.trim()} size="icon" className="rounded-xl bg-accent text-accent-foreground shrink-0">
