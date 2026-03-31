@@ -92,18 +92,31 @@ export default function Auth() {
       return;
     }
     setResetLoading(true);
+    // Restore the recovery session temporarily to update the password
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: recoveryAccessToken,
+      refresh_token: recoveryRefreshToken,
+    });
+    if (sessionError) {
+      setResetLoading(false);
+      toast({ title: "Session expired", description: "Please restart the password reset process.", variant: "destructive" });
+      setForgotStep("idle");
+      return;
+    }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
+    await supabase.auth.signOut();
     setResetLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
-      await supabase.auth.signOut();
       setForgotStep("idle");
       setForgotEmail("");
       setForgotOtp("");
       setNewPassword("");
       setConfirmNewPassword("");
+      setRecoveryAccessToken("");
+      setRecoveryRefreshToken("");
     }
   };
 
