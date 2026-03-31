@@ -51,7 +51,7 @@ export default function Auth() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Code sent ✉️", description: "Check your email for a 6-digit reset code." });
+      toast({ title: "Code sent ✉️", description: "Check your email for an 8-digit reset code." });
       setForgotStep("code");
     }
   };
