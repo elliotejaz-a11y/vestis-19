@@ -316,25 +316,12 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
               </div>
 
               {/* Public/Private Account */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Account Privacy</Label>
-                <button
-                  onClick={() => setIsPublic(true)}
-                  className={`w-full text-left rounded-xl border-2 p-3.5 transition-all ${isPublic ? "border-accent bg-accent/10" : "border-border bg-card hover:border-accent/40"}`}
-                >
-                  <p className="text-sm font-semibold text-foreground">Public Account</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Anyone can see your wardrobe, fit pics, posts, bio, and following list</p>
-                </button>
-                <button
-                  onClick={() => setIsPublic(false)}
-                  className={`w-full text-left rounded-xl border-2 p-3.5 transition-all ${!isPublic ? "border-accent bg-accent/10" : "border-border bg-card hover:border-accent/40"}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-foreground">Private Account</p>
-                    <Lock className="w-3.5 h-3.5 text-muted-foreground" />
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Only your name and profile picture are visible to others</p>
-                </button>
+              <div className="flex items-center justify-between rounded-xl bg-card border border-border/40 p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{isPublic ? "Public Account" : "Private Account"}</p>
+                  <p className="text-[10px] text-muted-foreground">{isPublic ? "Anyone can see your profile" : "Only followers can see your content"}</p>
+                </div>
+                <Switch checked={isPublic} onCheckedChange={setIsPublic} />
               </div>
 
               <Button
