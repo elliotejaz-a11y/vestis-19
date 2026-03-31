@@ -38,9 +38,7 @@ export default function Auth() {
   const [resendLoading, setResendLoading] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [showNewPasswordScreen, setShowNewPasswordScreen] = useState(
-    () => sessionStorage.getItem("vestis_recovery_mode") === "true",
-  );
+  const [showNewPasswordScreen, setShowNewPasswordScreen] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
 
@@ -48,7 +46,7 @@ export default function Auth() {
     if (sessionStorage.getItem("vestis_recovery_mode") === "true") {
       setShowNewPasswordScreen(true);
     }
-  });
+  }, []);
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
@@ -74,12 +72,11 @@ export default function Auth() {
       token: forgotOtp,
       type: "recovery",
     });
+    setForgotLoading(false);
     if (error) {
-      setForgotLoading(false);
       setForgotOtpError("Invalid or expired code. Please try again.");
     } else {
       sessionStorage.setItem("vestis_recovery_mode", "true");
-      setForgotLoading(false);
       setShowNewPasswordScreen(true);
     }
   };
@@ -271,10 +268,10 @@ export default function Auth() {
           </div>
           <Button
             onClick={handleResetNewPassword}
-            disabled={resetLoading || !newPassword || !confirmNewPassword || !passwordsMatch}
+            disabled={resetLoading || !passwordValid(newPassword) || !passwordsMatch}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
           >
-            {resetLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Updating...</> : "Submit"}
+            {resetLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Updating...</> : "Confirm"}
           </Button>
         </div>
       </div>
