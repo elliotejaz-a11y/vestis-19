@@ -58,6 +58,7 @@ export default function UserProfilePage() {
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [selectedFitPic, setSelectedFitPic] = useState<FitPic | null>(null);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -207,7 +208,7 @@ export default function UserProfilePage() {
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
+          <button onClick={() => profile.avatar_url && setShowAvatarModal(true)} className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
@@ -215,7 +216,7 @@ export default function UserProfilePage() {
                 <User className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
-          </div>
+          </button>
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground">{profile.display_name || profile.username}</h2>
             {profile.username && (
@@ -269,68 +270,6 @@ export default function UserProfilePage() {
         </div>
       ) : (
         <div className="px-5 space-y-4">
-          {/* Style */}
-          {profile.style_preference && (
-            <div className="rounded-2xl bg-card border border-border/40 p-4">
-              <p className="text-sm font-semibold text-foreground mb-2">Style</p>
-              <p className="text-xs text-muted-foreground capitalize">{profile.style_preference.replace(/,/g, ", ")}</p>
-            </div>
-          )}
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-2 w-full">
-            <button onClick={() => setShowWardrobe(true)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
-              <Shirt className="w-5 h-5 mx-auto text-accent mb-1" />
-              <p className="text-lg font-bold text-foreground">{wardrobeCount}</p>
-              <p className="text-[10px] text-muted-foreground">Total Pieces</p>
-            </button>
-            <button onClick={() => setShowColors(!showColors)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
-              <Palette className="w-5 h-5 mx-auto text-accent mb-1" />
-              <p className="text-lg font-bold text-foreground">{colorCount}</p>
-              <p className="text-[10px] text-muted-foreground">Colours</p>
-            </button>
-            <button onClick={() => setShowCategories(!showCategories)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
-              <TrendingUp className="w-5 h-5 mx-auto text-accent mb-1" />
-              <p className="text-lg font-bold text-foreground">{categoryBreakdown.filter(c => c.count > 0).length}</p>
-              <p className="text-[10px] text-muted-foreground">Categories</p>
-            </button>
-          </div>
-
-          {/* Color breakdown (expandable) */}
-          {showColors && userColors.length > 0 && (
-            <div className="rounded-2xl bg-card border border-border/40 p-4">
-              <p className="text-sm font-semibold text-foreground mb-3">Colour Breakdown</p>
-              <div className="flex flex-wrap gap-2">
-                {userColors.map(([color, count]) => (
-                  <div key={color} className="text-center px-3 py-1.5 rounded-xl bg-muted">
-                    <p className="text-xs font-medium text-foreground capitalize">{color}</p>
-                    <p className="text-[10px] text-muted-foreground">{count} items</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Category breakdown (expandable) */}
-          {showCategories && (
-            <div className="rounded-2xl bg-card border border-border/40 p-4">
-              <p className="text-sm font-semibold text-foreground mb-3">Category Breakdown</p>
-              <div className="space-y-2">
-                {categoryBreakdown.filter(c => c.count > 0).map((cat) => (
-                  <div key={cat.label} className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">{cat.icon} {cat.label}</span>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full rounded-full bg-accent transition-all" style={{ width: wardrobeCount ? `${(cat.count / wardrobeCount) * 100}%` : "0%" }} />
-                      </div>
-                      <span className="text-xs font-medium text-foreground w-4 text-right">{cat.count}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Fit Pics */}
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -349,6 +288,35 @@ export default function UserProfilePage() {
               </div>
             )}
           </div>
+
+          {/* Wardrobe Stats */}
+          <div className="grid grid-cols-2 gap-2 w-full">
+            <button onClick={() => setShowWardrobe(true)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
+              <Shirt className="w-5 h-5 mx-auto text-accent mb-1" />
+              <p className="text-lg font-bold text-foreground">{wardrobeCount}</p>
+              <p className="text-[10px] text-muted-foreground">Total Pieces</p>
+            </button>
+            <button onClick={() => setShowColors(!showColors)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
+              <Palette className="w-5 h-5 mx-auto text-accent mb-1" />
+              <p className="text-lg font-bold text-foreground">{colorCount}</p>
+              <p className="text-[10px] text-muted-foreground">Colours</p>
+            </button>
+          </div>
+
+          {/* Colour breakdown (expandable) */}
+          {showColors && userColors.length > 0 && (
+            <div className="rounded-2xl bg-card border border-border/40 p-4">
+              <p className="text-sm font-semibold text-foreground mb-3">Colour Breakdown</p>
+              <div className="flex flex-wrap gap-2">
+                {userColors.map(([color, count]) => (
+                  <div key={color} className="text-center px-3 py-1.5 rounded-xl bg-muted">
+                    <p className="text-xs font-medium text-foreground capitalize">{color}</p>
+                    <p className="text-[10px] text-muted-foreground">{count} items</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {userId && (
@@ -372,6 +340,16 @@ export default function UserProfilePage() {
             reportType="user"
           />
         </>
+      )}
+
+      {/* Avatar Fullscreen Modal */}
+      {showAvatarModal && profile?.avatar_url && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={() => setShowAvatarModal(false)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setShowAvatarModal(false)}>
+            <X className="w-6 h-6" />
+          </button>
+          <img src={profile.avatar_url} alt="" className="max-w-full max-h-full object-contain p-4" style={{ objectPosition: profile.avatar_position || 'center' }} onClick={(e) => e.stopPropagation()} />
+        </div>
       )}
 
       {/* Fit Pic Fullscreen Modal */}
