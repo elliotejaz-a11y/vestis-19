@@ -46,7 +46,7 @@ export default function Auth() {
     if (sessionStorage.getItem("vestis_recovery_mode") === "true") {
       setShowNewPasswordScreen(true);
     }
-  }, []);
+  });
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
@@ -84,10 +84,6 @@ export default function Auth() {
   const handleResetNewPassword = async () => {
     if (newPassword !== confirmNewPassword) {
       toast({ title: "Passwords don't match", variant: "destructive" });
-      return;
-    }
-    if (!passwordValid(newPassword)) {
-      toast({ title: "Weak password", description: "Must be 8+ characters with letters, numbers, and a special character.", variant: "destructive" });
       return;
     }
     setResetLoading(true);
@@ -268,10 +264,10 @@ export default function Auth() {
           </div>
           <Button
             onClick={handleResetNewPassword}
-            disabled={resetLoading || !passwordValid(newPassword) || !passwordsMatch}
+            disabled={resetLoading || !newPassword || !confirmNewPassword || !passwordsMatch}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
           >
-            {resetLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Updating...</> : "Confirm"}
+            {resetLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Updating...</> : "Submit"}
           </Button>
         </div>
       </div>
@@ -449,10 +445,10 @@ export default function Auth() {
           </div>
           <Button
             onClick={handleResetNewPassword}
-            disabled={resetLoading || !passwordValid(newPassword) || !passwordsMatch}
+            disabled={resetLoading || !newPassword || !confirmNewPassword || !passwordsMatch}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
           >
-            {resetLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Updating...</> : "Confirm"}
+            {resetLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Updating...</> : "Submit"}
           </Button>
         </div>
       </div>
