@@ -144,6 +144,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       avatar_url: avatarUrl || null,
       avatar_position: avatarPosition,
       currency_preference: currencyPref,
+      is_public: isPublic,
     };
 
     if (usernameChanged) {
