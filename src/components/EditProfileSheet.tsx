@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,6 +39,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [avatarPosition, setAvatarPosition] = useState(profile?.avatar_position || "50% 50%");
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
+  const [isPublic, setIsPublic] = useState(profile?.is_public ?? true);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [cropPreview, setCropPreview] = useState<string | null>(null);
@@ -142,6 +144,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       avatar_url: avatarUrl || null,
       avatar_position: avatarPosition,
       currency_preference: currencyPref,
+      is_public: isPublic,
     };
 
     if (usernameChanged) {
@@ -163,6 +166,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setAvatarUrl(profile.avatar_url || "");
       setAvatarPosition(profile.avatar_position || "50% 50%");
       setCurrencyPref(profile.currency_preference || "NZD");
+      setIsPublic(profile.is_public ?? true);
       setCropPreview(null);
     }
     onOpenChange(isOpen);
@@ -309,6 +313,15 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                     <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Public/Private Account */}
+              <div className="flex items-center justify-between rounded-xl bg-card border border-border/40 p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{isPublic ? "Public Account" : "Private Account"}</p>
+                  <p className="text-[10px] text-muted-foreground">{isPublic ? "Anyone can see your profile" : "Only followers can see your content"}</p>
+                </div>
+                <Switch checked={isPublic} onCheckedChange={setIsPublic} />
               </div>
 
               <Button

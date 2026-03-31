@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban } from "lucide-react";
+import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
@@ -57,6 +57,7 @@ export default function UserProfilePage() {
   const [userColors, setUserColors] = useState<[string, number][]>([]);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [selectedFitPic, setSelectedFitPic] = useState<FitPic | null>(null);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -341,9 +342,9 @@ export default function UserProfilePage() {
             ) : (
               <div className="grid grid-cols-3 gap-0.5">
                 {fitPics.map((pic) => (
-                  <div key={pic.id} className="aspect-square relative">
-                    <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
-                  </div>
+                  <button key={pic.id} className="aspect-square relative" onClick={() => setSelectedFitPic(pic)}>
+                    <img src={pic.image_url} alt={pic.description || ""} loading="lazy" className="w-full h-full object-cover rounded-sm" />
+                  </button>
                 ))}
               </div>
             )}
@@ -371,6 +372,16 @@ export default function UserProfilePage() {
             reportType="user"
           />
         </>
+      )}
+
+      {/* Fit Pic Fullscreen Modal */}
+      {selectedFitPic && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={() => setSelectedFitPic(null)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setSelectedFitPic(null)}>
+            <X className="w-6 h-6" />
+          </button>
+          <img src={selectedFitPic.image_url} alt={selectedFitPic.description || ""} className="max-w-full max-h-full object-contain p-4" onClick={(e) => e.stopPropagation()} />
+        </div>
       )}
     </div>
   );
