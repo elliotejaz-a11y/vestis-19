@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload } from "lucide-react";
+import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, Lock, Globe } from "lucide-react";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
 
@@ -85,6 +85,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [bodyType, setBodyType] = useState("");
   const [bodyGender, setBodyGender] = useState<"female" | "male">("female");
   const [preferredColors, setPreferredColors] = useState<string[]>([]);
+  const [isPublic, setIsPublic] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const { user, updateProfile, profile } = useAuth();
@@ -105,6 +106,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       setCustomStyle(customs.join(", "));
       setBodyType(profile.body_type || "");
       setPreferredColors(profile.preferred_colors || []);
+      setIsPublic(profile.is_public ?? true);
     }
   }, [editMode, profile]);
 
@@ -265,6 +267,51 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       ),
       valid: true,
     },
+    {
+      title: "Account Privacy",
+      subtitle: "Choose who can see your profile",
+      content: (
+        <div className="space-y-4">
+          <button
+            onClick={() => setIsPublic(true)}
+            className={cn(
+              "w-full text-left rounded-2xl border-2 p-5 transition-all",
+              isPublic === true
+                ? "border-accent bg-accent/10"
+                : "border-border bg-card hover:border-accent/40"
+            )}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
+                <Globe className="w-5 h-5 text-accent" />
+              </div>
+              <span className="text-base font-semibold text-foreground">Public Account</span>
+              {isPublic === true && <Check className="w-5 h-5 text-accent ml-auto" />}
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">Anyone can see your wardrobe, fit pics, posts, bio, and following list</p>
+          </button>
+          <button
+            onClick={() => setIsPublic(false)}
+            className={cn(
+              "w-full text-left rounded-2xl border-2 p-5 transition-all",
+              isPublic === false
+                ? "border-accent bg-accent/10"
+                : "border-border bg-card hover:border-accent/40"
+            )}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
+                <Lock className="w-5 h-5 text-accent" />
+              </div>
+              <span className="text-base font-semibold text-foreground">Private Account</span>
+              {isPublic === false && <Check className="w-5 h-5 text-accent ml-auto" />}
+            </div>
+            <p className="text-sm text-muted-foreground leading-relaxed">Only your name and profile picture are visible to others</p>
+          </button>
+        </div>
+      ),
+      valid: isPublic !== null,
+    },
   ];
 
   const handleNext = () => {
@@ -291,6 +338,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         avatar_url: avatarUrl || null,
         bio: bio || null,
         username: username.trim() || null,
+        is_public: isPublic ?? true,
       } as any);
       toast({ title: editMode ? "Profile updated! ✨" : "Welcome to Vestis! ✨", description: editMode ? "Your style preferences have been saved." : "Your profile is set up." });
       onComplete?.();
