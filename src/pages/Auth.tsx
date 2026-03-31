@@ -29,8 +29,6 @@ export default function Auth() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotOtp, setForgotOtp] = useState("");
   const [forgotOtpError, setForgotOtpError] = useState("");
-  const [recoveryAccessToken, setRecoveryAccessToken] = useState("");
-  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -62,22 +60,15 @@ export default function Auth() {
     if (forgotOtp.length !== 8) return;
     setForgotLoading(true);
     setForgotOtpError("");
-    const { data, error } = await supabase.auth.verifyOtp({
+    const { error } = await supabase.auth.verifyOtp({
       email: forgotEmail.trim(),
       token: forgotOtp,
       type: "recovery",
     });
+    setForgotLoading(false);
     if (error) {
-      setForgotLoading(false);
       setForgotOtpError("Invalid or expired code. Please try again.");
     } else {
-      // Store tokens before signing out to prevent auto-redirect
-      const accessToken = data.session?.access_token || "";
-      const refreshToken = data.session?.refresh_token || "";
-      setRecoveryAccessToken(accessToken);
-      setRecoveryRefreshToken(refreshToken);
-      await supabase.auth.signOut();
-      setForgotLoading(false);
       setForgotStep("newpass");
     }
   };
@@ -92,31 +83,18 @@ export default function Auth() {
       return;
     }
     setResetLoading(true);
-    // Restore the recovery session temporarily to update the password
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: recoveryAccessToken,
-      refresh_token: recoveryRefreshToken,
-    });
-    if (sessionError) {
-      setResetLoading(false);
-      toast({ title: "Session expired", description: "Please restart the password reset process.", variant: "destructive" });
-      setForgotStep("idle");
-      return;
-    }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    await supabase.auth.signOut();
     setResetLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
+      await supabase.auth.signOut();
       setForgotStep("idle");
       setForgotEmail("");
       setForgotOtp("");
       setNewPassword("");
       setConfirmNewPassword("");
-      setRecoveryAccessToken("");
-      setRecoveryRefreshToken("");
     }
   };
 
