@@ -373,6 +373,16 @@ export default function UserProfilePage() {
           />
         </>
       )}
+
+      {/* Fit Pic Fullscreen Modal */}
+      {selectedFitPic && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={() => setSelectedFitPic(null)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setSelectedFitPic(null)}>
+            <X className="w-6 h-6" />
+          </button>
+          <img src={selectedFitPic.image_url} alt={selectedFitPic.description || ""} className="max-w-full max-h-full object-contain p-4" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
     </div>
   );
 }
