@@ -46,18 +46,20 @@ export default function Auth() {
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      captchaToken: undefined,
+    });
     setForgotLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Code sent ✉️", description: "Check your email for a 6-digit reset code." });
+      toast({ title: "Code sent ✉️", description: "Check your email for an 8-digit reset code." });
       setForgotStep("code");
     }
   };
 
   const handleVerifyResetOtp = async () => {
-    if (forgotOtp.length !== 6) return;
+    if (forgotOtp.length !== 8) return;
     setForgotLoading(true);
     setForgotOtpError("");
     const { error } = await supabase.auth.verifyOtp({
@@ -266,7 +268,7 @@ export default function Auth() {
           <div className="text-center space-y-2">
             <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
             <h2 className="text-xl font-bold text-foreground">Reset Password</h2>
-            <p className="text-sm text-muted-foreground">Enter your email and we'll send you a 6-digit code</p>
+            <p className="text-sm text-muted-foreground">Enter your email and we'll send you an 8-digit code</p>
           </div>
           <div>
             <Label className="text-xs font-medium text-muted-foreground">Email</Label>
@@ -302,23 +304,23 @@ export default function Auth() {
         <div className="w-full max-w-sm space-y-6 text-center">
           <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Enter reset code</h2>
-          <p className="text-sm text-muted-foreground">We sent a 6-digit code to <span className="font-medium text-foreground">{forgotEmail}</span></p>
+          <p className="text-sm text-muted-foreground">We sent an 8-digit code to <span className="font-medium text-foreground">{forgotEmail}</span></p>
           <div>
             <Input
               type="text"
               inputMode="numeric"
-              maxLength={6}
+              maxLength={8}
               value={forgotOtp}
-              onChange={(e) => { setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setForgotOtpError(""); }}
-              placeholder="000000"
-              className="text-center text-2xl tracking-[0.5em] font-mono rounded-xl bg-card h-14"
+              onChange={(e) => { setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 8)); setForgotOtpError(""); }}
+              placeholder="00000000"
+              className="text-center text-2xl tracking-[0.3em] font-mono rounded-xl bg-card h-14"
               autoFocus
             />
             {forgotOtpError && <p className="text-xs text-destructive mt-2">{forgotOtpError}</p>}
           </div>
           <Button
             onClick={handleVerifyResetOtp}
-            disabled={forgotOtp.length !== 6 || forgotLoading}
+            disabled={forgotOtp.length !== 8 || forgotLoading}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
           >
             {forgotLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Verifying...</> : "Verify Code"}
