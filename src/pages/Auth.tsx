@@ -48,15 +48,73 @@ export default function Auth() {
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
     setForgotLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Check your email ✉️", description: "We sent a password reset link. Check your spam folder too!" });
+      toast({ title: "Code sent ✉️", description: "Check your inbox (and spam folder) for an 8-digit code." });
+      setRecoveryStep("otp");
+    }
+  };
+
+  const handleResendRecoveryOtp = async () => {
+    setResendRecoveryLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    setResendRecoveryLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Code resent ✉️", description: "Check your inbox and spam folder." });
+    }
+  };
+
+  const handleVerifyRecoveryOtp = async () => {
+    if (recoveryOtp.length !== 8) return;
+    setVerifyingRecoveryOtp(true);
+    // Set flag BEFORE verifyOtp so the auth state change doesn't unmount us
+    sessionStorage.setItem("vestis_recovery_mode", "true");
+    const { error } = await supabase.auth.verifyOtp({
+      email: forgotEmail.trim(),
+      token: recoveryOtp,
+      type: "recovery",
+    });
+    setVerifyingRecoveryOtp(false);
+    if (error) {
+      sessionStorage.removeItem("vestis_recovery_mode");
+      toast({ title: "Invalid code", description: error.message, variant: "destructive" });
+    } else {
+      setRecoveryStep("password");
+    }
+  };
+
+  const handleSetNewPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmNewPassword) {
+      toast({ title: "Passwords don't match", variant: "destructive" });
+      return;
+    }
+    if (!passwordValid(newPassword)) {
+      toast({ title: "Weak password", description: "Must be 8+ characters with letters, numbers, and a special character.", variant: "destructive" });
+      return;
+    }
+    setUpdatingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setUpdatingPassword(false);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Password updated ✓", description: "Please sign in with your new password." });
+      // Sign out and clean up recovery state
+      await supabase.auth.signOut();
+      sessionStorage.removeItem("vestis_recovery_mode");
+      setUpdatingPassword(false);
       setShowForgotPassword(false);
+      setRecoveryStep("email");
+      setRecoveryOtp("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setForgotEmail("");
     }
   };
 
