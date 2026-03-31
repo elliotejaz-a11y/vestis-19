@@ -80,13 +80,16 @@ export default function Auth() {
       setForgotLoading(false);
       setForgotOtpError("Invalid or expired code. Please try again.");
     } else {
-      // Store tokens before signing out to prevent auto-redirect
+      // Store tokens in localStorage so they survive component unmount from session redirect
       const accessToken = data.session?.access_token || "";
       const refreshToken = data.session?.refresh_token || "";
+      localStorage.setItem("vestis_recovery_tokens", JSON.stringify({ access: accessToken, refresh: refreshToken }));
       setRecoveryAccessToken(accessToken);
       setRecoveryRefreshToken(refreshToken);
+      // Sign out to prevent auto-redirect into the app
       await supabase.auth.signOut();
       setForgotLoading(false);
+      setShowNewPasswordScreen(true);
       setForgotStep("newpass");
     }
   };
