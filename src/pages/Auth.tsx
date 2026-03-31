@@ -223,6 +223,63 @@ export default function Auth() {
     }
   };
 
+  if (showNewPasswordScreen) {
+    const passwordsMatch = newPassword === confirmNewPassword;
+    const showMismatch = confirmNewPassword.length > 0 && !passwordsMatch;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
+        <div className="w-full max-w-sm space-y-6">
+          <div className="text-center space-y-2">
+            <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
+            <h2 className="text-xl font-bold text-foreground">Set New Password</h2>
+            <p className="text-sm text-muted-foreground">Enter your new password below</p>
+          </div>
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">New Password</Label>
+            <div className="relative">
+              <Input
+                type={showNewPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="••••••••"
+                className="mt-1 rounded-xl bg-card pr-10"
+              />
+              <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {newPassword.length > 0 && (
+              <div className="space-y-1 mt-1">
+                <p className={`text-[10px] ${newPassword.length >= 8 ? "text-accent" : "text-muted-foreground"}`}>{newPassword.length >= 8 ? "✓" : "○"} At least 8 characters</p>
+                <p className={`text-[10px] ${/[a-zA-Z]/.test(newPassword) ? "text-accent" : "text-muted-foreground"}`}>{/[a-zA-Z]/.test(newPassword) ? "✓" : "○"} Contains a letter</p>
+                <p className={`text-[10px] ${/[0-9]/.test(newPassword) ? "text-accent" : "text-muted-foreground"}`}>{/[0-9]/.test(newPassword) ? "✓" : "○"} Contains a number</p>
+                <p className={`text-[10px] ${/[^a-zA-Z0-9]/.test(newPassword) ? "text-accent" : "text-muted-foreground"}`}>{/[^a-zA-Z0-9]/.test(newPassword) ? "✓" : "○"} Contains a special character</p>
+              </div>
+            )}
+          </div>
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">Confirm New Password</Label>
+            <Input
+              type="password"
+              value={confirmNewPassword}
+              onChange={(e) => setConfirmNewPassword(e.target.value)}
+              placeholder="••••••••"
+              className="mt-1 rounded-xl bg-card"
+            />
+            {showMismatch && <p className="text-xs text-destructive mt-1">Passwords do not match</p>}
+          </div>
+          <Button
+            onClick={handleResetNewPassword}
+            disabled={resetLoading || !passwordValid(newPassword) || !passwordsMatch}
+            className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
+          >
+            {resetLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Updating...</> : "Confirm"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (signUpSuccess) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
