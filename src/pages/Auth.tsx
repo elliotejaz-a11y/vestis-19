@@ -29,6 +29,8 @@ export default function Auth() {
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotOtp, setForgotOtp] = useState("");
   const [forgotOtpError, setForgotOtpError] = useState("");
+  const [recoveryAccessToken, setRecoveryAccessToken] = useState("");
+  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
