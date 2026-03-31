@@ -320,7 +320,7 @@ export default function Auth() {
           </div>
           <Button
             onClick={handleVerifyResetOtp}
-            disabled={forgotOtp.length !== 6 || forgotLoading}
+            disabled={forgotOtp.length !== 8 || forgotLoading}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
           >
             {forgotLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Verifying...</> : "Verify Code"}
