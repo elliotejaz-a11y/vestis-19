@@ -46,15 +46,55 @@ export default function Auth() {
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
     setForgotLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Check your email ✉️", description: "We sent a password reset link. Check your spam folder too!" });
-      setShowForgotPassword(false);
+      toast({ title: "Code sent ✉️", description: "Check your email for a 6-digit reset code." });
+      setForgotStep("code");
+    }
+  };
+
+  const handleVerifyResetOtp = async () => {
+    if (forgotOtp.length !== 6) return;
+    setForgotLoading(true);
+    setForgotOtpError("");
+    const { error } = await supabase.auth.verifyOtp({
+      email: forgotEmail.trim(),
+      token: forgotOtp,
+      type: "recovery",
+    });
+    setForgotLoading(false);
+    if (error) {
+      setForgotOtpError("Invalid or expired code. Please try again.");
+    } else {
+      setForgotStep("newpass");
+    }
+  };
+
+  const handleResetNewPassword = async () => {
+    if (newPassword !== confirmNewPassword) {
+      toast({ title: "Passwords don't match", variant: "destructive" });
+      return;
+    }
+    if (!passwordValid(newPassword)) {
+      toast({ title: "Weak password", description: "Must be 8+ characters with letters, numbers, and a special character.", variant: "destructive" });
+      return;
+    }
+    setResetLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setResetLoading(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
+      await supabase.auth.signOut();
+      setForgotStep("idle");
+      setForgotEmail("");
+      setForgotOtp("");
+      setNewPassword("");
+      setConfirmNewPassword("");
     }
   };
 
