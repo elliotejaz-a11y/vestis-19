@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,83 +24,31 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [forgotStep, setForgotStep] = useState<"idle" | "email" | "code" | "newpass">("idle");
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotOtp, setForgotOtp] = useState("");
-  const [forgotOtpError, setForgotOtpError] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [resetLoading, setResetLoading] = useState(false);
   const [signUpSuccess, setSignUpSuccess] = useState(false);
   const [signUpEmail, setSignUpEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [showNewPasswordScreen, setShowNewPasswordScreen] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (sessionStorage.getItem("vestis_recovery_mode") === "true") {
-      setShowNewPasswordScreen(true);
-    }
-  });
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { captchaToken: undefined });
-    setForgotLoading(false);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Code sent ✉️", description: "Check your email for an 8-digit reset code." });
-      setForgotStep("code");
-    }
-  };
-
-  const handleVerifyResetOtp = async () => {
-    if (forgotOtp.length !== 8) return;
-    setForgotLoading(true);
-    setForgotOtpError("");
-    const { data, error } = await supabase.auth.verifyOtp({
-      email: forgotEmail.trim(),
-      token: forgotOtp,
-      type: "recovery",
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     setForgotLoading(false);
     if (error) {
-      setForgotOtpError("Invalid or expired code. Please try again.");
-    } else {
-      sessionStorage.setItem("vestis_recovery_mode", "true");
-      setShowNewPasswordScreen(true);
-    }
-  };
-
-  const handleResetNewPassword = async () => {
-    if (newPassword !== confirmNewPassword) {
-      toast({ title: "Passwords don't match", variant: "destructive" });
-      return;
-    }
-    setResetLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setResetLoading(false);
-    if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      sessionStorage.removeItem("vestis_recovery_mode");
-      toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
-      await supabase.auth.signOut();
-      setShowNewPasswordScreen(false);
-      setForgotStep("idle");
-      setForgotEmail("");
-      setForgotOtp("");
-      setNewPassword("");
-      setConfirmNewPassword("");
+      toast({ title: "Check your email ✉️", description: "We sent a password reset link. Check your spam folder too!" });
+      setShowForgotPassword(false);
     }
   };
 
@@ -217,63 +165,6 @@ export default function Auth() {
     }
   };
 
-  if (showNewPasswordScreen) {
-    const passwordsMatch = newPassword === confirmNewPassword;
-    const showMismatch = confirmNewPassword.length > 0 && !passwordsMatch;
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="text-center space-y-2">
-            <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
-            <h2 className="text-xl font-bold text-foreground">Set New Password</h2>
-            <p className="text-sm text-muted-foreground">Enter your new password below</p>
-          </div>
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground">New Password</Label>
-            <div className="relative">
-              <Input
-                type={showNewPassword ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                className="mt-1 rounded-xl bg-card pr-10"
-              />
-              <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {newPassword.length > 0 && (
-              <div className="space-y-1 mt-1">
-                <p className={`text-[10px] ${newPassword.length >= 8 ? "text-accent" : "text-muted-foreground"}`}>{newPassword.length >= 8 ? "✓" : "○"} At least 8 characters</p>
-                <p className={`text-[10px] ${/[a-zA-Z]/.test(newPassword) ? "text-accent" : "text-muted-foreground"}`}>{/[a-zA-Z]/.test(newPassword) ? "✓" : "○"} Contains a letter</p>
-                <p className={`text-[10px] ${/[0-9]/.test(newPassword) ? "text-accent" : "text-muted-foreground"}`}>{/[0-9]/.test(newPassword) ? "✓" : "○"} Contains a number</p>
-                <p className={`text-[10px] ${/[^a-zA-Z0-9]/.test(newPassword) ? "text-accent" : "text-muted-foreground"}`}>{/[^a-zA-Z0-9]/.test(newPassword) ? "✓" : "○"} Contains a special character</p>
-              </div>
-            )}
-          </div>
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground">Confirm New Password</Label>
-            <Input
-              type="password"
-              value={confirmNewPassword}
-              onChange={(e) => setConfirmNewPassword(e.target.value)}
-              placeholder="••••••••"
-              className="mt-1 rounded-xl bg-card"
-            />
-            {showMismatch && <p className="text-xs text-destructive mt-1">Passwords do not match</p>}
-          </div>
-          <Button
-            onClick={handleResetNewPassword}
-            disabled={resetLoading || !newPassword || !confirmNewPassword || !passwordsMatch}
-            className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
-          >
-            {resetLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Updating...</> : "Submit"}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   if (signUpSuccess) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
@@ -322,14 +213,14 @@ export default function Auth() {
     );
   }
 
-  if (forgotStep === "email") {
+  if (showForgotPassword) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-2">
             <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
             <h2 className="text-xl font-bold text-foreground">Reset Password</h2>
-            <p className="text-sm text-muted-foreground">Enter your email and we'll send you an 8-digit code</p>
+            <p className="text-sm text-muted-foreground">Enter your email and we'll send you a reset link</p>
           </div>
           <div>
             <Label className="text-xs font-medium text-muted-foreground">Email</Label>
@@ -339,6 +230,7 @@ export default function Auth() {
               onChange={(e) => setForgotEmail(e.target.value)}
               placeholder="you@example.com"
               className="mt-1 rounded-xl bg-card"
+              required
             />
           </div>
           <Button
@@ -346,110 +238,14 @@ export default function Auth() {
             disabled={forgotLoading || !forgotEmail.trim()}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
           >
-            {forgotLoading ? "Sending..." : "Send Code"}
+            {forgotLoading ? "Sending..." : "Send Reset Link"}
           </Button>
           <p className="text-xs text-muted-foreground text-center">
             Remember your password?{" "}
-            <button onClick={() => setForgotStep("idle")} className="text-accent font-semibold hover:underline">
+            <button onClick={() => setShowForgotPassword(false)} className="text-accent font-semibold hover:underline">
               Sign In
             </button>
           </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (forgotStep === "code") {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
-        <div className="w-full max-w-sm space-y-6 text-center">
-          <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
-          <h2 className="text-xl font-bold text-foreground">Enter reset code</h2>
-          <p className="text-sm text-muted-foreground">We sent an 8-digit code to <span className="font-medium text-foreground">{forgotEmail}</span></p>
-          <div>
-            <Input
-              type="text"
-              inputMode="numeric"
-              maxLength={8}
-              value={forgotOtp}
-              onChange={(e) => { setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 8)); setForgotOtpError(""); }}
-              placeholder="00000000"
-              className="text-center text-2xl tracking-[0.5em] font-mono rounded-xl bg-card h-14"
-              autoFocus
-            />
-            {forgotOtpError && <p className="text-xs text-destructive mt-2">{forgotOtpError}</p>}
-          </div>
-          <Button
-            onClick={handleVerifyResetOtp}
-            disabled={forgotOtp.length !== 8 || forgotLoading}
-            className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
-          >
-            {forgotLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Verifying...</> : "Verify Code"}
-          </Button>
-          <div className="rounded-2xl bg-card border border-border/40 p-4 text-left space-y-2">
-            <p className="text-xs text-muted-foreground">• Check your <span className="font-medium text-foreground">spam/junk</span> folder</p>
-            <p className="text-xs text-muted-foreground">• The code expires in 1 hour</p>
-          </div>
-          <button onClick={() => { setForgotStep("email"); setForgotOtp(""); setForgotOtpError(""); }} className="text-xs text-accent font-semibold hover:underline">
-            Back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (forgotStep === "newpass") {
-    const passwordsMatch = newPassword === confirmNewPassword;
-    const showMismatch = confirmNewPassword.length > 0 && !passwordsMatch;
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
-        <div className="w-full max-w-sm space-y-6">
-          <div className="text-center space-y-2">
-            <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
-            <h2 className="text-xl font-bold text-foreground">Set New Password</h2>
-            <p className="text-sm text-muted-foreground">Enter your new password below</p>
-          </div>
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground">New Password</Label>
-            <div className="relative">
-              <Input
-                type={showNewPassword ? "text" : "password"}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••••"
-                className="mt-1 rounded-xl bg-card pr-10"
-              />
-              <button type="button" onClick={() => setShowNewPassword(!showNewPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            {newPassword.length > 0 && (
-              <div className="space-y-1 mt-1">
-                <p className={`text-[10px] ${newPassword.length >= 8 ? "text-accent" : "text-muted-foreground"}`}>{newPassword.length >= 8 ? "✓" : "○"} At least 8 characters</p>
-                <p className={`text-[10px] ${/[a-zA-Z]/.test(newPassword) ? "text-accent" : "text-muted-foreground"}`}>{/[a-zA-Z]/.test(newPassword) ? "✓" : "○"} Contains a letter</p>
-                <p className={`text-[10px] ${/[0-9]/.test(newPassword) ? "text-accent" : "text-muted-foreground"}`}>{/[0-9]/.test(newPassword) ? "✓" : "○"} Contains a number</p>
-                <p className={`text-[10px] ${/[^a-zA-Z0-9]/.test(newPassword) ? "text-accent" : "text-muted-foreground"}`}>{/[^a-zA-Z0-9]/.test(newPassword) ? "✓" : "○"} Contains a special character</p>
-              </div>
-            )}
-          </div>
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground">Confirm New Password</Label>
-            <Input
-              type="password"
-              value={confirmNewPassword}
-              onChange={(e) => setConfirmNewPassword(e.target.value)}
-              placeholder="••••••••"
-              className="mt-1 rounded-xl bg-card"
-            />
-            {showMismatch && <p className="text-xs text-destructive mt-1">Passwords do not match</p>}
-          </div>
-          <Button
-            onClick={handleResetNewPassword}
-            disabled={resetLoading || !newPassword || !confirmNewPassword || !passwordsMatch}
-            className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
-          >
-            {resetLoading ? <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Updating...</> : "Submit"}
-          </Button>
         </div>
       </div>
     );
@@ -607,7 +403,7 @@ export default function Auth() {
                   Remember me
                 </label>
               </div>
-              <button type="button" onClick={() => setForgotStep("email")} className="text-xs text-accent font-medium hover:underline">
+              <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-accent font-medium hover:underline">
                 Forgot password?
               </button>
             </div>
