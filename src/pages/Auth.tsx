@@ -62,15 +62,22 @@ export default function Auth() {
     if (forgotOtp.length !== 8) return;
     setForgotLoading(true);
     setForgotOtpError("");
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       email: forgotEmail.trim(),
       token: forgotOtp,
       type: "recovery",
     });
-    setForgotLoading(false);
     if (error) {
+      setForgotLoading(false);
       setForgotOtpError("Invalid or expired code. Please try again.");
     } else {
+      // Store tokens before signing out to prevent auto-redirect
+      const accessToken = data.session?.access_token || "";
+      const refreshToken = data.session?.refresh_token || "";
+      setRecoveryAccessToken(accessToken);
+      setRecoveryRefreshToken(refreshToken);
+      await supabase.auth.signOut();
+      setForgotLoading(false);
       setForgotStep("newpass");
     }
   };
