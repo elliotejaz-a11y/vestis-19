@@ -24,13 +24,22 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [forgotStep, setForgotStep] = useState<"idle" | "email" | "code" | "newpass">("idle");
+  const [forgotStep, setForgotStep] = useState<"idle" | "email" | "code" | "newpass">(() => {
+    return localStorage.getItem("vestis_recovery_tokens") ? "newpass" : "idle";
+  });
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotOtp, setForgotOtp] = useState("");
   const [forgotOtpError, setForgotOtpError] = useState("");
-  const [recoveryAccessToken, setRecoveryAccessToken] = useState("");
-  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState("");
+  const [showNewPasswordScreen, setShowNewPasswordScreen] = useState(() => {
+    return !!localStorage.getItem("vestis_recovery_tokens");
+  });
+  const [recoveryAccessToken, setRecoveryAccessToken] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("vestis_recovery_tokens") || "{}").access || ""; } catch { return ""; }
+  });
+  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("vestis_recovery_tokens") || "{}").refresh || ""; } catch { return ""; }
+  });
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
