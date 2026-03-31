@@ -91,31 +91,12 @@ export default function Auth() {
       return;
     }
     setResetLoading(true);
-    // Restore the session using stored tokens, then update password
-    const recoveryToken = sessionStorage.getItem("vestis_recovery_token") ?? "";
-    const refreshToken = sessionStorage.getItem("vestis_recovery_refresh") ?? "";
-    const { error: sessionError } = await supabase.auth.setSession({
-      access_token: recoveryToken,
-      refresh_token: refreshToken,
-    });
-    if (sessionError) {
-      setResetLoading(false);
-      toast({ title: "Error", description: "Recovery session expired. Please start over.", variant: "destructive" });
-      sessionStorage.removeItem("vestis_recovery_mode");
-      sessionStorage.removeItem("vestis_recovery_token");
-      sessionStorage.removeItem("vestis_recovery_refresh");
-      setShowNewPasswordScreen(false);
-      setForgotStep("email");
-      return;
-    }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     setResetLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       sessionStorage.removeItem("vestis_recovery_mode");
-      sessionStorage.removeItem("vestis_recovery_token");
-      sessionStorage.removeItem("vestis_recovery_refresh");
       toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
       await supabase.auth.signOut();
       setShowNewPasswordScreen(false);
