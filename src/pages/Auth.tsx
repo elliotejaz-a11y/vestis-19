@@ -97,8 +97,11 @@ export default function Auth() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      sessionStorage.removeItem("vestis_recovery_mode");
+      sessionStorage.removeItem("vestis_recovery_token");
       toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
       await supabase.auth.signOut();
+      setShowNewPasswordScreen(false);
       setForgotStep("idle");
       setForgotEmail("");
       setForgotOtp("");
