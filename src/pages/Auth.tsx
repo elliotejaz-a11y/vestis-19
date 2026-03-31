@@ -59,7 +59,7 @@ export default function Auth() {
   };
 
   const handleVerifyResetOtp = async () => {
-    if (forgotOtp.length !== 6) return;
+    if (forgotOtp.length !== 8) return;
     setForgotLoading(true);
     setForgotOtpError("");
     const { error } = await supabase.auth.verifyOtp({
