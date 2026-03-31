@@ -4,12 +4,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban } from "lucide-react";
+import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
 import { ReportSheet } from "@/components/ReportSheet";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,6 +63,8 @@ export default function UserProfilePage() {
   const [userColors, setUserColors] = useState<[string, number][]>([]);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [showProfilePicModal, setShowProfilePicModal] = useState(false);
+  const [selectedFitPic, setSelectedFitPic] = useState<FitPic | null>(null);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -74,43 +82,55 @@ export default function UserProfilePage() {
         .single();
       setProfile(profileData as UserProfileData | null);
 
-      // Counts
-      const [{ count: fc }, { count: fgc }] = await Promise.all([
-        supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
-        supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
-      ]);
-      setFollowersCount(fc || 0);
-      setFollowingCount(fgc || 0);
+      const isPublicOrOwn = isOwnProfile || profileData?.is_public || followingIds.includes(userId);
 
-      // Wardrobe stats
-      const { data: wardrobeData } = await supabase
-        .from("clothing_items")
-        .select("category, color")
-        .eq("user_id", userId);
+      if (isPublicOrOwn) {
+        // Counts
+        const [{ count: fc }, { count: fgc }] = await Promise.all([
+          supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
+          supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
+        ]);
+        setFollowersCount(fc || 0);
+        setFollowingCount(fgc || 0);
 
-      if (wardrobeData) {
-        setWardrobeCount(wardrobeData.length);
-        const catCounts = CATEGORIES.map(cat => ({
-          label: cat.label,
-          icon: cat.icon,
-          count: wardrobeData.filter(i => i.category === cat.value).length,
-        }));
-        setCategoryBreakdown(catCounts);
-        const uniqueColors = new Set(wardrobeData.map(i => i.color).filter(Boolean));
-        setColorCount(uniqueColors.size);
-        // Build color breakdown
-        const colorMap: Record<string, number> = {};
-        wardrobeData.forEach(i => { if (i.color) colorMap[i.color] = (colorMap[i.color] || 0) + 1; });
-        setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
+        // Wardrobe stats
+        const { data: wardrobeData } = await supabase
+          .from("clothing_items")
+          .select("category, color")
+          .eq("user_id", userId);
+
+        if (wardrobeData) {
+          setWardrobeCount(wardrobeData.length);
+          const catCounts = CATEGORIES.map(cat => ({
+            label: cat.label,
+            icon: cat.icon,
+            count: wardrobeData.filter(i => i.category === cat.value).length,
+          }));
+          setCategoryBreakdown(catCounts);
+          const uniqueColors = new Set(wardrobeData.map(i => i.color).filter(Boolean));
+          setColorCount(uniqueColors.size);
+          const colorMap: Record<string, number> = {};
+          wardrobeData.forEach(i => { if (i.color) colorMap[i.color] = (colorMap[i.color] || 0) + 1; });
+          setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
+        }
+
+        // Fit pics
+        const { data: pics } = await supabase
+          .from("fit_pics")
+          .select("id, image_url, description, pic_date, created_at")
+          .eq("user_id", userId)
+          .order("pic_date", { ascending: false });
+        setFitPics((pics || []) as FitPic[]);
+      } else {
+        // Private account — clear all content data
+        setFollowersCount(0);
+        setFollowingCount(0);
+        setWardrobeCount(0);
+        setCategoryBreakdown([]);
+        setColorCount(0);
+        setUserColors([]);
+        setFitPics([]);
       }
-
-      // Fit pics (non-private for other users)
-      const { data: pics } = await supabase
-        .from("fit_pics")
-        .select("id, image_url, description, pic_date, created_at")
-        .eq("user_id", userId)
-        .order("pic_date", { ascending: false });
-      setFitPics((pics || []) as FitPic[]);
 
       // Check block status
       if (!isOwnProfile && user) {
@@ -126,7 +146,7 @@ export default function UserProfilePage() {
       setLoading(false);
     };
     load();
-  }, [userId]);
+  }, [userId, followingIds]);
 
   const handleFollow = async () => {
     if (!userId) return;
@@ -150,7 +170,6 @@ export default function UserProfilePage() {
     } else {
       await blockUser(userId);
       setIsBlocked(true);
-      // Also unfollow if following
       if (isFollowing) {
         await unfollowUser(userId);
         setFollowersCount(prev => Math.max(0, prev - 1));
@@ -206,15 +225,18 @@ export default function UserProfilePage() {
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
+          <button
+            onClick={() => setShowProfilePicModal(true)}
+            className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0"
+          >
             {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
+              <img src={profile.avatar_url} alt="" loading="lazy" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
-          </div>
+          </button>
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground">{profile.display_name || profile.username}</h2>
             {profile.username && (
@@ -222,21 +244,28 @@ export default function UserProfilePage() {
                 <AtSign className="w-3 h-3" />{profile.username}
               </p>
             )}
-            <div className="flex items-center justify-center gap-4 mt-2">
-              <button onClick={() => setFollowListType("followers")} className="text-center">
-                <p className="text-sm font-bold text-foreground">{followersCount}</p>
-                <p className="text-[10px] text-muted-foreground">Followers</p>
-              </button>
-              <div className="w-px h-6 bg-border" />
-              <button onClick={() => setFollowListType("following")} className="text-center">
-                <p className="text-sm font-bold text-foreground">{followingCount}</p>
-                <p className="text-[10px] text-muted-foreground">Following</p>
-              </button>
-            </div>
+            {!canView && (
+              <div className="flex flex-col items-center mt-2">
+                <Lock className="w-4 h-4 text-muted-foreground" />
+              </div>
+            )}
+            {canView && (
+              <div className="flex items-center justify-center gap-4 mt-2">
+                <button onClick={() => setFollowListType("followers")} className="text-center">
+                  <p className="text-sm font-bold text-foreground">{followersCount}</p>
+                  <p className="text-[10px] text-muted-foreground">Followers</p>
+                </button>
+                <div className="w-px h-6 bg-border" />
+                <button onClick={() => setFollowListType("following")} className="text-center">
+                  <p className="text-sm font-bold text-foreground">{followingCount}</p>
+                  <p className="text-[10px] text-muted-foreground">Following</p>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {profile.bio && (
+        {canView && profile.bio && (
           <p className="text-xs text-foreground mt-3 leading-relaxed text-center">{profile.bio}</p>
         )}
 
@@ -341,16 +370,66 @@ export default function UserProfilePage() {
             ) : (
               <div className="grid grid-cols-3 gap-0.5">
                 {fitPics.map((pic) => (
-                  <div key={pic.id} className="aspect-square relative">
-                    <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
-                  </div>
+                  <button key={pic.id} onClick={() => setSelectedFitPic(pic)} className="aspect-square relative">
+                    <img src={pic.image_url} alt={pic.description || ""} loading="lazy" className="w-full h-full object-cover rounded-sm" />
+                  </button>
                 ))}
               </div>
             )}
           </div>
         </div>
       )}
-      {userId && (
+
+      {/* Profile Picture Modal */}
+      <Dialog open={showProfilePicModal} onOpenChange={setShowProfilePicModal}>
+        <DialogContent className="max-w-sm rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Profile</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3">
+            <div className="w-28 h-28 rounded-full overflow-hidden bg-card border border-border">
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <User className="w-10 h-10 text-muted-foreground" />
+                </div>
+              )}
+            </div>
+            <h3 className="text-base font-bold text-foreground">{profile.display_name || profile.username}</h3>
+            {profile.username && (
+              <p className="text-xs text-accent font-medium flex items-center gap-0.5">
+                <AtSign className="w-3 h-3" />{profile.username}
+              </p>
+            )}
+            {!canView && (
+              <div className="flex flex-col items-center gap-1 mt-2">
+                <Lock className="w-5 h-5 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">This account is private</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fit Pic Viewer Modal */}
+      <Dialog open={selectedFitPic !== null} onOpenChange={(open) => { if (!open) setSelectedFitPic(null); }}>
+        <DialogContent className="max-w-lg p-0 rounded-2xl overflow-hidden bg-background">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Fit Pic</DialogTitle>
+          </DialogHeader>
+          {selectedFitPic && (
+            <div>
+              <img src={selectedFitPic.image_url} alt={selectedFitPic.description || ""} className="w-full max-h-[70vh] object-contain bg-black" />
+              {selectedFitPic.description && (
+                <p className="p-4 text-sm text-foreground">{selectedFitPic.description}</p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {canView && userId && (
         <>
           <FollowListSheet
             open={followListType !== null}
@@ -364,13 +443,15 @@ export default function UserProfilePage() {
             userId={userId}
             displayName={profile?.display_name || profile?.username || "User"}
           />
-          <ReportSheet
-            open={showReportSheet}
-            onOpenChange={setShowReportSheet}
-            reportedUserId={userId}
-            reportType="user"
-          />
         </>
+      )}
+      {userId && (
+        <ReportSheet
+          open={showReportSheet}
+          onOpenChange={setShowReportSheet}
+          reportedUserId={userId}
+          reportType="user"
+        />
       )}
     </div>
   );
