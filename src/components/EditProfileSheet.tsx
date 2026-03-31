@@ -315,13 +315,20 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                 </Select>
               </div>
 
-              {/* Public/Private Account */}
-              <div className="flex items-center justify-between rounded-xl bg-card border border-border/40 p-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{isPublic ? "Public Account" : "Private Account"}</p>
-                  <p className="text-[10px] text-muted-foreground">{isPublic ? "Anyone can see your profile" : "Only followers can see your content"}</p>
+              {/* Account Privacy */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Account Privacy</Label>
+                <div className="flex items-center justify-between rounded-xl bg-card border border-border/40 p-3">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{isPublic ? "Public" : "Private"}</p>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed">
+                      {isPublic
+                        ? "Anyone can see your wardrobe, fit pics, posts and bio"
+                        : "Only your name and profile picture are visible to others"}
+                    </p>
+                  </div>
+                  <Switch checked={isPublic} onCheckedChange={setIsPublic} />
                 </div>
-                <Switch checked={isPublic} onCheckedChange={setIsPublic} />
               </div>
 
               <Button

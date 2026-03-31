@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Globe, Lock, Check as CheckIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -85,6 +86,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [bodyType, setBodyType] = useState("");
   const [bodyGender, setBodyGender] = useState<"female" | "male">("female");
   const [preferredColors, setPreferredColors] = useState<string[]>([]);
+  const [isPublic, setIsPublic] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const { user, updateProfile, profile } = useAuth();
@@ -265,6 +267,55 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       ),
       valid: true,
     },
+    {
+      title: "Account Privacy",
+      subtitle: "Choose who can see your content",
+      content: (
+        <div className="grid grid-cols-1 gap-4">
+          <button
+            onClick={() => setIsPublic(true)}
+            className={cn(
+              "flex items-start gap-4 p-5 rounded-2xl border-2 transition-all text-left",
+              isPublic === true
+                ? "border-accent bg-accent/10"
+                : "border-border bg-card hover:border-accent/40"
+            )}
+          >
+            <div className="w-12 h-12 rounded-xl bg-accent/15 flex items-center justify-center shrink-0 mt-0.5">
+              <Globe className="w-6 h-6 text-accent" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-base font-semibold text-foreground">Public Account</span>
+                {isPublic === true && <CheckIcon className="w-4 h-4 text-accent" />}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Anyone can see your wardrobe, fit pics, posts and bio</p>
+            </div>
+          </button>
+          <button
+            onClick={() => setIsPublic(false)}
+            className={cn(
+              "flex items-start gap-4 p-5 rounded-2xl border-2 transition-all text-left",
+              isPublic === false
+                ? "border-accent bg-accent/10"
+                : "border-border bg-card hover:border-accent/40"
+            )}
+          >
+            <div className="w-12 h-12 rounded-xl bg-accent/15 flex items-center justify-center shrink-0 mt-0.5">
+              <Lock className="w-6 h-6 text-accent" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className="text-base font-semibold text-foreground">Private Account</span>
+                {isPublic === false && <CheckIcon className="w-4 h-4 text-accent" />}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Only your name and profile picture are visible to others</p>
+            </div>
+          </button>
+        </div>
+      ),
+      valid: isPublic !== null,
+    },
   ];
 
   const handleNext = () => {
@@ -291,6 +342,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         avatar_url: avatarUrl || null,
         bio: bio || null,
         username: username.trim() || null,
+        is_public: isPublic ?? true,
       } as any);
       toast({ title: editMode ? "Profile updated! ✨" : "Welcome to Vestis! ✨", description: editMode ? "Your style preferences have been saved." : "Your profile is set up." });
       onComplete?.();
