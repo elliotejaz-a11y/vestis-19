@@ -302,7 +302,7 @@ export default function Auth() {
         <div className="w-full max-w-sm space-y-6 text-center">
           <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Enter reset code</h2>
-          <p className="text-sm text-muted-foreground">We sent a 6-digit code to <span className="font-medium text-foreground">{forgotEmail}</span></p>
+          <p className="text-sm text-muted-foreground">We sent an 8-digit code to <span className="font-medium text-foreground">{forgotEmail}</span></p>
           <div>
             <Input
               type="text"
