@@ -67,7 +67,7 @@ export default function Auth() {
     if (forgotOtp.length !== 8) return;
     setForgotLoading(true);
     setForgotOtpError("");
-    const { error } = await supabase.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       email: forgotEmail.trim(),
       token: forgotOtp,
       type: "recovery",
@@ -76,7 +76,9 @@ export default function Auth() {
     if (error) {
       setForgotOtpError("Invalid or expired code. Please try again.");
     } else {
-      setForgotStep("newpass");
+      sessionStorage.setItem("vestis_recovery_mode", "true");
+      sessionStorage.setItem("vestis_recovery_token", data.session?.access_token ?? "");
+      setShowNewPasswordScreen(true);
     }
   };
 
