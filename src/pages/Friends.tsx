@@ -304,7 +304,7 @@ export default function Friends() {
           {friends.map((friend) => (
             <button
               key={friend.id}
-              onClick={() => viewFriendWardrobe(friend)}
+              onClick={() => navigate(`/user/${friend.id}`)}
               className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40 text-left hover:bg-muted/50 transition-colors"
             >
               {renderAvatar(friend)}
