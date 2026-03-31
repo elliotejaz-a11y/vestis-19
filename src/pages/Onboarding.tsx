@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload } from "lucide-react";
+import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, Lock, Globe } from "lucide-react";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
 
