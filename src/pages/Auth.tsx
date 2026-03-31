@@ -76,8 +76,11 @@ export default function Auth() {
     if (error) {
       setForgotOtpError("Invalid or expired code. Please try again.");
     } else {
+      const accessToken = data.session?.access_token ?? "";
       sessionStorage.setItem("vestis_recovery_mode", "true");
-      sessionStorage.setItem("vestis_recovery_token", data.session?.access_token ?? "");
+      sessionStorage.setItem("vestis_recovery_token", accessToken);
+      // Sign out immediately so Auth.tsx stays mounted (App.tsx won't switch to authenticated routes)
+      await supabase.auth.signOut();
       setShowNewPasswordScreen(true);
     }
   };
