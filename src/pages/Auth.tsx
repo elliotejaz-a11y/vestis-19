@@ -12,6 +12,8 @@ import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
 
 export default function Auth() {
+  // If in recovery mode (OTP verified, setting new password), keep showing Auth
+  const isRecoveryMode = sessionStorage.getItem("vestis_recovery_mode") === "true";
   const [isSignUp, setIsSignUp] = useState(false);
   const { theme, setTheme } = useTheme();
   const [emailOrUsername, setEmailOrUsername] = useState("");
