@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,22 +24,13 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [forgotStep, setForgotStep] = useState<"idle" | "email" | "code" | "newpass">(() => {
-    return localStorage.getItem("vestis_recovery_tokens") ? "newpass" : "idle";
-  });
+  const [forgotStep, setForgotStep] = useState<"idle" | "email" | "code" | "newpass">("idle");
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotOtp, setForgotOtp] = useState("");
   const [forgotOtpError, setForgotOtpError] = useState("");
-  const [showNewPasswordScreen, setShowNewPasswordScreen] = useState(() => {
-    return !!localStorage.getItem("vestis_recovery_tokens");
-  });
-  const [recoveryAccessToken, setRecoveryAccessToken] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("vestis_recovery_tokens") || "{}").access || ""; } catch { return ""; }
-  });
-  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("vestis_recovery_tokens") || "{}").refresh || ""; } catch { return ""; }
-  });
+  const [recoveryAccessToken, setRecoveryAccessToken] = useState("");
+  const [recoveryRefreshToken, setRecoveryRefreshToken] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -80,16 +71,13 @@ export default function Auth() {
       setForgotLoading(false);
       setForgotOtpError("Invalid or expired code. Please try again.");
     } else {
-      // Store tokens in localStorage so they survive component unmount from session redirect
+      // Store tokens before signing out to prevent auto-redirect
       const accessToken = data.session?.access_token || "";
       const refreshToken = data.session?.refresh_token || "";
-      localStorage.setItem("vestis_recovery_tokens", JSON.stringify({ access: accessToken, refresh: refreshToken }));
       setRecoveryAccessToken(accessToken);
       setRecoveryRefreshToken(refreshToken);
-      // Sign out to prevent auto-redirect into the app
       await supabase.auth.signOut();
       setForgotLoading(false);
-      setShowNewPasswordScreen(true);
       setForgotStep("newpass");
     }
   };
@@ -111,21 +99,17 @@ export default function Auth() {
     });
     if (sessionError) {
       setResetLoading(false);
-      localStorage.removeItem("vestis_recovery_tokens");
       toast({ title: "Session expired", description: "Please restart the password reset process.", variant: "destructive" });
-      setShowNewPasswordScreen(false);
       setForgotStep("idle");
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     await supabase.auth.signOut();
     setResetLoading(false);
-    localStorage.removeItem("vestis_recovery_tokens");
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
-      setShowNewPasswordScreen(false);
       setForgotStep("idle");
       setForgotEmail("");
       setForgotOtp("");
@@ -373,7 +357,7 @@ export default function Auth() {
     );
   }
 
-  if (forgotStep === "newpass" || showNewPasswordScreen) {
+  if (forgotStep === "newpass") {
     const passwordsMatch = newPassword === confirmNewPassword;
     const showMismatch = confirmNewPassword.length > 0 && !passwordsMatch;
     return (
