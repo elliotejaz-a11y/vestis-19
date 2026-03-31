@@ -229,7 +229,7 @@ export default function Friends() {
             const isFollowing = followingIds.includes(p.id);
             const isFriend = isMutualFriend(p.id);
             return (
-              <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40">
+              <button key={p.id} onClick={() => navigate(`/user/${p.id}`)} className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40 text-left hover:bg-muted/50 transition-colors">
                 {renderAvatar(p)}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{p.display_name || p.username || "User"}</p>
