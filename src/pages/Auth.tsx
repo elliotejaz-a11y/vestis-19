@@ -67,10 +67,15 @@ export default function Auth() {
       token: forgotOtp,
       type: "recovery",
     });
-    setForgotLoading(false);
     if (error) {
+      setForgotLoading(false);
       setForgotOtpError("Invalid or expired code. Please try again.");
     } else {
+      // Save session before signing out to prevent auto-redirect into the app
+      const { data: sessionData } = await supabase.auth.getSession();
+      savedSessionRef.current = sessionData.session;
+      await supabase.auth.signOut();
+      setForgotLoading(false);
       setForgotStep("newpass");
     }
   };
