@@ -97,21 +97,25 @@ export default function Auth() {
       return;
     }
     setResetLoading(true);
-    // Use the stored recovery token to update the password via REST API
+    // Restore the session using stored tokens, then update password
     const recoveryToken = sessionStorage.getItem("vestis_recovery_token") ?? "";
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${recoveryToken}`,
-        "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      },
-      body: JSON.stringify({ password: newPassword }),
+    const refreshToken = sessionStorage.getItem("vestis_recovery_refresh") ?? "";
+    const { error: sessionError } = await supabase.auth.setSession({
+      access_token: recoveryToken,
+      refresh_token: refreshToken,
     });
-    const resData = await res.json();
+    if (sessionError) {
+      setResetLoading(false);
+      toast({ title: "Error", description: "Recovery session expired. Please start over.", variant: "destructive" });
+      sessionStorage.removeItem("vestis_recovery_mode");
+      sessionStorage.removeItem("vestis_recovery_token");
+      sessionStorage.removeItem("vestis_recovery_refresh");
+      setShowNewPasswordScreen(false);
+      setForgotStep("email");
+      return;
+    }
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
     setResetLoading(false);
-    const error = res.ok ? null : { message: resData?.msg || resData?.message || "Failed to update password" };
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
