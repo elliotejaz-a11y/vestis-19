@@ -1,5 +1,4 @@
-import { useState, useRef } from "react";
-import { Session } from "@supabase/supabase-js";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +40,6 @@ export default function Auth() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
-  const savedSessionRef = useRef<Session | null>(null);
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
@@ -67,15 +65,10 @@ export default function Auth() {
       token: forgotOtp,
       type: "recovery",
     });
+    setForgotLoading(false);
     if (error) {
-      setForgotLoading(false);
       setForgotOtpError("Invalid or expired code. Please try again.");
     } else {
-      // Save session before signing out to prevent auto-redirect into the app
-      const { data: sessionData } = await supabase.auth.getSession();
-      savedSessionRef.current = sessionData.session;
-      await supabase.auth.signOut();
-      setForgotLoading(false);
       setForgotStep("newpass");
     }
   };
@@ -90,28 +83,19 @@ export default function Auth() {
       return;
     }
     setResetLoading(true);
-    // Restore saved session so updateUser works
-    if (savedSessionRef.current) {
-      await supabase.auth.setSession({
-        access_token: savedSessionRef.current.access_token,
-        refresh_token: savedSessionRef.current.refresh_token,
-      });
-    }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) {
-      setResetLoading(false);
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-      return;
-    }
-    await supabase.auth.signOut();
-    savedSessionRef.current = null;
     setResetLoading(false);
-    toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
-    setForgotStep("idle");
-    setForgotEmail("");
-    setForgotOtp("");
-    setNewPassword("");
-    setConfirmNewPassword("");
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
+      await supabase.auth.signOut();
+      setForgotStep("idle");
+      setForgotEmail("");
+      setForgotOtp("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+    }
   };
 
   const handleResendVerification = async () => {
