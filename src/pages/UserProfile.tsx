@@ -342,6 +342,16 @@ export default function UserProfilePage() {
         </>
       )}
 
+      {/* Avatar Fullscreen Modal */}
+      {showAvatarModal && profile?.avatar_url && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={() => setShowAvatarModal(false)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setShowAvatarModal(false)}>
+            <X className="w-6 h-6" />
+          </button>
+          <img src={profile.avatar_url} alt="" className="max-w-full max-h-full object-contain p-4" style={{ objectPosition: profile.avatar_position || 'center' }} onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+
       {/* Fit Pic Fullscreen Modal */}
       {selectedFitPic && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={() => setSelectedFitPic(null)}>
