@@ -58,6 +58,7 @@ export default function UserProfilePage() {
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [selectedFitPic, setSelectedFitPic] = useState<FitPic | null>(null);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
