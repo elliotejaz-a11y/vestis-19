@@ -41,6 +41,7 @@ export default function Auth() {
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
+  const savedSessionRef = useRef<Session | null>(null);
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
