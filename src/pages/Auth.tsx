@@ -544,7 +544,7 @@ export default function Auth() {
                   Remember me
                 </label>
               </div>
-              <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-accent font-medium hover:underline">
+              <button type="button" onClick={() => setForgotStep("email")} className="text-xs text-accent font-medium hover:underline">
                 Forgot password?
               </button>
             </div>
