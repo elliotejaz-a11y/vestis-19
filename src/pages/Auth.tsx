@@ -121,6 +121,7 @@ export default function Auth() {
     } else {
       sessionStorage.removeItem("vestis_recovery_mode");
       sessionStorage.removeItem("vestis_recovery_token");
+      sessionStorage.removeItem("vestis_recovery_refresh");
       toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
       await supabase.auth.signOut();
       setShowNewPasswordScreen(false);
