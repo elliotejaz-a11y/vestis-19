@@ -373,7 +373,7 @@ export default function Auth() {
     );
   }
 
-  if (forgotStep === "newpass") {
+  if (forgotStep === "newpass" || showNewPasswordScreen) {
     const passwordsMatch = newPassword === confirmNewPassword;
     const showMismatch = confirmNewPassword.length > 0 && !passwordsMatch;
     return (
