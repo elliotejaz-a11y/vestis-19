@@ -266,7 +266,7 @@ export default function Auth() {
           <div className="text-center space-y-2">
             <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
             <h2 className="text-xl font-bold text-foreground">Reset Password</h2>
-            <p className="text-sm text-muted-foreground">Enter your email and we'll send you a 6-digit code</p>
+            <p className="text-sm text-muted-foreground">Enter your email and we'll send you an 8-digit code</p>
           </div>
           <div>
             <Label className="text-xs font-medium text-muted-foreground">Email</Label>
