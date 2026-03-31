@@ -40,7 +40,7 @@ export function CalendarPage({ outfits }: Props) {
   useEffect(() => {
     if (!user) return;
     const fetchPlanned = async () => {
-      const { data } = await supabase.from("planned_outfits").select("id, outfit_id, planned_date, notes, worn, created_at, user_id").eq("user_id", user.id);
+      const { data } = await supabase.from("planned_outfits").select("*").eq("user_id", user.id);
       setPlannedOutfits(data || []);
     };
     fetchPlanned();

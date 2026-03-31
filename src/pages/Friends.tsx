@@ -113,7 +113,7 @@ export default function Friends() {
 
     const { data } = await supabase
       .from("clothing_items")
-      .select("id, name, category, color, fabric, image_url, back_image_url, tags, notes, created_at, estimated_price, is_private")
+      .select("*")
       .eq("user_id", friend.id);
 
     const items: ClothingItem[] = (data || []).map((r: any) => ({
@@ -138,7 +138,7 @@ export default function Friends() {
   const renderAvatar = (profile: FriendProfile, size = "w-12 h-12") => (
     <div className={cn(size, "rounded-full overflow-hidden bg-card border border-border flex-shrink-0")}>
       {profile.avatar_url ? (
-        <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+        <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full flex items-center justify-center">
           <Users className="w-5 h-5 text-muted-foreground" />
@@ -179,7 +179,7 @@ export default function Friends() {
           <div className="grid grid-cols-3 gap-1 px-1">
             {friendWardrobe.map((item) => (
               <div key={item.id} className="aspect-square rounded-xl overflow-hidden bg-card border border-border/40 relative group">
-                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" loading="lazy" />
+                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
                   <p className="text-[10px] text-white font-medium truncate">{item.name}</p>
                   <p className="text-[9px] text-white/70">{item.category} • {item.color}</p>
@@ -229,7 +229,7 @@ export default function Friends() {
             const isFollowing = followingIds.includes(p.id);
             const isFriend = isMutualFriend(p.id);
             return (
-              <button key={p.id} onClick={() => navigate(`/user/${p.id}`)} className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40 text-left hover:bg-muted/50 transition-colors">
+              <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40">
                 {renderAvatar(p)}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{p.display_name || p.username || "User"}</p>
@@ -250,7 +250,7 @@ export default function Friends() {
                     <><UserPlus className="w-3.5 h-3.5 mr-1" /> Add</>
                   )}
                 </Button>
-              </button>
+              </div>
             );
           })}
           {searchResults.length === 0 && searchQuery && !searching && (
@@ -304,7 +304,7 @@ export default function Friends() {
           {friends.map((friend) => (
             <button
               key={friend.id}
-              onClick={() => navigate(`/user/${friend.id}`)}
+              onClick={() => viewFriendWardrobe(friend)}
               className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40 text-left hover:bg-muted/50 transition-colors"
             >
               {renderAvatar(friend)}

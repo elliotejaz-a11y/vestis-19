@@ -97,7 +97,7 @@ export default function FollowListSheet({ open, onOpenChange, userId, type }: Fo
                 <button onClick={() => handleNavigate(u.id)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
                     {u.avatar_url ? (
-                      <img src={u.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" style={{ objectPosition: u.avatar_position || "center" }} />
+                      <img src={u.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: u.avatar_position || "center" }} />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <User className="w-4 h-4 text-muted-foreground" />

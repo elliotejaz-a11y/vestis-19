@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
+import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban } from "lucide-react";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
@@ -57,8 +57,6 @@ export default function UserProfilePage() {
   const [userColors, setUserColors] = useState<[string, number][]>([]);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [selectedFitPic, setSelectedFitPic] = useState<FitPic | null>(null);
-  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -208,7 +206,7 @@ export default function UserProfilePage() {
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
-          <button onClick={() => profile.avatar_url && setShowAvatarModal(true)} className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
+          <div className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
@@ -216,7 +214,7 @@ export default function UserProfilePage() {
                 <User className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
-          </button>
+          </div>
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground">{profile.display_name || profile.username}</h2>
             {profile.username && (
@@ -270,27 +268,16 @@ export default function UserProfilePage() {
         </div>
       ) : (
         <div className="px-5 space-y-4">
-          {/* Fit Pics */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <Camera className="w-4 h-4 text-accent" />
-              <p className="text-sm font-semibold text-foreground">Fit Pics</p>
+          {/* Style */}
+          {profile.style_preference && (
+            <div className="rounded-2xl bg-card border border-border/40 p-4">
+              <p className="text-sm font-semibold text-foreground mb-2">Style</p>
+              <p className="text-xs text-muted-foreground capitalize">{profile.style_preference.replace(/,/g, ", ")}</p>
             </div>
-            {fitPics.length === 0 ? (
-              <p className="text-center text-xs text-muted-foreground py-12">No fit pics yet</p>
-            ) : (
-              <div className="grid grid-cols-3 gap-0.5">
-                {fitPics.map((pic) => (
-                  <button key={pic.id} className="aspect-square relative" onClick={() => setSelectedFitPic(pic)}>
-                    <img src={pic.image_url} alt={pic.description || ""} loading="lazy" className="w-full h-full object-cover rounded-sm" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
 
-          {/* Wardrobe Stats */}
-          <div className="grid grid-cols-2 gap-2 w-full">
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-2 w-full">
             <button onClick={() => setShowWardrobe(true)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
               <Shirt className="w-5 h-5 mx-auto text-accent mb-1" />
               <p className="text-lg font-bold text-foreground">{wardrobeCount}</p>
@@ -301,9 +288,14 @@ export default function UserProfilePage() {
               <p className="text-lg font-bold text-foreground">{colorCount}</p>
               <p className="text-[10px] text-muted-foreground">Colours</p>
             </button>
+            <button onClick={() => setShowCategories(!showCategories)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
+              <TrendingUp className="w-5 h-5 mx-auto text-accent mb-1" />
+              <p className="text-lg font-bold text-foreground">{categoryBreakdown.filter(c => c.count > 0).length}</p>
+              <p className="text-[10px] text-muted-foreground">Categories</p>
+            </button>
           </div>
 
-          {/* Colour breakdown (expandable) */}
+          {/* Color breakdown (expandable) */}
           {showColors && userColors.length > 0 && (
             <div className="rounded-2xl bg-card border border-border/40 p-4">
               <p className="text-sm font-semibold text-foreground mb-3">Colour Breakdown</p>
@@ -317,6 +309,45 @@ export default function UserProfilePage() {
               </div>
             </div>
           )}
+
+          {/* Category breakdown (expandable) */}
+          {showCategories && (
+            <div className="rounded-2xl bg-card border border-border/40 p-4">
+              <p className="text-sm font-semibold text-foreground mb-3">Category Breakdown</p>
+              <div className="space-y-2">
+                {categoryBreakdown.filter(c => c.count > 0).map((cat) => (
+                  <div key={cat.label} className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">{cat.icon} {cat.label}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
+                        <div className="h-full rounded-full bg-accent transition-all" style={{ width: wardrobeCount ? `${(cat.count / wardrobeCount) * 100}%` : "0%" }} />
+                      </div>
+                      <span className="text-xs font-medium text-foreground w-4 text-right">{cat.count}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Fit Pics */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Camera className="w-4 h-4 text-accent" />
+              <p className="text-sm font-semibold text-foreground">Fit Pics</p>
+            </div>
+            {fitPics.length === 0 ? (
+              <p className="text-center text-xs text-muted-foreground py-12">No fit pics yet</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-0.5">
+                {fitPics.map((pic) => (
+                  <div key={pic.id} className="aspect-square relative">
+                    <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
       {userId && (
@@ -340,26 +371,6 @@ export default function UserProfilePage() {
             reportType="user"
           />
         </>
-      )}
-
-      {/* Avatar Fullscreen Modal */}
-      {showAvatarModal && profile?.avatar_url && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={() => setShowAvatarModal(false)}>
-          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setShowAvatarModal(false)}>
-            <X className="w-6 h-6" />
-          </button>
-          <img src={profile.avatar_url} alt="" className="max-w-full max-h-full object-contain p-4" style={{ objectPosition: profile.avatar_position || 'center' }} onClick={(e) => e.stopPropagation()} />
-        </div>
-      )}
-
-      {/* Fit Pic Fullscreen Modal */}
-      {selectedFitPic && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center" onClick={() => setSelectedFitPic(null)}>
-          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setSelectedFitPic(null)}>
-            <X className="w-6 h-6" />
-          </button>
-          <img src={selectedFitPic.image_url} alt={selectedFitPic.description || ""} className="max-w-full max-h-full object-contain p-4" onClick={(e) => e.stopPropagation()} />
-        </div>
       )}
     </div>
   );
