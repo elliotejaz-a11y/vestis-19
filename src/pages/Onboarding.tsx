@@ -337,6 +337,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         avatar_url: avatarUrl || null,
         bio: bio || null,
         username: username.trim() || null,
+        is_public: isPublic ?? true,
       } as any);
       toast({ title: editMode ? "Profile updated! ✨" : "Welcome to Vestis! ✨", description: editMode ? "Your style preferences have been saved." : "Your profile is set up." });
       onComplete?.();
