@@ -111,17 +111,21 @@ export default function Auth() {
     });
     if (sessionError) {
       setResetLoading(false);
+      localStorage.removeItem("vestis_recovery_tokens");
       toast({ title: "Session expired", description: "Please restart the password reset process.", variant: "destructive" });
+      setShowNewPasswordScreen(false);
       setForgotStep("idle");
       return;
     }
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     await supabase.auth.signOut();
     setResetLoading(false);
+    localStorage.removeItem("vestis_recovery_tokens");
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
+      setShowNewPasswordScreen(false);
       setForgotStep("idle");
       setForgotEmail("");
       setForgotOtp("");
