@@ -208,7 +208,7 @@ export default function UserProfilePage() {
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
+          <button onClick={() => profile.avatar_url && setShowAvatarModal(true)} className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
@@ -216,7 +216,7 @@ export default function UserProfilePage() {
                 <User className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
-          </div>
+          </button>
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground">{profile.display_name || profile.username}</h2>
             {profile.username && (
