@@ -46,7 +46,7 @@ export default function Auth() {
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { captchaToken: undefined });
     setForgotLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
