@@ -90,19 +90,28 @@ export default function Auth() {
       return;
     }
     setResetLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
-    setResetLoading(false);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
-      await supabase.auth.signOut();
-      setForgotStep("idle");
-      setForgotEmail("");
-      setForgotOtp("");
-      setNewPassword("");
-      setConfirmNewPassword("");
+    // Restore saved session so updateUser works
+    if (savedSessionRef.current) {
+      await supabase.auth.setSession({
+        access_token: savedSessionRef.current.access_token,
+        refresh_token: savedSessionRef.current.refresh_token,
+      });
     }
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      setResetLoading(false);
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+      return;
+    }
+    await supabase.auth.signOut();
+    savedSessionRef.current = null;
+    setResetLoading(false);
+    toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
+    setForgotStep("idle");
+    setForgotEmail("");
+    setForgotOtp("");
+    setNewPassword("");
+    setConfirmNewPassword("");
   };
 
   const handleResendVerification = async () => {
