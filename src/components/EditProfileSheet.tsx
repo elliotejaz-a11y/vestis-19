@@ -39,6 +39,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [avatarPosition, setAvatarPosition] = useState(profile?.avatar_position || "50% 50%");
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
+  const [isPublic, setIsPublic] = useState(profile?.is_public ?? true);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [cropPreview, setCropPreview] = useState<string | null>(null);
