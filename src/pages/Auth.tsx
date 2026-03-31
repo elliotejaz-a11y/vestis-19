@@ -307,10 +307,10 @@ export default function Auth() {
             <Input
               type="text"
               inputMode="numeric"
-              maxLength={6}
+              maxLength={8}
               value={forgotOtp}
-              onChange={(e) => { setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setForgotOtpError(""); }}
-              placeholder="000000"
+              onChange={(e) => { setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 8)); setForgotOtpError(""); }}
+              placeholder="00000000"
               className="text-center text-2xl tracking-[0.5em] font-mono rounded-xl bg-card h-14"
               autoFocus
             />
