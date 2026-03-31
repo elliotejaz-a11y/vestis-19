@@ -304,16 +304,16 @@ export default function Auth() {
         <div className="w-full max-w-sm space-y-6 text-center">
           <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Enter reset code</h2>
-          <p className="text-sm text-muted-foreground">We sent a 6-digit code to <span className="font-medium text-foreground">{forgotEmail}</span></p>
+          <p className="text-sm text-muted-foreground">We sent an 8-digit code to <span className="font-medium text-foreground">{forgotEmail}</span></p>
           <div>
             <Input
               type="text"
               inputMode="numeric"
-              maxLength={6}
+              maxLength={8}
               value={forgotOtp}
-              onChange={(e) => { setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 6)); setForgotOtpError(""); }}
-              placeholder="000000"
-              className="text-center text-2xl tracking-[0.5em] font-mono rounded-xl bg-card h-14"
+              onChange={(e) => { setForgotOtp(e.target.value.replace(/\D/g, "").slice(0, 8)); setForgotOtpError(""); }}
+              placeholder="00000000"
+              className="text-center text-2xl tracking-[0.3em] font-mono rounded-xl bg-card h-14"
               autoFocus
             />
             {forgotOtpError && <p className="text-xs text-destructive mt-2">{forgotOtpError}</p>}
