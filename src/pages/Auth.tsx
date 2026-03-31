@@ -95,8 +95,21 @@ export default function Auth() {
       return;
     }
     setResetLoading(true);
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    // Use the stored recovery token to update the password via REST API
+    const recoveryToken = sessionStorage.getItem("vestis_recovery_token") ?? "";
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const res = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${recoveryToken}`,
+        "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({ password: newPassword }),
+    });
+    const resData = await res.json();
     setResetLoading(false);
+    const error = res.ok ? null : { message: resData?.msg || resData?.message || "Failed to update password" };
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
