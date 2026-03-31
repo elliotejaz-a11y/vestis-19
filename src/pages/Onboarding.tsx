@@ -85,6 +85,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [bodyType, setBodyType] = useState("");
   const [bodyGender, setBodyGender] = useState<"female" | "male">("female");
   const [preferredColors, setPreferredColors] = useState<string[]>([]);
+  const [isPublic, setIsPublic] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const { user, updateProfile, profile } = useAuth();
