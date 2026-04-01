@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { OutfitCard } from "@/components/OutfitCard";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { Plus, Shirt, Bookmark, Sparkles, ArrowUpDown } from "lucide-react";
+import { Plus, Shirt, Bookmark, Sparkles, ArrowUpDown, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const WishlistContent = lazy(() => import("@/pages/Wishlist"));
 
 interface Props {
   items: ClothingItem[];
@@ -21,7 +23,7 @@ interface Props {
 }
 
 export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
-  const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
+  const [activeTab, setActiveTab] = useState<"outfits" | "clothes" | "wishlist">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "color" | "fabric">("newest");
@@ -63,9 +65,22 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         >
           <Bookmark className="w-3.5 h-3.5" /> Saved Outfits
         </button>
+        <button
+          onClick={() => setActiveTab("wishlist")}
+          className={cn(
+            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            activeTab === "wishlist" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
+          )}
+        >
+          <Heart className="w-3.5 h-3.5" /> Wish List
+        </button>
       </div>
 
-      {activeTab === "outfits" ? (
+      {activeTab === "wishlist" ? (
+        <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="w-6 h-6 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>}>
+          <WishlistContent />
+        </Suspense>
+      ) : activeTab === "outfits" ? (
         <div className="px-5 space-y-3">
           {savedOutfits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
