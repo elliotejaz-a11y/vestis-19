@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Compass } from "lucide-react";
+import { Plus, Search, Compass, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StoriesBar } from "@/components/StoriesBar";
@@ -39,6 +39,24 @@ export default function SocialFeed() {
     setSearchResults((data || []).filter((u: any) => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
     setSearching(false);
   };
+
+  const [discoverUsers, setDiscoverUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (tab !== "discover") return;
+    const fetchDiscoverUsers = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, display_name, username, avatar_url, is_public")
+        .neq("id", user?.id || "")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      setDiscoverUsers(
+        (data || []).filter((u: any) => u.avatar_url && u.username && !/^user\d*$/i.test(u.username))
+      );
+    };
+    fetchDiscoverUsers();
+  }, [tab, user?.id]);
 
   const feedPosts = posts;
   const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.avatar_url && p.user?.username && !/^user\d*$/i.test(p.user.username));
@@ -84,39 +102,75 @@ export default function SocialFeed() {
       </div>
 
       {tab === "discover" && (
-        <div className="px-5 pb-3">
-          <Input
-            value={searchQuery}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Search users..."
-            className="rounded-xl bg-card text-sm"
-          />
-          {searchResults.length > 0 && (
-            <div className="mt-2 rounded-xl bg-card border border-border/40 overflow-hidden">
-              {searchResults.map((u) => (
-                <button
-                  key={u.id}
-                  onClick={() => navigate(`/user/${u.id}`)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
-                >
-                  <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                    {u.avatar_url ? (
-                      <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                      </div>
+        <>
+          <div className="px-5 pb-3">
+            <Input
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Search users..."
+              className="rounded-xl bg-card text-sm"
+            />
+            {searchResults.length > 0 && (
+              <div className="mt-2 rounded-xl bg-card border border-border/40 overflow-hidden">
+                {searchResults.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => navigate(`/user/${u.id}`)}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
+                  >
+                    <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                      {u.avatar_url ? (
+                        <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <User className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
+                      {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {searchQuery.trim().length < 3 && discoverUsers.length > 0 && (
+            <div className="px-5 pb-3">
+              <p className="text-xs font-semibold text-foreground mb-2">Suggested For You</p>
+              <div className="grid grid-cols-3 gap-2">
+                {discoverUsers.map((u) => (
+                  <button
+                    key={u.id}
+                    onClick={() => navigate(`/user/${u.id}`)}
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card border border-border/40 hover:bg-muted transition-colors"
+                  >
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                      {u.avatar_url ? (
+                        <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <User className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[11px] font-semibold text-foreground text-center truncate w-full">
+                      {u.display_name || u.username}
+                    </p>
+                    {u.username && (
+                      <p className="text-[10px] text-muted-foreground truncate w-full text-center">@{u.username}</p>
                     )}
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
-                    {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
-                  </div>
-                </button>
-              ))}
+                    {!u.is_public && (
+                      <Lock className="w-3 h-3 text-muted-foreground" />
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
-        </div>
+        </>
       )}
 
       {/* Stories */}
