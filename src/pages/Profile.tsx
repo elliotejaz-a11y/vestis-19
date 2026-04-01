@@ -312,7 +312,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               <Heart className="w-4 h-4 text-accent" />
               <p className="text-sm font-semibold text-foreground">Wish List</p>
             </div>
-            <Button variant="ghost" size="sm" className="h-8 px-2.5 text-xs text-accent" onClick={() => navigate("/wardrobe")}>
+            <Button variant="ghost" size="sm" className="h-8 px-2.5 text-xs text-accent" onClick={() => { resetWlForm(); setWishlistAddOpen(true); }}>
               <Plus className="w-3.5 h-3.5 mr-1" /> Add
             </Button>
           </div>
