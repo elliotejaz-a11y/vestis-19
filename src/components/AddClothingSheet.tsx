@@ -241,15 +241,59 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
         <div className="mt-6 space-y-5">
           {!imageUrl ? (
-            <div className="flex gap-3">
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+                >
+                  <Upload className="w-8 h-8" />
+                  <span className="text-xs font-medium">Upload Photo</span>
+                </button>
+                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
+              </div>
+              {/* Online image search */}
               <button
-                onClick={() => fileRef.current?.click()}
-                className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+                onClick={() => setShowImageSearch(!showImageSearch)}
+                className="w-full h-11 rounded-2xl border border-border bg-card flex items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
               >
-                <Upload className="w-8 h-8" />
-                <span className="text-xs font-medium">Upload Photo</span>
+                <Search className="w-4 h-4" />
+                <span className="text-xs font-medium">Search for an image online</span>
               </button>
-              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
+              {showImageSearch && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={imageSearchQuery}
+                      onChange={(e) => setImageSearchQuery(e.target.value)}
+                      placeholder="e.g. Black Nike Air Force 1"
+                      className="rounded-xl bg-card text-sm flex-1"
+                      onKeyDown={(e) => e.key === "Enter" && handleImageSearch()}
+                    />
+                    <Button
+                      onClick={handleImageSearch}
+                      disabled={searchingImages || !imageSearchQuery.trim()}
+                      size="icon"
+                      className="rounded-xl h-10 w-10 shrink-0 bg-accent text-accent-foreground"
+                    >
+                      {searchingImages ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  {imageSearchResults.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                      {imageSearchResults.map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSelectSearchImage(img.url)}
+                          className="aspect-square rounded-xl overflow-hidden border border-border hover:border-accent transition-colors"
+                        >
+                          <img src={img.url} alt={img.title} className="w-full h-full object-cover" loading="lazy" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
