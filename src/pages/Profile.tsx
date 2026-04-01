@@ -103,10 +103,21 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     setFitPics(data || []);
   };
 
+  const fetchWishlistItems = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("wishlist_items")
+      .select("id, name, image_url, estimated_price")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    setWishlistItems(data || []);
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     fetchFollowCounts();
     fetchFitPics();
+    fetchWishlistItems();
   }, [user]);
 
   const savedOutfits = outfits.filter((o) => o.saved);
