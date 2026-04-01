@@ -65,6 +65,15 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         >
           <Bookmark className="w-3.5 h-3.5" /> Saved Outfits
         </button>
+        <button
+          onClick={() => setActiveTab("wishlist")}
+          className={cn(
+            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            activeTab === "wishlist" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
+          )}
+        >
+          <Heart className="w-3.5 h-3.5" /> Wish List
+        </button>
       </div>
 
       {activeTab === "outfits" ? (
