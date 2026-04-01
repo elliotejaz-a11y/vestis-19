@@ -46,7 +46,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const handleSave = () => {
     if (!item || !name || !category) return;
     const priceNum = priceEnabled && estimatedPrice ? parseFloat(estimatedPrice) : (priceEnabled ? 0 : undefined);
-    onSave({ ...item, name, category, color: joinColors(colors), fabric, notes, estimatedPrice: priceNum, isPrivate });
+    onSave({ ...item, name, category, color: joinColors(colors), fabric, size, notes, estimatedPrice: priceNum, isPrivate });
     onOpenChange(false);
   };
 
