@@ -5,15 +5,11 @@ import { ClothingItem } from "@/types/wardrobe";
 import { Camera, Upload, Sparkles, Package, Home } from "lucide-react";
 import heroImage from "@/assets/hero-wardrobe.jpg";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
-import { preloadBgRemovalModel } from "@/lib/image-processing";
-
 interface Props {
   onAdd: (item: ClothingItem) => void;
 }
 
 export function AddItem({ onAdd }: Props) {
-  // Pre-download bg-removal model so uploads are instant
-  useEffect(() => { preloadBgRemovalModel(); }, []);
 
   return (
     <div className="min-h-screen pb-24">
