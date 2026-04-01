@@ -122,7 +122,7 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
       <SaveOutfitDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        onConfirm={(name, description) => {
+        onConfirm={(name, description, privacy) => {
           onSave?.(outfit.id, true, name || undefined, description || undefined);
           setEditDialogOpen(false);
         }}
