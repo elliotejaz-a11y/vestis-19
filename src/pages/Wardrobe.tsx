@@ -24,7 +24,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
-  const [sortBy, setSortBy] = useState<"date" | "color" | "fabric">("date");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "color" | "fabric">("newest");
   const navigate = useNavigate();
 
   const savedOutfits = outfits.filter((o) => o.saved);
