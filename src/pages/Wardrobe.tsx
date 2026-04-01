@@ -33,6 +33,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
   const sortedFiltered = [...filtered].sort((a, b) => {
     if (sortBy === "color") return (a.color || "").localeCompare(b.color || "");
     if (sortBy === "fabric") return (a.fabric || "").localeCompare(b.fabric || "");
+    if (sortBy === "oldest") return a.addedAt.getTime() - b.addedAt.getTime();
     return b.addedAt.getTime() - a.addedAt.getTime();
   });
 
