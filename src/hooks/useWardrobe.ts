@@ -234,6 +234,7 @@ export function useWardrobe() {
           category: data.category,
           color: data.color,
           fabric: data.fabric,
+          size: data.size || "",
           imageUrl: data.image_url,
           backImageUrl: data.back_image_url || undefined,
           tags: data.tags || [],
