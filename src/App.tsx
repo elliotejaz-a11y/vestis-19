@@ -113,6 +113,7 @@ function AuthenticatedApp() {
           <OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />
         } />
         <Route path="/friends" element={<Friends />} />
+        <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/calendar" element={
           loading ? <PageSkeleton /> :
