@@ -13,7 +13,7 @@ import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wardrobeImageProcessing";
 import { processClothingImage } from "@/lib/image-processing";
 
-const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
+const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
@@ -29,7 +29,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [colors, setColors] = useState<string[]>([]);
   const [fabric, setFabric] = useState("");
   const [tags, setTags] = useState<string[]>([]);
-  const [size, setSize] = useState("");
   const [notes, setNotes] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [priceInput, setPriceInput] = useState("");
@@ -186,7 +185,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         category,
         color,
         fabric,
-        size,
         imageUrl,
         backImageUrl: backImageUrl || undefined,
         tags: [...tags, ...colors.map(c => c.toLowerCase()), fabric.toLowerCase(), category].filter(Boolean),
@@ -202,7 +200,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
-    setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0); setSize("");
+    setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
   };
 
   return (
@@ -382,10 +380,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Size (optional)</Label>
-              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. M, 10, 42" className="mt-1 rounded-xl bg-card" maxLength={20} />
             </div>
             <div>
               <Label className="text-xs font-medium text-muted-foreground">Colours</Label>

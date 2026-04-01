@@ -7,7 +7,6 @@ export interface ClothingItem {
   category: string;
   color: string;
   fabric: string;
-  size?: string;
   imageUrl: string;
   backImageUrl?: string;
   /** Original image URL before background removal (for retry/fallback). */
@@ -33,7 +32,6 @@ export interface Outfit {
   reasoning: string;
   styleTips?: string;
   saved?: boolean;
-  privacy?: "public" | "friends_only" | "only_me";
 }
 
 export interface PlannedOutfit {
