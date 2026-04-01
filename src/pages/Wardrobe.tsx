@@ -24,7 +24,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
-  const [sortBy, setSortBy] = useState<"date" | "color" | "fabric">("date");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "color" | "fabric">("newest");
   const navigate = useNavigate();
 
   const savedOutfits = outfits.filter((o) => o.saved);
@@ -33,6 +33,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
   const sortedFiltered = [...filtered].sort((a, b) => {
     if (sortBy === "color") return (a.color || "").localeCompare(b.color || "");
     if (sortBy === "fabric") return (a.fabric || "").localeCompare(b.fabric || "");
+    if (sortBy === "oldest") return a.addedAt.getTime() - b.addedAt.getTime();
     return b.addedAt.getTime() - a.addedAt.getTime();
   });
 
@@ -105,7 +106,8 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="date">Date Added</SelectItem>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
                 <SelectItem value="color">Colour</SelectItem>
                 <SelectItem value="fabric">Material</SelectItem>
               </SelectContent>
