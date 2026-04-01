@@ -40,6 +40,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [fitPics, setFitPics] = useState<any[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
   const [showChangePassword, setShowChangePassword] = useState(false);
