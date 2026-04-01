@@ -126,6 +126,15 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
                   <p className="text-xs font-medium text-foreground">{item.fabric}</p>
                 </div>
               </div>
+              {item.size && (
+                <div className="bg-card rounded-xl p-3 flex items-center gap-2">
+                  <Ruler className="w-4 h-4 text-accent" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Size</p>
+                    <p className="text-xs font-medium text-foreground">{item.size}</p>
+                  </div>
+                </div>
+              )}
               {item.estimatedPrice && (
                 <div className="bg-accent/10 rounded-xl p-3 flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-accent" />
