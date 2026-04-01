@@ -154,15 +154,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
           ) : (
             <div className="px-4 grid grid-cols-2 gap-3">
               {sortedFiltered.map((item) => (
-                <div key={item.id} className="relative">
-                  <ClothingCard item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
-                  <button
-                    onClick={() => toggleWishlist(item.id)}
-                    className="absolute top-2 left-2 z-10 w-7 h-7 rounded-full bg-background/80 backdrop-blur flex items-center justify-center"
-                  >
-                    <Heart className={cn("w-3.5 h-3.5", wishlistIds.has(item.id) ? "text-red-500 fill-red-500" : "text-muted-foreground")} />
-                  </button>
-                </div>
+                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
               ))}
             </div>
           )}
