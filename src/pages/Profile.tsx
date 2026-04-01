@@ -486,6 +486,34 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
         </Button>
 
+        {/* Account Privacy */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-accent" />
+              <p className="text-sm font-semibold text-foreground">Account Privacy</p>
+            </div>
+            <Switch
+              checked={!profile?.is_public}
+              onCheckedChange={async (checked) => {
+                await updateProfile({ is_public: !checked });
+                toast({ title: checked ? "Account set to Private" : "Account set to Public" });
+              }}
+            />
+          </div>
+          {profile?.is_public ? (
+            <div className="flex items-start gap-2 mt-1">
+              <Globe className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">Your profile is <span className="font-medium text-foreground">Public</span> — anyone can see your wardrobe, fit pics, and posts.</p>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 mt-1">
+              <Lock className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">Your profile is <span className="font-medium text-foreground">Private</span> — only people you approve can see your content.</p>
+            </div>
+          )}
+        </div>
+
         {/* Appearance */}
         <div className="rounded-2xl bg-card border border-border/40 p-4">
           <p className="text-sm font-semibold text-foreground mb-3">Appearance</p>
