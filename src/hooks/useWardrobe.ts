@@ -217,6 +217,7 @@ export function useWardrobe() {
           category: item.category,
           color: item.color,
           fabric: item.fabric,
+          size: item.size || "",
           image_url: imageUrl,
           back_image_url: backImageUrl || null,
           tags: item.tags,
