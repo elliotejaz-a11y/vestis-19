@@ -35,6 +35,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [analyzing, setAnalyzing] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const [showImageSearch, setShowImageSearch] = useState(false);
+  const [imageSearchQuery, setImageSearchQuery] = useState("");
+  const [imageSearchResults, setImageSearchResults] = useState<{ url: string; title: string }[]>([]);
+  const [searchingImages, setSearchingImages] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
