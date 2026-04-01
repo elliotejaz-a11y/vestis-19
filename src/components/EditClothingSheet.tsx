@@ -24,6 +24,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [category, setCategory] = useState(item?.category || "");
   const [colors, setColors] = useState<string[]>(parseColors(item?.color || ""));
   const [fabric, setFabric] = useState(item?.fabric || "");
+  const [size, setSize] = useState(item?.size || "");
   const [notes, setNotes] = useState(item?.notes || "");
   const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
