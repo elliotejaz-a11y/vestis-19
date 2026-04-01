@@ -37,7 +37,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
     return b.addedAt.getTime() - a.addedAt.getTime(); // date desc
   });
 
-  const wishlistItems = items.filter(i => wishlistIds.has(i.id));
+  
 
   return (
     <div className="min-h-screen pb-24">
