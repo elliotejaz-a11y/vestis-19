@@ -55,7 +55,7 @@ export function OutfitDetailSheet({ outfit, open, onOpenChange }: Props) {
             {outfit.items.map((item) => (
               <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/50 border border-border/30 overflow-hidden">
                 <div className="w-14 h-14 rounded-lg bg-white dark:bg-neutral-800 flex-shrink-0 overflow-hidden" style={{ minWidth: 56, minHeight: 56, maxWidth: 56, maxHeight: 56, position: 'relative' }}>
-                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" style={{ position: 'relative', zIndex: 0 }} />
+                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" style={{ position: 'relative', zIndex: 0 }} loading="lazy" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{item.name}</p>

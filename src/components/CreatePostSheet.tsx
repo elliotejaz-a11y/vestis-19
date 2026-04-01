@@ -61,7 +61,7 @@ export function CreatePostSheet({ open, onOpenChange, onSubmit, uploadImage, typ
             <div className="flex gap-2 overflow-x-auto pb-2">
               {images.map((url, i) => (
                 <div key={i} className="relative flex-shrink-0 w-32 h-32 rounded-xl overflow-hidden">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
+                  <img src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
                   <button
                     onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))}
                     className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 text-foreground text-xs flex items-center justify-center"
