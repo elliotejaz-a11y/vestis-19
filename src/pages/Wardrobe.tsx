@@ -23,14 +23,45 @@ interface Props {
 }
 
 export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
-  const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
+  const [activeTab, setActiveTab] = useState<"outfits" | "clothes" | "wishlist">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
+  const [sortBy, setSortBy] = useState<"date" | "color" | "fabric">("date");
+  const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
+  const { user } = useAuth();
 
+  // Load wishlist
+  useEffect(() => {
+    if (!user) return;
+    supabase.from("wishlist_items").select("clothing_item_id").eq("user_id", user.id).then(({ data }) => {
+      setWishlistIds(new Set((data || []).map((d: any) => d.clothing_item_id)));
+    });
+  }, [user]);
+
+  const toggleWishlist = useCallback(async (itemId: string) => {
+    if (!user) return;
+    const isWished = wishlistIds.has(itemId);
+    if (isWished) {
+      await supabase.from("wishlist_items").delete().eq("user_id", user.id).eq("clothing_item_id", itemId);
+      setWishlistIds(prev => { const n = new Set(prev); n.delete(itemId); return n; });
+    } else {
+      await supabase.from("wishlist_items").insert({ user_id: user.id, clothing_item_id: itemId });
+      setWishlistIds(prev => new Set(prev).add(itemId));
+    }
+  }, [user, wishlistIds]);
 
   const savedOutfits = outfits.filter((o) => o.saved);
   const filtered = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
+
+  // Sort items
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    if (sortBy === "color") return (a.color || "").localeCompare(b.color || "");
+    if (sortBy === "fabric") return (a.fabric || "").localeCompare(b.fabric || "");
+    return b.addedAt.getTime() - a.addedAt.getTime(); // date desc
+  });
+
+  const wishlistItems = items.filter(i => wishlistIds.has(i.id));
 
   return (
     <div className="min-h-screen pb-24">
