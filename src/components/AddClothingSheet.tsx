@@ -384,6 +384,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               </div>
             </div>
             <div>
+              <Label className="text-xs font-medium text-muted-foreground">Size (optional)</Label>
+              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. M, 10, 42" className="mt-1 rounded-xl bg-card" maxLength={20} />
+            </div>
+            <div>
               <Label className="text-xs font-medium text-muted-foreground">Colours</Label>
               <div className="mt-1.5">
                 <ColorPicker selected={colors} onChange={setColors} />
