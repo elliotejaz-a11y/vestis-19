@@ -65,11 +65,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         </button>
       </div>
 
-      {activeTab === "wishlist" ? (
-        <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="w-6 h-6 animate-spin rounded-full border-2 border-accent border-t-transparent" /></div>}>
-          <WishlistContent />
-        </Suspense>
-      ) : activeTab === "outfits" ? (
+      {activeTab === "outfits" ? (
         <div className="px-5 space-y-3">
           {savedOutfits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
