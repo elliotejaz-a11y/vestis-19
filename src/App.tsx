@@ -49,7 +49,7 @@ function AppRoutes() {
     );
   }
 
-  if (!user || sessionStorage.getItem("vestis_recovery_mode") === "true") {
+  if (!user) {
     return (
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>}>
         <Routes>
