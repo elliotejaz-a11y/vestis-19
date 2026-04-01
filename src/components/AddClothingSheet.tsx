@@ -463,6 +463,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               </div>
             </div>
             <div>
+              <Label className="text-xs font-medium text-muted-foreground">Size</Label>
+              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. S, M, L, XL, 32, 10" className="mt-1 rounded-xl bg-card" />
+            </div>
+            <div>
               <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Super comfy, runs a size small..." className="mt-1 rounded-xl bg-card text-sm min-h-[60px]" />
             </div>

@@ -135,12 +135,32 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
             )}
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/40">
-            <div>
-              <Label className="text-xs font-medium text-foreground">Hide from friends</Label>
-              <p className="text-[10px] text-muted-foreground">This item won't be visible to friends</p>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground">Privacy</Label>
+            <div className="space-y-1.5">
+              {([
+                { value: "public", label: "Public", desc: "Everyone can see this item", icon: Globe },
+                { value: "friends", label: "Friends Only", desc: "Only your friends can see this item", icon: Users },
+                { value: "private", label: "Only Me", desc: "Only you can see this item", icon: Lock },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setPrivacy(opt.value)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                    privacy === opt.value
+                      ? "border-accent bg-accent/10"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  <opt.icon className={`w-4 h-4 ${privacy === opt.value ? "text-accent" : "text-muted-foreground"}`} />
+                  <div className="text-left">
+                    <p className={`text-sm font-medium ${privacy === opt.value ? "text-accent" : "text-foreground"}`}>{opt.label}</p>
+                    <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                  </div>
+                </button>
+              ))}
             </div>
-            <Switch checked={isPrivate} onCheckedChange={setIsPrivate} />
           </div>
 
           <Button onClick={handleSave} disabled={!name || !category} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90">

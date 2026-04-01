@@ -337,6 +337,8 @@ export function useWardrobe() {
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
           is_private: item.isPrivate || false,
+          privacy: item.privacy || "public",
+          size: item.size || "",
         } as any)
         .eq("id", item.id)
         .eq("user_id", user.id);
