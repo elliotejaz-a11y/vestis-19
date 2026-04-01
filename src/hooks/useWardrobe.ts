@@ -222,6 +222,7 @@ export function useWardrobe() {
           tags: item.tags,
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
+          size: item.size || "",
         })
         .select()
         .single();
