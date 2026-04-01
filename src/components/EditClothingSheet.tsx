@@ -26,7 +26,8 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [notes, setNotes] = useState(item?.notes || "");
   const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
-  const [isPrivate, setIsPrivate] = useState(item?.isPrivate || false);
+  const [size, setSize] = useState(item?.size || "");
+  const [privacy, setPrivacy] = useState(item?.privacy || "public");
 
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
