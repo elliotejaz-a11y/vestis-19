@@ -333,6 +333,7 @@ export function useWardrobe() {
           category: item.category,
           color: item.color,
           fabric: item.fabric,
+          size: item.size || "",
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
           is_private: item.isPrivate || false,
