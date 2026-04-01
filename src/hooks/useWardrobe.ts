@@ -96,6 +96,7 @@ export function useWardrobe() {
             reasoning: o.reasoning,
             styleTips: o.style_tips || undefined,
             saved: o.saved || false,
+            privacy: o.privacy || "public",
           };
         });
         setOutfits(dbOutfits);
