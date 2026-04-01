@@ -113,7 +113,7 @@ export default function Friends() {
 
     const { data } = await supabase
       .from("clothing_items")
-      .select("*")
+      .select("id, name, category, color, fabric, image_url, back_image_url, tags, notes, created_at, estimated_price, is_private")
       .eq("user_id", friend.id);
 
     const items: ClothingItem[] = (data || []).map((r: any) => ({

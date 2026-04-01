@@ -346,7 +346,7 @@ function FriendsTab() {
   const viewFriendWardrobe = async (friend: FriendProfile) => {
     setSelectedFriend(friend);
     setLoadingWardrobe(true);
-    const { data } = await supabase.from("clothing_items").select("*").eq("user_id", friend.id);
+    const { data } = await supabase.from("clothing_items").select("id, name, category, color, fabric, image_url, back_image_url, tags, notes, created_at, estimated_price, is_private").eq("user_id", friend.id);
     const items: ClothingItem[] = (data || []).map((r: any) => ({
       id: r.id, name: r.name, category: r.category, color: r.color, fabric: r.fabric,
       imageUrl: r.image_url, backImageUrl: r.back_image_url || undefined,
