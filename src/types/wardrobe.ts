@@ -7,6 +7,7 @@ export interface ClothingItem {
   category: string;
   color: string;
   fabric: string;
+  size?: string;
   imageUrl: string;
   backImageUrl?: string;
   /** Original image URL before background removal (for retry/fallback). */
