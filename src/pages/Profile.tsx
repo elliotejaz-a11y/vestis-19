@@ -289,7 +289,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           )}
         </div>
 
-
+        {profile && (
           <div className="rounded-2xl bg-card border border-border/40 p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-sm font-semibold text-foreground">Style Preferences</p>
