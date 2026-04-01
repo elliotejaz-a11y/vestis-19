@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Heart, Plus, X, Search, Loader2 } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Heart, Plus, X, Search, Loader2, Globe, Shield } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [wlNotes, setWlNotes] = useState("");
   const [wlSaving, setWlSaving] = useState(false);
   const [wlImageFile, setWlImageFile] = useState<File | null>(null);
+  const [viewingProfilePic, setViewingProfilePic] = useState(false);
+  const [viewingFitPicImage, setViewingFitPicImage] = useState<string | null>(null);
   const wlFileInputRef = useRef<HTMLInputElement>(null);
   const FABRICS = ["Canvas","Cashmere","Chiffon","Cotton","Denim","Faux Leather","Gold","Gore-Tex","Knit","Leather","Linen","Mesh","Metal","Nylon","Platinum","Polyester","Rubber","Satin","Silk","Silver","Spandex","Stainless Steel","Suede","Titanium","Velvet","Wool"];
 
@@ -222,13 +225,16 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       </div>
       <header className="px-5 pt-12 pb-6">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
+          <button
+            onClick={() => profile?.avatar_url && setViewingProfilePic(true)}
+            className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden"
+          >
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
               <User className="w-8 h-8 text-muted-foreground" />
             )}
-          </div>
+          </button>
           <div className="text-center">
             <h1 className="text-xl font-bold tracking-tight text-foreground">
               {displayNameForTitle}
@@ -290,7 +296,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               {fitPics.slice(0, 9).map((pic: any) => (
                 <button
                   key={pic.id}
-                  onClick={() => setSelectedFitPic(pic)}
+                  onClick={() => setViewingFitPicImage(pic.image_url)}
                   className="aspect-square rounded-xl overflow-hidden relative"
                 >
                   <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
@@ -480,6 +486,34 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
         </Button>
 
+        {/* Account Privacy */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-accent" />
+              <p className="text-sm font-semibold text-foreground">Account Privacy</p>
+            </div>
+            <Switch
+              checked={!profile?.is_public}
+              onCheckedChange={async (checked) => {
+                await updateProfile({ is_public: !checked });
+                toast({ title: checked ? "Account set to Private" : "Account set to Public" });
+              }}
+            />
+          </div>
+          {profile?.is_public ? (
+            <div className="flex items-start gap-2 mt-1">
+              <Globe className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">Your profile is <span className="font-medium text-foreground">Public</span> — anyone can see your wardrobe, fit pics, and posts.</p>
+            </div>
+          ) : (
+            <div className="flex items-start gap-2 mt-1">
+              <Lock className="w-3.5 h-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">Your profile is <span className="font-medium text-foreground">Private</span> — only people you approve can see your content.</p>
+            </div>
+          )}
+        </div>
+
         {/* Appearance */}
         <div className="rounded-2xl bg-card border border-border/40 p-4">
           <p className="text-sm font-semibold text-foreground mb-3">Appearance</p>
@@ -611,6 +645,26 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         title="Delete your account?"
         description="This will permanently delete your account, wardrobe, outfits, and all associated data. This action cannot be undone."
       />
+
+      {/* Fullscreen profile pic viewer */}
+      {viewingProfilePic && profile?.avatar_url && (
+        <div className="fixed inset-0 z-[10002] bg-black/95 flex items-center justify-center" onClick={() => setViewingProfilePic(false)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setViewingProfilePic(false)}>
+            <X className="w-6 h-6" />
+          </button>
+          <img src={profile.avatar_url} alt="Profile" className="max-w-full max-h-full object-contain" style={{ objectPosition: profile.avatar_position || 'center' }} />
+        </div>
+      )}
+
+      {/* Fullscreen fit pic viewer */}
+      {viewingFitPicImage && (
+        <div className="fixed inset-0 z-[10002] bg-black/95 flex items-center justify-center" onClick={() => setViewingFitPicImage(null)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setViewingFitPicImage(null)}>
+            <X className="w-6 h-6" />
+          </button>
+          <img src={viewingFitPicImage} alt="Fit pic" className="max-w-full max-h-full object-contain" />
+        </div>
+      )}
 
       {/* Wishlist Add Sheet */}
       <Sheet open={wishlistAddOpen} onOpenChange={setWishlistAddOpen}>

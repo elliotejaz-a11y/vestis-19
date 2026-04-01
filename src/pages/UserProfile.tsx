@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban } from "lucide-react";
+import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
@@ -57,6 +57,8 @@ export default function UserProfilePage() {
   const [userColors, setUserColors] = useState<[string, number][]>([]);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [viewingProfilePic, setViewingProfilePic] = useState(false);
+  const [viewingFitPicImage, setViewingFitPicImage] = useState<string | null>(null);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -206,7 +208,10 @@ export default function UserProfilePage() {
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
+          <button
+            onClick={() => profile.avatar_url && setViewingProfilePic(true)}
+            className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0"
+          >
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
@@ -214,7 +219,7 @@ export default function UserProfilePage() {
                 <User className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
-          </div>
+          </button>
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground">{profile.display_name || profile.username}</h2>
             {profile.username && (
@@ -341,15 +346,35 @@ export default function UserProfilePage() {
             ) : (
               <div className="grid grid-cols-3 gap-0.5">
                 {fitPics.map((pic) => (
-                  <div key={pic.id} className="aspect-square relative">
+                  <button key={pic.id} className="aspect-square relative" onClick={() => setViewingFitPicImage(pic.image_url)}>
                     <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
           </div>
         </div>
       )}
+      {/* Fullscreen profile pic viewer */}
+      {viewingProfilePic && profile?.avatar_url && (
+        <div className="fixed inset-0 z-[10002] bg-black/95 flex items-center justify-center" onClick={() => setViewingProfilePic(false)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setViewingProfilePic(false)}>
+            <X className="w-6 h-6" />
+          </button>
+          <img src={profile.avatar_url} alt="Profile" className="max-w-full max-h-full object-contain" style={{ objectPosition: profile.avatar_position || 'center' }} />
+        </div>
+      )}
+
+      {/* Fullscreen fit pic viewer */}
+      {viewingFitPicImage && (
+        <div className="fixed inset-0 z-[10002] bg-black/95 flex items-center justify-center" onClick={() => setViewingFitPicImage(null)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setViewingFitPicImage(null)}>
+            <X className="w-6 h-6" />
+          </button>
+          <img src={viewingFitPicImage} alt="Fit pic" className="max-w-full max-h-full object-contain" />
+        </div>
+      )}
+
       {userId && (
         <>
           <FollowListSheet
