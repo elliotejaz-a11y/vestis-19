@@ -40,6 +40,24 @@ export default function SocialFeed() {
     setSearching(false);
   };
 
+  const [discoverUsers, setDiscoverUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (tab !== "discover") return;
+    const fetchDiscoverUsers = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, display_name, username, avatar_url, is_public")
+        .neq("id", user?.id || "")
+        .order("created_at", { ascending: false })
+        .limit(30);
+      setDiscoverUsers(
+        (data || []).filter((u: any) => u.avatar_url && u.username && !/^user\d*$/i.test(u.username))
+      );
+    };
+    fetchDiscoverUsers();
+  }, [tab, user?.id]);
+
   const feedPosts = posts;
   const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.avatar_url && p.user?.username && !/^user\d*$/i.test(p.user.username));
 
