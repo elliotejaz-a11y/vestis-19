@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Sparkles, Loader2, DollarSign, RotateCw, RefreshCw } from "lucide-react";
+import { Upload, Sparkles, Loader2, DollarSign, RotateCw, RefreshCw, Search, X } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -13,7 +13,7 @@ import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wardrobeImageProcessing";
 import { processClothingImage } from "@/lib/image-processing";
 
-const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
+const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
@@ -35,6 +35,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [analyzing, setAnalyzing] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const [showImageSearch, setShowImageSearch] = useState(false);
+  const [imageSearchQuery, setImageSearchQuery] = useState("");
+  const [imageSearchResults, setImageSearchResults] = useState<{ url: string; title: string }[]>([]);
+  const [searchingImages, setSearchingImages] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
@@ -166,6 +170,30 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     toast({ title: "Back image added" });
   };
 
+  const handleImageSearch = async () => {
+    if (!imageSearchQuery.trim()) return;
+    setSearchingImages(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("search-clothing-images", {
+        body: { query: imageSearchQuery.trim() },
+      });
+      if (!error && data?.images) {
+        setImageSearchResults(data.images);
+      }
+    } catch (err) {
+      console.error("Image search failed:", err);
+    } finally {
+      setSearchingImages(false);
+    }
+  };
+
+  const handleSelectSearchImage = (url: string) => {
+    setImageUrl(url);
+    setShowImageSearch(false);
+    setImageSearchResults([]);
+    setImageSearchQuery("");
+  };
+
   const handleSave = async () => {
     if (!imageUrl || !name || !category) return;
     const color = joinColors(colors);
@@ -201,6 +229,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
     setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
+    setShowImageSearch(false); setImageSearchQuery(""); setImageSearchResults([]);
   };
 
   return (
@@ -213,15 +242,59 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
         <div className="mt-6 space-y-5">
           {!imageUrl ? (
-            <div className="flex gap-3">
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+                >
+                  <Upload className="w-8 h-8" />
+                  <span className="text-xs font-medium">Upload Photo</span>
+                </button>
+                <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
+              </div>
+              {/* Online image search */}
               <button
-                onClick={() => fileRef.current?.click()}
-                className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+                onClick={() => setShowImageSearch(!showImageSearch)}
+                className="w-full h-11 rounded-2xl border border-border bg-card flex items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
               >
-                <Upload className="w-8 h-8" />
-                <span className="text-xs font-medium">Upload Photo</span>
+                <Search className="w-4 h-4" />
+                <span className="text-xs font-medium">Search for an image online</span>
               </button>
-              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
+              {showImageSearch && (
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={imageSearchQuery}
+                      onChange={(e) => setImageSearchQuery(e.target.value)}
+                      placeholder="e.g. Black Nike Air Force 1"
+                      className="rounded-xl bg-card text-sm flex-1"
+                      onKeyDown={(e) => e.key === "Enter" && handleImageSearch()}
+                    />
+                    <Button
+                      onClick={handleImageSearch}
+                      disabled={searchingImages || !imageSearchQuery.trim()}
+                      size="icon"
+                      className="rounded-xl h-10 w-10 shrink-0 bg-accent text-accent-foreground"
+                    >
+                      {searchingImages ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  {imageSearchResults.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                      {imageSearchResults.map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => handleSelectSearchImage(img.url)}
+                          className="aspect-square rounded-xl overflow-hidden border border-border hover:border-accent transition-colors"
+                        >
+                          <img src={img.url} alt={img.title} className="w-full h-full object-cover" loading="lazy" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">

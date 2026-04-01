@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ClothingItem } from "@/types/wardrobe";
 import { EditClothingSheet } from "@/components/EditClothingSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { Pencil, DollarSign, Tag, Palette, Shirt, StickyNote, ImageIcon, Copy } from "lucide-react";
+import { Pencil, DollarSign, Tag, Palette, Shirt, StickyNote, ImageIcon, Copy, Ruler } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatPrice } from "@/lib/currency";
@@ -126,7 +126,16 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
                   <p className="text-xs font-medium text-foreground">{item.fabric}</p>
                 </div>
               </div>
-              {item.estimatedPrice && (
+              {(item as any).size && (
+                <div className="bg-card rounded-xl p-3 flex items-center gap-2">
+                  <Ruler className="w-4 h-4 text-accent" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Size</p>
+                    <p className="text-xs font-medium text-foreground">{(item as any).size}</p>
+                  </div>
+                </div>
+              )}
+              {item.estimatedPrice != null && item.estimatedPrice > 0 && (
                 <div className="bg-accent/10 rounded-xl p-3 flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-accent" />
                   <div>
