@@ -29,6 +29,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [colors, setColors] = useState<string[]>([]);
   const [fabric, setFabric] = useState("");
   const [tags, setTags] = useState<string[]>([]);
+  const [size, setSize] = useState("");
   const [notes, setNotes] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [priceInput, setPriceInput] = useState("");
