@@ -1,5 +1,4 @@
 import { AddClothingSheet } from "@/components/AddClothingSheet";
-import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { PresetItemsSheet } from "@/components/PresetItemsSheet";
 import { ClothingItem } from "@/types/wardrobe";
 import { Camera, Upload, Sparkles, Package, Home } from "lucide-react";
