@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Heart, Plus } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [fitPics, setFitPics] = useState<any[]>([]);
+  const [wishlistItems, setWishlistItems] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -102,10 +103,21 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     setFitPics(data || []);
   };
 
+  const fetchWishlistItems = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("wishlist_items")
+      .select("id, name, image_url, estimated_price")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    setWishlistItems(data || []);
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
     fetchFollowCounts();
     fetchFitPics();
+    fetchWishlistItems();
   }, [user]);
 
   const savedOutfits = outfits.filter((o) => o.saved);
@@ -239,6 +251,43 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           )}
         </div>
 
+        {/* Wish List */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Heart className="w-4 h-4 text-accent" />
+              <p className="text-sm font-semibold text-foreground">Wish List</p>
+            </div>
+            <Button variant="ghost" size="sm" className="h-8 px-2.5 text-xs text-accent" onClick={() => navigate("/wardrobe")}>
+              <Plus className="w-3.5 h-3.5 mr-1" /> Add
+            </Button>
+          </div>
+          {wishlistItems.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-4">No wishlist items yet — add items you want!</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {wishlistItems.slice(0, 9).map((item: any) => (
+                <div key={item.id} className="rounded-xl overflow-hidden bg-muted">
+                  <div className="aspect-square bg-white dark:bg-neutral-800">
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.name} className="w-full h-full object-contain" loading="lazy" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Heart className="w-5 h-5 text-muted-foreground/30" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-1.5">
+                    <p className="text-[10px] font-medium text-foreground truncate">{item.name}</p>
+                    {item.estimated_price != null && (
+                      <p className="text-[9px] font-medium text-accent">${item.estimated_price.toFixed(2)}</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {profile && (
           <div className="rounded-2xl bg-card border border-border/40 p-4">
