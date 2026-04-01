@@ -468,9 +468,9 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
       <SaveOutfitDialog
         open={saveDialogOpen}
         onOpenChange={setSaveDialogOpen}
-        onConfirm={(name, description) => {
+        onConfirm={(name, description, privacy) => {
           setSaveDialogOpen(false);
-          handleSaveOutfit(name || undefined, description || undefined);
+          handleSaveOutfit(name || undefined, description || undefined, privacy || undefined);
         }}
         defaultName="Custom outfit"
       />
