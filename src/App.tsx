@@ -25,6 +25,7 @@ const CalendarPage = lazy(() => import("./pages/Calendar"));
 const FeedbackPage = lazy(() => import("./pages/Feedback"));
 const SocialFeed = lazy(() => import("./pages/SocialFeed"));
 const UserProfilePage = lazy(() => import("./pages/UserProfile"));
+const Wishlist = lazy(() => import("./pages/Wishlist"));
 const Friends = lazy(() => import("./pages/Friends"));
 const Chat = lazy(() => import("./pages/Chat"));
 const Auth = lazy(() => import("./pages/Auth"));
@@ -112,6 +113,7 @@ function AuthenticatedApp() {
           <OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />
         } />
         <Route path="/friends" element={<Friends />} />
+        <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/calendar" element={
           loading ? <PageSkeleton /> :
