@@ -65,6 +65,7 @@ export function useWardrobe() {
         category: r.category,
         color: r.color,
         fabric: r.fabric,
+        size: r.size || "",
         imageUrl: r.image_url,
         backImageUrl: r.back_image_url || undefined,
         tags: r.tags || [],
@@ -95,6 +96,7 @@ export function useWardrobe() {
             reasoning: o.reasoning,
             styleTips: o.style_tips || undefined,
             saved: o.saved || false,
+            privacy: o.privacy || "public",
           };
         });
         setOutfits(dbOutfits);
@@ -215,6 +217,7 @@ export function useWardrobe() {
           category: item.category,
           color: item.color,
           fabric: item.fabric,
+          size: item.size || "",
           image_url: imageUrl,
           back_image_url: backImageUrl || null,
           tags: item.tags,
@@ -231,6 +234,7 @@ export function useWardrobe() {
           category: data.category,
           color: data.color,
           fabric: data.fabric,
+          size: data.size || "",
           imageUrl: data.image_url,
           backImageUrl: data.back_image_url || undefined,
           tags: data.tags || [],
@@ -329,6 +333,7 @@ export function useWardrobe() {
           category: item.category,
           color: item.color,
           fabric: item.fabric,
+          size: item.size || "",
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
           is_private: item.isPrivate || false,
@@ -350,13 +355,14 @@ export function useWardrobe() {
   );
 
   const saveOutfit = useCallback(
-    async (id: string, saved: boolean, name?: string, description?: string) => {
+    async (id: string, saved: boolean, name?: string, description?: string, privacy?: string) => {
       if (!user) return;
       const update: Record<string, any> = { saved };
       if (name !== undefined) update.name = name;
       if (description !== undefined) update.description = description;
+      if (privacy !== undefined) update.privacy = privacy;
       await supabase.from("outfits").update(update as any).eq("id", id).eq("user_id", user.id);
-      setOutfits((prev) => prev.map((o) => (o.id === id ? { ...o, saved, ...(name !== undefined ? { name } : {}), ...(description !== undefined ? { description } : {}) } : o)));
+      setOutfits((prev) => prev.map((o) => (o.id === id ? { ...o, saved, ...(name !== undefined ? { name } : {}), ...(description !== undefined ? { description } : {}), ...(privacy !== undefined ? { privacy: privacy as any } : {}) } : o)));
     },
     [user]
   );

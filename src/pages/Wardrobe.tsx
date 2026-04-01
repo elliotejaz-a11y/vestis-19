@@ -1,12 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { OutfitCard } from "@/components/OutfitCard";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { Plus, Shirt, Bookmark, Sparkles } from "lucide-react";
+import { Plus, Shirt, Bookmark, Sparkles, Heart, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Props {
   items: ClothingItem[];
@@ -19,15 +22,64 @@ interface Props {
   onRetryBackgroundRemoval?: (id: string) => void;
 }
 
-export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
-  const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
-  const [activeFilter, setActiveFilter] = useState<string>("all");
-  const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
-  const navigate = useNavigate();
+type SortOption = "date" | "colour" | "fabric";
 
+export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
+  const [activeTab, setActiveTab] = useState<"outfits" | "clothes" | "wishlist">("clothes");
+  const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("date");
+  const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
+  const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+  const [wishlistItems, setWishlistItems] = useState<ClothingItem[]>([]);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Fetch wishlist
+  useEffect(() => {
+    if (!user) return;
+    const fetchWishlist = async () => {
+      const { data } = await supabase
+        .from("wishlist_items")
+        .select("clothing_item_id")
+        .eq("user_id", user.id);
+      if (data) {
+        setWishlistIds(new Set(data.map((w: any) => w.clothing_item_id)));
+      }
+    };
+    fetchWishlist();
+  }, [user]);
+
+  // Derive wishlist items from current items
+  useEffect(() => {
+    setWishlistItems(items.filter(i => wishlistIds.has(i.id)));
+  }, [items, wishlistIds]);
+
+  const toggleWishlist = async (itemId: string) => {
+    if (!user) return;
+    if (wishlistIds.has(itemId)) {
+      await supabase.from("wishlist_items").delete().match({ user_id: user.id, clothing_item_id: itemId });
+      setWishlistIds(prev => { const n = new Set(prev); n.delete(itemId); return n; });
+    } else {
+      await supabase.from("wishlist_items").insert({ user_id: user.id, clothing_item_id: itemId });
+      setWishlistIds(prev => new Set(prev).add(itemId));
+    }
+  };
 
   const savedOutfits = outfits.filter((o) => o.saved);
   const filtered = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    switch (sortBy) {
+      case "colour":
+        return arr.sort((a, b) => (a.color || "").localeCompare(b.color || ""));
+      case "fabric":
+        return arr.sort((a, b) => (a.fabric || "").localeCompare(b.fabric || ""));
+      case "date":
+      default:
+        return arr.sort((a, b) => b.addedAt.getTime() - a.addedAt.getTime());
+    }
+  }, [filtered, sortBy]);
 
   return (
     <div className="min-h-screen pb-24">
@@ -56,9 +108,36 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         >
           <Bookmark className="w-3.5 h-3.5" /> Saved Outfits
         </button>
+        <button
+          onClick={() => setActiveTab("wishlist")}
+          className={cn(
+            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            activeTab === "wishlist" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
+          )}
+        >
+          <Heart className="w-3.5 h-3.5" /> Wishlist
+        </button>
       </div>
 
-      {activeTab === "outfits" ? (
+      {activeTab === "wishlist" ? (
+        <div className="px-5 space-y-3">
+          {wishlistItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center mb-4">
+                <Heart className="w-7 h-7 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">No wishlist items</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">Tap the heart icon on any clothing item to add it to your wishlist</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {wishlistItems.map((item) => (
+                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
+              ))}
+            </div>
+          )}
+        </div>
+      ) : activeTab === "outfits" ? (
         /* Saved Outfits Tab */
         <div className="px-5 space-y-3">
           {savedOutfits.length === 0 ? (
@@ -94,6 +173,21 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
       ) : (
         /* My Clothes Tab */
         <>
+          {/* Sort + filter bar */}
+          <div className="px-5 pb-2 flex items-center gap-2">
+            <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="h-8 w-[130px] rounded-xl bg-card text-xs border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Date Added</SelectItem>
+                <SelectItem value="colour">Colour</SelectItem>
+                <SelectItem value="fabric">Fabric</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="px-5 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveFilter("all")}
@@ -114,7 +208,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
             ))}
           </div>
 
-          {filtered.length === 0 ? (
+          {sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-5 py-20 text-center">
               <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center mb-4">
                 <Shirt className="w-7 h-7 text-muted-foreground" />
@@ -129,8 +223,16 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
             </div>
           ) : (
             <div className="px-4 grid grid-cols-2 gap-3">
-              {filtered.map((item) => (
-                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
+              {sorted.map((item) => (
+                <div key={item.id} className="relative">
+                  <ClothingCard item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleWishlist(item.id); }}
+                    className="absolute top-2 right-2 z-10 w-7 h-7 rounded-full bg-background/80 backdrop-blur flex items-center justify-center"
+                  >
+                    <Heart className={cn("w-3.5 h-3.5", wishlistIds.has(item.id) ? "fill-accent text-accent" : "text-muted-foreground")} />
+                  </button>
+                </div>
               ))}
             </div>
           )}

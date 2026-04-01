@@ -10,7 +10,7 @@ import { Sparkles } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
 
-const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
+const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
 
 interface Props {
   item: ClothingItem | null;
@@ -24,6 +24,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [category, setCategory] = useState(item?.category || "");
   const [colors, setColors] = useState<string[]>(parseColors(item?.color || ""));
   const [fabric, setFabric] = useState(item?.fabric || "");
+  const [size, setSize] = useState(item?.size || "");
   const [notes, setNotes] = useState(item?.notes || "");
   const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
@@ -35,6 +36,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setCategory(item.category);
     setColors(parseColors(item.color));
     setFabric(item.fabric);
+    setSize(item.size || "");
     setNotes(item.notes);
     setEstimatedPrice(item.estimatedPrice?.toString() || "");
     setPriceEnabled(item.estimatedPrice != null);
@@ -44,13 +46,13 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const handleSave = () => {
     if (!item || !name || !category) return;
     const priceNum = priceEnabled && estimatedPrice ? parseFloat(estimatedPrice) : (priceEnabled ? 0 : undefined);
-    onSave({ ...item, name, category, color: joinColors(colors), fabric, notes, estimatedPrice: priceNum, isPrivate });
+    onSave({ ...item, name, category, color: joinColors(colors), fabric, size, notes, estimatedPrice: priceNum, isPrivate });
     onOpenChange(false);
   };
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); }
+      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setSize(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
@@ -91,6 +93,10 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Size</Label>
+              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. M, 10, 42" className="mt-1 rounded-xl bg-card" maxLength={20} />
             </div>
             <div>
               <Label className="text-xs font-medium text-muted-foreground">Colours</Label>
