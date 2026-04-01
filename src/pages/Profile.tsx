@@ -56,6 +56,55 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Wishlist add form state
+  const [wishlistAddOpen, setWishlistAddOpen] = useState(false);
+  const [wlName, setWlName] = useState("");
+  const [wlImageUrl, setWlImageUrl] = useState("");
+  const [wlPrice, setWlPrice] = useState("");
+  const [wlBrand, setWlBrand] = useState("");
+  const [wlColor, setWlColor] = useState("");
+  const [wlFabric, setWlFabric] = useState("");
+  const [wlSize, setWlSize] = useState("");
+  const [wlNotes, setWlNotes] = useState("");
+  const [wlSaving, setWlSaving] = useState(false);
+  const [wlImageFile, setWlImageFile] = useState<File | null>(null);
+  const wlFileInputRef = useRef<HTMLInputElement>(null);
+  const FABRICS = ["Canvas","Cashmere","Chiffon","Cotton","Denim","Faux Leather","Gold","Gore-Tex","Knit","Leather","Linen","Mesh","Metal","Nylon","Platinum","Polyester","Rubber","Satin","Silk","Silver","Spandex","Stainless Steel","Suede","Titanium","Velvet","Wool"];
+
+  const resetWlForm = () => {
+    setWlName(""); setWlImageUrl(""); setWlPrice(""); setWlBrand("");
+    setWlColor(""); setWlFabric(""); setWlSize(""); setWlNotes("");
+    setWlImageFile(null);
+  };
+
+  const handleWlFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) { setWlImageFile(file); setWlImageUrl(URL.createObjectURL(file)); }
+  };
+
+  const handleWlSave = async () => {
+    if (!user || !wlName.trim()) return;
+    setWlSaving(true);
+    let finalImageUrl = wlImageUrl;
+    if (wlImageFile) {
+      const ext = wlImageFile.name.split(".").pop() || "jpg";
+      const path = `${user.id}/wishlist-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("clothing-images").upload(path, wlImageFile);
+      if (upErr) { toast({ title: "Upload failed", variant: "destructive" }); setWlSaving(false); return; }
+      const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
+      finalImageUrl = urlData.publicUrl;
+    }
+    const { error } = await supabase.from("wishlist_items").insert({
+      user_id: user.id, name: wlName.trim(), image_url: finalImageUrl,
+      estimated_price: wlPrice ? parseFloat(wlPrice) : null,
+      brand: wlBrand.trim(), color: wlColor.trim(), fabric: wlFabric,
+      size: wlSize.trim(), notes: wlNotes.trim(),
+    });
+    if (error) { toast({ title: "Failed to save", variant: "destructive" }); }
+    else { toast({ title: "Added to wishlist!" }); resetWlForm(); setWishlistAddOpen(false); fetchWishlistItems(); }
+    setWlSaving(false);
+  };
+
   const fetchFollowCounts = async () => {
     if (!user) return;
     const [{ count: followers }, { count: following }] = await Promise.all([
