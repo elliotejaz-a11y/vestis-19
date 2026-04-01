@@ -646,6 +646,26 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         description="This will permanently delete your account, wardrobe, outfits, and all associated data. This action cannot be undone."
       />
 
+      {/* Fullscreen profile pic viewer */}
+      {viewingProfilePic && profile?.avatar_url && (
+        <div className="fixed inset-0 z-[10002] bg-black/95 flex items-center justify-center" onClick={() => setViewingProfilePic(false)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setViewingProfilePic(false)}>
+            <X className="w-6 h-6" />
+          </button>
+          <img src={profile.avatar_url} alt="Profile" className="max-w-full max-h-full object-contain" style={{ objectPosition: profile.avatar_position || 'center' }} />
+        </div>
+      )}
+
+      {/* Fullscreen fit pic viewer */}
+      {viewingFitPicImage && (
+        <div className="fixed inset-0 z-[10002] bg-black/95 flex items-center justify-center" onClick={() => setViewingFitPicImage(null)}>
+          <button className="absolute top-4 right-4 text-white/80 hover:text-white z-10" onClick={() => setViewingFitPicImage(null)}>
+            <X className="w-6 h-6" />
+          </button>
+          <img src={viewingFitPicImage} alt="Fit pic" className="max-w-full max-h-full object-contain" />
+        </div>
+      )}
+
       {/* Wishlist Add Sheet */}
       <Sheet open={wishlistAddOpen} onOpenChange={setWishlistAddOpen}>
         <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto pb-28" style={{ zIndex: 10000 }}>
