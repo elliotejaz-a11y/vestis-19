@@ -296,7 +296,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               {fitPics.slice(0, 9).map((pic: any) => (
                 <button
                   key={pic.id}
-                  onClick={() => setSelectedFitPic(pic)}
+                  onClick={() => setViewingFitPicImage(pic.image_url)}
                   className="aspect-square rounded-xl overflow-hidden relative"
                 >
                   <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
