@@ -241,6 +241,8 @@ export function useWardrobe() {
           addedAt: new Date(data.created_at),
           estimatedPrice: data.estimated_price ? Number(data.estimated_price) : undefined,
           isPrivate: data.is_private ?? false,
+          privacy: (data as any).privacy || "public",
+          size: data.size || undefined,
         };
         setItems((prev) => [newItem, ...prev]);
 
