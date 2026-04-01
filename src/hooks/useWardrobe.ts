@@ -355,13 +355,14 @@ export function useWardrobe() {
   );
 
   const saveOutfit = useCallback(
-    async (id: string, saved: boolean, name?: string, description?: string) => {
+    async (id: string, saved: boolean, name?: string, description?: string, privacy?: string) => {
       if (!user) return;
       const update: Record<string, any> = { saved };
       if (name !== undefined) update.name = name;
       if (description !== undefined) update.description = description;
+      if (privacy !== undefined) update.privacy = privacy;
       await supabase.from("outfits").update(update as any).eq("id", id).eq("user_id", user.id);
-      setOutfits((prev) => prev.map((o) => (o.id === id ? { ...o, saved, ...(name !== undefined ? { name } : {}), ...(description !== undefined ? { description } : {}) } : o)));
+      setOutfits((prev) => prev.map((o) => (o.id === id ? { ...o, saved, ...(name !== undefined ? { name } : {}), ...(description !== undefined ? { description } : {}), ...(privacy !== undefined ? { privacy: privacy as any } : {}) } : o)));
     },
     [user]
   );
