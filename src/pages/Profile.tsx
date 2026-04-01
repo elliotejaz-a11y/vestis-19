@@ -69,6 +69,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [wlNotes, setWlNotes] = useState("");
   const [wlSaving, setWlSaving] = useState(false);
   const [wlImageFile, setWlImageFile] = useState<File | null>(null);
+  const [viewingProfilePic, setViewingProfilePic] = useState(false);
+  const [viewingFitPicImage, setViewingFitPicImage] = useState<string | null>(null);
   const wlFileInputRef = useRef<HTMLInputElement>(null);
   const FABRICS = ["Canvas","Cashmere","Chiffon","Cotton","Denim","Faux Leather","Gold","Gore-Tex","Knit","Leather","Linen","Mesh","Metal","Nylon","Platinum","Polyester","Rubber","Satin","Silk","Silver","Spandex","Stainless Steel","Suede","Titanium","Velvet","Wool"];
 
