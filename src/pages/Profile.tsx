@@ -611,6 +611,62 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         title="Delete your account?"
         description="This will permanently delete your account, wardrobe, outfits, and all associated data. This action cannot be undone."
       />
+
+      {/* Wishlist Add Sheet */}
+      <Sheet open={wishlistAddOpen} onOpenChange={setWishlistAddOpen}>
+        <SheetContent side="bottom" className="rounded-t-3xl max-h-[90vh] overflow-y-auto pb-28" style={{ zIndex: 10000 }}>
+          <SheetHeader><SheetTitle>Add to Wishlist</SheetTitle></SheetHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>Photo</Label>
+              {wlImageUrl ? (
+                <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-muted mt-1">
+                  <img src={wlImageUrl} alt="Preview" className="w-full h-full object-contain" />
+                  <button onClick={() => { setWlImageUrl(""); setWlImageFile(null); }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-background/80 backdrop-blur flex items-center justify-center">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2 mt-1">
+                  <input ref={wlFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleWlFileChange} />
+                  <Button variant="outline" size="sm" onClick={() => wlFileInputRef.current?.click()}>
+                    <Camera className="w-4 h-4 mr-1" /> Upload
+                  </Button>
+                </div>
+              )}
+            </div>
+            <div>
+              <Label>Item Name *</Label>
+              <Input value={wlName} onChange={(e) => setWlName(e.target.value)} placeholder="e.g. Nike Air Max 90" className="mt-1" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Price</Label><Input type="number" value={wlPrice} onChange={(e) => setWlPrice(e.target.value)} placeholder="0.00" className="mt-1" /></div>
+              <div><Label>Brand</Label><Input value={wlBrand} onChange={(e) => setWlBrand(e.target.value)} placeholder="e.g. Nike" className="mt-1" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><Label>Colour</Label><Input value={wlColor} onChange={(e) => setWlColor(e.target.value)} placeholder="e.g. Black" className="mt-1" /></div>
+              <div><Label>Size</Label><Input value={wlSize} onChange={(e) => setWlSize(e.target.value)} placeholder="e.g. M, 10" className="mt-1" /></div>
+            </div>
+            <div>
+              <Label>Material</Label>
+              <Select value={wlFabric} onValueChange={setWlFabric}>
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select" /></SelectTrigger>
+                <SelectContent style={{ zIndex: 10001 }}>
+                  {FABRICS.map((f) => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Notes</Label>
+              <Textarea value={wlNotes} onChange={(e) => setWlNotes(e.target.value)} placeholder="Any notes..." rows={2} className="mt-1" />
+            </div>
+            <Button className="w-full" onClick={handleWlSave} disabled={wlSaving || !wlName.trim()}>
+              {wlSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Heart className="w-4 h-4 mr-2" />}
+              Add to Wishlist
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
