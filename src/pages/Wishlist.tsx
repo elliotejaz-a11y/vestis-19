@@ -152,11 +152,7 @@ export default function Wishlist() {
   };
 
   return (
-    <div className="min-h-screen pb-24">
-      <header className="px-5 pt-12 pb-4">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">Wishlist</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{items.length} items saved</p>
-      </header>
+    <div>
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
