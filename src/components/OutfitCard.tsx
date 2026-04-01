@@ -32,7 +32,7 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
     }
   };
 
-  const handleSaveConfirm = (name: string, description: string) => {
+  const handleSaveConfirm = (name: string, description: string, privacy?: string) => {
     onSave?.(outfit.id, true, name || undefined, description || undefined);
     setSaveDialogOpen(false);
   };
