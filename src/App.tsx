@@ -35,6 +35,7 @@ const Privacy = lazy(() => import("./pages/policies/Privacy"));
 const Community = lazy(() => import("./pages/policies/Community"));
 const Cookies = lazy(() => import("./pages/policies/Cookies"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Wishlist = lazy(() => import("./pages/Wishlist"));
 
 const queryClient = new QueryClient();
 
