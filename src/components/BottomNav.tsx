@@ -1,4 +1,4 @@
-import { Shirt, User, MessageCircle, CalendarDays } from "lucide-react";
+import { Shirt, User, MessageCircle, CalendarDays, Heart } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import vestisIcon from "@/assets/vestis-favicon.png";
@@ -8,6 +8,7 @@ const tabs = [
   { path: "/", icon: Shirt, label: "Wardrobe" },
   { path: "/calendar", icon: CalendarDays, label: "Calendar" },
   { path: "/outfits", icon: null, label: "Outfits", isCenter: true },
+  { path: "/wishlist", icon: Heart, label: "Wishlist" },
   { path: "/chat", icon: MessageCircle, label: "Socials" },
   { path: "/profile", icon: User, label: "Profile" },
 ];
