@@ -220,6 +220,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         notes,
         addedAt: new Date(),
         estimatedPrice,
+        size,
       },
       { runBackgroundRemoval: isFileSourced, imageBase64ForProcessing }
     );
