@@ -33,6 +33,7 @@ export interface Outfit {
   reasoning: string;
   styleTips?: string;
   saved?: boolean;
+  privacy?: "public" | "friends_only" | "only_me";
 }
 
 export interface PlannedOutfit {
