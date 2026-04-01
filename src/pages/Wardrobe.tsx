@@ -68,34 +68,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         </button>
       </div>
 
-      {activeTab === "wishlist" ? (
-        /* Wishlist Tab */
-        <div className="px-5 space-y-3">
-          {wishlistItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center mb-4">
-                <Heart className="w-7 h-7 text-muted-foreground" />
-              </div>
-              <p className="text-sm font-medium text-foreground">No wishlisted items</p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">Tap the heart icon on any clothing item to add it here</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {wishlistItems.map((item) => (
-                <div key={item.id} className="relative">
-                  <ClothingCard item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
-                  <button
-                    onClick={() => toggleWishlist(item.id)}
-                    className="absolute top-2 left-2 z-10 w-7 h-7 rounded-full bg-background/80 backdrop-blur flex items-center justify-center"
-                  >
-                    <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : activeTab === "outfits" ? (
+      {activeTab === "outfits" ? (
         /* Saved Outfits Tab */
         <div className="px-5 space-y-3">
           {savedOutfits.length === 0 ? (
