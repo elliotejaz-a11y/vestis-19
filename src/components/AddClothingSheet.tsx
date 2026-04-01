@@ -170,6 +170,30 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     toast({ title: "Back image added" });
   };
 
+  const handleImageSearch = async () => {
+    if (!imageSearchQuery.trim()) return;
+    setSearchingImages(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("search-clothing-images", {
+        body: { query: imageSearchQuery.trim() },
+      });
+      if (!error && data?.images) {
+        setImageSearchResults(data.images);
+      }
+    } catch (err) {
+      console.error("Image search failed:", err);
+    } finally {
+      setSearchingImages(false);
+    }
+  };
+
+  const handleSelectSearchImage = (url: string) => {
+    setImageUrl(url);
+    setShowImageSearch(false);
+    setImageSearchResults([]);
+    setImageSearchQuery("");
+  };
+
   const handleSave = async () => {
     if (!imageUrl || !name || !category) return;
     const color = joinColors(colors);
