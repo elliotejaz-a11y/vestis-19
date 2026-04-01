@@ -23,7 +23,7 @@ interface Props {
 }
 
 export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
-  const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
+  const [activeTab, setActiveTab] = useState<"outfits" | "clothes" | "wishlist">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
   const [sortBy, setSortBy] = useState<"newest" | "oldest" | "color" | "fabric">("newest");
