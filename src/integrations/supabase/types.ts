@@ -817,32 +817,48 @@ export type Database = {
       }
       wishlist_items: {
         Row: {
-          clothing_item_id: string
+          brand: string
+          category: string
+          color: string
           created_at: string
+          estimated_price: number | null
+          fabric: string
           id: string
+          image_url: string
+          name: string
+          notes: string
+          size: string
           user_id: string
         }
         Insert: {
-          clothing_item_id: string
+          brand?: string
+          category?: string
+          color?: string
           created_at?: string
+          estimated_price?: number | null
+          fabric?: string
           id?: string
+          image_url?: string
+          name?: string
+          notes?: string
+          size?: string
           user_id: string
         }
         Update: {
-          clothing_item_id?: string
+          brand?: string
+          category?: string
+          color?: string
           created_at?: string
+          estimated_price?: number | null
+          fabric?: string
           id?: string
+          image_url?: string
+          name?: string
+          notes?: string
+          size?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "wishlist_items_clothing_item_id_fkey"
-            columns: ["clothing_item_id"]
-            isOneToOne: false
-            referencedRelation: "clothing_items"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
