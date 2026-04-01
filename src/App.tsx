@@ -35,7 +35,6 @@ const Privacy = lazy(() => import("./pages/policies/Privacy"));
 const Community = lazy(() => import("./pages/policies/Community"));
 const Cookies = lazy(() => import("./pages/policies/Cookies"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const Wishlist = lazy(() => import("./pages/Wishlist"));
 
 const queryClient = new QueryClient();
 
@@ -112,7 +111,6 @@ function AuthenticatedApp() {
           loading ? <PageSkeleton /> :
           <OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />
         } />
-        <Route path="/wishlist" element={<Wishlist />} />
         <Route path="/friends" element={<Friends />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/calendar" element={
