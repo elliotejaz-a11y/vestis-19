@@ -5,8 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Camera, Loader2, Move, Lock, Globe, LockKeyhole } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { User, Camera, Loader2, Move, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +38,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
   const [avatarPosition, setAvatarPosition] = useState(profile?.avatar_position || "50% 50%");
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
-  const [isPublic, setIsPublic] = useState(profile?.is_public ?? true);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [cropPreview, setCropPreview] = useState<string | null>(null);
@@ -144,7 +142,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       avatar_url: avatarUrl || null,
       avatar_position: avatarPosition,
       currency_preference: currencyPref,
-      is_public: isPublic,
     };
 
     if (usernameChanged) {
@@ -166,7 +163,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setAvatarUrl(profile.avatar_url || "");
       setAvatarPosition(profile.avatar_position || "50% 50%");
       setCurrencyPref(profile.currency_preference || "NZD");
-      setIsPublic(profile.is_public ?? true);
       setCropPreview(null);
     }
     onOpenChange(isOpen);
@@ -313,18 +309,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                     <SelectItem value="EUR">🇪🇺 EUR</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              {/* Account Visibility */}
-              <div className="flex items-center justify-between rounded-xl bg-card p-3 border border-border/40">
-                <div className="flex items-center gap-2">
-                  {isPublic ? <Globe className="w-4 h-4 text-accent" /> : <LockKeyhole className="w-4 h-4 text-muted-foreground" />}
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{isPublic ? "Public Account" : "Private Account"}</p>
-                    <p className="text-[10px] text-muted-foreground">{isPublic ? "Anyone can see your profile" : "Only followers can see your content"}</p>
-                  </div>
-                </div>
-                <Switch checked={isPublic} onCheckedChange={setIsPublic} />
               </div>
 
               <Button

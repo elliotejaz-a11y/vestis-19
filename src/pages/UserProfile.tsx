@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
+import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban } from "lucide-react";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
@@ -16,8 +16,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-
 interface UserProfileData {
   id: string;
   display_name: string | null;
@@ -59,8 +57,6 @@ export default function UserProfilePage() {
   const [userColors, setUserColors] = useState<[string, number][]>([]);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [selectedFitPic, setSelectedFitPic] = useState<FitPic | null>(null);
-  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -78,61 +74,46 @@ export default function UserProfilePage() {
         .single();
       setProfile(profileData as UserProfileData | null);
 
-      const isPublicAccount = (profileData as any)?.is_public;
-      const isOwner = userId === user?.id;
-      const follows = followingIds.includes(userId);
-      const hasAccess = isOwner || isPublicAccount || follows;
+      // Counts
+      const [{ count: fc }, { count: fgc }] = await Promise.all([
+        supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
+        supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
+      ]);
+      setFollowersCount(fc || 0);
+      setFollowingCount(fgc || 0);
 
-      if (hasAccess) {
-        // Counts
-        const [{ count: fc }, { count: fgc }] = await Promise.all([
-          supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
-          supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
-        ]);
-        setFollowersCount(fc || 0);
-        setFollowingCount(fgc || 0);
+      // Wardrobe stats
+      const { data: wardrobeData } = await supabase
+        .from("clothing_items")
+        .select("category, color")
+        .eq("user_id", userId);
 
-        // Wardrobe stats
-        const { data: wardrobeData } = await supabase
-          .from("clothing_items")
-          .select("category, color")
-          .eq("user_id", userId);
-
-        if (wardrobeData) {
-          setWardrobeCount(wardrobeData.length);
-          const catCounts = CATEGORIES.map(cat => ({
-            label: cat.label,
-            icon: cat.icon,
-            count: wardrobeData.filter(i => i.category === cat.value).length,
-          }));
-          setCategoryBreakdown(catCounts);
-          const uniqueColors = new Set(wardrobeData.map(i => i.color).filter(Boolean));
-          setColorCount(uniqueColors.size);
-          const colorMap: Record<string, number> = {};
-          wardrobeData.forEach(i => { if (i.color) colorMap[i.color] = (colorMap[i.color] || 0) + 1; });
-          setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
-        }
-
-        // Fit pics
-        const { data: pics } = await supabase
-          .from("fit_pics")
-          .select("id, image_url, description, pic_date, created_at")
-          .eq("user_id", userId)
-          .order("pic_date", { ascending: false });
-        setFitPics((pics || []) as FitPic[]);
-      } else {
-        // Private account - don't fetch any content data
-        setFollowersCount(0);
-        setFollowingCount(0);
-        setWardrobeCount(0);
-        setCategoryBreakdown([]);
-        setColorCount(0);
-        setUserColors([]);
-        setFitPics([]);
+      if (wardrobeData) {
+        setWardrobeCount(wardrobeData.length);
+        const catCounts = CATEGORIES.map(cat => ({
+          label: cat.label,
+          icon: cat.icon,
+          count: wardrobeData.filter(i => i.category === cat.value).length,
+        }));
+        setCategoryBreakdown(catCounts);
+        const uniqueColors = new Set(wardrobeData.map(i => i.color).filter(Boolean));
+        setColorCount(uniqueColors.size);
+        // Build color breakdown
+        const colorMap: Record<string, number> = {};
+        wardrobeData.forEach(i => { if (i.color) colorMap[i.color] = (colorMap[i.color] || 0) + 1; });
+        setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
       }
 
+      // Fit pics (non-private for other users)
+      const { data: pics } = await supabase
+        .from("fit_pics")
+        .select("id, image_url, description, pic_date, created_at")
+        .eq("user_id", userId)
+        .order("pic_date", { ascending: false });
+      setFitPics((pics || []) as FitPic[]);
+
       // Check block status
-      if (!isOwner && user) {
+      if (!isOwnProfile && user) {
         const { data: blockData } = await supabase
           .from("blocked_users")
           .select("id")
@@ -145,7 +126,7 @@ export default function UserProfilePage() {
       setLoading(false);
     };
     load();
-  }, [userId, followingIds]);
+  }, [userId]);
 
   const handleFollow = async () => {
     if (!userId) return;
@@ -169,17 +150,12 @@ export default function UserProfilePage() {
     } else {
       await blockUser(userId);
       setIsBlocked(true);
+      // Also unfollow if following
       if (isFollowing) {
         await unfollowUser(userId);
         setFollowersCount(prev => Math.max(0, prev - 1));
       }
       toast({ title: "User blocked", description: "They won't be able to see your profile or interact with you." });
-    }
-  };
-
-  const handleAvatarTap = () => {
-    if (profile?.avatar_url) {
-      setShowAvatarModal(true);
     }
   };
 
@@ -230,7 +206,7 @@ export default function UserProfilePage() {
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
-          <button onClick={handleAvatarTap} className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
+          <div className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
@@ -238,7 +214,7 @@ export default function UserProfilePage() {
                 <User className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
-          </button>
+          </div>
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground">{profile.display_name || profile.username}</h2>
             {profile.username && (
@@ -246,25 +222,21 @@ export default function UserProfilePage() {
                 <AtSign className="w-3 h-3" />{profile.username}
               </p>
             )}
-            {/* Only show follower/following counts for viewable profiles */}
-            {canView && (
-              <div className="flex items-center justify-center gap-4 mt-2">
-                <button onClick={() => setFollowListType("followers")} className="text-center">
-                  <p className="text-sm font-bold text-foreground">{followersCount}</p>
-                  <p className="text-[10px] text-muted-foreground">Followers</p>
-                </button>
-                <div className="w-px h-6 bg-border" />
-                <button onClick={() => setFollowListType("following")} className="text-center">
-                  <p className="text-sm font-bold text-foreground">{followingCount}</p>
-                  <p className="text-[10px] text-muted-foreground">Following</p>
-                </button>
-              </div>
-            )}
+            <div className="flex items-center justify-center gap-4 mt-2">
+              <button onClick={() => setFollowListType("followers")} className="text-center">
+                <p className="text-sm font-bold text-foreground">{followersCount}</p>
+                <p className="text-[10px] text-muted-foreground">Followers</p>
+              </button>
+              <div className="w-px h-6 bg-border" />
+              <button onClick={() => setFollowListType("following")} className="text-center">
+                <p className="text-sm font-bold text-foreground">{followingCount}</p>
+                <p className="text-[10px] text-muted-foreground">Following</p>
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Bio only for viewable profiles */}
-        {canView && profile.bio && (
+        {profile.bio && (
           <p className="text-xs text-foreground mt-3 leading-relaxed text-center">{profile.bio}</p>
         )}
 
@@ -290,11 +262,9 @@ export default function UserProfilePage() {
       {/* Content */}
       {!canView ? (
         <div className="flex flex-col items-center justify-center py-16 px-5 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-            <Lock className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <p className="text-base font-semibold text-foreground">This account is private</p>
-          <p className="text-xs text-muted-foreground mt-1">Follow this account to see their posts, fit pics, and wardrobe</p>
+          <Lock className="w-10 h-10 text-muted-foreground mb-3" />
+          <p className="text-sm font-medium text-foreground">This account is private</p>
+          <p className="text-xs text-muted-foreground mt-1">Follow to see their posts and wardrobe</p>
         </div>
       ) : (
         <div className="px-5 space-y-4">
@@ -325,7 +295,7 @@ export default function UserProfilePage() {
             </button>
           </div>
 
-          {/* Color breakdown */}
+          {/* Color breakdown (expandable) */}
           {showColors && userColors.length > 0 && (
             <div className="rounded-2xl bg-card border border-border/40 p-4">
               <p className="text-sm font-semibold text-foreground mb-3">Colour Breakdown</p>
@@ -340,7 +310,7 @@ export default function UserProfilePage() {
             </div>
           )}
 
-          {/* Category breakdown */}
+          {/* Category breakdown (expandable) */}
           {showCategories && (
             <div className="rounded-2xl bg-card border border-border/40 p-4">
               <p className="text-sm font-semibold text-foreground mb-3">Category Breakdown</p>
@@ -371,68 +341,23 @@ export default function UserProfilePage() {
             ) : (
               <div className="grid grid-cols-3 gap-0.5">
                 {fitPics.map((pic) => (
-                  <button key={pic.id} onClick={() => setSelectedFitPic(pic)} className="aspect-square relative">
+                  <div key={pic.id} className="aspect-square relative">
                     <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
           </div>
         </div>
       )}
-
-      {/* Fit Pic fullscreen modal */}
-      <Dialog open={!!selectedFitPic} onOpenChange={(o) => { if (!o) setSelectedFitPic(null); }}>
-        <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 border-none bg-black/95 flex items-center justify-center">
-          {selectedFitPic && (
-            <img
-              src={selectedFitPic.image_url}
-              alt={selectedFitPic.description || ""}
-              className="max-w-full max-h-[90vh] object-contain"
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Avatar tap modal - shows lock for private accounts */}
-      <Dialog open={showAvatarModal} onOpenChange={setShowAvatarModal}>
-        <DialogContent className="max-w-sm p-6 rounded-2xl bg-background border border-border">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-24 h-24 rounded-full overflow-hidden bg-card border border-border">
-              {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <User className="w-10 h-10 text-muted-foreground" />
-                </div>
-              )}
-            </div>
-            <h3 className="text-base font-bold text-foreground">{profile.display_name || profile.username}</h3>
-            {profile.username && (
-              <p className="text-xs text-accent font-medium flex items-center gap-0.5">
-                <AtSign className="w-3 h-3" />{profile.username}
-              </p>
-            )}
-            {!canView && (
-              <div className="flex flex-col items-center gap-2 mt-2">
-                <Lock className="w-6 h-6 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground font-medium">This account is private</p>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {userId && (
         <>
-          {canView && (
-            <FollowListSheet
-              open={followListType !== null}
-              onOpenChange={(open) => { if (!open) setFollowListType(null); }}
-              userId={userId}
-              type={followListType || "followers"}
-            />
-          )}
+          <FollowListSheet
+            open={followListType !== null}
+            onOpenChange={(open) => { if (!open) setFollowListType(null); }}
+            userId={userId}
+            type={followListType || "followers"}
+          />
           <UserWardrobeSheet
             open={showWardrobe}
             onOpenChange={setShowWardrobe}
