@@ -101,7 +101,34 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         </button>
       </div>
 
-      {activeTab === "outfits" ? (
+      {activeTab === "wishlist" ? (
+        /* Wishlist Tab */
+        <div className="px-5 space-y-3">
+          {wishlistItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center mb-4">
+                <Heart className="w-7 h-7 text-muted-foreground" />
+              </div>
+              <p className="text-sm font-medium text-foreground">No wishlisted items</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">Tap the heart icon on any clothing item to add it here</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              {wishlistItems.map((item) => (
+                <div key={item.id} className="relative">
+                  <ClothingCard item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
+                  <button
+                    onClick={() => toggleWishlist(item.id)}
+                    className="absolute top-2 left-2 z-10 w-7 h-7 rounded-full bg-background/80 backdrop-blur flex items-center justify-center"
+                  >
+                    <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : activeTab === "outfits" ? (
         /* Saved Outfits Tab */
         <div className="px-5 space-y-3">
           {savedOutfits.length === 0 ? (
@@ -137,6 +164,20 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
       ) : (
         /* My Clothes Tab */
         <>
+          {/* Sort + Category filters */}
+          <div className="px-5 pb-2 flex items-center gap-2">
+            <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+              <SelectTrigger className="h-8 rounded-xl bg-card text-xs w-[130px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="date">Date Added</SelectItem>
+                <SelectItem value="color">Colour</SelectItem>
+                <SelectItem value="fabric">Material</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="px-5 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveFilter("all")}
@@ -157,7 +198,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
             ))}
           </div>
 
-          {filtered.length === 0 ? (
+          {sortedFiltered.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-5 py-20 text-center">
               <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center mb-4">
                 <Shirt className="w-7 h-7 text-muted-foreground" />
@@ -172,8 +213,16 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
             </div>
           ) : (
             <div className="px-4 grid grid-cols-2 gap-3">
-              {filtered.map((item) => (
-                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
+              {sortedFiltered.map((item) => (
+                <div key={item.id} className="relative">
+                  <ClothingCard item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
+                  <button
+                    onClick={() => toggleWishlist(item.id)}
+                    className="absolute top-2 left-2 z-10 w-7 h-7 rounded-full bg-background/80 backdrop-blur flex items-center justify-center"
+                  >
+                    <Heart className={cn("w-3.5 h-3.5", wishlistIds.has(item.id) ? "text-red-500 fill-red-500" : "text-muted-foreground")} />
+                  </button>
+                </div>
               ))}
             </div>
           )}
