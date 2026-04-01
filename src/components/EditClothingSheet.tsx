@@ -38,7 +38,8 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setNotes(item.notes);
     setEstimatedPrice(item.estimatedPrice?.toString() || "");
     setPriceEnabled(item.estimatedPrice != null);
-    setIsPrivate(item.isPrivate || false);
+    setSize(item.size || "");
+    setPrivacy(item.privacy || "public");
   }
 
   const handleSave = () => {
