@@ -48,6 +48,7 @@ export type Database = {
           is_private: boolean
           name: string
           notes: string
+          privacy: string
           size: string
           tags: string[]
           user_id: string
@@ -64,6 +65,7 @@ export type Database = {
           is_private?: boolean
           name: string
           notes?: string
+          privacy?: string
           size?: string
           tags?: string[]
           user_id: string
@@ -80,6 +82,7 @@ export type Database = {
           is_private?: boolean
           name?: string
           notes?: string
+          privacy?: string
           size?: string
           tags?: string[]
           user_id?: string

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Globe, Users, Lock } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
 
@@ -27,7 +27,8 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [notes, setNotes] = useState(item?.notes || "");
   const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
-  const [isPrivate, setIsPrivate] = useState(item?.isPrivate || false);
+  const [size, setSize] = useState(item?.size || "");
+  const [privacy, setPrivacy] = useState(item?.privacy || "public");
 
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
@@ -38,19 +39,20 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setNotes(item.notes);
     setEstimatedPrice(item.estimatedPrice?.toString() || "");
     setPriceEnabled(item.estimatedPrice != null);
-    setIsPrivate(item.isPrivate || false);
+    setSize(item.size || "");
+    setPrivacy(item.privacy || "public");
   }
 
   const handleSave = () => {
     if (!item || !name || !category) return;
     const priceNum = priceEnabled && estimatedPrice ? parseFloat(estimatedPrice) : (priceEnabled ? 0 : undefined);
-    onSave({ ...item, name, category, color: joinColors(colors), fabric, notes, estimatedPrice: priceNum, isPrivate });
+    onSave({ ...item, name, category, color: joinColors(colors), fabric, notes, estimatedPrice: priceNum, size, privacy });
     onOpenChange(false);
   };
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); }
+      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setSize(""); setPrivacy("public"); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
@@ -99,6 +101,10 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
               </div>
             </div>
             <div>
+              <Label className="text-xs font-medium text-muted-foreground">Size</Label>
+              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. S, M, L, XL, 32, 10" className="mt-1 rounded-xl bg-card" />
+            </div>
+            <div>
               <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1 rounded-xl bg-card text-sm min-h-[60px]" />
             </div>
@@ -130,12 +136,32 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
             )}
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/40">
-            <div>
-              <Label className="text-xs font-medium text-foreground">Hide from friends</Label>
-              <p className="text-[10px] text-muted-foreground">This item won't be visible to friends</p>
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-muted-foreground">Privacy</Label>
+            <div className="space-y-1.5">
+              {([
+                { value: "public", label: "Public", desc: "Everyone can see this item", icon: Globe },
+                { value: "friends", label: "Friends Only", desc: "Only your friends can see this item", icon: Users },
+                { value: "private", label: "Only Me", desc: "Only you can see this item", icon: Lock },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setPrivacy(opt.value)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                    privacy === opt.value
+                      ? "border-accent bg-accent/10"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  <opt.icon className={`w-4 h-4 ${privacy === opt.value ? "text-accent" : "text-muted-foreground"}`} />
+                  <div className="text-left">
+                    <p className={`text-sm font-medium ${privacy === opt.value ? "text-accent" : "text-foreground"}`}>{opt.label}</p>
+                    <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                  </div>
+                </button>
+              ))}
             </div>
-            <Switch checked={isPrivate} onCheckedChange={setIsPrivate} />
           </div>
 
           <Button onClick={handleSave} disabled={!name || !category} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90">

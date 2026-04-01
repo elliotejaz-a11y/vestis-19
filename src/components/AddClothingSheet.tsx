@@ -30,6 +30,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [fabric, setFabric] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const [size, setSize] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [priceInput, setPriceInput] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
@@ -219,6 +220,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         notes,
         addedAt: new Date(),
         estimatedPrice,
+        size,
       },
       { runBackgroundRemoval: isFileSourced, imageBase64ForProcessing }
     );
@@ -228,7 +230,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
-    setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
+    setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0); setSize("");
     setShowImageSearch(false); setImageSearchQuery(""); setImageSearchResults([]);
   };
 
@@ -459,6 +461,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               <div className="mt-1.5">
                 <ColorPicker selected={colors} onChange={setColors} />
               </div>
+            </div>
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Size</Label>
+              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. S, M, L, XL, 32, 10" className="mt-1 rounded-xl bg-card" />
             </div>
             <div>
               <Label className="text-xs font-medium text-muted-foreground">Notes</Label>

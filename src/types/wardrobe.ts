@@ -20,6 +20,7 @@ export interface ClothingItem {
   addedAt: Date;
   estimatedPrice?: number;
   isPrivate?: boolean;
+  privacy?: string;
   size?: string;
 }
 

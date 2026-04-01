@@ -72,6 +72,7 @@ export function useWardrobe() {
         addedAt: new Date(r.created_at),
         estimatedPrice: r.estimated_price ? Number(r.estimated_price) : undefined,
         isPrivate: r.is_private || false,
+        privacy: r.privacy || "public",
         size: r.size || undefined,
       }));
       setItems(dbItems);
@@ -221,6 +222,7 @@ export function useWardrobe() {
           tags: item.tags,
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
+          size: item.size || "",
         })
         .select()
         .single();
@@ -239,6 +241,8 @@ export function useWardrobe() {
           addedAt: new Date(data.created_at),
           estimatedPrice: data.estimated_price ? Number(data.estimated_price) : undefined,
           isPrivate: data.is_private ?? false,
+          privacy: (data as any).privacy || "public",
+          size: data.size || undefined,
         };
         setItems((prev) => [newItem, ...prev]);
 
@@ -333,6 +337,8 @@ export function useWardrobe() {
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
           is_private: item.isPrivate || false,
+          privacy: item.privacy || "public",
+          size: item.size || "",
         } as any)
         .eq("id", item.id)
         .eq("user_id", user.id);
