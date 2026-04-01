@@ -186,6 +186,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         category,
         color,
         fabric,
+        size,
         imageUrl,
         backImageUrl: backImageUrl || undefined,
         tags: [...tags, ...colors.map(c => c.toLowerCase()), fabric.toLowerCase(), category].filter(Boolean),
