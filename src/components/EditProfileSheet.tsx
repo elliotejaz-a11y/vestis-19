@@ -166,6 +166,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setAvatarUrl(profile.avatar_url || "");
       setAvatarPosition(profile.avatar_position || "50% 50%");
       setCurrencyPref(profile.currency_preference || "NZD");
+      setIsPublic(profile.is_public ?? true);
       setCropPreview(null);
     }
     onOpenChange(isOpen);
