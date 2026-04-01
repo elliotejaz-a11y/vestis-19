@@ -106,7 +106,8 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="date">Date Added</SelectItem>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
                 <SelectItem value="color">Colour</SelectItem>
                 <SelectItem value="fabric">Material</SelectItem>
               </SelectContent>
