@@ -36,6 +36,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setCategory(item.category);
     setColors(parseColors(item.color));
     setFabric(item.fabric);
+    setSize(item.size || "");
     setNotes(item.notes);
     setEstimatedPrice(item.estimatedPrice?.toString() || "");
     setPriceEnabled(item.estimatedPrice != null);
