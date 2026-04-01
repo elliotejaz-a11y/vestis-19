@@ -1,4 +1,4 @@
-import { Shirt, User, MessageCircle, CalendarDays } from "lucide-react";
+import { Shirt, User, MessageCircle, CalendarDays, Heart } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import vestisIcon from "@/assets/vestis-favicon.png";
