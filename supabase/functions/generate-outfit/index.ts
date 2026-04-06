@@ -135,22 +135,27 @@ serve(async (req) => {
       });
     }
 
+    const hasDress = items.some(isDress);
+
     if (!items.some(isShoe)) {
       return new Response(JSON.stringify({ error: 'At least one shoe item is required to generate an outfit.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    if (!items.some(isBottom)) {
-      return new Response(JSON.stringify({ error: 'At least one bottoms item is required to generate an outfit.' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // If no dress, require top and bottom
+    if (!hasDress) {
+      if (!items.some(isBottom)) {
+        return new Response(JSON.stringify({ error: 'At least one bottoms item is required to generate an outfit.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-    if (!items.some(isTopHalf)) {
-      return new Response(JSON.stringify({ error: 'At least one tops or jumpers item is required to generate an outfit.' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      if (!items.some(isTopHalf)) {
+        return new Response(JSON.stringify({ error: 'At least one tops or jumpers item is required to generate an outfit.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
