@@ -57,7 +57,7 @@ export default function SocialFeed() {
         .neq("id", user?.id || "")
         .order("created_at", { ascending: false })
         .limit(30);
-      const filtered = (data || []).filter((u: any) => u.avatar_url && u.avatar_url.startsWith('http') && !u.avatar_url.includes('placeholder'));
+      const filtered = (data || []).filter((u: any) => typeof u.avatar_url === 'string' && u.avatar_url.trim() !== '' && u.avatar_url.startsWith('https'));
       const hiddenUsernames = ['emme.curran', 'tcb'];
       const validUsers = filtered.filter((u: any) => {
         if (!u.username || /^user\d*$/i.test(u.username)) return false;
