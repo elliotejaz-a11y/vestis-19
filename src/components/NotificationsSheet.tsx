@@ -82,6 +82,7 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
     await supabase
       .from("follows")
       .insert({ follower_id: request.requester_id, following_id: user.id });
+    await supabase.rpc("notify_follow_accepted", { accepter_id: user.id, requester_id: request.requester_id });
     setFollowRequests(prev => prev.filter(r => r.id !== request.id));
   };
 
