@@ -575,7 +575,7 @@ function DiscoverTab() {
                 <Button
                   size="sm"
                   variant={isFollowing ? "outline" : "default"}
-                  onClick={() => handleFollow(p.id)}
+                  onClick={(e) => { e.stopPropagation(); handleFollow(p.id); }}
                   disabled={followingLoading === p.id}
                   className="rounded-xl text-xs h-8"
                 >
