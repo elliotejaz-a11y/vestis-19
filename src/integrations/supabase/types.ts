@@ -916,6 +916,14 @@ export type Database = {
         }
         Returns: number
       }
+      notify_follow_accepted: {
+        Args: { accepter_id: string; requester_id: string }
+        Returns: undefined
+      }
+      notify_follow_request: {
+        Args: { requester_id: string; target_id: string }
+        Returns: undefined
+      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
