@@ -95,37 +95,29 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
     setFollowRequests(prev => prev.filter(r => r.id !== request.id));
   };
 
-  const handleNotifAccept = async (notif: typeof notifications[0]) => {
-    if (!user || !notif.from_user_id) return;
-    // Update follow_requests status
+  const handleNotifAccept = async (notifId: string, fromUserId: string) => {
+    if (!user || !fromUserId) return;
     await supabase
       .from("follow_requests")
       .update({ status: "accepted" })
-      .eq("requester_id", notif.from_user_id)
-      .eq("target_id", user.id)
-      .eq("status", "pending");
-    // Insert follow
-    await supabase.from("follows").insert({ follower_id: notif.from_user_id, following_id: user.id });
-    // Notify requester
-    await supabase.rpc("notify_follow_accepted", { accepter_id: user.id, requester_id: notif.from_user_id });
-    // Mark notification as read
-    if (!notif.read) markAsRead(notif.id);
-    setHandledNotifRequests(prev => ({ ...prev, [notif.id]: "accepted" }));
-    // Also remove from follow requests section if present
-    setFollowRequests(prev => prev.filter(r => r.requester_id !== notif.from_user_id));
+      .eq("requester_id", fromUserId)
+      .eq("target_id", user.id);
+    await supabase
+      .from("follows")
+      .insert({ follower_id: fromUserId, following_id: user.id });
+    setHandledNotifRequests(prev => ({ ...prev, [notifId]: "accepted" }));
+    setFollowRequests(prev => prev.filter(r => r.requester_id !== fromUserId));
   };
 
-  const handleNotifDecline = async (notif: typeof notifications[0]) => {
-    if (!user || !notif.from_user_id) return;
+  const handleNotifDecline = async (notifId: string, fromUserId: string) => {
+    if (!user || !fromUserId) return;
     await supabase
       .from("follow_requests")
       .update({ status: "rejected" })
-      .eq("requester_id", notif.from_user_id)
-      .eq("target_id", user.id)
-      .eq("status", "pending");
-    if (!notif.read) markAsRead(notif.id);
-    setHandledNotifRequests(prev => ({ ...prev, [notif.id]: "declined" }));
-    setFollowRequests(prev => prev.filter(r => r.requester_id !== notif.from_user_id));
+      .eq("requester_id", fromUserId)
+      .eq("target_id", user.id);
+    setHandledNotifRequests(prev => ({ ...prev, [notifId]: "declined" }));
+    setFollowRequests(prev => prev.filter(r => r.requester_id !== fromUserId));
   };
 
   const getIcon = (type: string) => {
