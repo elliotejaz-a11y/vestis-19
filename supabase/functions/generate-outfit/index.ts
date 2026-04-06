@@ -81,9 +81,14 @@ function normalizeSelectionWithRequiredCore(selected: any[], allItems: any[]): a
     next = allItems.slice(0, Math.min(4, allItems.length));
   }
 
+  const hasDress = next.some(isDress);
   const replacementPriority = ['accessories', 'hats', 'outerwear'];
-  next = ensureRequiredCategory(next, allItems, isTopHalf, replacementPriority);
-  next = ensureRequiredCategory(next, allItems, isBottom, replacementPriority);
+
+  // If a dress is selected, top and bottom are not required
+  if (!hasDress) {
+    next = ensureRequiredCategory(next, allItems, isTopHalf, replacementPriority);
+    next = ensureRequiredCategory(next, allItems, isBottom, replacementPriority);
+  }
   next = ensureRequiredCategory(next, allItems, isShoe, replacementPriority);
 
   return dedupeById(next).slice(0, 5);
