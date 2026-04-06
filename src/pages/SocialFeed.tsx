@@ -57,13 +57,9 @@ export default function SocialFeed() {
         .neq("id", user?.id || "")
         .order("created_at", { ascending: false })
         .limit(30);
-      // Filter users: must have a valid avatar_url (http(s) starting, no placeholder/broken), a real username
-      const validUsers = (data || []).filter((u: any) => {
+      const filtered = (data || []).filter((u: any) => u.avatar_url && u.avatar_url.startsWith('http') && !u.avatar_url.includes('placeholder'));
+      const validUsers = filtered.filter((u: any) => {
         if (!u.username || /^user\d*$/i.test(u.username)) return false;
-        if (!u.avatar_url || typeof u.avatar_url !== 'string') return false;
-        const url = u.avatar_url.trim();
-        if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
-        if (url.includes('placeholder') || url.includes('?') && url.endsWith('?')) return false;
         return true;
       });
       setDiscoverUsers(validUsers);
