@@ -58,8 +58,10 @@ export default function SocialFeed() {
         .order("created_at", { ascending: false })
         .limit(30);
       const filtered = (data || []).filter((u: any) => u.avatar_url && u.avatar_url.startsWith('http') && !u.avatar_url.includes('placeholder'));
+      const hiddenUsernames = ['emme.curran', 'tcb'];
       const validUsers = filtered.filter((u: any) => {
         if (!u.username || /^user\d*$/i.test(u.username)) return false;
+        if (hiddenUsernames.includes(u.username.toLowerCase())) return false;
         return true;
       });
       setDiscoverUsers(validUsers);
