@@ -59,6 +59,7 @@ export default function UserProfilePage() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [viewingProfilePic, setViewingProfilePic] = useState(false);
   const [viewingFitPicImage, setViewingFitPicImage] = useState<string | null>(null);
+  const [followRequestStatus, setFollowRequestStatus] = useState<"none" | "pending" | "rejected">("none");
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -114,7 +115,7 @@ export default function UserProfilePage() {
         .order("pic_date", { ascending: false });
       setFitPics((pics || []) as FitPic[]);
 
-      // Check block status
+      // Check block status & follow request status
       if (!isOwnProfile && user) {
         const { data: blockData } = await supabase
           .from("blocked_users")
@@ -123,6 +124,20 @@ export default function UserProfilePage() {
           .eq("blocked_id", userId)
           .maybeSingle();
         setIsBlocked(!!blockData);
+
+        const { data: reqData } = await supabase
+          .from("follow_requests")
+          .select("status")
+          .eq("requester_id", user.id)
+          .eq("target_id", userId)
+          .maybeSingle();
+        if (reqData) {
+          if (reqData.status === "pending") setFollowRequestStatus("pending");
+          else if (reqData.status === "rejected") setFollowRequestStatus("rejected");
+          else setFollowRequestStatus("none");
+        } else {
+          setFollowRequestStatus("none");
+        }
       }
 
       setLoading(false);
@@ -140,6 +155,16 @@ export default function UserProfilePage() {
       setFollowersCount(prev => prev + 1);
       await followUser(userId);
     }
+    setFollowAction("none");
+  };
+
+  const handleRequestFollow = async () => {
+    if (!userId || !user) return;
+    setFollowAction("loading");
+    // Delete any existing rejected request first
+    await supabase.from("follow_requests").delete().match({ requester_id: user.id, target_id: userId });
+    await supabase.from("follow_requests").insert({ requester_id: user.id, target_id: userId, status: "pending" });
+    setFollowRequestStatus("pending");
     setFollowAction("none");
   };
 
@@ -226,20 +251,23 @@ export default function UserProfilePage() {
             </p>
           )}
           {!isOwnProfile && (
-            <Button
-              onClick={handleFollow}
-              disabled={followAction === "loading"}
-              variant={isFollowing ? "outline" : "default"}
-              className="w-full mt-4 h-9 rounded-xl text-xs font-semibold"
-            >
-              {followAction === "loading" ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : isFollowing ? (
-                "Following"
-              ) : (
-                "Follow"
-              )}
-            </Button>
+            followRequestStatus === "pending" ? (
+              <Button disabled variant="outline" className="w-full mt-4 h-9 rounded-xl text-xs font-semibold">
+                Request Sent
+              </Button>
+            ) : (
+              <Button
+                onClick={handleRequestFollow}
+                disabled={followAction === "loading"}
+                className="w-full mt-4 h-9 rounded-xl text-xs font-semibold"
+              >
+                {followAction === "loading" ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Request to Follow"
+                )}
+              </Button>
+            )
           )}
           <div className="flex flex-col items-center justify-center py-16">
             <Lock className="w-10 h-10 text-muted-foreground mb-3" />
