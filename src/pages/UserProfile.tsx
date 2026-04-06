@@ -115,7 +115,7 @@ export default function UserProfilePage() {
         .order("pic_date", { ascending: false });
       setFitPics((pics || []) as FitPic[]);
 
-      // Check block status
+      // Check block status & follow request status
       if (!isOwnProfile && user) {
         const { data: blockData } = await supabase
           .from("blocked_users")
@@ -124,6 +124,20 @@ export default function UserProfilePage() {
           .eq("blocked_id", userId)
           .maybeSingle();
         setIsBlocked(!!blockData);
+
+        const { data: reqData } = await supabase
+          .from("follow_requests")
+          .select("status")
+          .eq("requester_id", user.id)
+          .eq("target_id", userId)
+          .maybeSingle();
+        if (reqData) {
+          if (reqData.status === "pending") setFollowRequestStatus("pending");
+          else if (reqData.status === "rejected") setFollowRequestStatus("rejected");
+          else setFollowRequestStatus("none");
+        } else {
+          setFollowRequestStatus("none");
+        }
       }
 
       setLoading(false);
