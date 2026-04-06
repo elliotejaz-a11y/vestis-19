@@ -251,20 +251,23 @@ export default function UserProfilePage() {
             </p>
           )}
           {!isOwnProfile && (
-            <Button
-              onClick={handleFollow}
-              disabled={followAction === "loading"}
-              variant={isFollowing ? "outline" : "default"}
-              className="w-full mt-4 h-9 rounded-xl text-xs font-semibold"
-            >
-              {followAction === "loading" ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : isFollowing ? (
-                "Following"
-              ) : (
-                "Follow"
-              )}
-            </Button>
+            followRequestStatus === "pending" ? (
+              <Button disabled variant="outline" className="w-full mt-4 h-9 rounded-xl text-xs font-semibold">
+                Request Sent
+              </Button>
+            ) : (
+              <Button
+                onClick={handleRequestFollow}
+                disabled={followAction === "loading"}
+                className="w-full mt-4 h-9 rounded-xl text-xs font-semibold"
+              >
+                {followAction === "loading" ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Request to Follow"
+                )}
+              </Button>
+            )
           )}
           <div className="flex flex-col items-center justify-center py-16">
             <Lock className="w-10 h-10 text-muted-foreground mb-3" />
