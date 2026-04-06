@@ -163,7 +163,7 @@ export default function SocialFeed() {
                   role="button"
                   tabIndex={0}
                   style={{ cursor: 'pointer', width: '100%' }}
-                  onClick={() => { window.location.href = '/user/' + u.id }}
+                  onClick={() => navigate(`/user/${u.id}`)}
                   className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 hover:bg-muted transition-colors text-left w-full"
                 >
                   <div className="w-11 h-11 rounded-full overflow-hidden bg-muted flex-shrink-0">
