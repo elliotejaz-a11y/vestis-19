@@ -37,8 +37,13 @@ function ensureCategoryRequirement(
 
 function ensureOutfitHasCorePieces(selectedItems: ClothingItem[], allItems: ClothingItem[]): ClothingItem[] {
   const deduped = selectedItems.filter((item, index, arr) => arr.findIndex((x) => x.id === item.id) === index);
-  const withBottoms = ensureCategoryRequirement(deduped, allItems, (item) => isBottomsCategory(item.category));
-  const withShoes = ensureCategoryRequirement(withBottoms, allItems, (item) => isShoesCategory(item.category));
+  const hasDress = deduped.some((item) => isDressesCategory(item.category));
+  let result = deduped;
+  // If a dress is selected, top and bottom are not required
+  if (!hasDress) {
+    result = ensureCategoryRequirement(result, allItems, (item) => isBottomsCategory(item.category));
+  }
+  const withShoes = ensureCategoryRequirement(result, allItems, (item) => isShoesCategory(item.category));
   return withShoes.slice(0, 5);
 }
 
