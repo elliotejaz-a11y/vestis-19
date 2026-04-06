@@ -97,6 +97,8 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
   const getIcon = (type: string) => {
     switch (type) {
       case "new_follower": return <UserPlus className="w-4 h-4 text-accent" />;
+      case "follow_request": return <Users className="w-4 h-4 text-accent" />;
+      case "follow_accepted": return <Check className="w-4 h-4 text-accent" />;
       default: return <Bell className="w-4 h-4 text-muted-foreground" />;
     }
   };
