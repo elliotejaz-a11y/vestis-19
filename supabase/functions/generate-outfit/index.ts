@@ -33,6 +33,10 @@ function isTopHalf(item: any): boolean {
   return cat === 'tops' || cat === 'jumpers';
 }
 
+function isDress(item: any): boolean {
+  return normalizeCategory(item?.category) === 'dresses';
+}
+
 function dedupeById(items: any[]): any[] {
   const seen = new Set<string>();
   return items.filter((item) => {
