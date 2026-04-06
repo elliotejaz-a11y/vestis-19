@@ -95,37 +95,29 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
     setFollowRequests(prev => prev.filter(r => r.id !== request.id));
   };
 
-  const handleNotifAccept = async (notif: typeof notifications[0]) => {
-    if (!user || !notif.from_user_id) return;
-    // Update follow_requests status
+  const handleNotifAccept = async (notifId: string, fromUserId: string) => {
+    if (!user || !fromUserId) return;
     await supabase
       .from("follow_requests")
       .update({ status: "accepted" })
-      .eq("requester_id", notif.from_user_id)
-      .eq("target_id", user.id)
-      .eq("status", "pending");
-    // Insert follow
-    await supabase.from("follows").insert({ follower_id: notif.from_user_id, following_id: user.id });
-    // Notify requester
-    await supabase.rpc("notify_follow_accepted", { accepter_id: user.id, requester_id: notif.from_user_id });
-    // Mark notification as read
-    if (!notif.read) markAsRead(notif.id);
-    setHandledNotifRequests(prev => ({ ...prev, [notif.id]: "accepted" }));
-    // Also remove from follow requests section if present
-    setFollowRequests(prev => prev.filter(r => r.requester_id !== notif.from_user_id));
+      .eq("requester_id", fromUserId)
+      .eq("target_id", user.id);
+    await supabase
+      .from("follows")
+      .insert({ follower_id: fromUserId, following_id: user.id });
+    setHandledNotifRequests(prev => ({ ...prev, [notifId]: "accepted" }));
+    setFollowRequests(prev => prev.filter(r => r.requester_id !== fromUserId));
   };
 
-  const handleNotifDecline = async (notif: typeof notifications[0]) => {
-    if (!user || !notif.from_user_id) return;
+  const handleNotifDecline = async (notifId: string, fromUserId: string) => {
+    if (!user || !fromUserId) return;
     await supabase
       .from("follow_requests")
       .update({ status: "rejected" })
-      .eq("requester_id", notif.from_user_id)
-      .eq("target_id", user.id)
-      .eq("status", "pending");
-    if (!notif.read) markAsRead(notif.id);
-    setHandledNotifRequests(prev => ({ ...prev, [notif.id]: "declined" }));
-    setFollowRequests(prev => prev.filter(r => r.requester_id !== notif.from_user_id));
+      .eq("requester_id", fromUserId)
+      .eq("target_id", user.id);
+    setHandledNotifRequests(prev => ({ ...prev, [notifId]: "declined" }));
+    setFollowRequests(prev => prev.filter(r => r.requester_id !== fromUserId));
   };
 
   const getIcon = (type: string) => {
@@ -223,17 +215,23 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
                 </div>
                 {n.type === "follow_request" && n.from_user_id && (
                   handledNotifRequests[n.id] ? (
-                    <p className="text-xs text-muted-foreground ml-13 pl-[52px]">
+                    <p className="text-xs text-muted-foreground pl-[52px]">
                       {handledNotifRequests[n.id] === "accepted" ? "Accepted" : "Declined"}
                     </p>
                   ) : (
                     <div className="flex gap-2 pl-[52px]">
-                      <Button size="sm" className="h-7 px-3 text-xs rounded-lg" onClick={(e) => { e.stopPropagation(); handleNotifAccept(n); }}>
+                      <button
+                        className="h-7 px-3 text-xs rounded-lg bg-foreground text-background font-medium"
+                        onClick={(e) => { e.stopPropagation(); handleNotifAccept(n.id, n.from_user_id!); }}
+                      >
                         Accept
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 px-3 text-xs rounded-lg" onClick={(e) => { e.stopPropagation(); handleNotifDecline(n); }}>
+                      </button>
+                      <button
+                        className="h-7 px-3 text-xs rounded-lg bg-muted text-muted-foreground font-medium"
+                        onClick={(e) => { e.stopPropagation(); handleNotifDecline(n.id, n.from_user_id!); }}
+                      >
                         Decline
-                      </Button>
+                      </button>
                     </div>
                   )
                 )}
