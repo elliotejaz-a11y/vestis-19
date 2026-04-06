@@ -1,1 +1,0 @@
-ALTER TABLE public.clothing_items ADD COLUMN privacy text NOT NULL DEFAULT 'public';
