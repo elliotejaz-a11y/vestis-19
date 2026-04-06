@@ -197,29 +197,47 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
             </div>
           ) : (
             notifications.map(n => (
-              <button
+              <div
                 key={n.id}
-                onClick={() => !n.read && markAsRead(n.id)}
+                onClick={() => !n.read && n.type !== "follow_request" && markAsRead(n.id)}
                 className={cn(
-                  "w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-colors",
+                  "w-full flex flex-col gap-2 p-3 rounded-2xl text-left transition-colors",
                   n.read ? "bg-card" : "bg-accent/10 border border-accent/20"
                 )}
               >
-                <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {n.from_profile?.avatar_url ? (
-                    <img src={n.from_profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    {n.from_profile?.avatar_url ? (
+                      <img src={n.from_profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      getIcon(n.type)
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-foreground">{n.message}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                    </p>
+                  </div>
+                  {!n.read && <div className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />}
+                </div>
+                {n.type === "follow_request" && n.from_user_id && (
+                  handledNotifRequests[n.id] ? (
+                    <p className="text-xs text-muted-foreground ml-13 pl-[52px]">
+                      {handledNotifRequests[n.id] === "accepted" ? "Accepted" : "Declined"}
+                    </p>
                   ) : (
-                    getIcon(n.type)
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm text-foreground">{n.message}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-                  </p>
-                </div>
-                {!n.read && <div className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />}
-              </button>
+                    <div className="flex gap-2 pl-[52px]">
+                      <Button size="sm" className="h-7 px-3 text-xs rounded-lg" onClick={(e) => { e.stopPropagation(); handleNotifAccept(n); }}>
+                        Accept
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 px-3 text-xs rounded-lg" onClick={(e) => { e.stopPropagation(); handleNotifDecline(n); }}>
+                        Decline
+                      </Button>
+                    </div>
+                  )
+                )}
+              </div>
             ))
           )}
         </div>
