@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Compass, Lock } from "lucide-react";
+import { Plus, Search, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StoriesBar } from "@/components/StoriesBar";
@@ -16,7 +16,7 @@ type Tab = "feed" | "discover";
 
 export default function SocialFeed() {
   const { user } = useAuth();
-  const { posts, stories, loading, followingIds, toggleLike, deletePost, createPost, createStory, uploadSocialImage, refreshFeed, followUser, unfollowUser } = useSocial();
+  const { posts, stories, loading, toggleLike, deletePost, createPost, createStory, uploadSocialImage, refreshFeed } = useSocial();
   const [tab, setTab] = useState<Tab>("feed");
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreateStory, setShowCreateStory] = useState(false);
@@ -36,38 +36,9 @@ export default function SocialFeed() {
       .select("id, display_name, username, avatar_url")
       .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
       .limit(10);
-    setSearchResults((data || []).filter((u: any) => {
-      if (!u.username || /^user\d*$/i.test(u.username)) return false;
-      if (!u.avatar_url || typeof u.avatar_url !== 'string') return false;
-      const url = u.avatar_url.trim();
-      if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
-      return true;
-    }));
+    setSearchResults((data || []).filter((u: any) => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
     setSearching(false);
   };
-
-  const [discoverUsers, setDiscoverUsers] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (tab !== "discover") return;
-    const fetchDiscoverUsers = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, display_name, username, avatar_url, is_public")
-        .neq("id", user?.id || "")
-        .order("created_at", { ascending: false })
-        .limit(30);
-      const filtered = (data || []).filter((u: any) => typeof u.avatar_url === 'string' && u.avatar_url.trim() !== '' && u.avatar_url.startsWith('https'));
-      const hiddenUsernames = ['emme.curran', 'tcb'];
-      const validUsers = filtered.filter((u: any) => {
-        if (!u.username || /^user\d*$/i.test(u.username)) return false;
-        if (hiddenUsernames.includes(u.username.toLowerCase())) return false;
-        return true;
-      });
-      setDiscoverUsers(validUsers);
-    };
-    fetchDiscoverUsers();
-  }, [tab, user?.id]);
 
   const feedPosts = posts;
   const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.avatar_url && p.user?.username && !/^user\d*$/i.test(p.user.username));
@@ -113,93 +84,39 @@ export default function SocialFeed() {
       </div>
 
       {tab === "discover" && (
-        <>
-          <div className="px-5 pb-3">
-            <p className="text-lg font-bold text-foreground">Discover</p>
-            <p className="text-xs text-muted-foreground mb-3">People you might want to connect with</p>
-            <Input
-              value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Search users..."
-              className="rounded-xl bg-card text-sm"
-            />
-            {searchResults.length > 0 && (
-              <div className="mt-2 rounded-xl bg-card border border-border/40 overflow-hidden">
-                {searchResults.map((u) => (
-                  <div
-                    key={u.id}
-                    role="button"
-                    tabIndex={0}
-                    style={{ cursor: 'pointer', width: '100%' }}
-                    onClick={() => navigate(`/user/${u.id}`)}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-3 w-full">
-                      <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                        {u.avatar_url ? (
-                          <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <User className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
-                        {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {searchQuery.trim().length < 3 && discoverUsers.length > 0 && (
-            <div className="px-5 pb-3 space-y-2">
-              {discoverUsers.map((u) => (
-                <div
+        <div className="px-5 pb-3">
+          <Input
+            value={searchQuery}
+            onChange={(e) => handleSearch(e.target.value)}
+            placeholder="Search users..."
+            className="rounded-xl bg-card text-sm"
+          />
+          {searchResults.length > 0 && (
+            <div className="mt-2 rounded-xl bg-card border border-border/40 overflow-hidden">
+              {searchResults.map((u) => (
+                <button
                   key={u.id}
-                  role="button"
-                  tabIndex={0}
-                  style={{ cursor: 'pointer', width: '100%' }}
                   onClick={() => navigate(`/user/${u.id}`)}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 hover:bg-muted transition-colors text-left w-full"
+                  className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
                 >
-                  <div className="w-11 h-11 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                    <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {u.display_name || u.username}
-                    </p>
-                    {u.username && (
-                      <p className="text-[10px] text-muted-foreground truncate">@{u.username}</p>
+                  <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                    {u.avatar_url ? (
+                      <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                      </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {!u.is_public && <Lock className="w-3 h-3 text-muted-foreground" />}
-                    <Button
-                      size="sm"
-                      variant={followingIds.includes(u.id) ? "outline" : "default"}
-                      className="h-8 text-xs rounded-lg"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (followingIds.includes(u.id)) {
-                          unfollowUser(u.id);
-                        } else {
-                          followUser(u.id);
-                        }
-                      }}
-                    >
-                      {followingIds.includes(u.id) ? "Following" : "Follow"}
-                    </Button>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
+                    {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* Stories */}

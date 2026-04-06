@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,13 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Sparkles, Globe, Users, Lock, Camera, Loader2 } from "lucide-react";
+import { Sparkles, Globe, Users, Lock } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
-import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 
 const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
 
@@ -24,8 +20,6 @@ interface Props {
 }
 
 export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
-  const { user } = useAuth();
-  const { toast } = useToast();
   const [name, setName] = useState(item?.name || "");
   const [category, setCategory] = useState(item?.category || "");
   const [colors, setColors] = useState<string[]>(parseColors(item?.color || ""));
@@ -35,45 +29,6 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
   const [size, setSize] = useState(item?.size || "");
   const [privacy, setPrivacy] = useState(item?.privacy || "public");
-  const [newImageUrl, setNewImageUrl] = useState<string | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const retakeFileRef = useRef<HTMLInputElement>(null);
-
-  const handleRetakePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !item || !user) return;
-    setUploadingPhoto(true);
-    try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("clothing-images").upload(path, file, { contentType: file.type });
-      if (upErr) { toast({ title: "Upload failed", variant: "destructive" }); setUploadingPhoto(false); return; }
-      const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-      const uploadedUrl = urlData.publicUrl;
-      setNewImageUrl(uploadedUrl);
-
-      // Update image_url in DB
-      await supabase.from("clothing_items").update({ image_url: uploadedUrl } as any).eq("id", item.id).eq("user_id", user.id);
-
-      // Trigger background removal
-      processBackgroundRemoval({
-        itemId: item.id,
-        imageUrl: uploadedUrl,
-        userId: user.id,
-        onStatusUpdate: (payload) => {
-          if (payload.imageUrl) setNewImageUrl(payload.imageUrl);
-          if (payload.imageStatus === "failed") {
-            toast({ title: "Background removal failed", variant: "destructive" });
-          }
-        },
-      });
-      toast({ title: "Photo updated!" });
-    } catch {
-      toast({ title: "Failed to update photo", variant: "destructive" });
-    } finally {
-      setUploadingPhoto(false);
-    }
-  };
 
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
@@ -97,7 +52,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setSize(""); setPrivacy("public"); setNewImageUrl(null); }
+      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setSize(""); setPrivacy("public"); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
@@ -107,19 +62,8 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
 
         <div className="mt-6 space-y-5">
           {item && (
-            <div className="rounded-2xl overflow-hidden bg-muted relative">
-              <img src={newImageUrl || item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white dark:bg-neutral-800" />
-              <input ref={retakeFileRef} type="file" accept="image/*" className="hidden" onChange={handleRetakePhoto} />
-              <Button
-                variant="outline"
-                size="sm"
-                className="absolute bottom-2 right-2 rounded-xl bg-background/80 backdrop-blur text-xs"
-                onClick={() => retakeFileRef.current?.click()}
-                disabled={uploadingPhoto}
-              >
-                {uploadingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Camera className="w-3.5 h-3.5 mr-1" />}
-                Retake Photo
-              </Button>
+            <div className="rounded-2xl overflow-hidden bg-muted">
+              <img src={item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white dark:bg-neutral-800" />
             </div>
           )}
 

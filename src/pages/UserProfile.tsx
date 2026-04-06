@@ -59,7 +59,6 @@ export default function UserProfilePage() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [viewingProfilePic, setViewingProfilePic] = useState(false);
   const [viewingFitPicImage, setViewingFitPicImage] = useState<string | null>(null);
-  const [followRequestStatus, setFollowRequestStatus] = useState<"none" | "pending" | "rejected">("none");
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -115,7 +114,7 @@ export default function UserProfilePage() {
         .order("pic_date", { ascending: false });
       setFitPics((pics || []) as FitPic[]);
 
-      // Check block status & follow request status
+      // Check block status
       if (!isOwnProfile && user) {
         const { data: blockData } = await supabase
           .from("blocked_users")
@@ -124,20 +123,6 @@ export default function UserProfilePage() {
           .eq("blocked_id", userId)
           .maybeSingle();
         setIsBlocked(!!blockData);
-
-        const { data: reqData } = await supabase
-          .from("follow_requests")
-          .select("status")
-          .eq("requester_id", user.id)
-          .eq("target_id", userId)
-          .maybeSingle();
-        if (reqData) {
-          if (reqData.status === "pending") setFollowRequestStatus("pending");
-          else if (reqData.status === "rejected") setFollowRequestStatus("rejected");
-          else setFollowRequestStatus("none");
-        } else {
-          setFollowRequestStatus("none");
-        }
       }
 
       setLoading(false);
@@ -155,24 +140,6 @@ export default function UserProfilePage() {
       setFollowersCount(prev => prev + 1);
       await followUser(userId);
     }
-    setFollowAction("none");
-  };
-
-  const handleRequestFollow = async () => {
-    if (!userId || !user) return;
-    setFollowAction("loading");
-    await supabase.from("follow_requests").delete().match({ requester_id: user.id, target_id: userId });
-    await supabase.from("follow_requests").insert({ requester_id: user.id, target_id: userId, status: "pending" });
-    await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: userId });
-    setFollowRequestStatus("pending");
-    setFollowAction("none");
-  };
-
-  const handleCancelRequest = async () => {
-    if (!userId || !user) return;
-    setFollowAction("loading");
-    await supabase.from("follow_requests").delete().match({ requester_id: user.id, target_id: userId });
-    setFollowRequestStatus("none");
     setFollowAction("none");
   };
 
@@ -238,61 +205,6 @@ export default function UserProfilePage() {
         )}
       </header>
 
-      {!canView ? (
-        <div className="flex flex-col items-center justify-center px-5 pt-8">
-          <button
-            onClick={() => profile.avatar_url && setViewingProfilePic(true)}
-            className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0"
-          >
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <User className="w-8 h-8 text-muted-foreground" />
-              </div>
-            )}
-          </button>
-          <h2 className="text-lg font-bold text-foreground mt-3">{profile.display_name || profile.username}</h2>
-          {profile.username && (
-            <p className="text-xs text-muted-foreground font-medium flex items-center justify-center gap-0.5 mt-1">
-              <AtSign className="w-3 h-3" />{profile.username}
-            </p>
-          )}
-          {!isOwnProfile && (
-            followRequestStatus === "pending" ? (
-              <Button
-                onClick={handleCancelRequest}
-                disabled={followAction === "loading"}
-                variant="outline"
-                className="w-full mt-4 h-9 rounded-xl text-xs font-semibold"
-              >
-                {followAction === "loading" ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  "Request Sent"
-                )}
-              </Button>
-            ) : (
-              <Button
-                onClick={handleRequestFollow}
-                disabled={followAction === "loading"}
-                className="w-full mt-4 h-9 rounded-xl text-xs font-semibold"
-              >
-                {followAction === "loading" ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  "Request to Follow"
-                )}
-              </Button>
-            )
-          )}
-          <div className="flex flex-col items-center justify-center py-16">
-            <Lock className="w-10 h-10 text-muted-foreground mb-3" />
-            <p className="text-sm font-medium text-foreground">This account is private</p>
-          </div>
-        </div>
-      ) : (
-        <>
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
@@ -353,6 +265,13 @@ export default function UserProfilePage() {
       </div>
 
       {/* Content */}
+      {!canView ? (
+        <div className="flex flex-col items-center justify-center py-16 px-5 text-center">
+          <Lock className="w-10 h-10 text-muted-foreground mb-3" />
+          <p className="text-sm font-medium text-foreground">This account is private</p>
+          <p className="text-xs text-muted-foreground mt-1">Follow to see their posts and wardrobe</p>
+        </div>
+      ) : (
         <div className="px-5 space-y-4">
           {/* Style */}
           {profile.style_preference && (
@@ -435,7 +354,6 @@ export default function UserProfilePage() {
             )}
           </div>
         </div>
-      </>
       )}
       {/* Fullscreen profile pic viewer */}
       {viewingProfilePic && profile?.avatar_url && (
@@ -446,6 +364,7 @@ export default function UserProfilePage() {
           <img src={profile.avatar_url} alt="Profile" className="max-w-full max-h-full object-contain" style={{ objectPosition: profile.avatar_position || 'center' }} />
         </div>
       )}
+
       {/* Fullscreen fit pic viewer */}
       {viewingFitPicImage && (
         <div className="fixed inset-0 z-[10002] bg-black/95 flex items-center justify-center" onClick={() => setViewingFitPicImage(null)}>

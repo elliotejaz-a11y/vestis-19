@@ -481,7 +481,6 @@ function FriendsTab() {
 // ─── Discover Tab ───
 function DiscoverTab() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [people, setPeople] = useState<FriendProfile[]>([]);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);
@@ -559,7 +558,7 @@ function DiscoverTab() {
             const isFollowing = followingIds.includes(p.id);
             const isFriend = isMutualFriend(p.id);
             return (
-              <div key={p.id} role="button" tabIndex={0} style={{ cursor: 'pointer' }} onClick={() => navigate(`/user/${p.id}`)} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40">
+              <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40">
                 <Avatar url={p.avatar_url} name={p.display_name || p.username || "U"} size="w-12 h-12" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{p.display_name || p.username || "User"}</p>
@@ -575,7 +574,7 @@ function DiscoverTab() {
                 <Button
                   size="sm"
                   variant={isFollowing ? "outline" : "default"}
-                  onClick={(e) => { e.stopPropagation(); handleFollow(p.id); }}
+                  onClick={() => handleFollow(p.id)}
                   disabled={followingLoading === p.id}
                   className="rounded-xl text-xs h-8"
                 >
@@ -604,7 +603,6 @@ function NotificationsTab() {
   const { notifications, markAsRead, markAllAsRead, loading, refresh } = useNotifications();
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
-  const [handledRequests, setHandledRequests] = useState<Record<string, "accepted" | "declined">>({});
 
   const fetchFollowing = useCallback(async () => {
     if (!user) return;
@@ -622,34 +620,9 @@ function NotificationsTab() {
     setFollowingLoading(null);
   };
 
-  const handleAcceptRequest = async (notifId: string, fromUserId: string) => {
-    if (!user) return;
-    await supabase
-      .from("follow_requests")
-      .update({ status: "accepted" })
-      .eq("requester_id", fromUserId)
-      .eq("target_id", user.id);
-    await supabase
-      .from("follows")
-      .insert({ follower_id: fromUserId, following_id: user.id });
-    setHandledRequests(prev => ({ ...prev, [notifId]: "accepted" }));
-  };
-
-  const handleDeclineRequest = async (notifId: string, fromUserId: string) => {
-    if (!user) return;
-    await supabase
-      .from("follow_requests")
-      .update({ status: "rejected" })
-      .eq("requester_id", fromUserId)
-      .eq("target_id", user.id);
-    setHandledRequests(prev => ({ ...prev, [notifId]: "declined" }));
-  };
-
   const getIcon = (type: string) => {
     switch (type) {
       case "new_follower": return <UserPlus className="w-4 h-4 text-accent" />;
-      case "follow_request": return <Users className="w-4 h-4 text-accent" />;
-      case "follow_accepted": return <Check className="w-4 h-4 text-accent" />;
       default: return <Bell className="w-4 h-4 text-muted-foreground" />;
     }
   };
@@ -668,7 +641,6 @@ function NotificationsTab() {
           {notifications.map(n => {
             const isFollowerNotif = n.type === "new_follower" && n.from_user_id;
             const alreadyFollowing = n.from_user_id ? followingIds.includes(n.from_user_id) : false;
-            const isFollowRequest = n.type === "follow_request" && n.from_user_id;
 
             return (
               <div
@@ -687,28 +659,6 @@ function NotificationsTab() {
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                   </p>
-                  {isFollowRequest && (
-                    handledRequests[n.id] ? (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {handledRequests[n.id] === "accepted" ? "Accepted" : "Declined"}
-                      </p>
-                    ) : (
-                      <div className="flex gap-2 mt-2">
-                        <button
-                          className="h-7 px-3 text-xs rounded-lg bg-foreground text-background font-medium"
-                          onClick={(e) => { e.stopPropagation(); handleAcceptRequest(n.id, n.from_user_id!); }}
-                        >
-                          Accept
-                        </button>
-                        <button
-                          className="h-7 px-3 text-xs rounded-lg bg-muted text-muted-foreground font-medium"
-                          onClick={(e) => { e.stopPropagation(); handleDeclineRequest(n.id, n.from_user_id!); }}
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    )
-                  )}
                   {isFollowerNotif && !alreadyFollowing && (
                     <Button
                       size="sm"

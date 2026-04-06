@@ -33,10 +33,6 @@ function isTopHalf(item: any): boolean {
   return cat === 'tops' || cat === 'jumpers';
 }
 
-function isDress(item: any): boolean {
-  return normalizeCategory(item?.category) === 'dresses';
-}
-
 function dedupeById(items: any[]): any[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -81,14 +77,9 @@ function normalizeSelectionWithRequiredCore(selected: any[], allItems: any[]): a
     next = allItems.slice(0, Math.min(4, allItems.length));
   }
 
-  const hasDress = next.some(isDress);
   const replacementPriority = ['accessories', 'hats', 'outerwear'];
-
-  // If a dress is selected, top and bottom are not required
-  if (!hasDress) {
-    next = ensureRequiredCategory(next, allItems, isTopHalf, replacementPriority);
-    next = ensureRequiredCategory(next, allItems, isBottom, replacementPriority);
-  }
+  next = ensureRequiredCategory(next, allItems, isTopHalf, replacementPriority);
+  next = ensureRequiredCategory(next, allItems, isBottom, replacementPriority);
   next = ensureRequiredCategory(next, allItems, isShoe, replacementPriority);
 
   return dedupeById(next).slice(0, 5);
@@ -135,27 +126,22 @@ serve(async (req) => {
       });
     }
 
-    const hasDress = items.some(isDress);
-
     if (!items.some(isShoe)) {
       return new Response(JSON.stringify({ error: 'At least one shoe item is required to generate an outfit.' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // If no dress, require top and bottom
-    if (!hasDress) {
-      if (!items.some(isBottom)) {
-        return new Response(JSON.stringify({ error: 'At least one bottoms item is required to generate an outfit.' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    if (!items.some(isBottom)) {
+      return new Response(JSON.stringify({ error: 'At least one bottoms item is required to generate an outfit.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-      if (!items.some(isTopHalf)) {
-        return new Response(JSON.stringify({ error: 'At least one tops or jumpers item is required to generate an outfit.' }), {
-          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
+    if (!items.some(isTopHalf)) {
+      return new Response(JSON.stringify({ error: 'At least one tops or jumpers item is required to generate an outfit.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -207,7 +193,7 @@ ${wardrobeSummary}
 
 Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.
 
-MANDATORY: Every outfit MUST include exactly one pair of shoes. If a dress is selected, it can substitute for both a top and a bottom — no separate top or bottom is required. Otherwise, include at least one top/jumper and at least one bottom. Never generate an outfit without shoes.`,
+MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes. Never generate an outfit without bottoms and shoes — scan the wardrobe and always select the most appropriate pieces.`,
           },
         ],
         tools: [
