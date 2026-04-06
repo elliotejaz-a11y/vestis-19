@@ -205,6 +205,49 @@ export default function UserProfilePage() {
         )}
       </header>
 
+      {!canView ? (
+        <div className="flex flex-col items-center justify-center px-5 pt-8">
+          <button
+            onClick={() => profile.avatar_url && setViewingProfilePic(true)}
+            className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0"
+          >
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <User className="w-8 h-8 text-muted-foreground" />
+              </div>
+            )}
+          </button>
+          <h2 className="text-lg font-bold text-foreground mt-3">{profile.display_name || profile.username}</h2>
+          {profile.username && (
+            <p className="text-xs text-muted-foreground font-medium flex items-center justify-center gap-0.5 mt-1">
+              <AtSign className="w-3 h-3" />{profile.username}
+            </p>
+          )}
+          {!isOwnProfile && (
+            <Button
+              onClick={handleFollow}
+              disabled={followAction === "loading"}
+              variant={isFollowing ? "outline" : "default"}
+              className="w-full mt-4 h-9 rounded-xl text-xs font-semibold"
+            >
+              {followAction === "loading" ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : isFollowing ? (
+                "Following"
+              ) : (
+                "Follow"
+              )}
+            </Button>
+          )}
+          <div className="flex flex-col items-center justify-center py-16">
+            <Lock className="w-10 h-10 text-muted-foreground mb-3" />
+            <p className="text-sm font-medium text-foreground">This account is private</p>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
@@ -265,13 +308,7 @@ export default function UserProfilePage() {
       </div>
 
       {/* Content */}
-      {!canView ? (
-        <div className="flex flex-col items-center justify-center py-16 px-5 text-center">
-          <Lock className="w-10 h-10 text-muted-foreground mb-3" />
-          <p className="text-sm font-medium text-foreground">This account is private</p>
-          <p className="text-xs text-muted-foreground mt-1">Follow to see their posts and wardrobe</p>
-        </div>
-      ) : (
+      <div className="px-5 space-y-4">(
         <div className="px-5 space-y-4">
           {/* Style */}
           {profile.style_preference && (
