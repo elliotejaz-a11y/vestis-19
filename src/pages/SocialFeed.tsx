@@ -57,13 +57,9 @@ export default function SocialFeed() {
         .neq("id", user?.id || "")
         .order("created_at", { ascending: false })
         .limit(30);
-      // Filter users: must have a valid avatar_url (http(s) starting, no placeholder/broken), a real username
-      const validUsers = (data || []).filter((u: any) => {
+      const filtered = (data || []).filter((u: any) => u.avatar_url && u.avatar_url.startsWith('http') && !u.avatar_url.includes('placeholder'));
+      const validUsers = filtered.filter((u: any) => {
         if (!u.username || /^user\d*$/i.test(u.username)) return false;
-        if (!u.avatar_url || typeof u.avatar_url !== 'string') return false;
-        const url = u.avatar_url.trim();
-        if (!url.startsWith('http://') && !url.startsWith('https://')) return false;
-        if (url.includes('placeholder') || url.includes('?') && url.endsWith('?')) return false;
         return true;
       });
       setDiscoverUsers(validUsers);
@@ -156,18 +152,14 @@ export default function SocialFeed() {
               <div className="grid grid-cols-3 gap-2">
                 {discoverUsers.map((u) => (
                   <button
+                    type="button"
                     key={u.id}
                     onClick={() => navigate(`/user/${u.id}`)}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card border border-border/40 hover:bg-muted transition-colors"
+                    style={{ display: "block", width: "100%" }}
+                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card border border-border/40 hover:bg-muted transition-colors cursor-pointer"
                   >
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-muted-foreground" />
-                        </div>
-                      )}
+                      <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
                     </div>
                     <p className="text-[11px] font-semibold text-foreground text-center truncate w-full">
                       {u.display_name || u.username}
