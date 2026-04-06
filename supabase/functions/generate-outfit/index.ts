@@ -207,7 +207,7 @@ ${wardrobeSummary}
 
 Select 2-5 items that create a cohesive, stylish outfit. Use their index numbers (1-based). Consider the user's personal profile for color flattery and style alignment. Explain why these pieces work together.
 
-MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes. Never generate an outfit without bottoms and shoes — scan the wardrobe and always select the most appropriate pieces.`,
+MANDATORY: Every outfit MUST include exactly one pair of shoes. If a dress is selected, it can substitute for both a top and a bottom — no separate top or bottom is required. Otherwise, include at least one top/jumper and at least one bottom. Never generate an outfit without shoes.`,
           },
         ],
         tools: [
