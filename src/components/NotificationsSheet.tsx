@@ -95,6 +95,39 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
     setFollowRequests(prev => prev.filter(r => r.id !== request.id));
   };
 
+  const handleNotifAccept = async (notif: typeof notifications[0]) => {
+    if (!user || !notif.from_user_id) return;
+    // Update follow_requests status
+    await supabase
+      .from("follow_requests")
+      .update({ status: "accepted" })
+      .eq("requester_id", notif.from_user_id)
+      .eq("target_id", user.id)
+      .eq("status", "pending");
+    // Insert follow
+    await supabase.from("follows").insert({ follower_id: notif.from_user_id, following_id: user.id });
+    // Notify requester
+    await supabase.rpc("notify_follow_accepted", { accepter_id: user.id, requester_id: notif.from_user_id });
+    // Mark notification as read
+    if (!notif.read) markAsRead(notif.id);
+    setHandledNotifRequests(prev => ({ ...prev, [notif.id]: "accepted" }));
+    // Also remove from follow requests section if present
+    setFollowRequests(prev => prev.filter(r => r.requester_id !== notif.from_user_id));
+  };
+
+  const handleNotifDecline = async (notif: typeof notifications[0]) => {
+    if (!user || !notif.from_user_id) return;
+    await supabase
+      .from("follow_requests")
+      .update({ status: "rejected" })
+      .eq("requester_id", notif.from_user_id)
+      .eq("target_id", user.id)
+      .eq("status", "pending");
+    if (!notif.read) markAsRead(notif.id);
+    setHandledNotifRequests(prev => ({ ...prev, [notif.id]: "declined" }));
+    setFollowRequests(prev => prev.filter(r => r.requester_id !== notif.from_user_id));
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case "new_follower": return <UserPlus className="w-4 h-4 text-accent" />;
