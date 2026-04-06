@@ -161,9 +161,9 @@ export default function UserProfilePage() {
   const handleRequestFollow = async () => {
     if (!userId || !user) return;
     setFollowAction("loading");
-    // Delete any existing rejected request first
     await supabase.from("follow_requests").delete().match({ requester_id: user.id, target_id: userId });
     await supabase.from("follow_requests").insert({ requester_id: user.id, target_id: userId, status: "pending" });
+    await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: userId });
     setFollowRequestStatus("pending");
     setFollowAction("none");
   };
