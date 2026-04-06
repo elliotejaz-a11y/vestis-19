@@ -260,8 +260,17 @@ export default function UserProfilePage() {
           )}
           {!isOwnProfile && (
             followRequestStatus === "pending" ? (
-              <Button disabled variant="outline" className="w-full mt-4 h-9 rounded-xl text-xs font-semibold">
-                Request Sent
+              <Button
+                onClick={handleCancelRequest}
+                disabled={followAction === "loading"}
+                variant="outline"
+                className="w-full mt-4 h-9 rounded-xl text-xs font-semibold"
+              >
+                {followAction === "loading" ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Request Sent"
+                )}
               </Button>
             ) : (
               <Button
