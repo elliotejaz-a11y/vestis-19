@@ -168,6 +168,14 @@ export default function UserProfilePage() {
     setFollowAction("none");
   };
 
+  const handleCancelRequest = async () => {
+    if (!userId || !user) return;
+    setFollowAction("loading");
+    await supabase.from("follow_requests").delete().match({ requester_id: user.id, target_id: userId });
+    setFollowRequestStatus("none");
+    setFollowAction("none");
+  };
+
   const handleBlock = async () => {
     if (!userId) return;
     if (isBlocked) {
