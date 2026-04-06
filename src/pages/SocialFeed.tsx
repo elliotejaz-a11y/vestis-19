@@ -126,12 +126,13 @@ export default function SocialFeed() {
             {searchResults.length > 0 && (
               <div className="mt-2 rounded-xl bg-card border border-border/40 overflow-hidden">
                 {searchResults.map((u) => (
-                  <button
+                  <div
                     key={u.id}
-                    onClick={() => navigate(`/user/${u.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    style={{ cursor: 'pointer', width: '100%' }}
+                    onClick={() => { window.location.href = '/user/' + u.id }}
                     className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
-                    type="button"
-                    style={{ display: "block", width: "100%" }}
                   >
                     <div className="flex items-center gap-3 w-full">
                       <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
