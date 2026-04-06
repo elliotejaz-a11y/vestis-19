@@ -107,8 +107,19 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
 
         <div className="mt-6 space-y-5">
           {item && (
-            <div className="rounded-2xl overflow-hidden bg-muted">
-              <img src={item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white dark:bg-neutral-800" />
+            <div className="rounded-2xl overflow-hidden bg-muted relative">
+              <img src={newImageUrl || item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white dark:bg-neutral-800" />
+              <input ref={retakeFileRef} type="file" accept="image/*" className="hidden" onChange={handleRetakePhoto} />
+              <Button
+                variant="outline"
+                size="sm"
+                className="absolute bottom-2 right-2 rounded-xl bg-background/80 backdrop-blur text-xs"
+                onClick={() => retakeFileRef.current?.click()}
+                disabled={uploadingPhoto}
+              >
+                {uploadingPhoto ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> : <Camera className="w-3.5 h-3.5 mr-1" />}
+                Retake Photo
+              </Button>
             </div>
           )}
 
