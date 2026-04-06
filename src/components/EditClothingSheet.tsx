@@ -97,7 +97,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setSize(""); setPrivacy("public"); }
+      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setSize(""); setPrivacy("public"); setNewImageUrl(null); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
