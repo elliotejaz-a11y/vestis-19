@@ -115,6 +115,8 @@ export default function SocialFeed() {
       {tab === "discover" && (
         <>
           <div className="px-5 pb-3">
+            <p className="text-lg font-bold text-foreground">Discover</p>
+            <p className="text-xs text-muted-foreground mb-3">People you might want to connect with</p>
             <Input
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
@@ -128,19 +130,23 @@ export default function SocialFeed() {
                     key={u.id}
                     onClick={() => navigate(`/user/${u.id}`)}
                     className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
+                    type="button"
+                    style={{ display: "block", width: "100%" }}
                   >
-                    <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
-                      {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
+                    <div className="flex items-center gap-3 w-full">
+                      <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                        {u.avatar_url ? (
+                          <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <User className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
+                        {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -149,32 +155,46 @@ export default function SocialFeed() {
           </div>
 
           {searchQuery.trim().length < 3 && discoverUsers.length > 0 && (
-            <div className="px-5 pb-3">
-              <p className="text-xs font-semibold text-foreground mb-2">Suggested For You</p>
-              <div className="grid grid-cols-3 gap-2">
-                {discoverUsers.map((u) => (
-                  <button
-                    type="button"
-                    key={u.id}
-                    onClick={() => navigate(`/user/${u.id}`)}
-                    style={{ display: "block", width: "100%" }}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-card border border-border/40 hover:bg-muted transition-colors cursor-pointer"
-                  >
-                    <div className="w-12 h-12 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                      <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    <p className="text-[11px] font-semibold text-foreground text-center truncate w-full">
+            <div className="px-5 pb-3 space-y-2">
+              {discoverUsers.map((u) => (
+                <button
+                  type="button"
+                  key={u.id}
+                  onClick={() => navigate(`/user/${u.id}`)}
+                  style={{ display: "block", width: "100%" }}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 hover:bg-muted transition-colors cursor-pointer text-left w-full"
+                >
+                  <div className="w-11 h-11 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                    <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground truncate">
                       {u.display_name || u.username}
                     </p>
                     {u.username && (
-                      <p className="text-[10px] text-muted-foreground truncate w-full text-center">@{u.username}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">@{u.username}</p>
                     )}
-                    {!u.is_public && (
-                      <Lock className="w-3 h-3 text-muted-foreground" />
-                    )}
-                  </button>
-                ))}
-              </div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                    {!u.is_public && <Lock className="w-3 h-3 text-muted-foreground" />}
+                    <Button
+                      size="sm"
+                      variant={followingIds.includes(u.id) ? "outline" : "default"}
+                      className="h-8 text-xs rounded-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (followingIds.includes(u.id)) {
+                          unfollowUser(u.id);
+                        } else {
+                          followUser(u.id);
+                        }
+                      }}
+                    >
+                      {followingIds.includes(u.id) ? "Following" : "Follow"}
+                    </Button>
+                  </div>
+                </button>
+              ))}
             </div>
           )}
         </>
