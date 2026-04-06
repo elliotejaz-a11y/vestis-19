@@ -168,6 +168,14 @@ export default function UserProfilePage() {
     setFollowAction("none");
   };
 
+  const handleCancelRequest = async () => {
+    if (!userId || !user) return;
+    setFollowAction("loading");
+    await supabase.from("follow_requests").delete().match({ requester_id: user.id, target_id: userId });
+    setFollowRequestStatus("none");
+    setFollowAction("none");
+  };
+
   const handleBlock = async () => {
     if (!userId) return;
     if (isBlocked) {
@@ -252,8 +260,17 @@ export default function UserProfilePage() {
           )}
           {!isOwnProfile && (
             followRequestStatus === "pending" ? (
-              <Button disabled variant="outline" className="w-full mt-4 h-9 rounded-xl text-xs font-semibold">
-                Request Sent
+              <Button
+                onClick={handleCancelRequest}
+                disabled={followAction === "loading"}
+                variant="outline"
+                className="w-full mt-4 h-9 rounded-xl text-xs font-semibold"
+              >
+                {followAction === "loading" ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Request Sent"
+                )}
               </Button>
             ) : (
               <Button
