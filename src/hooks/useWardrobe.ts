@@ -7,6 +7,7 @@ import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
 const isBottomsCategory = (category?: string) => (category || "").trim().toLowerCase() === "bottoms";
+const isDressesCategory = (category?: string) => (category || "").trim().toLowerCase() === "dresses";
 
 function ensureCategoryRequirement(
   selectedItems: ClothingItem[],
