@@ -30,6 +30,7 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
   const [followRequests, setFollowRequests] = useState<FollowRequest[]>([]);
   const [isPrivateAccount, setIsPrivateAccount] = useState(false);
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [handledNotifRequests, setHandledNotifRequests] = useState<Record<string, "accepted" | "declined">>({});
 
   useEffect(() => {
     if (!open || !user) return;
