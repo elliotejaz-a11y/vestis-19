@@ -126,12 +126,13 @@ export default function SocialFeed() {
             {searchResults.length > 0 && (
               <div className="mt-2 rounded-xl bg-card border border-border/40 overflow-hidden">
                 {searchResults.map((u) => (
-                  <button
+                  <div
                     key={u.id}
-                    onClick={() => navigate(`/user/${u.id}`)}
+                    role="button"
+                    tabIndex={0}
+                    style={{ cursor: 'pointer', width: '100%' }}
+                    onClick={() => { window.location.href = '/user/' + u.id }}
                     className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
-                    type="button"
-                    style={{ display: "block", width: "100%" }}
                   >
                     <div className="flex items-center gap-3 w-full">
                       <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
@@ -148,7 +149,7 @@ export default function SocialFeed() {
                         {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -157,12 +158,13 @@ export default function SocialFeed() {
           {searchQuery.trim().length < 3 && discoverUsers.length > 0 && (
             <div className="px-5 pb-3 space-y-2">
               {discoverUsers.map((u) => (
-                <button
-                  type="button"
+                <div
                   key={u.id}
-                  onClick={() => navigate(`/user/${u.id}`)}
-                  style={{ display: "block", width: "100%" }}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 hover:bg-muted transition-colors cursor-pointer text-left w-full"
+                  role="button"
+                  tabIndex={0}
+                  style={{ cursor: 'pointer', width: '100%' }}
+                  onClick={() => { window.location.href = '/user/' + u.id }}
+                  className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/40 hover:bg-muted transition-colors text-left w-full"
                 >
                   <div className="w-11 h-11 rounded-full overflow-hidden bg-muted flex-shrink-0">
                     <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -193,7 +195,7 @@ export default function SocialFeed() {
                       {followingIds.includes(u.id) ? "Following" : "Follow"}
                     </Button>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
