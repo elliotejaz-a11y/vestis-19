@@ -149,7 +149,7 @@ export default function SocialFeed() {
                         {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
