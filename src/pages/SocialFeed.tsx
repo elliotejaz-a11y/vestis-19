@@ -16,7 +16,7 @@ type Tab = "feed" | "discover";
 
 export default function SocialFeed() {
   const { user } = useAuth();
-  const { posts, stories, loading, toggleLike, deletePost, createPost, createStory, uploadSocialImage, refreshFeed } = useSocial();
+  const { posts, stories, loading, followingIds, toggleLike, deletePost, createPost, createStory, uploadSocialImage, refreshFeed, followUser, unfollowUser } = useSocial();
   const [tab, setTab] = useState<Tab>("feed");
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreateStory, setShowCreateStory] = useState(false);
