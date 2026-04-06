@@ -195,7 +195,7 @@ export default function SocialFeed() {
                       {followingIds.includes(u.id) ? "Following" : "Follow"}
                     </Button>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
