@@ -215,17 +215,23 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
                 </div>
                 {n.type === "follow_request" && n.from_user_id && (
                   handledNotifRequests[n.id] ? (
-                    <p className="text-xs text-muted-foreground ml-13 pl-[52px]">
+                    <p className="text-xs text-muted-foreground pl-[52px]">
                       {handledNotifRequests[n.id] === "accepted" ? "Accepted" : "Declined"}
                     </p>
                   ) : (
                     <div className="flex gap-2 pl-[52px]">
-                      <Button size="sm" className="h-7 px-3 text-xs rounded-lg" onClick={(e) => { e.stopPropagation(); handleNotifAccept(n); }}>
+                      <button
+                        className="h-7 px-3 text-xs rounded-lg bg-foreground text-background font-medium"
+                        onClick={(e) => { e.stopPropagation(); handleNotifAccept(n.id, n.from_user_id!); }}
+                      >
                         Accept
-                      </Button>
-                      <Button size="sm" variant="outline" className="h-7 px-3 text-xs rounded-lg" onClick={(e) => { e.stopPropagation(); handleNotifDecline(n); }}>
+                      </button>
+                      <button
+                        className="h-7 px-3 text-xs rounded-lg bg-muted text-muted-foreground font-medium"
+                        onClick={(e) => { e.stopPropagation(); handleNotifDecline(n.id, n.from_user_id!); }}
+                      >
                         Decline
-                      </Button>
+                      </button>
                     </div>
                   )
                 )}
