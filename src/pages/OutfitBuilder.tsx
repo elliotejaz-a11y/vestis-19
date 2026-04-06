@@ -278,7 +278,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
-  const handleSaveOutfit = async (name?: string, description?: string, privacy?: string) => {
+  const handleSaveOutfit = async (name?: string, description?: string) => {
     if (!user || selectedItems.length < 2) return;
     setSaving(true);
     try {
@@ -291,7 +291,6 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
           saved: true,
           name: name || "",
           description: description || "",
-          privacy: privacy || "public",
         } as any)
         .select()
         .single();
@@ -468,9 +467,9 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
       <SaveOutfitDialog
         open={saveDialogOpen}
         onOpenChange={setSaveDialogOpen}
-        onConfirm={(name, description, privacy) => {
+        onConfirm={(name, description) => {
           setSaveDialogOpen(false);
-          handleSaveOutfit(name || undefined, description || undefined, privacy || undefined);
+          handleSaveOutfit(name || undefined, description || undefined);
         }}
         defaultName="Custom outfit"
       />

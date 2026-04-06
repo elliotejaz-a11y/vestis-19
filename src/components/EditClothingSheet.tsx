@@ -10,7 +10,7 @@ import { Sparkles } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
 
-const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
+const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
 
 interface Props {
   item: ClothingItem | null;

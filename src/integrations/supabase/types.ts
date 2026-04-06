@@ -48,7 +48,6 @@ export type Database = {
           is_private: boolean
           name: string
           notes: string
-          size: string
           tags: string[]
           user_id: string
         }
@@ -64,7 +63,6 @@ export type Database = {
           is_private?: boolean
           name: string
           notes?: string
-          size?: string
           tags?: string[]
           user_id: string
         }
@@ -80,7 +78,6 @@ export type Database = {
           is_private?: boolean
           name?: string
           notes?: string
-          size?: string
           tags?: string[]
           user_id?: string
         }
@@ -418,7 +415,6 @@ export type Database = {
           id: string
           name: string | null
           occasion: string
-          privacy: string
           reasoning: string
           saved: boolean | null
           style_tips: string | null
@@ -430,7 +426,6 @@ export type Database = {
           id?: string
           name?: string | null
           occasion: string
-          privacy?: string
           reasoning?: string
           saved?: boolean | null
           style_tips?: string | null
@@ -442,7 +437,6 @@ export type Database = {
           id?: string
           name?: string | null
           occasion?: string
-          privacy?: string
           reasoning?: string
           saved?: boolean | null
           style_tips?: string | null
@@ -814,35 +808,6 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      }
-      wishlist_items: {
-        Row: {
-          clothing_item_id: string
-          created_at: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          clothing_item_id: string
-          created_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          clothing_item_id?: string
-          created_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "wishlist_items_clothing_item_id_fkey"
-            columns: ["clothing_item_id"]
-            isOneToOne: false
-            referencedRelation: "clothing_items"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Views: {

@@ -72,7 +72,6 @@ export function useWardrobe() {
         addedAt: new Date(r.created_at),
         estimatedPrice: r.estimated_price ? Number(r.estimated_price) : undefined,
         isPrivate: r.is_private || false,
-        size: r.size || undefined,
       }));
       setItems(dbItems);
 
