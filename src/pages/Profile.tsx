@@ -88,6 +88,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const handleWlSave = async () => {
     if (!user || !wlName.trim()) return;
     if (wishlistItems.length >= 3) { toast({ title: "Wishlist full", description: "You can have a maximum of 3 wishlist items.", variant: "destructive" }); return; }
+    setWlSaving(true);
     let finalImageUrl = wlImageUrl;
     if (wlImageFile) {
       const ext = wlImageFile.name.split(".").pop() || "jpg";
