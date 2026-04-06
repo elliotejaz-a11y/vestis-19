@@ -390,8 +390,10 @@ export function useWardrobe() {
     async (occasion: string, weather?: { temp: number; description: string }): Promise<Outfit | null> => {
       if (!user || items.length < 2) return null;
 
+      const hasDress = items.some((item) => isDressesCategory(item.category));
       const missingCore: string[] = [];
-      if (!items.some((item) => isBottomsCategory(item.category))) missingCore.push("bottoms");
+      // If no dress in wardrobe, require bottoms
+      if (!hasDress && !items.some((item) => isBottomsCategory(item.category))) missingCore.push("bottoms");
       if (!items.some((item) => isShoesCategory(item.category))) missingCore.push("shoes");
 
       if (missingCore.length > 0) {
