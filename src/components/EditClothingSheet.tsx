@@ -24,6 +24,8 @@ interface Props {
 }
 
 export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [name, setName] = useState(item?.name || "");
   const [category, setCategory] = useState(item?.category || "");
   const [colors, setColors] = useState<string[]>(parseColors(item?.color || ""));
@@ -33,6 +35,45 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
   const [size, setSize] = useState(item?.size || "");
   const [privacy, setPrivacy] = useState(item?.privacy || "public");
+  const [newImageUrl, setNewImageUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const retakeFileRef = useRef<HTMLInputElement>(null);
+
+  const handleRetakePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !item || !user) return;
+    setUploadingPhoto(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("clothing-images").upload(path, file, { contentType: file.type });
+      if (upErr) { toast({ title: "Upload failed", variant: "destructive" }); setUploadingPhoto(false); return; }
+      const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
+      const uploadedUrl = urlData.publicUrl;
+      setNewImageUrl(uploadedUrl);
+
+      // Update image_url in DB
+      await supabase.from("clothing_items").update({ image_url: uploadedUrl } as any).eq("id", item.id).eq("user_id", user.id);
+
+      // Trigger background removal
+      processBackgroundRemoval({
+        itemId: item.id,
+        imageUrl: uploadedUrl,
+        userId: user.id,
+        onStatusUpdate: (payload) => {
+          if (payload.imageUrl) setNewImageUrl(payload.imageUrl);
+          if (payload.imageStatus === "failed") {
+            toast({ title: "Background removal failed", variant: "destructive" });
+          }
+        },
+      });
+      toast({ title: "Photo updated!" });
+    } catch {
+      toast({ title: "Failed to update photo", variant: "destructive" });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
