@@ -59,6 +59,7 @@ export default function UserProfilePage() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [viewingProfilePic, setViewingProfilePic] = useState(false);
   const [viewingFitPicImage, setViewingFitPicImage] = useState<string | null>(null);
+  const [followRequestStatus, setFollowRequestStatus] = useState<"none" | "pending" | "rejected">("none");
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
