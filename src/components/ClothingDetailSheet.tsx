@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ClothingItem } from "@/types/wardrobe";
 import { EditClothingSheet } from "@/components/EditClothingSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { Pencil, DollarSign, Tag, Palette, Shirt, StickyNote, ImageIcon, Copy } from "lucide-react";
+import { Pencil, DollarSign, Tag, Palette, Shirt, StickyNote, ImageIcon, Copy, Ruler } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatPrice } from "@/lib/currency";
