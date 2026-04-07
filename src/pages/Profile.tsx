@@ -238,7 +238,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               {fitPics.slice(0, 9).map((pic: any) => (
                 <button
                   key={pic.id}
-                  onClick={() => setSelectedFitPic(pic)}
+                  onClick={() => setFullscreenFitPic(pic)}
+                  onContextMenu={(e) => { e.preventDefault(); setSelectedFitPic(pic); }}
                   className="aspect-square rounded-xl overflow-hidden relative"
                 >
                   <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
@@ -251,6 +252,39 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               ))}
             </div>
           )}
+        </div>
+
+        {/* Wishlist */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-foreground">Wish List</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[0, 1, 2].map((idx) => {
+              const wItem = wishlistItems[idx];
+              return wItem ? (
+                <div key={wItem.id} className="rounded-xl bg-muted p-2 text-center">
+                  {wItem.image_url ? (
+                    <div className="aspect-square rounded-lg overflow-hidden mb-1.5 bg-white dark:bg-neutral-800">
+                      <img src={wItem.image_url} alt={wItem.name} className="w-full h-full object-contain" />
+                    </div>
+                  ) : (
+                    <div className="aspect-square rounded-lg bg-muted-foreground/10 flex items-center justify-center mb-1.5">
+                      <Shirt className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <p className="text-[10px] font-medium text-foreground truncate">{wItem.name}</p>
+                  {wItem.estimated_price != null && (
+                    <p className="text-[10px] text-accent font-semibold">${wItem.estimated_price}</p>
+                  )}
+                </div>
+              ) : (
+                <div key={`empty-${idx}`} className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-muted-foreground/40" />
+                </div>
+              );
+            })}
+          </div>
         </div>
 
 
