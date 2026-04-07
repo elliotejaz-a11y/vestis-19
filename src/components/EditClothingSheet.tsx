@@ -6,12 +6,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Sparkles, Camera } from "lucide-react";
+import { Sparkles, Camera, Loader2 } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { processClothingImage } from "@/lib/image-processing";
 
 const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
 
@@ -59,9 +60,17 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     if (!file || !user || !item) return;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      // Run through the same background removal process as AddClothingSheet
+      let cleanBlob: Blob;
+      try {
+        cleanBlob = await processClothingImage(file);
+      } catch {
+        cleanBlob = file;
+      }
+
+      const ext = "png";
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("clothing-images").upload(path, file, { contentType: file.type });
+      const { error } = await supabase.storage.from("clothing-images").upload(path, cleanBlob, { contentType: "image/png" });
       if (error) throw error;
       const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
       const url = urlData.publicUrl;
@@ -108,13 +117,25 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
           {item && (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
               <img src={newImageUrl || item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white dark:bg-neutral-800" />
+              {uploading && (
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+                    <Sparkles className="w-5 h-5 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-white">Processing Photo</p>
+                    <p className="text-[11px] text-white/60 mt-1">Removing background…</p>
+                  </div>
+                </div>
+              )}
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
                 className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground/70 text-background text-[11px] font-medium hover:bg-foreground/80 transition-colors"
               >
                 <Camera className="w-3.5 h-3.5" />
-                {uploading ? "Uploading…" : "Retake Photo"}
+                {uploading ? "Processing…" : "Retake Photo"}
               </button>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleRetakePhoto} />
             </div>
