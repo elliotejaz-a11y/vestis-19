@@ -50,7 +50,10 @@ export default function Auth() {
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    const { error } = await supabase.auth.signInWithOtp({
+      email: forgotEmail.trim(),
+      options: { shouldCreateUser: false },
+    });
     setForgotLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -62,7 +65,10 @@ export default function Auth() {
 
   const handleResendRecoveryOtp = async () => {
     setResendRecoveryLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    const { error } = await supabase.auth.signInWithOtp({
+      email: forgotEmail.trim(),
+      options: { shouldCreateUser: false },
+    });
     setResendRecoveryLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
