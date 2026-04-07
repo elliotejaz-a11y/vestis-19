@@ -4,9 +4,10 @@ import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { OutfitCard } from "@/components/OutfitCard";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { Plus, Shirt, Bookmark, Sparkles } from "lucide-react";
+import { Plus, Shirt, Bookmark, Sparkles, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Props {
   items: ClothingItem[];
@@ -22,12 +23,19 @@ interface Props {
 export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("newest");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
   const navigate = useNavigate();
 
 
   const savedOutfits = outfits.filter((o) => o.saved);
-  const filtered = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
+  const filteredBase = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
+  const filtered = [...filteredBase].sort((a, b) => {
+    if (sortBy === "oldest") return a.addedAt.getTime() - b.addedAt.getTime();
+    if (sortBy === "colour") return a.color.localeCompare(b.color);
+    if (sortBy === "fabric") return a.fabric.localeCompare(b.fabric);
+    return b.addedAt.getTime() - a.addedAt.getTime(); // newest
+  });
 
   return (
     <div className="min-h-screen pb-24">
@@ -94,6 +102,21 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
       ) : (
         /* My Clothes Tab */
         <>
+          <div className="px-5 pb-3 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">{filtered.length} items</span>
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[140px] h-8 rounded-xl bg-card text-xs">
+                <ArrowUpDown className="w-3 h-3 mr-1" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
+                <SelectItem value="colour">Colour</SelectItem>
+                <SelectItem value="fabric">Fabric</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="px-5 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveFilter("all")}

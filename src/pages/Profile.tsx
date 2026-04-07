@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -41,12 +41,14 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [followingCount, setFollowingCount] = useState(0);
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
+  const [fullscreenFitPic, setFullscreenFitPic] = useState<any>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
+  const [wishlistItems, setWishlistItems] = useState<any[]>([]);
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +67,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    Promise.all([fetchFollowCounts(), fetchFitPics(), refreshProfile()])
+    Promise.all([fetchFollowCounts(), fetchFitPics(), refreshProfile(), fetchWishlist()])
       .finally(() => setRefreshing(false));
   }, [user]);
 
@@ -102,10 +104,22 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     setFitPics(data || []);
   };
 
+  const fetchWishlist = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("wishlist_items")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(3);
+    setWishlistItems(data || []);
+  };
+
   useEffect(() => {
     if (!user) return;
     fetchFollowCounts();
     fetchFitPics();
+    fetchWishlist();
   }, [user]);
 
   const savedOutfits = outfits.filter((o) => o.saved);
@@ -224,7 +238,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               {fitPics.slice(0, 9).map((pic: any) => (
                 <button
                   key={pic.id}
-                  onClick={() => setSelectedFitPic(pic)}
+                  onClick={() => setFullscreenFitPic(pic)}
+                  onContextMenu={(e) => { e.preventDefault(); setSelectedFitPic(pic); }}
                   className="aspect-square rounded-xl overflow-hidden relative"
                 >
                   <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
@@ -237,6 +252,39 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               ))}
             </div>
           )}
+        </div>
+
+        {/* Wishlist */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-semibold text-foreground">Wish List</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {[0, 1, 2].map((idx) => {
+              const wItem = wishlistItems[idx];
+              return wItem ? (
+                <div key={wItem.id} className="rounded-xl bg-muted p-2 text-center">
+                  {wItem.image_url ? (
+                    <div className="aspect-square rounded-lg overflow-hidden mb-1.5 bg-white dark:bg-neutral-800">
+                      <img src={wItem.image_url} alt={wItem.name} className="w-full h-full object-contain" />
+                    </div>
+                  ) : (
+                    <div className="aspect-square rounded-lg bg-muted-foreground/10 flex items-center justify-center mb-1.5">
+                      <Shirt className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <p className="text-[10px] font-medium text-foreground truncate">{wItem.name}</p>
+                  {wItem.estimated_price != null && (
+                    <p className="text-[10px] text-accent font-semibold">${wItem.estimated_price}</p>
+                  )}
+                </div>
+              ) : (
+                <div key={`empty-${idx}`} className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-muted-foreground/40" />
+                </div>
+              );
+            })}
+          </div>
         </div>
 
 
@@ -377,6 +425,27 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
         </Button>
 
+        {/* Account Privacy */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                {profile?.is_public ? <Globe className="w-4 h-4 text-accent" /> : <Lock className="w-4 h-4 text-accent" />}
+                {profile?.is_public ? "Public Account" : "Private Account"}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {profile?.is_public ? "Anyone can see your wardrobe & fit pics" : "Only you can see your wardrobe & fit pics"}
+              </p>
+            </div>
+            <button
+              onClick={() => updateProfile({ is_public: !profile?.is_public })}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${profile?.is_public ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"}`}
+            >
+              {profile?.is_public ? "Public" : "Private"}
+            </button>
+          </div>
+        </div>
+
         {/* Appearance */}
         <div className="rounded-2xl bg-card border border-border/40 p-4">
           <p className="text-sm font-semibold text-foreground mb-3">Appearance</p>
@@ -508,6 +577,27 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         title="Delete your account?"
         description="This will permanently delete your account, wardrobe, outfits, and all associated data. This action cannot be undone."
       />
+
+      {/* Fullscreen Fit Pic Modal */}
+      {fullscreenFitPic && (
+        <div
+          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
+          onClick={() => setFullscreenFitPic(null)}
+        >
+          <button
+            onClick={() => setFullscreenFitPic(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={fullscreenFitPic.image_url}
+            alt={fullscreenFitPic.description || ""}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

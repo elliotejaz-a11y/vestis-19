@@ -13,7 +13,7 @@ import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wardrobeImageProcessing";
 import { processClothingImage } from "@/lib/image-processing";
 
-const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
+const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
@@ -28,6 +28,8 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [category, setCategory] = useState("");
   const [colors, setColors] = useState<string[]>([]);
   const [fabric, setFabric] = useState("");
+  const [size, setSize] = useState("");
+  const [privacy, setPrivacy] = useState("public");
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
@@ -200,7 +202,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
-    setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
+    setSize(""); setPrivacy("public"); setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
   };
 
   return (
@@ -390,6 +392,21 @@ export function AddClothingSheet({ onAdd, children }: Props) {
             <div>
               <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Super comfy, runs a size small..." className="mt-1 rounded-xl bg-card text-sm min-h-[60px]" />
+            </div>
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Size</Label>
+              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. M, 10, 32W" className="mt-1 rounded-xl bg-card" />
+            </div>
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Privacy</Label>
+              <Select value={privacy} onValueChange={setPrivacy}>
+                <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">🌐 Public</SelectItem>
+                  <SelectItem value="friends">👥 Friends Only</SelectItem>
+                  <SelectItem value="private">🔒 Only Me</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban } from "lucide-react";
+import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
@@ -57,6 +57,7 @@ export default function UserProfilePage() {
   const [userColors, setUserColors] = useState<[string, number][]>([]);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [fullscreenFitPic, setFullscreenFitPic] = useState<FitPic | null>(null);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -341,9 +342,13 @@ export default function UserProfilePage() {
             ) : (
               <div className="grid grid-cols-3 gap-0.5">
                 {fitPics.map((pic) => (
-                  <div key={pic.id} className="aspect-square relative">
+                  <button
+                    key={pic.id}
+                    onClick={() => setFullscreenFitPic(pic)}
+                    className="aspect-square relative"
+                  >
                     <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
@@ -371,6 +376,27 @@ export default function UserProfilePage() {
             reportType="user"
           />
         </>
+      )}
+
+      {/* Fullscreen Fit Pic Modal */}
+      {fullscreenFitPic && (
+        <div
+          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
+          onClick={() => setFullscreenFitPic(null)}
+        >
+          <button
+            onClick={() => setFullscreenFitPic(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={fullscreenFitPic.image_url}
+            alt={fullscreenFitPic.description || ""}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
       )}
     </div>
   );
