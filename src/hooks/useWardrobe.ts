@@ -348,28 +348,10 @@ export function useWardrobe() {
   const removeItem = useCallback(
     async (id: string) => {
       if (!user) return;
-      // Optimistic update
+      await supabase.from("clothing_items").delete().eq("id", id).eq("user_id", user.id);
       setItems((prev) => prev.filter((i) => i.id !== id));
-      const { error } = await supabase.from("clothing_items").delete().eq("id", id).eq("user_id", user.id);
-      if (error) {
-        // Revert on error - refetch
-        const { data: clothingData } = await supabase
-          .from("clothing_items")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-        const dbItems: ClothingItem[] = (clothingData || []).map((r: any) => ({
-          id: r.id, name: r.name, category: r.category, color: r.color, fabric: r.fabric,
-          imageUrl: r.image_url, backImageUrl: r.back_image_url || undefined, tags: r.tags || [],
-          notes: r.notes || "", addedAt: new Date(r.created_at),
-          estimatedPrice: r.estimated_price ? Number(r.estimated_price) : undefined,
-          isPrivate: r.is_private || false,
-        }));
-        setItems(dbItems);
-        toast({ title: "Failed to delete item", description: error.message, variant: "destructive" });
-      }
     },
-    [user, toast]
+    [user]
   );
 
   const saveOutfit = useCallback(

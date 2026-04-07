@@ -59,7 +59,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [wishlistItems, setWishlistItems] = useState<any[]>([]);
-  const [deleteWishlistId, setDeleteWishlistId] = useState<string | null>(null);
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -277,13 +276,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
             {[0, 1, 2].map((idx) => {
               const wItem = wishlistItems[idx];
               return wItem ? (
-                <div key={wItem.id} className="rounded-xl bg-muted p-2 text-center relative">
-                  <button
-                    onClick={() => setDeleteWishlistId(wItem.id)}
-                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-foreground/60 text-background flex items-center justify-center z-10"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
+                <div key={wItem.id} className="rounded-xl bg-muted p-2 text-center">
                   {wItem.image_url ? (
                     <div className="aspect-square rounded-lg overflow-hidden mb-1.5 bg-white dark:bg-neutral-800">
                       <img src={wItem.image_url} alt={wItem.name} className="w-full h-full object-contain" />
@@ -579,24 +572,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         }}
         title="Delete permanently?"
         description="This item will be permanently removed and cannot be recovered."
-      />
-
-      <DeleteConfirmDialog
-        open={!!deleteWishlistId}
-        onOpenChange={(o) => { if (!o) setDeleteWishlistId(null); }}
-        onConfirm={async () => {
-          if (!deleteWishlistId) return;
-          const { error } = await supabase.from("wishlist_items").delete().eq("id", deleteWishlistId);
-          if (error) {
-            toast({ title: "Failed to remove", description: error.message, variant: "destructive" });
-          } else {
-            toast({ title: "Removed from wish list" });
-            fetchWishlist();
-          }
-          setDeleteWishlistId(null);
-        }}
-        title="Remove from wish list?"
-        description="This item will be removed from your wish list."
       />
 
       <DeleteConfirmDialog
