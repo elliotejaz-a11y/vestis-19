@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
       options: {
-        emailRedirectTo: "https://vestis-19.lovable.app",
+        emailRedirectTo: undefined,
         data: { display_name: displayName },
       },
     });

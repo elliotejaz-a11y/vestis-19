@@ -4,9 +4,12 @@ import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { OutfitCard } from "@/components/OutfitCard";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { Plus, Shirt, Bookmark, Sparkles } from "lucide-react";
+import { Plus, Shirt, Bookmark, Sparkles, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type SortOption = "newest" | "oldest" | "colour" | "fabric";
 
 interface Props {
   items: ClothingItem[];
@@ -23,11 +26,26 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const navigate = useNavigate();
-
 
   const savedOutfits = outfits.filter((o) => o.saved);
   const filtered = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
+
+  const sorted = [...filtered].sort((a, b) => {
+    switch (sortBy) {
+      case "newest":
+        return new Date(b.addedAt).getTime() - new Date(a.addedAt).getTime();
+      case "oldest":
+        return new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime();
+      case "colour":
+        return (a.color || "").localeCompare(b.color || "");
+      case "fabric":
+        return (a.fabric || "").localeCompare(b.fabric || "");
+      default:
+        return 0;
+    }
+  });
 
   return (
     <div className="min-h-screen pb-24">
@@ -59,7 +77,6 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
       </div>
 
       {activeTab === "outfits" ? (
-        /* Saved Outfits Tab */
         <div className="px-5 space-y-3">
           {savedOutfits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -92,8 +109,23 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
           )}
         </div>
       ) : (
-        /* My Clothes Tab */
         <>
+          {/* Sort selector */}
+          <div className="px-5 pb-3 flex items-center gap-2">
+            <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground" />
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="w-[160px] h-8 rounded-xl bg-card text-xs border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
+                <SelectItem value="colour">Colour</SelectItem>
+                <SelectItem value="fabric">Fabric</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="px-5 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveFilter("all")}
@@ -114,7 +146,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
             ))}
           </div>
 
-          {filtered.length === 0 ? (
+          {sorted.length === 0 ? (
             <div className="flex flex-col items-center justify-center px-5 py-20 text-center">
               <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center mb-4">
                 <Shirt className="w-7 h-7 text-muted-foreground" />
@@ -129,7 +161,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
             </div>
           ) : (
             <div className="px-4 grid grid-cols-2 gap-3">
-              {filtered.map((item) => (
+              {sorted.map((item) => (
                 <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
               ))}
             </div>
@@ -137,7 +169,6 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         </>
       )}
 
-      {/* Always-visible floating add button */}
       <AddClothingSheet onAdd={onAdd}>
         <button className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center hover:bg-accent/90 transition-colors">
           <Plus className="w-6 h-6" />
