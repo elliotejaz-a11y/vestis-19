@@ -8,7 +8,7 @@ import { useWardrobe } from "@/hooks/useWardrobe";
 import { useRecentlyDeleted } from "@/hooks/useRecentlyDeleted";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppTutorial } from "@/components/AppTutorial";
-
+import { SwipeNavigator } from "@/components/SwipeNavigator";
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Loader2 } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect } from "react";
@@ -86,7 +86,7 @@ function AuthenticatedApp() {
 
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
-      <div style={{ minHeight: "100%" }}>
+      <SwipeNavigator>
       <Suspense fallback={<PageSkeleton />}>
       <Routes>
         <Route path="/" element={
@@ -139,7 +139,7 @@ function AuthenticatedApp() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
-      </div>
+      </SwipeNavigator>
       <BottomNav />
       <AppTutorial />
     </div>

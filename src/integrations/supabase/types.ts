@@ -48,8 +48,6 @@ export type Database = {
           is_private: boolean
           name: string
           notes: string
-          privacy: string
-          size: string
           tags: string[]
           user_id: string
         }
@@ -65,8 +63,6 @@ export type Database = {
           is_private?: boolean
           name: string
           notes?: string
-          privacy?: string
-          size?: string
           tags?: string[]
           user_id: string
         }
@@ -82,8 +78,6 @@ export type Database = {
           is_private?: boolean
           name?: string
           notes?: string
-          privacy?: string
-          size?: string
           tags?: string[]
           user_id?: string
         }
@@ -281,21 +275,18 @@ export type Database = {
           created_at: string
           id: string
           requester_id: string
-          status: string
           target_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           requester_id: string
-          status?: string
           target_id: string
         }
         Update: {
           created_at?: string
           id?: string
           requester_id?: string
-          status?: string
           target_id?: string
         }
         Relationships: []
@@ -424,7 +415,6 @@ export type Database = {
           id: string
           name: string | null
           occasion: string
-          privacy: string
           reasoning: string
           saved: boolean | null
           style_tips: string | null
@@ -436,7 +426,6 @@ export type Database = {
           id?: string
           name?: string | null
           occasion: string
-          privacy?: string
           reasoning?: string
           saved?: boolean | null
           style_tips?: string | null
@@ -448,7 +437,6 @@ export type Database = {
           id?: string
           name?: string | null
           occasion?: string
-          privacy?: string
           reasoning?: string
           saved?: boolean | null
           style_tips?: string | null
@@ -821,51 +809,6 @@ export type Database = {
         }
         Relationships: []
       }
-      wishlist_items: {
-        Row: {
-          brand: string
-          category: string
-          color: string
-          created_at: string
-          estimated_price: number | null
-          fabric: string
-          id: string
-          image_url: string
-          name: string
-          notes: string
-          size: string
-          user_id: string
-        }
-        Insert: {
-          brand?: string
-          category?: string
-          color?: string
-          created_at?: string
-          estimated_price?: number | null
-          fabric?: string
-          id?: string
-          image_url?: string
-          name?: string
-          notes?: string
-          size?: string
-          user_id: string
-        }
-        Update: {
-          brand?: string
-          category?: string
-          color?: string
-          created_at?: string
-          estimated_price?: number | null
-          fabric?: string
-          id?: string
-          image_url?: string
-          name?: string
-          notes?: string
-          size?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -915,14 +858,6 @@ export type Database = {
           source_queue: string
         }
         Returns: number
-      }
-      notify_follow_accepted: {
-        Args: { accepter_id: string; requester_id: string }
-        Returns: undefined
-      }
-      notify_follow_request: {
-        Args: { requester_id: string; target_id: string }
-        Returns: undefined
       }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
