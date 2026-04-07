@@ -220,6 +220,8 @@ export function useWardrobe() {
           tags: item.tags,
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
+          size: (item as any).size || "",
+          privacy: (item as any).privacy || "public",
         })
         .select()
         .single();
