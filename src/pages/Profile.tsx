@@ -582,7 +582,23 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       />
 
       <DeleteConfirmDialog
-        open={showDeleteAccount}
+        open={!!deleteWishlistId}
+        onOpenChange={(o) => { if (!o) setDeleteWishlistId(null); }}
+        onConfirm={async () => {
+          if (!deleteWishlistId) return;
+          const { error } = await supabase.from("wishlist_items").delete().eq("id", deleteWishlistId);
+          if (error) {
+            toast({ title: "Failed to remove", description: error.message, variant: "destructive" });
+          } else {
+            toast({ title: "Removed from wish list" });
+            fetchWishlist();
+          }
+          setDeleteWishlistId(null);
+        }}
+        title="Remove from wish list?"
+        description="This item will be removed from your wish list."
+      />
+
         onOpenChange={setShowDeleteAccount}
         onConfirm={async () => {
           setDeletingAccount(true);
