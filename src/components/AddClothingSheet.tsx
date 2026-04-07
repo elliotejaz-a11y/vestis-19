@@ -28,6 +28,8 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [category, setCategory] = useState("");
   const [colors, setColors] = useState<string[]>([]);
   const [fabric, setFabric] = useState("");
+  const [size, setSize] = useState("");
+  const [privacy, setPrivacy] = useState("public");
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
