@@ -329,7 +329,7 @@ export default function Auth() {
                   required
                 />
               </div>
-              <Button type="submit" disabled={updatingPassword || !passwordValid(newPassword)} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm">
+              <Button type="submit" disabled={updatingPassword || !passwordValid(newPassword) || newPassword !== confirmNewPassword} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm">
                 {updatingPassword ? "Updating..." : "Update Password"}
               </Button>
             </form>
