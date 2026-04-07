@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Camera } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
 
@@ -25,9 +28,16 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [colors, setColors] = useState<string[]>(parseColors(item?.color || ""));
   const [fabric, setFabric] = useState(item?.fabric || "");
   const [notes, setNotes] = useState(item?.notes || "");
+  const [size, setSize] = useState((item as any)?.size || "");
+  const [privacy, setPrivacy] = useState((item as any)?.privacy || "public");
   const [estimatedPrice, setEstimatedPrice] = useState(item?.estimatedPrice?.toString() || "");
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
   const [isPrivate, setIsPrivate] = useState(item?.isPrivate || false);
+  const [newImageUrl, setNewImageUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   // Sync state when item changes
   if (item && name === "" && item.name !== "") {
@@ -36,21 +46,57 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setColors(parseColors(item.color));
     setFabric(item.fabric);
     setNotes(item.notes);
+    setSize((item as any).size || "");
+    setPrivacy((item as any).privacy || "public");
     setEstimatedPrice(item.estimatedPrice?.toString() || "");
     setPriceEnabled(item.estimatedPrice != null);
     setIsPrivate(item.isPrivate || false);
+    setNewImageUrl(null);
   }
+
+  const handleRetakePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !item) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage.from("clothing-images").upload(path, file, { contentType: file.type });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
+      const url = urlData.publicUrl;
+      setNewImageUrl(url);
+      // Update in DB immediately
+      await supabase.from("clothing_items").update({ image_url: url } as any).eq("id", item.id);
+      toast({ title: "Photo updated" });
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    }
+    setUploading(false);
+  };
 
   const handleSave = () => {
     if (!item || !name || !category) return;
     const priceNum = priceEnabled && estimatedPrice ? parseFloat(estimatedPrice) : (priceEnabled ? 0 : undefined);
-    onSave({ ...item, name, category, color: joinColors(colors), fabric, notes, estimatedPrice: priceNum, isPrivate });
+    onSave({
+      ...item,
+      name,
+      category,
+      color: joinColors(colors),
+      fabric,
+      notes,
+      estimatedPrice: priceNum,
+      isPrivate,
+      imageUrl: newImageUrl || item.imageUrl,
+      ...(size !== undefined ? { size } : {}),
+      ...(privacy !== undefined ? { privacy } : {}),
+    } as ClothingItem);
     onOpenChange(false);
   };
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); }
+      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setSize(""); setPrivacy("public"); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); setNewImageUrl(null); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
@@ -60,8 +106,17 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
 
         <div className="mt-6 space-y-5">
           {item && (
-            <div className="rounded-2xl overflow-hidden bg-muted">
-              <img src={item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white dark:bg-neutral-800" />
+            <div className="relative rounded-2xl overflow-hidden bg-muted">
+              <img src={newImageUrl || item.imageUrl} alt={item.name} className="w-full h-48 object-contain bg-white dark:bg-neutral-800" />
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+                className="absolute bottom-2 right-2 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-foreground/70 text-background text-[11px] font-medium hover:bg-foreground/80 transition-colors"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                {uploading ? "Uploading…" : "Retake Photo"}
+              </button>
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleRetakePhoto} />
             </div>
           )}
 
@@ -99,8 +154,23 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
               </div>
             </div>
             <div>
+              <Label className="text-xs font-medium text-muted-foreground">Size</Label>
+              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. M, 10, 32W" className="mt-1 rounded-xl bg-card" />
+            </div>
+            <div>
               <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="mt-1 rounded-xl bg-card text-sm min-h-[60px]" />
+            </div>
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Privacy</Label>
+              <Select value={privacy} onValueChange={setPrivacy}>
+                <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">🌐 Public</SelectItem>
+                  <SelectItem value="friends">👥 Friends Only</SelectItem>
+                  <SelectItem value="private">🔒 Only Me</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
