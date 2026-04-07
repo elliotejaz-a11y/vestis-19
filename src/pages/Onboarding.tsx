@@ -201,6 +201,43 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       valid: !!avatarUrl && !!username.trim(),
     },
     {
+      title: "Account Privacy",
+      subtitle: "Choose who can see your wardrobe",
+      content: (
+        <div className="space-y-4">
+          <button
+            onClick={() => setIsPublic(true)}
+            className={cn(
+              "w-full flex items-center gap-4 p-5 rounded-2xl border-2 transition-all text-left",
+              isPublic ? "border-accent bg-accent/10" : "border-border bg-card hover:border-accent/40"
+            )}
+          >
+            <span className="text-3xl">🌐</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-foreground">Public</p>
+              <p className="text-xs text-muted-foreground">Anyone can see your wardrobe, fit pics, bio, followers & following</p>
+            </div>
+            {isPublic && <Check className="w-5 h-5 text-accent" />}
+          </button>
+          <button
+            onClick={() => setIsPublic(false)}
+            className={cn(
+              "w-full flex items-center gap-4 p-5 rounded-2xl border-2 transition-all text-left",
+              !isPublic ? "border-accent bg-accent/10" : "border-border bg-card hover:border-accent/40"
+            )}
+          >
+            <span className="text-3xl">🔒</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-foreground">Private</p>
+              <p className="text-xs text-muted-foreground">Only your name, username & profile picture are visible to others</p>
+            </div>
+            {!isPublic && <Check className="w-5 h-5 text-accent" />}
+          </button>
+        </div>
+      ),
+      valid: true,
+    },
+    {
       title: "What's your skin tone?",
       subtitle: "Drag the slider to match your skin tone",
       content: (
