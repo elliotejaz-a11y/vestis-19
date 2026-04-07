@@ -599,6 +599,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         description="This item will be removed from your wish list."
       />
 
+      <DeleteConfirmDialog
+        open={showDeleteAccount}
         onOpenChange={setShowDeleteAccount}
         onConfirm={async () => {
           setDeletingAccount(true);
