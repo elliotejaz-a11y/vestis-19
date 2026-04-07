@@ -35,6 +35,13 @@ interface FitPic {
   created_at: string;
 }
 
+interface WishlistItem {
+  id: string;
+  name: string;
+  image_url: string;
+  estimated_price: number | null;
+}
+
 export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const { user } = useAuth();
