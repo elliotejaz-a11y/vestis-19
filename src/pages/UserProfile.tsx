@@ -381,6 +381,26 @@ export default function UserProfilePage() {
           />
         </>
       )}
+
+      {/* Fit Pic Fullscreen Modal */}
+      {fullscreenFitPic && (
+        <div
+          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
+          onClick={() => setFullscreenFitPic(null)}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setFullscreenFitPic(null); }}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-lg z-10"
+          >
+            ✕
+          </button>
+          <img
+            src={fullscreenFitPic.image_url}
+            alt={fullscreenFitPic.description || ""}
+            className="max-w-full max-h-full object-contain"
+          />
+        </div>
+      )}
     </div>
   );
 }
