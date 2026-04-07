@@ -4,9 +4,10 @@ import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { OutfitCard } from "@/components/OutfitCard";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { Plus, Shirt, Bookmark, Sparkles } from "lucide-react";
+import { Plus, Shirt, Bookmark, Sparkles, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Props {
   items: ClothingItem[];
