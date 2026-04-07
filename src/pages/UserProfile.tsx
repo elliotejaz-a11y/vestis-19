@@ -35,13 +35,6 @@ interface FitPic {
   created_at: string;
 }
 
-interface WishlistItem {
-  id: string;
-  name: string;
-  image_url: string;
-  estimated_price: number | null;
-}
-
 export default function UserProfilePage() {
   const { userId } = useParams<{ userId: string }>();
   const { user } = useAuth();
@@ -64,8 +57,6 @@ export default function UserProfilePage() {
   const [userColors, setUserColors] = useState<[string, number][]>([]);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [fullscreenFitPic, setFullscreenFitPic] = useState<FitPic | null>(null);
-  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -350,9 +341,9 @@ export default function UserProfilePage() {
             ) : (
               <div className="grid grid-cols-3 gap-0.5">
                 {fitPics.map((pic) => (
-                  <button key={pic.id} className="aspect-square relative" onClick={() => setFullscreenFitPic(pic)}>
+                  <div key={pic.id} className="aspect-square relative">
                     <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -380,26 +371,6 @@ export default function UserProfilePage() {
             reportType="user"
           />
         </>
-      )}
-
-      {/* Fit Pic Fullscreen Modal */}
-      {fullscreenFitPic && (
-        <div
-          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
-          onClick={() => setFullscreenFitPic(null)}
-        >
-          <button
-            onClick={(e) => { e.stopPropagation(); setFullscreenFitPic(null); }}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white text-lg z-10"
-          >
-            ✕
-          </button>
-          <img
-            src={fullscreenFitPic.image_url}
-            alt={fullscreenFitPic.description || ""}
-            className="max-w-full max-h-full object-contain"
-          />
-        </div>
       )}
     </div>
   );

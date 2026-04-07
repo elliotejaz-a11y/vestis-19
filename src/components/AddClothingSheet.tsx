@@ -11,14 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wardrobeImageProcessing";
+import { processClothingImage } from "@/lib/image-processing";
 
-const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silver", "Silk", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
-
-const PRIVACY_OPTIONS = [
-  { value: "public", label: "Public" },
-  { value: "friends", label: "Friends Only" },
-  { value: "private", label: "Only Me" },
-];
+const FABRICS = ["Cotton", "Silk", "Linen", "Denim", "Wool", "Polyester", "Leather", "Cashmere", "Suede", "Knit", "Chiffon", "Velvet", "Nylon", "Canvas", "Metal", "Silver", "Gold", "Stainless Steel", "Titanium", "Platinum", "Rubber", "Satin", "Faux Leather", "Gore-Tex", "Mesh"];
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
@@ -33,14 +28,13 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [category, setCategory] = useState("");
   const [colors, setColors] = useState<string[]>([]);
   const [fabric, setFabric] = useState("");
-  const [size, setSize] = useState("");
   const [tags, setTags] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [estimatedPrice, setEstimatedPrice] = useState<number | undefined>();
   const [priceInput, setPriceInput] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
+  const [removingBg, setRemovingBg] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [privacy, setPrivacy] = useState("public");
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
@@ -70,6 +64,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext("2d")!;
+        // White background to flatten transparency for JPEG
         ctx.fillStyle = "#FFFFFF";
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
@@ -84,6 +79,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       img.src = URL.createObjectURL(blob);
     });
   };
+
 
   const imageUrlToBase64 = async (url: string): Promise<string | undefined> => {
     if (url.startsWith("data:")) return url.split(",")[1];
@@ -115,11 +111,23 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       return;
     }
 
+    // Show original preview immediately
     setImageUrl(URL.createObjectURL(file));
+    setRemovingBg(true);
+    let cleanBlob: Blob;
+    try {
+      cleanBlob = await processClothingImage(file);
+      setImageUrl(URL.createObjectURL(cleanBlob));
+    } catch {
+      cleanBlob = file;
+    } finally {
+      setRemovingBg(false);
+    }
 
     setAnalyzing(true);
     try {
-      const resizedBlob = await resizeImageForAnalysis(file, 1024);
+      // Resize image to max 1024px before sending to AI to stay under 10MB limit
+      const resizedBlob = await resizeImageForAnalysis(cleanBlob, 1024);
       const base64 = await fileToBase64(new File([resizedBlob], file.name, { type: "image/jpeg" }));
       const { data, error } = await supabase.functions.invoke("analyze-clothing", {
         body: { imageBase64: base64 },
@@ -167,7 +175,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
       try {
         imageBase64ForProcessing = await imageUrlToBase64(imageUrl);
       } catch (e) {
-        console.warn("Could not get base64 for processing:", e);
+        console.warn("Could not get base64 for background removal:", e);
       }
     }
     onAdd(
@@ -183,10 +191,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
         notes,
         addedAt: new Date(),
         estimatedPrice,
-        isPrivate: privacy === "private",
-        size,
-        privacy,
-      } as ClothingItem & { size?: string; privacy?: string },
+      },
       { runBackgroundRemoval: isFileSourced, imageBase64ForProcessing }
     );
     resetForm();
@@ -195,8 +200,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
-    setSize(""); setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
-    setPrivacy("public");
+    setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
   };
 
   return (
@@ -224,10 +228,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               <img
                 src={imageUrl}
                 alt="Preview"
-                className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${analyzing ? 'blur-[2px] scale-[1.02]' : 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]'}`}
+                className={`w-full h-48 object-contain bg-white dark:bg-neutral-800 transition-all duration-300 ${removingBg ? 'blur-[2px] scale-[1.02]' : ''} ${!removingBg && !analyzing ? 'drop-shadow-[0_4px_6px_rgba(0,0,0,0.1)]' : ''}`}
                 style={{ transform: `rotate(${rotation}deg)` }}
               />
-              {!analyzing && (
+              {!removingBg && !analyzing && (
                 <div className="absolute top-2 right-2 flex gap-1.5">
                   <button
                     onClick={() => setRotation((prev) => (prev + 90) % 360)}
@@ -243,7 +247,19 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                   </button>
                 </div>
               )}
-              {analyzing && (
+              {removingBg && (
+                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                  <div className="relative">
+                    <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
+                    <Sparkles className="w-5 h-5 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-white">Removing Background</p>
+                    <p className="text-[11px] text-white/60 mt-1">This may take a moment…</p>
+                  </div>
+                </div>
+              )}
+              {!removingBg && analyzing && (
                 <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
                   <div className="relative">
                     <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
@@ -366,23 +382,10 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               </div>
             </div>
             <div>
-              <Label className="text-xs font-medium text-muted-foreground">Size</Label>
-              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. M, 10, 32W" className="mt-1 rounded-xl bg-card" />
-            </div>
-            <div>
               <Label className="text-xs font-medium text-muted-foreground">Colours</Label>
               <div className="mt-1.5">
                 <ColorPicker selected={colors} onChange={setColors} />
               </div>
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Privacy</Label>
-              <Select value={privacy} onValueChange={setPrivacy}>
-                <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {PRIVACY_OPTIONS.map((p) => (<SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>))}
-                </SelectContent>
-              </Select>
             </div>
             <div>
               <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
