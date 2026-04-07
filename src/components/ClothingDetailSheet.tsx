@@ -135,6 +135,15 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
                   </div>
                 </div>
               )}
+              {(item as any).size && (
+                <div className="bg-card rounded-xl p-3 flex items-center gap-2">
+                  <Ruler className="w-4 h-4 text-accent" />
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">Size</p>
+                    <p className="text-xs font-medium text-foreground">{(item as any).size}</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Tags */}
