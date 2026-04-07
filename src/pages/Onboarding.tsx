@@ -106,6 +106,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       setCustomStyle(customs.join(", "));
       setBodyType(profile.body_type || "");
       setPreferredColors(profile.preferred_colors || []);
+      setIsPublic(profile.is_public);
     }
   }, [editMode, profile]);
 
