@@ -64,6 +64,8 @@ export default function UserProfilePage() {
   const [userColors, setUserColors] = useState<[string, number][]>([]);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [fullscreenFitPic, setFullscreenFitPic] = useState<FitPic | null>(null);
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>([]);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
