@@ -86,7 +86,7 @@ function AuthenticatedApp() {
 
   return (
     <div className="max-w-lg mx-auto min-h-screen relative">
-      <SwipeNavigator>
+      <div style={{ minHeight: "100%" }}>
       <Suspense fallback={<PageSkeleton />}>
       <Routes>
         <Route path="/" element={
@@ -139,7 +139,7 @@ function AuthenticatedApp() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
-      </SwipeNavigator>
+      </div>
       <BottomNav />
       <AppTutorial />
     </div>
