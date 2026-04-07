@@ -425,6 +425,27 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
         </Button>
 
+        {/* Account Privacy */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                {profile?.is_public ? <Globe className="w-4 h-4 text-accent" /> : <Lock className="w-4 h-4 text-accent" />}
+                {profile?.is_public ? "Public Account" : "Private Account"}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {profile?.is_public ? "Anyone can see your wardrobe & fit pics" : "Only you can see your wardrobe & fit pics"}
+              </p>
+            </div>
+            <button
+              onClick={() => updateProfile({ is_public: !profile?.is_public })}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${profile?.is_public ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"}`}
+            >
+              {profile?.is_public ? "Public" : "Private"}
+            </button>
+          </div>
+        </div>
+
         {/* Appearance */}
         <div className="rounded-2xl bg-card border border-border/40 p-4">
           <p className="text-sm font-semibold text-foreground mb-3">Appearance</p>
