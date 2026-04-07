@@ -67,7 +67,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
-    Promise.all([fetchFollowCounts(), fetchFitPics(), refreshProfile()])
+    Promise.all([fetchFollowCounts(), fetchFitPics(), refreshProfile(), fetchWishlist()])
       .finally(() => setRefreshing(false));
   }, [user]);
 
