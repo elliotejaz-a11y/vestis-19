@@ -333,6 +333,9 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         is_public: isPublic,
       } as any);
       toast({ title: editMode ? "Profile updated! ✨" : "Welcome to Vestis! ✨", description: editMode ? "Your style preferences have been saved." : "Your profile is set up." });
+      if (!editMode) {
+        localStorage.setItem("vestis_onboarding_just_completed", "true");
+      }
       onComplete?.();
     } catch {
       toast({ title: "Something went wrong", variant: "destructive" });
