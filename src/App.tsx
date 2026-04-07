@@ -8,7 +8,7 @@ import { useWardrobe } from "@/hooks/useWardrobe";
 import { useRecentlyDeleted } from "@/hooks/useRecentlyDeleted";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppTutorial } from "@/components/AppTutorial";
-import { SwipeNavigator } from "@/components/SwipeNavigator";
+
 import { PageSkeleton } from "@/components/PageSkeleton";
 import { Loader2 } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect } from "react";
