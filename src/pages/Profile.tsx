@@ -289,9 +289,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   )}
                 </div>
               ) : (
-                <div key={`empty-${idx}`} className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center">
+                <button
+                  key={`empty-${idx}`}
+                  onClick={() => wishlistItems.length < 3 && setShowAddWishlist(true)}
+                  className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center hover:border-accent/40 transition-colors"
+                >
                   <Plus className="w-5 h-5 text-muted-foreground/40" />
-                </div>
+                </button>
               );
             })}
           </div>

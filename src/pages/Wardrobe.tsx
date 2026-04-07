@@ -102,11 +102,13 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
       ) : (
         /* My Clothes Tab */
         <>
-          <div className="px-5 pb-3 flex items-center justify-between">
+          <div className="px-5 pb-3">
             <span className="text-xs text-muted-foreground">{filtered.length} items</span>
+          </div>
+          <div className="px-5 pb-4 flex gap-2 overflow-x-auto no-scrollbar items-center">
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="w-[140px] h-8 rounded-xl bg-card text-xs">
-                <ArrowUpDown className="w-3 h-3 mr-1" />
+              <SelectTrigger className="h-[30px] rounded-full bg-card text-xs border border-border px-2.5 min-w-fit gap-1 shrink-0">
+                <ArrowUpDown className="w-3 h-3" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -116,8 +118,6 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
                 <SelectItem value="fabric">Fabric</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="px-5 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setActiveFilter("all")}
               className={cn(
