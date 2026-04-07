@@ -393,6 +393,21 @@ export function AddClothingSheet({ onAdd, children }: Props) {
               <Label className="text-xs font-medium text-muted-foreground">Notes</Label>
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="e.g. Super comfy, runs a size small..." className="mt-1 rounded-xl bg-card text-sm min-h-[60px]" />
             </div>
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Size</Label>
+              <Input value={size} onChange={(e) => setSize(e.target.value)} placeholder="e.g. M, 10, 32W" className="mt-1 rounded-xl bg-card" />
+            </div>
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Privacy</Label>
+              <Select value={privacy} onValueChange={setPrivacy}>
+                <SelectTrigger className="mt-1 rounded-xl bg-card text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">🌐 Public</SelectItem>
+                  <SelectItem value="friends">👥 Friends Only</SelectItem>
+                  <SelectItem value="private">🔒 Only Me</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <Button
