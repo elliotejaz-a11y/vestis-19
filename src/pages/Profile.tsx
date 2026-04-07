@@ -577,6 +577,27 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         title="Delete your account?"
         description="This will permanently delete your account, wardrobe, outfits, and all associated data. This action cannot be undone."
       />
+
+      {/* Fullscreen Fit Pic Modal */}
+      {fullscreenFitPic && (
+        <div
+          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
+          onClick={() => setFullscreenFitPic(null)}
+        >
+          <button
+            onClick={() => setFullscreenFitPic(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={fullscreenFitPic.image_url}
+            alt={fullscreenFitPic.description || ""}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
