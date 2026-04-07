@@ -59,6 +59,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [wishlistItems, setWishlistItems] = useState<any[]>([]);
+  const [deleteWishlistId, setDeleteWishlistId] = useState<string | null>(null);
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
