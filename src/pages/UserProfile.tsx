@@ -342,9 +342,13 @@ export default function UserProfilePage() {
             ) : (
               <div className="grid grid-cols-3 gap-0.5">
                 {fitPics.map((pic) => (
-                  <div key={pic.id} className="aspect-square relative">
+                  <button
+                    key={pic.id}
+                    onClick={() => setFullscreenFitPic(pic)}
+                    className="aspect-square relative"
+                  >
                     <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
