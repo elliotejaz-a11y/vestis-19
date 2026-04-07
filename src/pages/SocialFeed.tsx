@@ -113,7 +113,7 @@ export default function SocialFeed() {
                     <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
                     {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
