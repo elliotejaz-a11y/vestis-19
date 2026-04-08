@@ -57,13 +57,13 @@ export function AppTutorial() {
   useEffect(() => {
     if (!user) return;
 
-    // Only show tutorial when onboarding has just been completed
-    const onboardingJustCompleted = localStorage.getItem("vestis_onboarding_just_completed") === "true";
+    // Only show tutorial automatically on fresh signup
+    const isFreshSignup = localStorage.getItem("vestis_fresh_signup") === "true";
     const tutorialSeen = localStorage.getItem(`vestis_tutorial_seen_${user.id}`);
 
-    if (onboardingJustCompleted && !tutorialSeen) {
+    if (isFreshSignup && !tutorialSeen) {
       setVisible(true);
-      localStorage.removeItem("vestis_onboarding_just_completed");
+      localStorage.removeItem("vestis_fresh_signup");
     }
 
     // Listen for replay event

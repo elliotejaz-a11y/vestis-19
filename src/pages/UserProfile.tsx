@@ -16,7 +16,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
 interface UserProfileData {
   id: string;
   display_name: string | null;
@@ -59,8 +58,6 @@ export default function UserProfilePage() {
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<FitPic | null>(null);
-  const [fullscreenAvatar, setFullscreenAvatar] = useState(false);
-  const [requestStatus, setRequestStatus] = useState<"none" | "pending" | "accepted" | "rejected">("none");
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -102,12 +99,13 @@ export default function UserProfilePage() {
         setCategoryBreakdown(catCounts);
         const uniqueColors = new Set(wardrobeData.map(i => i.color).filter(Boolean));
         setColorCount(uniqueColors.size);
+        // Build color breakdown
         const colorMap: Record<string, number> = {};
         wardrobeData.forEach(i => { if (i.color) colorMap[i.color] = (colorMap[i.color] || 0) + 1; });
         setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
       }
 
-      // Fit pics
+      // Fit pics (non-private for other users)
       const { data: pics } = await supabase
         .from("fit_pics")
         .select("id, image_url, description, pic_date, created_at")
@@ -126,55 +124,17 @@ export default function UserProfilePage() {
         setIsBlocked(!!blockData);
       }
 
-      // Check follow request status for private accounts
-      if (!isOwnProfile && user) {
-        const { data: reqData } = await supabase
-          .from("follow_requests")
-          .select("status")
-          .eq("requester_id", user.id)
-          .eq("target_id", userId)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (reqData) {
-          setRequestStatus(reqData.status as any);
-        } else {
-          setRequestStatus("none");
-        }
-      }
-
       setLoading(false);
     };
     load();
   }, [userId]);
 
   const handleFollow = async () => {
-    if (!userId || !user) return;
+    if (!userId) return;
     setFollowAction("loading");
     if (isFollowing) {
       setFollowersCount(prev => Math.max(0, prev - 1));
       await unfollowUser(userId);
-    } else if (profile && !profile.is_public && requestStatus === "none") {
-      // Send follow request for private accounts
-      await supabase.from("follow_requests").insert({
-        requester_id: user.id,
-        target_id: userId,
-      } as any);
-      // Send notification via RPC
-      await supabase.rpc("notify_follow_request", {
-        requester_id: user.id,
-        target_id: userId,
-      });
-      setRequestStatus("pending");
-      toast({ title: "Follow request sent" });
-    } else if (profile && !profile.is_public && requestStatus === "pending") {
-      // Cancel pending request
-      await supabase.from("follow_requests").delete().match({
-        requester_id: user.id,
-        target_id: userId,
-      });
-      setRequestStatus("none");
-      toast({ title: "Request cancelled" });
     } else {
       setFollowersCount(prev => prev + 1);
       await followUser(userId);
@@ -191,19 +151,13 @@ export default function UserProfilePage() {
     } else {
       await blockUser(userId);
       setIsBlocked(true);
+      // Also unfollow if following
       if (isFollowing) {
         await unfollowUser(userId);
         setFollowersCount(prev => Math.max(0, prev - 1));
       }
       toast({ title: "User blocked", description: "They won't be able to see your profile or interact with you." });
     }
-  };
-
-  const getFollowButtonText = () => {
-    if (isFollowing) return "Following";
-    if (!profile?.is_public && requestStatus === "pending") return "Request Sent";
-    if (!profile?.is_public && !isFollowing) return "Request to Follow";
-    return "Follow";
   };
 
   if (loading) {
@@ -253,10 +207,7 @@ export default function UserProfilePage() {
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
-          <button
-            onClick={() => profile.avatar_url && setFullscreenAvatar(true)}
-            className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0"
-          >
+          <div className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
             {profile.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
@@ -264,7 +215,7 @@ export default function UserProfilePage() {
                 <User className="w-8 h-8 text-muted-foreground" />
               </div>
             )}
-          </button>
+          </div>
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground">{profile.display_name || profile.username}</h2>
             {profile.username && (
@@ -295,13 +246,15 @@ export default function UserProfilePage() {
           <Button
             onClick={handleFollow}
             disabled={followAction === "loading"}
-            variant={isFollowing || requestStatus === "pending" ? "outline" : "default"}
+            variant={isFollowing ? "outline" : "default"}
             className="w-full mt-3 h-9 rounded-xl text-xs font-semibold"
           >
             {followAction === "loading" ? (
               <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isFollowing ? (
+              "Following"
             ) : (
-              getFollowButtonText()
+              "Follow"
             )}
           </Button>
         )}
@@ -343,7 +296,7 @@ export default function UserProfilePage() {
             </button>
           </div>
 
-          {/* Color breakdown */}
+          {/* Color breakdown (expandable) */}
           {showColors && userColors.length > 0 && (
             <div className="rounded-2xl bg-card border border-border/40 p-4">
               <p className="text-sm font-semibold text-foreground mb-3">Colour Breakdown</p>
@@ -358,7 +311,7 @@ export default function UserProfilePage() {
             </div>
           )}
 
-          {/* Category breakdown */}
+          {/* Category breakdown (expandable) */}
           {showCategories && (
             <div className="rounded-2xl bg-card border border-border/40 p-4">
               <p className="text-sm font-semibold text-foreground mb-3">Category Breakdown</p>
@@ -440,27 +393,6 @@ export default function UserProfilePage() {
           <img
             src={fullscreenFitPic.image_url}
             alt={fullscreenFitPic.description || ""}
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
-
-      {/* Fullscreen Avatar Modal */}
-      {fullscreenAvatar && profile?.avatar_url && (
-        <div
-          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
-          onClick={() => setFullscreenAvatar(false)}
-        >
-          <button
-            onClick={() => setFullscreenAvatar(false)}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <img
-            src={profile.avatar_url}
-            alt=""
             className="max-w-full max-h-full object-contain"
             onClick={(e) => e.stopPropagation()}
           />

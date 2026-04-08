@@ -1,13 +1,9 @@
-import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Bell, UserPlus, CheckCheck, Users, Check, X } from "lucide-react";
+import { Bell, UserPlus, CheckCheck, Users } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   open: boolean;
@@ -15,64 +11,12 @@ interface Props {
 }
 
 export function NotificationsSheet({ open, onOpenChange }: Props) {
-  const { notifications, markAsRead, markAllAsRead, loading, refresh } = useNotifications();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [handledRequests, setHandledRequests] = useState<Record<string, "accepted" | "declined">>({});
+  const { notifications, markAsRead, markAllAsRead, loading } = useNotifications();
 
   const getIcon = (type: string) => {
     switch (type) {
       case "new_follower": return <UserPlus className="w-4 h-4 text-accent" />;
-      case "follow_request": return <Users className="w-4 h-4 text-accent" />;
-      case "follow_accepted": return <Check className="w-4 h-4 text-accent" />;
       default: return <Bell className="w-4 h-4 text-muted-foreground" />;
-    }
-  };
-
-  const handleAcceptRequest = async (notification: any) => {
-    if (!user || !notification.from_user_id) return;
-    try {
-      // Update follow_requests status
-      await supabase
-        .from("follow_requests")
-        .update({ status: "accepted" } as any)
-        .eq("requester_id", notification.from_user_id)
-        .eq("target_id", user.id)
-        .eq("status", "pending");
-
-      // Insert into follows
-      await supabase.from("follows").insert({
-        follower_id: notification.from_user_id,
-        following_id: user.id,
-      } as any);
-
-      // Send accepted notification via RPC
-      await supabase.rpc("notify_follow_accepted", {
-        accepter_id: user.id,
-        requester_id: notification.from_user_id,
-      });
-
-      setHandledRequests(prev => ({ ...prev, [notification.id]: "accepted" }));
-      markAsRead(notification.id);
-    } catch {
-      toast({ title: "Error accepting request", variant: "destructive" });
-    }
-  };
-
-  const handleDeclineRequest = async (notification: any) => {
-    if (!user || !notification.from_user_id) return;
-    try {
-      await supabase
-        .from("follow_requests")
-        .update({ status: "rejected" } as any)
-        .eq("requester_id", notification.from_user_id)
-        .eq("target_id", user.id)
-        .eq("status", "pending");
-
-      setHandledRequests(prev => ({ ...prev, [notification.id]: "declined" }));
-      markAsRead(notification.id);
-    } catch {
-      toast({ title: "Error declining request", variant: "destructive" });
     }
   };
 
@@ -99,65 +43,31 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
               <p className="text-sm text-muted-foreground">No notifications yet</p>
             </div>
           ) : (
-            notifications.map(n => {
-              const handled = handledRequests[n.id];
-              const isFollowRequest = n.type === "follow_request" && !handled;
-
-              return (
-                <div
-                  key={n.id}
-                  onClick={() => !n.read && !isFollowRequest && markAsRead(n.id)}
-                  className={cn(
-                    "w-full flex flex-col gap-2 p-3 rounded-2xl text-left transition-colors",
-                    n.read ? "bg-card" : "bg-accent/10 border border-accent/20"
-                  )}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
-                      {n.from_profile?.avatar_url ? (
-                        <img src={n.from_profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        getIcon(n.type)
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground">{n.message}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-                      </p>
-                    </div>
-                    {!n.read && !isFollowRequest && <div className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />}
-                  </div>
-
-                  {/* Follow request actions */}
-                  {n.type === "follow_request" && (
-                    handled ? (
-                      <p className="text-xs text-muted-foreground ml-13 pl-[52px]">
-                        {handled === "accepted" ? "Accepted" : "Declined"}
-                      </p>
-                    ) : (
-                      <div className="flex gap-2 pl-[52px]">
-                        <Button
-                          size="sm"
-                          onClick={(e) => { e.stopPropagation(); handleAcceptRequest(n); }}
-                          className="h-8 rounded-xl text-xs bg-accent text-accent-foreground hover:bg-accent/90"
-                        >
-                          <Check className="w-3.5 h-3.5 mr-1" /> Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => { e.stopPropagation(); handleDeclineRequest(n); }}
-                          className="h-8 rounded-xl text-xs"
-                        >
-                          <X className="w-3.5 h-3.5 mr-1" /> Decline
-                        </Button>
-                      </div>
-                    )
+            notifications.map(n => (
+              <button
+                key={n.id}
+                onClick={() => !n.read && markAsRead(n.id)}
+                className={cn(
+                  "w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-colors",
+                  n.read ? "bg-card" : "bg-accent/10 border border-accent/20"
+                )}
+              >
+                <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
+                  {n.from_profile?.avatar_url ? (
+                    <img src={n.from_profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    getIcon(n.type)
                   )}
                 </div>
-              );
-            })
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-foreground">{n.message}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                  </p>
+                </div>
+                {!n.read && <div className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />}
+              </button>
+            ))
           )}
         </div>
       </SheetContent>

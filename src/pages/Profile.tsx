@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X, Upload } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -45,13 +42,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<any>(null);
-  const [fullscreenAvatar, setFullscreenAvatar] = useState(false);
-  const [showAddWishlist, setShowAddWishlist] = useState(false);
-  const [wishlistPhoto, setWishlistPhoto] = useState("");
-  const [wishlistName, setWishlistName] = useState("");
-  const [wishlistPrice, setWishlistPrice] = useState("");
-  const [wishlistSaving, setWishlistSaving] = useState(false);
-  const wishlistFileRef = useRef<HTMLInputElement>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
@@ -180,16 +170,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       </div>
       <header className="px-5 pt-12 pb-6">
         <div className="flex flex-col items-center gap-3">
-          <button
-            onClick={() => profile?.avatar_url && setFullscreenAvatar(true)}
-            className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden"
-          >
+          <div className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
             ) : (
               <User className="w-8 h-8 text-muted-foreground" />
             )}
-          </button>
+          </div>
           <div className="text-center">
             <h1 className="text-xl font-bold tracking-tight text-foreground">
               {displayNameForTitle}
@@ -292,13 +279,9 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   )}
                 </div>
               ) : (
-                <button
-                  key={`empty-${idx}`}
-                  onClick={() => wishlistItems.length < 3 && setShowAddWishlist(true)}
-                  className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center hover:border-accent/40 transition-colors"
-                >
+                <div key={`empty-${idx}`} className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center">
                   <Plus className="w-5 h-5 text-muted-foreground/40" />
-                </button>
+                </div>
               );
             })}
           </div>
@@ -615,118 +598,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           />
         </div>
       )}
-
-      {/* Fullscreen Avatar Modal */}
-      {fullscreenAvatar && profile?.avatar_url && (
-        <div
-          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
-          onClick={() => setFullscreenAvatar(false)}
-        >
-          <button
-            onClick={() => setFullscreenAvatar(false)}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <img
-            src={profile.avatar_url}
-            alt=""
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
-
-      {/* Add Wishlist Item Sheet */}
-      <Sheet open={showAddWishlist} onOpenChange={(o) => {
-        setShowAddWishlist(o);
-        if (!o) { setWishlistPhoto(""); setWishlistName(""); setWishlistPrice(""); }
-      }}>
-        <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
-          <SheetHeader>
-            <SheetTitle className="text-lg font-bold tracking-tight">Add Wish List Item</SheetTitle>
-          </SheetHeader>
-          <div className="mt-6 space-y-4">
-            {!wishlistPhoto ? (
-              <button
-                onClick={() => wishlistFileRef.current?.click()}
-                className="w-full h-32 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-              >
-                <Upload className="w-6 h-6" />
-                <span className="text-xs font-medium">Upload Photo</span>
-              </button>
-            ) : (
-              <div className="relative rounded-2xl overflow-hidden bg-muted">
-                <img src={wishlistPhoto} alt="Preview" className="w-full h-32 object-contain bg-white dark:bg-neutral-800" />
-                <button
-                  onClick={() => setWishlistPhoto("")}
-                  className="absolute top-2 right-2 w-6 h-6 rounded-full bg-foreground/60 text-background flex items-center justify-center text-xs"
-                >✕</button>
-              </div>
-            )}
-            <input
-              ref={wishlistFileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="hidden"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file || !user) return;
-                try {
-                  const ext = file.name.split(".").pop() || "jpg";
-                  const path = `${user.id}/wishlist_${crypto.randomUUID()}.${ext}`;
-                  const { error } = await supabase.storage.from("clothing-images").upload(path, file, { contentType: file.type });
-                  if (error) throw error;
-                  const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-                  setWishlistPhoto(urlData.publicUrl);
-                } catch {
-                  toast({ title: "Upload failed", variant: "destructive" });
-                }
-              }}
-            />
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Item Name</Label>
-              <Input value={wishlistName} onChange={(e) => setWishlistName(e.target.value)} placeholder="e.g. Nike Air Max 90" className="mt-1 rounded-xl bg-card" />
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Price</Label>
-              <Input type="number" inputMode="numeric" value={wishlistPrice} onChange={(e) => setWishlistPrice(e.target.value)} placeholder="e.g. 120" className="mt-1 rounded-xl bg-card" />
-            </div>
-            <Button
-              onClick={async () => {
-                if (!user || !wishlistName.trim()) {
-                  toast({ title: "Please enter an item name", variant: "destructive" });
-                  return;
-                }
-                setWishlistSaving(true);
-                try {
-                  const { error } = await supabase.from("wishlist_items").insert({
-                    user_id: user.id,
-                    name: wishlistName.trim(),
-                    image_url: wishlistPhoto || "",
-                    estimated_price: wishlistPrice ? parseFloat(wishlistPrice) : null,
-                  } as any);
-                  if (error) throw error;
-                  toast({ title: "Added to wish list ✨" });
-                  setShowAddWishlist(false);
-                  setWishlistPhoto("");
-                  setWishlistName("");
-                  setWishlistPrice("");
-                  fetchWishlist();
-                } catch (err: any) {
-                  toast({ title: "Failed to add item", description: err?.message || "Please try again.", variant: "destructive" });
-                } finally {
-                  setWishlistSaving(false);
-                }
-              }}
-              disabled={!wishlistName.trim() || wishlistSaving}
-              className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
-            >
-              {wishlistSaving ? "Saving..." : <><Plus className="w-4 h-4 mr-2" /> Add to Wish List</>}
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
