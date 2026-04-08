@@ -24,6 +24,7 @@ export default function SocialFeed() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   const navigate = useNavigate();
 
   const handleSearch = async (query: string) => {
