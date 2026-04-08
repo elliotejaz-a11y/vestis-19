@@ -4,10 +4,9 @@ import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { OutfitCard } from "@/components/OutfitCard";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { Plus, Shirt, Bookmark, Sparkles, ArrowUpDown } from "lucide-react";
+import { Plus, Shirt, Bookmark, Sparkles, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Props {
   items: ClothingItem[];
@@ -20,13 +19,20 @@ interface Props {
   onRetryBackgroundRemoval?: (id: string) => void;
 }
 
+const SORT_OPTIONS = [
+  { value: "newest", label: "Newest First" },
+  { value: "oldest", label: "Oldest First" },
+  { value: "colour", label: "Colour" },
+  { value: "fabric", label: "Fabric" },
+];
+
 export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  const [sortOpen, setSortOpen] = useState(false);
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
   const navigate = useNavigate();
-
 
   const savedOutfits = outfits.filter((o) => o.saved);
   const filteredBase = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
@@ -34,8 +40,10 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
     if (sortBy === "oldest") return a.addedAt.getTime() - b.addedAt.getTime();
     if (sortBy === "colour") return a.color.localeCompare(b.color);
     if (sortBy === "fabric") return a.fabric.localeCompare(b.fabric);
-    return b.addedAt.getTime() - a.addedAt.getTime(); // newest
+    return b.addedAt.getTime() - a.addedAt.getTime();
   });
+
+  const currentSortLabel = SORT_OPTIONS.find(o => o.value === sortBy)?.label || "Sort";
 
   return (
     <div className="min-h-screen pb-24">
@@ -44,30 +52,16 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         <p className="text-sm text-muted-foreground mt-0.5">{items.length} pieces · {savedOutfits.length} saved outfits</p>
       </header>
 
-      {/* Main tabs */}
       <div className="px-5 pb-4 flex gap-2">
-        <button
-          onClick={() => setActiveTab("clothes")}
-          className={cn(
-            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
-            activeTab === "clothes" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
-          )}
-        >
+        <button onClick={() => setActiveTab("clothes")} className={cn("flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5", activeTab === "clothes" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border")}>
           <Shirt className="w-3.5 h-3.5" /> My Clothes
         </button>
-        <button
-          onClick={() => setActiveTab("outfits")}
-          className={cn(
-            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
-            activeTab === "outfits" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
-          )}
-        >
+        <button onClick={() => setActiveTab("outfits")} className={cn("flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5", activeTab === "outfits" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border")}>
           <Bookmark className="w-3.5 h-3.5" /> Saved Outfits
         </button>
       </div>
 
       {activeTab === "outfits" ? (
-        /* Saved Outfits Tab */
         <div className="px-5 space-y-3">
           {savedOutfits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -77,16 +71,10 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
               <p className="text-sm font-medium text-foreground">No saved outfits yet</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-[220px]">Generate outfits with AI or build your own, then save your favorites</p>
               <div className="flex gap-2 mt-4">
-                <button
-                  onClick={() => navigate("/outfits")}
-                  className="px-5 py-2 rounded-full bg-accent text-accent-foreground text-xs font-semibold flex items-center gap-1.5"
-                >
+                <button onClick={() => navigate("/outfits")} className="px-5 py-2 rounded-full bg-accent text-accent-foreground text-xs font-semibold flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5" /> Generate
                 </button>
-                <button
-                  onClick={() => navigate("/builder")}
-                  className="px-5 py-2 rounded-full bg-card text-foreground text-xs font-semibold border border-border flex items-center gap-1.5"
-                >
+                <button onClick={() => navigate("/builder")} className="px-5 py-2 rounded-full bg-card text-foreground text-xs font-semibold border border-border flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5" /> Build
                 </button>
               </div>
@@ -100,40 +88,45 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
           )}
         </div>
       ) : (
-        /* My Clothes Tab */
         <>
           <div className="px-5 pb-3">
             <span className="text-xs text-muted-foreground">{filtered.length} items</span>
           </div>
           <div className="px-5 pb-4 flex gap-2 overflow-x-auto no-scrollbar items-center">
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="h-[30px] rounded-full bg-card text-xs border border-border px-2.5 min-w-fit gap-1 shrink-0">
-                <ArrowUpDown className="w-3 h-3" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="newest">Newest First</SelectItem>
-                <SelectItem value="oldest">Oldest First</SelectItem>
-                <SelectItem value="colour">Colour</SelectItem>
-                <SelectItem value="fabric">Fabric</SelectItem>
-              </SelectContent>
-            </Select>
-            <button
-              onClick={() => setActiveFilter("all")}
-              className={cn(
-                "px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
-                activeFilter === "all" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border"
-              )}
-            >All</button>
-            {CATEGORIES.map((cat) => (
+            {/* Sort dropdown - compact, matching filter button style */}
+            <div className="relative shrink-0">
               <button
-                key={cat.value}
-                onClick={() => setActiveFilter(cat.value)}
+                onClick={() => setSortOpen(!sortOpen)}
                 className={cn(
-                  "px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
-                  activeFilter === cat.value ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border"
+                  "px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1",
+                  "bg-card text-muted-foreground border border-border"
                 )}
-              >{cat.icon} {cat.label}</button>
+              >
+                {currentSortLabel} <ChevronDown className="w-3 h-3" />
+              </button>
+              {sortOpen && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setSortOpen(false)} />
+                  <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-lg py-1 min-w-[140px]">
+                    {SORT_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        onClick={() => { setSortBy(opt.value); setSortOpen(false); }}
+                        className={cn(
+                          "w-full text-left px-3 py-2 text-xs transition-colors",
+                          sortBy === opt.value ? "text-accent font-semibold bg-accent/10" : "text-foreground hover:bg-muted"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <button onClick={() => setActiveFilter("all")} className={cn("px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all", activeFilter === "all" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border")}>All</button>
+            {CATEGORIES.map((cat) => (
+              <button key={cat.value} onClick={() => setActiveFilter(cat.value)} className={cn("px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all", activeFilter === cat.value ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border")}>{cat.icon} {cat.label}</button>
             ))}
           </div>
 
@@ -160,7 +153,6 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         </>
       )}
 
-      {/* Always-visible floating add button */}
       <AddClothingSheet onAdd={onAdd}>
         <button className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center hover:bg-accent/90 transition-colors">
           <Plus className="w-6 h-6" />
