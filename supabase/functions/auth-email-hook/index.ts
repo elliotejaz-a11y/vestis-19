@@ -20,7 +20,7 @@ const EMAIL_SUBJECTS: Record<string, string> = {
   signup: 'Confirm your email',
   invite: "You've been invited",
   magiclink: 'Your login link',
-  recovery: 'Reset your password',
+  recovery: 'Your 8-digit password reset code',
   email_change: 'Confirm your new email',
   reauthentication: 'Your verification code',
 }
@@ -62,7 +62,7 @@ const SAMPLE_DATA: Record<string, object> = {
   },
   recovery: {
     siteName: SITE_NAME,
-    confirmationUrl: SAMPLE_PROJECT_URL,
+    token: '12345678',
   },
   invite: {
     siteName: SITE_NAME,

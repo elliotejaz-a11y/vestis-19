@@ -12,8 +12,6 @@ import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
 
 export default function Auth() {
-  // If in recovery mode (OTP verified, setting new password), keep showing Auth
-  const isRecoveryMode = sessionStorage.getItem("vestis_recovery_mode") === "true";
   const [isSignUp, setIsSignUp] = useState(false);
   const { theme, setTheme } = useTheme();
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -46,24 +44,86 @@ export default function Auth() {
   const { toast } = useToast();
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
+  const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
+  const resetRecoveryState = () => {
+    sessionStorage.removeItem("vestis_recovery_mode");
+    setRecoveryStep("email");
+    setRecoveryOtp("");
+    setNewPassword("");
+    setConfirmNewPassword("");
+    setShowNewPassword(false);
+  };
+
+  const getRecoveryErrorCopy = (message: string) => {
+    const normalized = message.toLowerCase();
+
+    if (normalized.includes("expired")) {
+      return {
+        title: "Code expired",
+        description: "Request a new 8-digit code and try again.",
+      };
+    }
+
+    if (normalized.includes("already used") || normalized.includes("used")) {
+      return {
+        title: "Code already used",
+        description: "Request a new 8-digit code to reset your password.",
+      };
+    }
+
+    if (normalized.includes("invalid") || normalized.includes("token") || normalized.includes("otp")) {
+      return {
+        title: "Incorrect code",
+        description: "Enter the exact 8-digit code from your email and try again.",
+      };
+    }
+
+    return {
+      title: "Reset failed",
+      description: message,
+    };
+  };
 
   const handleForgotPassword = async () => {
-    if (!forgotEmail.trim()) return;
+    const normalizedEmail = forgotEmail.trim().toLowerCase();
+
+    if (!normalizedEmail) {
+      toast({ title: "Email required", description: "Enter your email address to get an 8-digit reset code.", variant: "destructive" });
+      return;
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      toast({ title: "Invalid email", description: "Enter a valid email address.", variant: "destructive" });
+      return;
+    }
+
+    resetRecoveryState();
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail);
     setForgotLoading(false);
+
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
+      setForgotEmail(normalizedEmail);
       toast({ title: "Code sent ✉️", description: "Check your inbox (and spam folder) for an 8-digit code." });
       setRecoveryStep("otp");
     }
   };
 
   const handleResendRecoveryOtp = async () => {
+    const normalizedEmail = forgotEmail.trim().toLowerCase();
+
+    if (!isValidEmail(normalizedEmail)) {
+      toast({ title: "Invalid email", description: "Enter a valid email address.", variant: "destructive" });
+      return;
+    }
+
     setResendRecoveryLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail);
     setResendRecoveryLoading(false);
+
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -72,9 +132,17 @@ export default function Auth() {
   };
 
   const handleVerifyRecoveryOtp = async () => {
-    if (recoveryOtp.length !== 8) return;
+    if (!isValidEmail(forgotEmail)) {
+      toast({ title: "Invalid email", description: "Enter a valid email address.", variant: "destructive" });
+      return;
+    }
+
+    if (!/^\d{8}$/.test(recoveryOtp)) {
+      toast({ title: "Invalid code", description: "Enter the exact 8-digit reset code from your email.", variant: "destructive" });
+      return;
+    }
+
     setVerifyingRecoveryOtp(true);
-    // Set flag BEFORE verifyOtp so the auth state change doesn't unmount us
     sessionStorage.setItem("vestis_recovery_mode", "true");
     const { error } = await supabase.auth.verifyOtp({
       email: forgotEmail.trim(),
@@ -82,9 +150,11 @@ export default function Auth() {
       type: "recovery",
     });
     setVerifyingRecoveryOtp(false);
+
     if (error) {
       sessionStorage.removeItem("vestis_recovery_mode");
-      toast({ title: "Invalid code", description: error.message, variant: "destructive" });
+      const errorCopy = getRecoveryErrorCopy(error.message);
+      toast({ title: errorCopy.title, description: errorCopy.description, variant: "destructive" });
     } else {
       setRecoveryStep("password");
     }
@@ -107,15 +177,10 @@ export default function Auth() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Password updated ✓", description: "Please sign in with your new password." });
-      // Sign out and clean up recovery state
       await supabase.auth.signOut();
-      sessionStorage.removeItem("vestis_recovery_mode");
+      resetRecoveryState();
       setUpdatingPassword(false);
       setShowForgotPassword(false);
-      setRecoveryStep("email");
-      setRecoveryOtp("");
-      setNewPassword("");
-      setConfirmNewPassword("");
       setForgotEmail("");
     }
   };
@@ -379,7 +444,7 @@ export default function Auth() {
               {resendRecoveryLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Resend Code
             </Button>
-            <button onClick={() => { setShowForgotPassword(false); setRecoveryStep("email"); setRecoveryOtp(""); }} className="text-xs text-accent font-semibold hover:underline">
+            <button onClick={() => { resetRecoveryState(); setShowForgotPassword(false); }} className="text-xs text-accent font-semibold hover:underline">
               Back to Sign In
             </button>
           </div>
@@ -409,14 +474,14 @@ export default function Auth() {
           </div>
           <Button
             onClick={handleForgotPassword}
-            disabled={forgotLoading || !forgotEmail.trim()}
+              disabled={forgotLoading || !isValidEmail(forgotEmail)}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
           >
             {forgotLoading ? "Sending..." : "Send Reset Code"}
           </Button>
           <p className="text-xs text-muted-foreground text-center">
             Remember your password?{" "}
-            <button onClick={() => setShowForgotPassword(false)} className="text-accent font-semibold hover:underline">
+              <button onClick={() => { resetRecoveryState(); setShowForgotPassword(false); }} className="text-accent font-semibold hover:underline">
               Sign In
             </button>
           </p>
@@ -577,7 +642,7 @@ export default function Auth() {
                   Remember me
                 </label>
               </div>
-              <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-accent font-medium hover:underline">
+              <button type="button" onClick={() => { resetRecoveryState(); setShowForgotPassword(true); }} className="text-xs text-accent font-medium hover:underline">
                 Forgot password?
               </button>
             </div>
