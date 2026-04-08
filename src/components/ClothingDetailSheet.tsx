@@ -198,7 +198,12 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
       <DeleteConfirmDialog
         open={showDelete}
         onOpenChange={setShowDelete}
-        onConfirm={() => { onRemove?.(item.id); setShowDelete(false); onOpenChange(false); }}
+        onConfirm={() => {
+          const idToRemove = item.id;
+          setShowDelete(false);
+          onOpenChange(false);
+          setTimeout(() => onRemove?.(idToRemove), 350);
+        }}
       />
     </>
   );
