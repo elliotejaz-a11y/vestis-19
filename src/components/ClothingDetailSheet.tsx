@@ -184,7 +184,10 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
               {onRemove && (
                 <Button
                   variant="outline"
-                  onClick={() => setShowDelete(true)}
+                  onClick={() => {
+                    onOpenChange(false);
+                    setTimeout(() => setShowDelete(true), 300);
+                  }}
                   className="h-11 rounded-2xl text-destructive border-destructive/30 hover:bg-destructive/10"
                 >
                   Remove
@@ -198,7 +201,7 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
       <DeleteConfirmDialog
         open={showDelete}
         onOpenChange={setShowDelete}
-        onConfirm={() => { onRemove?.(item.id); setShowDelete(false); onOpenChange(false); }}
+        onConfirm={() => { onRemove?.(item.id); setShowDelete(false); }}
       />
     </>
   );
