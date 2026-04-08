@@ -24,7 +24,6 @@ export default function SocialFeed() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
-  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   const navigate = useNavigate();
 
   const handleSearch = async (query: string) => {
@@ -40,22 +39,6 @@ export default function SocialFeed() {
     setSearchResults((data || []).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
     setSearching(false);
   };
-
-  // Fetch suggested users for Discover
-  useEffect(() => {
-    if (tab !== "discover" || !user) return;
-    const fetchSuggested = async () => {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, display_name, username, avatar_url")
-        .neq("id", user.id)
-        .not("avatar_url", "is", null)
-        .not("username", "is", null)
-        .limit(10);
-      setSuggestedUsers((data || []).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
-    };
-    fetchSuggested();
-  }, [tab, user]);
 
   const feedPosts = posts;
   const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.avatar_url && p.user?.username && !/^user\d*$/i.test(p.user.username));
@@ -132,37 +115,6 @@ export default function SocialFeed() {
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {/* Suggested users */}
-          {searchQuery.trim().length < 3 && suggestedUsers.length > 0 && (
-            <div className="mt-3">
-              <p className="text-xs font-semibold text-foreground mb-2">Suggested for you</p>
-              <div className="space-y-1 rounded-xl bg-card border border-border/40 overflow-hidden">
-                {suggestedUsers.map((u) => (
-                  <div
-                    key={u.id}
-                    role="button"
-                    onClick={() => { window.location.href = `/user/${u.id}`; }}
-                    className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left cursor-pointer"
-                  >
-                    <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
-                      {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
           )}
         </div>

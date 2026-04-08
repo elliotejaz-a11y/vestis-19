@@ -58,7 +58,6 @@ export default function UserProfilePage() {
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<FitPic | null>(null);
-  const [pendingRequest, setPendingRequest] = useState(false);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -114,14 +113,15 @@ export default function UserProfilePage() {
         .order("pic_date", { ascending: false });
       setFitPics((pics || []) as FitPic[]);
 
-      // Check block status + pending follow request
+      // Check block status
       if (!isOwnProfile && user) {
-        const [{ data: blockData }, { data: requestData }] = await Promise.all([
-          supabase.from("blocked_users").select("id").eq("blocker_id", user.id).eq("blocked_id", userId).maybeSingle(),
-          supabase.from("follow_requests").select("id").eq("requester_id", user.id).eq("target_id", userId).eq("status", "pending").maybeSingle(),
-        ]);
+        const { data: blockData } = await supabase
+          .from("blocked_users")
+          .select("id")
+          .eq("blocker_id", user.id)
+          .eq("blocked_id", userId)
+          .maybeSingle();
         setIsBlocked(!!blockData);
-        setPendingRequest(!!requestData);
       }
 
       setLoading(false);
@@ -130,24 +130,14 @@ export default function UserProfilePage() {
   }, [userId]);
 
   const handleFollow = async () => {
-    if (!userId || !user) return;
+    if (!userId) return;
     setFollowAction("loading");
     if (isFollowing) {
       setFollowersCount(prev => Math.max(0, prev - 1));
       await unfollowUser(userId);
-    } else if (pendingRequest) {
-      // Cancel pending request
-      await supabase.from("follow_requests").delete().eq("requester_id", user.id).eq("target_id", userId).eq("status", "pending");
-      setPendingRequest(false);
-      toast({ title: "Request cancelled" });
     } else {
-      const result = await followUser(userId);
-      if (result === "requested") {
-        setPendingRequest(true);
-        toast({ title: "Follow request sent" });
-      } else {
-        setFollowersCount(prev => prev + 1);
-      }
+      setFollowersCount(prev => prev + 1);
+      await followUser(userId);
     }
     setFollowAction("none");
   };
@@ -256,17 +246,13 @@ export default function UserProfilePage() {
           <Button
             onClick={handleFollow}
             disabled={followAction === "loading"}
-            variant={isFollowing || pendingRequest ? "outline" : "default"}
+            variant={isFollowing ? "outline" : "default"}
             className="w-full mt-3 h-9 rounded-xl text-xs font-semibold"
           >
             {followAction === "loading" ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : isFollowing ? (
               "Following"
-            ) : pendingRequest ? (
-              "Request Sent"
-            ) : profile?.is_public === false ? (
-              "Request to Follow"
             ) : (
               "Follow"
             )}

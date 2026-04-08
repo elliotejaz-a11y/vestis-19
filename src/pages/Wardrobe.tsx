@@ -105,8 +105,8 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
           <div className="px-5 pb-3 flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{filtered.length} items</span>
             <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="h-[30px] w-auto min-w-0 px-4 py-1.5 rounded-full bg-card text-xs font-medium border border-border gap-1">
-                <ArrowUpDown className="w-3 h-3" />
+              <SelectTrigger className="w-[140px] h-8 rounded-xl bg-card text-xs">
+                <ArrowUpDown className="w-3 h-3 mr-1" />
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

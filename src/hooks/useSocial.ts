@@ -159,8 +159,6 @@ export function useSocial() {
     if (targetProfile && !targetProfile.is_public) {
       // Send follow request
       await supabase.from("follow_requests").insert({ requester_id: user.id, target_id: targetId } as any);
-      // Notify the target user
-      await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: targetId });
       return "requested";
     }
 
