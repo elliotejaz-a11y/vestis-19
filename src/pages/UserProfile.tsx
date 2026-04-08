@@ -58,6 +58,7 @@ export default function UserProfilePage() {
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<FitPic | null>(null);
+  const [pendingRequest, setPendingRequest] = useState(false);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -113,7 +114,7 @@ export default function UserProfilePage() {
         .order("pic_date", { ascending: false });
       setFitPics((pics || []) as FitPic[]);
 
-      // Check block status
+      // Check block status & pending follow request
       if (!isOwnProfile && user) {
         const { data: blockData } = await supabase
           .from("blocked_users")
@@ -122,6 +123,15 @@ export default function UserProfilePage() {
           .eq("blocked_id", userId)
           .maybeSingle();
         setIsBlocked(!!blockData);
+
+        const { data: reqData } = await supabase
+          .from("follow_requests")
+          .select("id")
+          .eq("requester_id", user.id)
+          .eq("target_id", userId)
+          .eq("status", "pending")
+          .maybeSingle();
+        setPendingRequest(!!reqData);
       }
 
       setLoading(false);
