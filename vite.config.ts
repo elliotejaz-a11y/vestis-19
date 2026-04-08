@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     rollupOptions: {
-      external: ["@imgly/background-removal"],
+      external: ["@imgly/background-removal", "onnxruntime-web", "onnxruntime-web/webgpu"],
     },
   },
 }));
