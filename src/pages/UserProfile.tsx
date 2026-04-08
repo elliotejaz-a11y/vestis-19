@@ -154,11 +154,11 @@ export default function UserProfilePage() {
       const result = await followUser(userId);
       if (result === "requested") {
         setPendingRequest(true);
-        // Notification is sent via RPC in followUser
-        await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: userId });
         toast({ title: "Follow request sent" });
-      } else {
+      } else if (result === "followed") {
         setFollowersCount(prev => prev + 1);
+      } else {
+        toast({ title: "Error", description: "Could not complete this follow action.", variant: "destructive" });
       }
     }
     setFollowAction("none");

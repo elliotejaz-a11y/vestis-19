@@ -24,13 +24,41 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
     if (!user) return;
     setProcessing(notificationId);
     try {
-      // Create the follow relationship
-      await supabase.from("follows").insert({ follower_id: requesterId, following_id: user.id } as any);
-      // Delete the follow request
-      await supabase.from("follow_requests").delete().match({ requester_id: requesterId, target_id: user.id });
-      // Send accepted notification via RPC
+      const { data: request, error: requestError } = await supabase
+        .from("follow_requests")
+        .select("id")
+        .eq("requester_id", requesterId)
+        .eq("target_id", user.id)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (requestError) throw requestError;
+
+      if (!request) {
+        await markAsRead(notificationId);
+        toast({ title: "Request already resolved" });
+        await refresh();
+        return;
+      }
+
+      const { data: existingFollow, error: followLookupError } = await supabase
+        .from("follows")
+        .select("id")
+        .eq("follower_id", requesterId)
+        .eq("following_id", user.id)
+        .maybeSingle();
+
+      if (followLookupError) throw followLookupError;
+
+      if (!existingFollow) {
+        const { error: followError } = await supabase.from("follows").insert({ follower_id: requesterId, following_id: user.id } as any);
+        if (followError) throw followError;
+      }
+
+      const { error: deleteError } = await supabase.from("follow_requests").delete().eq("id", request.id);
+      if (deleteError) throw deleteError;
+
       await supabase.rpc("notify_follow_accepted", { accepter_id: user.id, requester_id: requesterId });
-      // Mark this notification as read
       await markAsRead(notificationId);
       toast({ title: "Follow request accepted" });
       await refresh();
@@ -44,7 +72,21 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
     if (!user) return;
     setProcessing(notificationId);
     try {
-      await supabase.from("follow_requests").delete().match({ requester_id: requesterId, target_id: user.id });
+      const { data: request, error: requestError } = await supabase
+        .from("follow_requests")
+        .select("id")
+        .eq("requester_id", requesterId)
+        .eq("target_id", user.id)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (requestError) throw requestError;
+
+      if (request) {
+        const { error: deleteError } = await supabase.from("follow_requests").delete().eq("id", request.id);
+        if (deleteError) throw deleteError;
+      }
+
       await markAsRead(notificationId);
       toast({ title: "Follow request declined" });
       await refresh();

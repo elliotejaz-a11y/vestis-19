@@ -4,7 +4,6 @@ import * as React from 'npm:react@18.3.1'
 
 import {
   Body,
-  Button,
   Container,
   Head,
   Heading,
@@ -15,29 +14,28 @@ import {
 
 interface RecoveryEmailProps {
   siteName: string
-  confirmationUrl: string
+  token: string
 }
 
 export const RecoveryEmail = ({
   siteName,
-  confirmationUrl,
+  token,
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Reset your password for {siteName}</Preview>
+    <Preview>Your 8-digit password reset code for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
+          We received a request to reset your password for {siteName}. Enter
+          this 8-digit code in the app to continue.
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Reset Password
-        </Button>
+        <Text style={codeLabel}>Your reset code</Text>
+        <Text style={code}>{token}</Text>
         <Text style={footer}>
-          If you didn't request a password reset, you can safely ignore this
-          email. Your password will not be changed.
+          This code can only be used once. If you didn&apos;t request a password
+          reset, you can safely ignore this email.
         </Text>
       </Container>
     </Body>
@@ -60,12 +58,17 @@ const text = {
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
-const button = {
-  backgroundColor: 'hsl(350, 55%, 31%)',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '16px',
-  padding: '12px 20px',
-  textDecoration: 'none',
+const codeLabel = {
+  fontSize: '12px',
+  color: 'hsl(30, 8%, 50%)',
+  margin: '0 0 8px',
+}
+const code = {
+  fontSize: '32px',
+  lineHeight: '1',
+  letterSpacing: '0.35em',
+  fontWeight: 'bold' as const,
+  color: 'hsl(350, 55%, 31%)',
+  margin: '0 0 24px',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
