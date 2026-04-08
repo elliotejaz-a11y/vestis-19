@@ -157,13 +157,36 @@ export function useSocial() {
       .single();
 
     if (targetProfile && !targetProfile.is_public) {
-      // Send follow request
-      await supabase.from("follow_requests").insert({ requester_id: user.id, target_id: targetId } as any);
+      const { data: existingRequest } = await supabase
+        .from("follow_requests")
+        .select("id")
+        .eq("requester_id", user.id)
+        .eq("target_id", targetId)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (!existingRequest) {
+        const { error } = await supabase.from("follow_requests").insert({ requester_id: user.id, target_id: targetId } as any);
+        if (error) return "error";
+        await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: targetId });
+      }
+
       return "requested";
     }
 
-    await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId } as any);
-    setFollowingIds(prev => [...prev, targetId]);
+    const { data: existingFollow } = await supabase
+      .from("follows")
+      .select("id")
+      .eq("follower_id", user.id)
+      .eq("following_id", targetId)
+      .maybeSingle();
+
+    if (!existingFollow) {
+      const { error } = await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId } as any);
+      if (error) return "error";
+    }
+
+    setFollowingIds(prev => prev.includes(targetId) ? prev : [...prev, targetId]);
     return "followed";
   };
 
