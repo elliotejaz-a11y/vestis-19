@@ -12,9 +12,12 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
+  optimizeDeps: {
+    exclude: ['@imgly/background-removal'],
+  },
   build: {
     rollupOptions: {
-      external: ['@imgly/background-removal'],
+      external: ['@imgly/background-removal', 'onnxruntime-web', 'onnxruntime-web/webgpu'],
     },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
