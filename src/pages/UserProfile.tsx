@@ -58,6 +58,7 @@ export default function UserProfilePage() {
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<FitPic | null>(null);
+  const [pendingRequest, setPendingRequest] = useState(false);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -113,7 +114,7 @@ export default function UserProfilePage() {
         .order("pic_date", { ascending: false });
       setFitPics((pics || []) as FitPic[]);
 
-      // Check block status
+      // Check block status & pending follow request
       if (!isOwnProfile && user) {
         const { data: blockData } = await supabase
           .from("blocked_users")
@@ -122,6 +123,15 @@ export default function UserProfilePage() {
           .eq("blocked_id", userId)
           .maybeSingle();
         setIsBlocked(!!blockData);
+
+        const { data: reqData } = await supabase
+          .from("follow_requests")
+          .select("id")
+          .eq("requester_id", user.id)
+          .eq("target_id", userId)
+          .eq("status", "pending")
+          .maybeSingle();
+        setPendingRequest(!!reqData);
       }
 
       setLoading(false);
@@ -130,14 +140,26 @@ export default function UserProfilePage() {
   }, [userId]);
 
   const handleFollow = async () => {
-    if (!userId) return;
+    if (!userId || !user) return;
     setFollowAction("loading");
     if (isFollowing) {
       setFollowersCount(prev => Math.max(0, prev - 1));
       await unfollowUser(userId);
+    } else if (pendingRequest) {
+      // Cancel pending request
+      await supabase.from("follow_requests").delete().match({ requester_id: user.id, target_id: userId });
+      setPendingRequest(false);
+      toast({ title: "Request cancelled" });
     } else {
-      setFollowersCount(prev => prev + 1);
-      await followUser(userId);
+      const result = await followUser(userId);
+      if (result === "requested") {
+        setPendingRequest(true);
+        // Notification is sent via RPC in followUser
+        await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: userId });
+        toast({ title: "Follow request sent" });
+      } else {
+        setFollowersCount(prev => prev + 1);
+      }
     }
     setFollowAction("none");
   };
@@ -246,13 +268,17 @@ export default function UserProfilePage() {
           <Button
             onClick={handleFollow}
             disabled={followAction === "loading"}
-            variant={isFollowing ? "outline" : "default"}
+            variant={isFollowing || pendingRequest ? "outline" : "default"}
             className="w-full mt-3 h-9 rounded-xl text-xs font-semibold"
           >
             {followAction === "loading" ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : isFollowing ? (
               "Following"
+            ) : pendingRequest ? (
+              "Request Sent"
+            ) : !profile?.is_public ? (
+              "Request to Follow"
             ) : (
               "Follow"
             )}
