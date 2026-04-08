@@ -41,6 +41,22 @@ export default function SocialFeed() {
     setSearching(false);
   };
 
+  // Fetch suggested users for Discover
+  useEffect(() => {
+    if (tab !== "discover" || !user) return;
+    const fetchSuggested = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, display_name, username, avatar_url")
+        .neq("id", user.id)
+        .not("avatar_url", "is", null)
+        .not("username", "is", null)
+        .limit(10);
+      setSuggestedUsers((data || []).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
+    };
+    fetchSuggested();
+  }, [tab, user]);
+
   const feedPosts = posts;
   const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.avatar_url && p.user?.username && !/^user\d*$/i.test(p.user.username));
 
