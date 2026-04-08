@@ -140,14 +140,26 @@ export default function UserProfilePage() {
   }, [userId]);
 
   const handleFollow = async () => {
-    if (!userId) return;
+    if (!userId || !user) return;
     setFollowAction("loading");
     if (isFollowing) {
       setFollowersCount(prev => Math.max(0, prev - 1));
       await unfollowUser(userId);
+    } else if (pendingRequest) {
+      // Cancel pending request
+      await supabase.from("follow_requests").delete().match({ requester_id: user.id, target_id: userId });
+      setPendingRequest(false);
+      toast({ title: "Request cancelled" });
     } else {
-      setFollowersCount(prev => prev + 1);
-      await followUser(userId);
+      const result = await followUser(userId);
+      if (result === "requested") {
+        setPendingRequest(true);
+        // Notification is sent via RPC in followUser
+        await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: userId });
+        toast({ title: "Follow request sent" });
+      } else {
+        setFollowersCount(prev => prev + 1);
+      }
     }
     setFollowAction("none");
   };
