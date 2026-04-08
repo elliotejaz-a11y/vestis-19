@@ -12,7 +12,7 @@ import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-
+import { processClothingImage } from "@/lib/image-processing";
 
 const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
 
@@ -60,9 +60,17 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     if (!file || !user || !item) return;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
+      // Run through the same background removal process as AddClothingSheet
+      let cleanBlob: Blob;
+      try {
+        cleanBlob = await processClothingImage(file);
+      } catch {
+        cleanBlob = file;
+      }
+
+      const ext = "png";
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("clothing-images").upload(path, file, { contentType: file.type });
+      const { error } = await supabase.storage.from("clothing-images").upload(path, cleanBlob, { contentType: "image/png" });
       if (error) throw error;
       const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
       const url = urlData.publicUrl;
