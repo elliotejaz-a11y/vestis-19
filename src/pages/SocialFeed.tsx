@@ -134,6 +134,37 @@ export default function SocialFeed() {
               ))}
             </div>
           )}
+
+          {/* Suggested users */}
+          {searchQuery.trim().length < 3 && suggestedUsers.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-semibold text-foreground mb-2">Suggested for you</p>
+              <div className="space-y-1 rounded-xl bg-card border border-border/40 overflow-hidden">
+                {suggestedUsers.map((u) => (
+                  <div
+                    key={u.id}
+                    role="button"
+                    onClick={() => { window.location.href = `/user/${u.id}`; }}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left cursor-pointer"
+                  >
+                    <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                      {u.avatar_url ? (
+                        <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <User className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
+                      {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
