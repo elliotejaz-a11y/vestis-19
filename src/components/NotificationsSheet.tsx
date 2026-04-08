@@ -18,8 +18,6 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
   const { notifications, markAsRead, markAllAsRead, loading, refresh } = useNotifications();
   const { user } = useAuth();
   const { toast } = useToast();
-
-  // Track handled follow requests locally - rewritten from scratch
   const [handledRequests, setHandledRequests] = useState<Record<string, "accepted" | "declined">>({});
 
   const getIcon = (type: string) => {
@@ -31,11 +29,10 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
     }
   };
 
-  // Accept follow request - rewritten from scratch
   const handleAcceptRequest = async (notification: any) => {
     if (!user || !notification.from_user_id) return;
     try {
-      // Update follow_requests status to accepted
+      // Update follow_requests status
       await supabase
         .from("follow_requests")
         .update({ status: "accepted" } as any)
@@ -43,7 +40,7 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
         .eq("target_id", user.id)
         .eq("status", "pending");
 
-      // Insert into follows table
+      // Insert into follows
       await supabase.from("follows").insert({
         follower_id: notification.from_user_id,
         following_id: user.id,
@@ -62,11 +59,9 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
     }
   };
 
-  // Decline follow request - rewritten from scratch
   const handleDeclineRequest = async (notification: any) => {
     if (!user || !notification.from_user_id) return;
     try {
-      // Update follow_requests status to rejected
       await supabase
         .from("follow_requests")
         .update({ status: "rejected" } as any)
@@ -134,10 +129,10 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
                     {!n.read && !isFollowRequest && <div className="w-2 h-2 rounded-full bg-accent mt-2 flex-shrink-0" />}
                   </div>
 
-                  {/* Follow request action buttons - rewritten from scratch */}
+                  {/* Follow request actions */}
                   {n.type === "follow_request" && (
                     handled ? (
-                      <p className="text-xs text-muted-foreground pl-[52px]">
+                      <p className="text-xs text-muted-foreground ml-13 pl-[52px]">
                         {handled === "accepted" ? "Accepted" : "Declined"}
                       </p>
                     ) : (

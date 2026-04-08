@@ -60,9 +60,7 @@ export default function UserProfilePage() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<FitPic | null>(null);
   const [fullscreenAvatar, setFullscreenAvatar] = useState(false);
-
-  // Follow request state - rewritten from scratch
-  const [requestStatus, setRequestStatus] = useState<"none" | "pending">("none");
+  const [requestStatus, setRequestStatus] = useState<"none" | "pending" | "accepted" | "rejected">("none");
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -80,6 +78,7 @@ export default function UserProfilePage() {
         .single();
       setProfile(profileData as UserProfileData | null);
 
+      // Counts
       const [{ count: fc }, { count: fgc }] = await Promise.all([
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
@@ -87,6 +86,7 @@ export default function UserProfilePage() {
       setFollowersCount(fc || 0);
       setFollowingCount(fgc || 0);
 
+      // Wardrobe stats
       const { data: wardrobeData } = await supabase
         .from("clothing_items")
         .select("category, color")
@@ -107,6 +107,7 @@ export default function UserProfilePage() {
         setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
       }
 
+      // Fit pics
       const { data: pics } = await supabase
         .from("fit_pics")
         .select("id, image_url, description, pic_date, created_at")
@@ -114,6 +115,7 @@ export default function UserProfilePage() {
         .order("pic_date", { ascending: false });
       setFitPics((pics || []) as FitPic[]);
 
+      // Check block status
       if (!isOwnProfile && user) {
         const { data: blockData } = await supabase
           .from("blocked_users")
@@ -124,16 +126,21 @@ export default function UserProfilePage() {
         setIsBlocked(!!blockData);
       }
 
-      // Check follow request status - rewritten from scratch
+      // Check follow request status for private accounts
       if (!isOwnProfile && user) {
         const { data: reqData } = await supabase
           .from("follow_requests")
           .select("status")
           .eq("requester_id", user.id)
           .eq("target_id", userId)
-          .eq("status", "pending")
+          .order("created_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
-        setRequestStatus(reqData ? "pending" : "none");
+        if (reqData) {
+          setRequestStatus(reqData.status as any);
+        } else {
+          setRequestStatus("none");
+        }
       }
 
       setLoading(false);
@@ -141,26 +148,18 @@ export default function UserProfilePage() {
     load();
   }, [userId]);
 
-  // Follow handler - rewritten from scratch
   const handleFollow = async () => {
     if (!userId || !user) return;
     setFollowAction("loading");
-
     if (isFollowing) {
-      // Unfollow
       setFollowersCount(prev => Math.max(0, prev - 1));
       await unfollowUser(userId);
     } else if (profile && !profile.is_public && requestStatus === "none") {
-      // Send follow request for private account
-      const { error: insertErr } = await supabase.from("follow_requests").insert({
+      // Send follow request for private accounts
+      await supabase.from("follow_requests").insert({
         requester_id: user.id,
         target_id: userId,
       } as any);
-      if (insertErr) {
-        toast({ title: "Error sending request", variant: "destructive" });
-        setFollowAction("none");
-        return;
-      }
       // Send notification via RPC
       await supabase.rpc("notify_follow_request", {
         requester_id: user.id,
@@ -173,12 +172,10 @@ export default function UserProfilePage() {
       await supabase.from("follow_requests").delete().match({
         requester_id: user.id,
         target_id: userId,
-        status: "pending",
       });
       setRequestStatus("none");
       toast({ title: "Request cancelled" });
     } else {
-      // Public account - follow directly
       setFollowersCount(prev => prev + 1);
       await followUser(userId);
     }
@@ -253,6 +250,7 @@ export default function UserProfilePage() {
         )}
       </header>
 
+      {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
           <button
@@ -292,6 +290,7 @@ export default function UserProfilePage() {
           <p className="text-xs text-foreground mt-3 leading-relaxed text-center">{profile.bio}</p>
         )}
 
+        {/* Follow button */}
         {!isOwnProfile && (
           <Button
             onClick={handleFollow}
@@ -308,6 +307,7 @@ export default function UserProfilePage() {
         )}
       </div>
 
+      {/* Content */}
       {!canView ? (
         <div className="flex flex-col items-center justify-center py-16 px-5 text-center">
           <Lock className="w-10 h-10 text-muted-foreground mb-3" />
@@ -316,6 +316,7 @@ export default function UserProfilePage() {
         </div>
       ) : (
         <div className="px-5 space-y-4">
+          {/* Style */}
           {profile.style_preference && (
             <div className="rounded-2xl bg-card border border-border/40 p-4">
               <p className="text-sm font-semibold text-foreground mb-2">Style</p>
@@ -323,6 +324,7 @@ export default function UserProfilePage() {
             </div>
           )}
 
+          {/* Stats */}
           <div className="grid grid-cols-3 gap-2 w-full">
             <button onClick={() => setShowWardrobe(true)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
               <Shirt className="w-5 h-5 mx-auto text-accent mb-1" />
@@ -341,6 +343,7 @@ export default function UserProfilePage() {
             </button>
           </div>
 
+          {/* Color breakdown */}
           {showColors && userColors.length > 0 && (
             <div className="rounded-2xl bg-card border border-border/40 p-4">
               <p className="text-sm font-semibold text-foreground mb-3">Colour Breakdown</p>
@@ -355,6 +358,7 @@ export default function UserProfilePage() {
             </div>
           )}
 
+          {/* Category breakdown */}
           {showCategories && (
             <div className="rounded-2xl bg-card border border-border/40 p-4">
               <p className="text-sm font-semibold text-foreground mb-3">Category Breakdown</p>
@@ -374,6 +378,7 @@ export default function UserProfilePage() {
             </div>
           )}
 
+          {/* Fit Pics */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Camera className="w-4 h-4 text-accent" />
@@ -384,7 +389,11 @@ export default function UserProfilePage() {
             ) : (
               <div className="grid grid-cols-3 gap-0.5">
                 {fitPics.map((pic) => (
-                  <button key={pic.id} onClick={() => setFullscreenFitPic(pic)} className="aspect-square relative">
+                  <button
+                    key={pic.id}
+                    onClick={() => setFullscreenFitPic(pic)}
+                    className="aspect-square relative"
+                  >
                     <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
                   </button>
                 ))}
@@ -393,30 +402,68 @@ export default function UserProfilePage() {
           </div>
         </div>
       )}
-
       {userId && (
         <>
-          <FollowListSheet open={followListType !== null} onOpenChange={(open) => { if (!open) setFollowListType(null); }} userId={userId} type={followListType || "followers"} />
-          <UserWardrobeSheet open={showWardrobe} onOpenChange={setShowWardrobe} userId={userId} displayName={profile?.display_name || profile?.username || "User"} />
-          <ReportSheet open={showReportSheet} onOpenChange={setShowReportSheet} reportedUserId={userId} reportType="user" />
+          <FollowListSheet
+            open={followListType !== null}
+            onOpenChange={(open) => { if (!open) setFollowListType(null); }}
+            userId={userId}
+            type={followListType || "followers"}
+          />
+          <UserWardrobeSheet
+            open={showWardrobe}
+            onOpenChange={setShowWardrobe}
+            userId={userId}
+            displayName={profile?.display_name || profile?.username || "User"}
+          />
+          <ReportSheet
+            open={showReportSheet}
+            onOpenChange={setShowReportSheet}
+            reportedUserId={userId}
+            reportType="user"
+          />
         </>
       )}
 
+      {/* Fullscreen Fit Pic Modal */}
       {fullscreenFitPic && (
-        <div className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center" onClick={() => setFullscreenFitPic(null)}>
-          <button onClick={() => setFullscreenFitPic(null)} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10">
+        <div
+          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
+          onClick={() => setFullscreenFitPic(null)}
+        >
+          <button
+            onClick={() => setFullscreenFitPic(null)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
+          >
             <X className="w-5 h-5" />
           </button>
-          <img src={fullscreenFitPic.image_url} alt={fullscreenFitPic.description || ""} className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
+          <img
+            src={fullscreenFitPic.image_url}
+            alt={fullscreenFitPic.description || ""}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
 
+      {/* Fullscreen Avatar Modal */}
       {fullscreenAvatar && profile?.avatar_url && (
-        <div className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center" onClick={() => setFullscreenAvatar(false)}>
-          <button onClick={() => setFullscreenAvatar(false)} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10">
+        <div
+          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
+          onClick={() => setFullscreenAvatar(false)}
+        >
+          <button
+            onClick={() => setFullscreenAvatar(false)}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
+          >
             <X className="w-5 h-5" />
           </button>
-          <img src={profile.avatar_url} alt="" className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
+          <img
+            src={profile.avatar_url}
+            alt=""
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
         </div>
       )}
     </div>

@@ -267,7 +267,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           )}
         </div>
 
-        {/* Wishlist - rewritten from scratch */}
+        {/* Wishlist */}
         <div className="rounded-2xl bg-card border border-border/40 p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-semibold text-foreground">Wish List</p>
@@ -276,14 +276,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
             {[0, 1, 2].map((idx) => {
               const wItem = wishlistItems[idx];
               return wItem ? (
-                <div key={wItem.id} className="rounded-xl bg-muted p-2 text-center relative">
-                  <button
-                    onClick={async () => {
-                      await supabase.from("wishlist_items").delete().eq("id", wItem.id);
-                      setWishlistItems(prev => prev.filter(i => i.id !== wItem.id));
-                    }}
-                    className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-foreground/70 text-background flex items-center justify-center text-[10px] z-10"
-                  >✕</button>
+                <div key={wItem.id} className="rounded-xl bg-muted p-2 text-center">
                   {wItem.image_url ? (
                     <div className="aspect-square rounded-lg overflow-hidden mb-1.5 bg-white dark:bg-neutral-800">
                       <img src={wItem.image_url} alt={wItem.name} className="w-full h-full object-contain" />
@@ -644,7 +637,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         </div>
       )}
 
-      {/* Add Wishlist Item Sheet - rewritten from scratch */}
+      {/* Add Wishlist Item Sheet */}
       <Sheet open={showAddWishlist} onOpenChange={(o) => {
         setShowAddWishlist(o);
         if (!o) { setWishlistPhoto(""); setWishlistName(""); setWishlistPrice(""); }
@@ -682,12 +675,12 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                 try {
                   const ext = file.name.split(".").pop() || "jpg";
                   const path = `${user.id}/wishlist_${crypto.randomUUID()}.${ext}`;
-                  const { error: uploadErr } = await supabase.storage.from("clothing-images").upload(path, file, { contentType: file.type });
-                  if (uploadErr) throw uploadErr;
+                  const { error } = await supabase.storage.from("clothing-images").upload(path, file, { contentType: file.type });
+                  if (error) throw error;
                   const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
                   setWishlistPhoto(urlData.publicUrl);
-                } catch (err: any) {
-                  toast({ title: "Upload failed", description: err?.message || "Please try again.", variant: "destructive" });
+                } catch {
+                  toast({ title: "Upload failed", variant: "destructive" });
                 }
               }}
             />
@@ -707,13 +700,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                 }
                 setWishlistSaving(true);
                 try {
-                  const { error: insertErr } = await supabase.from("wishlist_items").insert({
+                  const { error } = await supabase.from("wishlist_items").insert({
                     user_id: user.id,
                     name: wishlistName.trim(),
                     image_url: wishlistPhoto || "",
                     estimated_price: wishlistPrice ? parseFloat(wishlistPrice) : null,
                   } as any);
-                  if (insertErr) throw insertErr;
+                  if (error) throw error;
                   toast({ title: "Added to wish list ✨" });
                   setShowAddWishlist(false);
                   setWishlistPhoto("");
