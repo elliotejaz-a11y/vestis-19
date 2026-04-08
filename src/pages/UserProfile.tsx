@@ -256,13 +256,17 @@ export default function UserProfilePage() {
           <Button
             onClick={handleFollow}
             disabled={followAction === "loading"}
-            variant={isFollowing ? "outline" : "default"}
+            variant={isFollowing || pendingRequest ? "outline" : "default"}
             className="w-full mt-3 h-9 rounded-xl text-xs font-semibold"
           >
             {followAction === "loading" ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : isFollowing ? (
               "Following"
+            ) : pendingRequest ? (
+              "Request Sent"
+            ) : profile?.is_public === false ? (
+              "Request to Follow"
             ) : (
               "Follow"
             )}
