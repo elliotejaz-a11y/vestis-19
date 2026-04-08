@@ -64,10 +64,7 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
 
   return (
     <>
-      <Sheet open={open} onOpenChange={(nextOpen) => {
-        if (!nextOpen) setShowDelete(false);
-        onOpenChange(nextOpen);
-      }}>
+      <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
           <SheetHeader>
             <SheetTitle className="text-lg font-bold tracking-tight">{item.name}</SheetTitle>
@@ -187,7 +184,10 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
               {onRemove && (
                 <Button
                   variant="outline"
-                  onClick={() => setShowDelete(true)}
+                  onClick={() => {
+                    onOpenChange(false);
+                    setTimeout(() => setShowDelete(true), 300);
+                  }}
                   className="h-11 rounded-2xl text-destructive border-destructive/30 hover:bg-destructive/10"
                 >
                   Remove
@@ -201,11 +201,7 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
       <DeleteConfirmDialog
         open={showDelete}
         onOpenChange={setShowDelete}
-        onConfirm={() => {
-          setShowDelete(false);
-          onOpenChange(false);
-          onRemove?.(item.id);
-        }}
+        onConfirm={() => { onRemove?.(item.id); setShowDelete(false); }}
       />
     </>
   );

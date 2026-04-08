@@ -17,9 +17,6 @@ import FollowListSheet from "@/components/FollowListSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import { ChangePasswordSheet } from "@/components/ChangePasswordSheet";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -52,19 +49,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [wishlistItems, setWishlistItems] = useState<any[]>([]);
-  const [showWishlistDialog, setShowWishlistDialog] = useState(false);
-  const [wishlistName, setWishlistName] = useState("");
-  const [wishlistPrice, setWishlistPrice] = useState("");
-  const [wishlistImageFile, setWishlistImageFile] = useState<File | null>(null);
-  const [savingWishlistItem, setSavingWishlistItem] = useState(false);
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const resetWishlistForm = () => {
-    setWishlistName("");
-    setWishlistPrice("");
-    setWishlistImageFile(null);
-  };
 
   const fetchFollowCounts = async () => {
     if (!user) return;
@@ -127,79 +113,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       .order("created_at", { ascending: true })
       .limit(3);
     setWishlistItems(data || []);
-  };
-
-  const handleRemoveWishlistItem = async (wishlistItemId: string) => {
-    const { error } = await supabase.from("wishlist_items").delete().eq("id", wishlistItemId);
-
-    if (error) {
-      toast({ title: "Error", description: "Failed to remove wishlist item.", variant: "destructive" });
-      return;
-    }
-
-    setWishlistItems((prev) => prev.filter((item) => item.id !== wishlistItemId));
-    toast({ title: "Removed from wishlist" });
-  };
-
-  const handleAddWishlistItem = async () => {
-    if (!user) return;
-
-    if (wishlistItems.length >= 3) {
-      toast({ title: "Wishlist full", description: "You can save up to 3 wishlist items.", variant: "destructive" });
-      return;
-    }
-
-    if (!wishlistName.trim()) {
-      toast({ title: "Name required", description: "Enter a name for this wishlist item.", variant: "destructive" });
-      return;
-    }
-
-    if (!wishlistImageFile) {
-      toast({ title: "Photo required", description: "Choose a photo for this wishlist item.", variant: "destructive" });
-      return;
-    }
-
-    setSavingWishlistItem(true);
-
-    let imageUrl = "";
-
-    const ext = wishlistImageFile.name.split(".").pop() || "jpg";
-    const path = `${user.id}/wishlist-${crypto.randomUUID()}.${ext}`;
-    const { error: uploadError } = await supabase.storage
-      .from("clothing-images")
-      .upload(path, wishlistImageFile, { contentType: wishlistImageFile.type });
-
-    if (uploadError) {
-      setSavingWishlistItem(false);
-      toast({ title: "Upload failed", description: "Could not upload the wishlist photo.", variant: "destructive" });
-      return;
-    }
-
-    imageUrl = supabase.storage.from("clothing-images").getPublicUrl(path).data.publicUrl;
-
-    const priceValue = wishlistPrice.trim() ? Number(wishlistPrice) : null;
-    const { data, error } = await supabase
-      .from("wishlist_items")
-      .insert({
-        user_id: user.id,
-        name: wishlistName.trim(),
-        image_url: imageUrl,
-        estimated_price: Number.isNaN(priceValue) ? null : priceValue,
-      } as any)
-      .select("*")
-      .single();
-
-    setSavingWishlistItem(false);
-
-    if (error || !data) {
-      toast({ title: "Error", description: "Failed to save wishlist item.", variant: "destructive" });
-      return;
-    }
-
-    setWishlistItems((prev) => [...prev, data].slice(0, 3));
-    resetWishlistForm();
-    setShowWishlistDialog(false);
-    toast({ title: "Added to wishlist" });
   };
 
   useEffect(() => {
@@ -354,7 +267,9 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   <button
                     onClick={async (e) => {
                       e.stopPropagation();
-                      await handleRemoveWishlistItem(wItem.id);
+                      await supabase.from("wishlist_items").delete().eq("id", wItem.id);
+                      setWishlistItems(prev => prev.filter(w => w.id !== wItem.id));
+                      toast({ title: "Removed from wishlist" });
                     }}
                     className="absolute top-1 right-1 w-5 h-5 rounded-full bg-foreground/60 flex items-center justify-center z-10"
                   >
@@ -375,14 +290,9 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   )}
                 </div>
               ) : (
-                <button
-                  key={`empty-${idx}`}
-                  type="button"
-                  onClick={() => setShowWishlistDialog(true)}
-                  className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center"
-                >
+                <div key={`empty-${idx}`} className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center">
                   <Plus className="w-5 h-5 text-muted-foreground/40" />
-                </button>
+                </div>
               );
             })}
           </div>
@@ -624,56 +534,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
       <EditProfileSheet open={showEditSheet} onOpenChange={setShowEditSheet} />
       <ChangePasswordSheet open={showChangePassword} onOpenChange={setShowChangePassword} />
-
-      <Dialog open={showWishlistDialog} onOpenChange={(open) => { setShowWishlistDialog(open); if (!open) resetWishlistForm(); }}>
-        <DialogContent className="max-w-[340px] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="text-base">Add Wishlist Item</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Photo</Label>
-              <Input
-                type="file"
-                accept="image/*"
-                className="mt-1 rounded-xl bg-card"
-                onChange={(e) => setWishlistImageFile(e.target.files?.[0] || null)}
-              />
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Name</Label>
-              <Input
-                value={wishlistName}
-                onChange={(e) => setWishlistName(e.target.value)}
-                placeholder="Item name"
-                className="mt-1 rounded-xl bg-card"
-              />
-            </div>
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Price</Label>
-              <Input
-                type="number"
-                min="0"
-                step="0.01"
-                value={wishlistPrice}
-                onChange={(e) => setWishlistPrice(e.target.value)}
-                placeholder="0.00"
-                className="mt-1 rounded-xl bg-card"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              onClick={handleAddWishlistItem}
-              disabled={savingWishlistItem}
-              className="w-full rounded-xl bg-accent text-accent-foreground text-sm font-semibold"
-            >
-              {savingWishlistItem ? "Saving..." : "Add to Wishlist"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {user && (
         <FollowListSheet
