@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X } from "lucide-react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -50,8 +49,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [wishlistItems, setWishlistItems] = useState<any[]>([]);
-  const [showWishlistAdd, setShowWishlistAdd] = useState(false);
-  const [wishlistForm, setWishlistForm] = useState({ name: "", image_url: "", estimated_price: "", brand: "" });
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -293,108 +290,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   )}
                 </div>
               ) : (
-                <button
-                  key={`empty-${idx}`}
-                  onClick={() => setShowWishlistAdd(true)}
-                  className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center hover:border-accent/50 transition-colors"
-                >
+                <div key={`empty-${idx}`} className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center">
                   <Plus className="w-5 h-5 text-muted-foreground/40" />
-                </button>
+                </div>
               );
             })}
           </div>
         </div>
-
-        {/* Wishlist Add Sheet */}
-        {showWishlistAdd && (
-          <Sheet open={showWishlistAdd} onOpenChange={setShowWishlistAdd}>
-            <SheetContent side="bottom" className="rounded-t-3xl max-h-[80vh] overflow-y-auto bg-background pb-24">
-              <SheetHeader>
-                <SheetTitle className="text-lg font-bold tracking-tight">Add to Wish List</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4 space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Photo</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file || !user) return;
-                      const ext = file.name.split(".").pop();
-                      const path = `${user.id}/wishlist-${Date.now()}.${ext}`;
-                      await supabase.storage.from("clothing-images").upload(path, file);
-                      const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-                      setWishlistForm(prev => ({ ...prev, image_url: urlData.publicUrl }));
-                    }}
-                    className="mt-1 w-full text-xs"
-                  />
-                  {wishlistForm.image_url && (
-                    <div className="mt-2 w-20 h-20 rounded-lg overflow-hidden bg-muted">
-                      <img src={wishlistForm.image_url} alt="Preview" className="w-full h-full object-contain" />
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Name</label>
-                  <input
-                    value={wishlistForm.name}
-                    onChange={(e) => setWishlistForm(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Item name"
-                    className="mt-1 w-full px-3 py-2 rounded-xl bg-card border border-border text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Price</label>
-                  <input
-                    type="number"
-                    value={wishlistForm.estimated_price}
-                    onChange={(e) => setWishlistForm(prev => ({ ...prev, estimated_price: e.target.value }))}
-                    placeholder="0.00"
-                    className="mt-1 w-full px-3 py-2 rounded-xl bg-card border border-border text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Brand</label>
-                  <input
-                    value={wishlistForm.brand}
-                    onChange={(e) => setWishlistForm(prev => ({ ...prev, brand: e.target.value }))}
-                    placeholder="Brand name"
-                    className="mt-1 w-full px-3 py-2 rounded-xl bg-card border border-border text-sm"
-                  />
-                </div>
-                <Button
-                  onClick={async () => {
-                    if (!user || !wishlistForm.name.trim()) {
-                      toast({ title: "Name is required", variant: "destructive" });
-                      return;
-                    }
-                    const { error } = await supabase.from("wishlist_items").insert({
-                      user_id: user.id,
-                      name: wishlistForm.name.trim(),
-                      image_url: wishlistForm.image_url,
-                      estimated_price: wishlistForm.estimated_price ? parseFloat(wishlistForm.estimated_price) : null,
-                      brand: wishlistForm.brand,
-                    });
-                    if (error) {
-                      toast({ title: "Error", description: error.message, variant: "destructive" });
-                    } else {
-                      toast({ title: "Added to wishlist ✨" });
-                      setShowWishlistAdd(false);
-                      setWishlistForm({ name: "", image_url: "", estimated_price: "", brand: "" });
-                      fetchWishlist();
-                    }
-                  }}
-                  disabled={!wishlistForm.name.trim()}
-                  className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
-                >
-                  Add to Wish List
-                </Button>
-              </div>
-            </SheetContent>
-          </Sheet>
-        )}
-        
 
 
         {profile && (

@@ -34,7 +34,7 @@ const Terms = lazy(() => import("./pages/policies/Terms"));
 const Privacy = lazy(() => import("./pages/policies/Privacy"));
 const Community = lazy(() => import("./pages/policies/Community"));
 const Cookies = lazy(() => import("./pages/policies/Cookies"));
-
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
 const queryClient = new QueryClient();
 
@@ -53,6 +53,7 @@ function AppRoutes() {
     return (
       <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="w-8 h-8 animate-spin text-accent" /></div>}>
         <Routes>
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<Auth />} />
         </Routes>
       </Suspense>

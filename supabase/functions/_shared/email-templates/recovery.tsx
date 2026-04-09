@@ -4,6 +4,7 @@ import * as React from 'npm:react@18.3.1'
 
 import {
   Body,
+  Button,
   Container,
   Head,
   Heading,
@@ -14,31 +15,29 @@ import {
 
 interface RecoveryEmailProps {
   siteName: string
-  token?: string
-  confirmationUrl?: string
+  confirmationUrl: string
 }
 
 export const RecoveryEmail = ({
   siteName,
-  token,
+  confirmationUrl,
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your password reset code for {siteName}</Preview>
+    <Preview>Reset your password for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Enter
-          the following 8-digit code in the app to set a new password:
+          We received a request to reset your password for {siteName}. Click
+          the button below to choose a new password.
         </Text>
-        <Text style={codeBox}>{token || '--------'}</Text>
-        <Text style={text}>
-          This code will expire shortly. If you didn't request a password
-          reset, you can safely ignore this email.
-        </Text>
+        <Button style={button} href={confirmationUrl}>
+          Reset Password
+        </Button>
         <Text style={footer}>
-          Do not share this code with anyone.
+          If you didn't request a password reset, you can safely ignore this
+          email. Your password will not be changed.
         </Text>
       </Container>
     </Body>
@@ -61,16 +60,12 @@ const text = {
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
-const codeBox = {
-  fontSize: '32px',
-  fontWeight: 'bold' as const,
-  fontFamily: 'monospace',
-  letterSpacing: '6px',
-  textAlign: 'center' as const,
-  color: 'hsl(350, 55%, 31%)',
-  backgroundColor: '#f5f5f5',
-  borderRadius: '12px',
-  padding: '16px 20px',
-  margin: '0 0 25px',
+const button = {
+  backgroundColor: 'hsl(350, 55%, 31%)',
+  color: '#ffffff',
+  fontSize: '14px',
+  borderRadius: '16px',
+  padding: '12px 20px',
+  textDecoration: 'none',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
