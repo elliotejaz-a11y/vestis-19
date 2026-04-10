@@ -207,30 +207,24 @@ export function useChatMessages(friendId: string | null) {
     setMessages((prev) => [...prev, optimisticMsg]);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/moderate-message`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ receiverId: friendId, content: content.trim() }),
-        }
-      );
+      const { data, error: insertError } = await supabase
+        .from("messages")
+        .insert({
+          sender_id: user.id,
+          receiver_id: friendId,
+          content: content.trim(),
+        })
+        .select()
+        .single();
 
-      const result = await resp.json();
-      if (!resp.ok) {
-        // Remove optimistic message on failure
+      if (insertError) {
         setMessages((prev) => prev.filter((m) => m.id !== optimisticMsg.id));
-        return { error: result.error || result.reason || "Failed to send" };
+        return { error: insertError.message || "Failed to send" };
       }
 
-      // Replace optimistic message with real one
-      if (result.message) {
+      if (data) {
         setMessages((prev) =>
-          prev.map((m) => (m.id === optimisticMsg.id ? (result.message as ChatMessage) : m))
+          prev.map((m) => (m.id === optimisticMsg.id ? (data as ChatMessage) : m))
         );
       }
 
