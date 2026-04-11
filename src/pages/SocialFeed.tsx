@@ -97,8 +97,9 @@ export default function SocialFeed() {
               <div
                   key={u.id}
                   role="button"
-                  onClick={() => navigate(`/user/${u.id}`)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left cursor-pointer"
+                  style={{cursor:'pointer'}}
+                  onClick={(e) => { e.stopPropagation(); window.location.href = '/user/' + u.id; }}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
                 >
                   <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
                     {u.avatar_url ? (
