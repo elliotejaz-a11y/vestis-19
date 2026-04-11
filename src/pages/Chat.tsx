@@ -481,6 +481,7 @@ function FriendsTab() {
 // ─── Discover Tab ───
 function DiscoverTab() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [people, setPeople] = useState<FriendProfile[]>([]);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);
