@@ -184,9 +184,15 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
               {onRemove && (
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
+                    if (!window.confirm("Are you sure you want to remove this item?")) return;
+                    const { error } = await supabase.from("clothing_items").delete().eq("id", item.id);
+                    if (error) {
+                      alert("Failed to remove item please try again");
+                      return;
+                    }
+                    onRemove(item.id);
                     onOpenChange(false);
-                    setTimeout(() => setShowDelete(true), 300);
                   }}
                   className="h-11 rounded-2xl text-destructive border-destructive/30 hover:bg-destructive/10"
                 >
@@ -197,12 +203,6 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
           </div>
         </SheetContent>
       </Sheet>
-
-      <DeleteConfirmDialog
-        open={showDelete}
-        onOpenChange={setShowDelete}
-        onConfirm={() => { onRemove?.(item.id); setShowDelete(false); }}
-      />
     </>
   );
 }
