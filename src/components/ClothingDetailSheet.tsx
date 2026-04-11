@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { ClothingItem } from "@/types/wardrobe";
 import { EditClothingSheet } from "@/components/EditClothingSheet";
-import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+
 import { Pencil, DollarSign, Tag, Palette, Shirt, StickyNote, ImageIcon, Copy, Ruler } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,7 +21,6 @@ interface Props {
 export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove, onDuplicated }: Props) {
   const [editing, setEditing] = useState(false);
   const [showBack, setShowBack] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const { profile, user } = useAuth();
   const currency = profile?.currency_preference || "NZD";
@@ -184,9 +183,15 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
               {onRemove && (
                 <Button
                   variant="outline"
-                  onClick={() => {
+                  onClick={async () => {
+                    if (!window.confirm("Are you sure you want to remove this item?")) return;
+                    const { error } = await supabase.from("clothing_items").delete().eq("id", item.id);
+                    if (error) {
+                      alert("Failed to remove item please try again");
+                      return;
+                    }
+                    onRemove(item.id);
                     onOpenChange(false);
-                    setTimeout(() => setShowDelete(true), 300);
                   }}
                   className="h-11 rounded-2xl text-destructive border-destructive/30 hover:bg-destructive/10"
                 >
@@ -197,12 +202,6 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
           </div>
         </SheetContent>
       </Sheet>
-
-      <DeleteConfirmDialog
-        open={showDelete}
-        onOpenChange={setShowDelete}
-        onConfirm={() => { onRemove?.(item.id); setShowDelete(false); }}
-      />
     </>
   );
 }
