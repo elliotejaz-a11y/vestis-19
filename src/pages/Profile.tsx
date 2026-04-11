@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, ChangeEvent } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -49,9 +52,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [wishlistItems, setWishlistItems] = useState<any[]>([]);
+  const [wishlistSheet, setWishlistSheet] = useState(false);
+  const [wishlistName, setWishlistName] = useState("");
+  const [wishlistPrice, setWishlistPrice] = useState("");
+  const [wishlistPhoto, setWishlistPhoto] = useState<File | null>(null);
+  const [wishlistSaving, setWishlistSaving] = useState(false);
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-
   const fetchFollowCounts = async () => {
     if (!user) return;
     const [{ count: followers }, { count: following }] = await Promise.all([
@@ -290,9 +297,19 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   )}
                 </div>
               ) : (
-                <div key={`empty-${idx}`} className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center">
+                <button
+                  key={`empty-${idx}`}
+                  type="button"
+                  onClick={() => {
+                    setWishlistName("");
+                    setWishlistPrice("");
+                    setWishlistPhoto(null);
+                    setWishlistSheet(true);
+                  }}
+                  className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center cursor-pointer"
+                >
                   <Plus className="w-5 h-5 text-muted-foreground/40" />
-                </div>
+                </button>
               );
             })}
           </div>
@@ -609,6 +626,73 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           />
         </div>
       )}
+
+      {/* Wishlist Add Sheet */}
+      <Sheet open={wishlistSheet} onOpenChange={setWishlistSheet}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>Add to Wishlist</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>Photo</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setWishlistPhoto(e.target.files?.[0] || null)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Item Name</Label>
+              <Input value={wishlistName} onChange={(e) => setWishlistName(e.target.value)} placeholder="e.g. Nike Air Max" className="mt-1" />
+            </div>
+            <div>
+              <Label>Price</Label>
+              <Input value={wishlistPrice} onChange={(e) => setWishlistPrice(e.target.value)} placeholder="e.g. 150" type="number" className="mt-1" />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setWishlistSheet(false)}>Cancel</Button>
+              <Button
+                className="flex-1"
+                disabled={wishlistSaving || !wishlistName.trim()}
+                onClick={async () => {
+                  if (!user) return;
+                  setWishlistSaving(true);
+                  try {
+                    let imageUrl = "";
+                    if (wishlistPhoto) {
+                      const ext = wishlistPhoto.name.split(".").pop() || "jpg";
+                      const path = `${user.id}/${Date.now()}.${ext}`;
+                      const { error: uploadErr } = await supabase.storage.from("wishlist-images").upload(path, wishlistPhoto);
+                      if (uploadErr) throw uploadErr;
+                      const { data: urlData } = supabase.storage.from("wishlist-images").getPublicUrl(path);
+                      imageUrl = urlData.publicUrl;
+                    }
+                    const { error: insertErr } = await supabase.from("wishlist_items").insert({
+                      user_id: user.id,
+                      image_url: imageUrl,
+                      name: wishlistName.trim(),
+                      estimated_price: wishlistPrice ? parseFloat(wishlistPrice) : null,
+                      created_at: new Date().toISOString(),
+                    });
+                    if (insertErr) throw insertErr;
+                    setWishlistSheet(false);
+                    await fetchWishlist();
+                    toast({ title: "Added to wishlist ✨" });
+                  } catch (e: any) {
+                    toast({ title: "Error", description: e.message || "Failed to add item", variant: "destructive" });
+                  } finally {
+                    setWishlistSaving(false);
+                  }
+                }}
+              >
+                {wishlistSaving ? "Saving..." : "Submit"}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
