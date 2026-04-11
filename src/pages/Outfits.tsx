@@ -43,22 +43,37 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
 
   // Fetch weather
   useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
-      async (pos) => {
-        try {
-          const resp = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current=temperature_2m,weather_code&timezone=auto`
-          );
-          const data = await resp.json();
+    const savedPermission = localStorage.getItem('weather_permission');
+    if (savedPermission === 'denied') return;
+
+    const fetchWeather = (pos: GeolocationPosition) => {
+      fetch(
+        `https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current=temperature_2m,weather_code&timezone=auto`
+      )
+        .then((resp) => resp.json())
+        .then((data) => {
           const code = data.current.weather_code;
           const temp = Math.round(data.current.temperature_2m);
           const description = code <= 3 ? "Clear" : code <= 48 ? "Cloudy" : code <= 67 ? "Rainy" : "Snowy";
           setWeather({ temp, description });
-        } catch {}
-      },
-      () => {},
-      { timeout: 5000 }
-    );
+        })
+        .catch(() => {});
+    };
+
+    if (savedPermission === 'granted') {
+      navigator.geolocation?.getCurrentPosition(fetchWeather, () => {}, { timeout: 5000 });
+    } else {
+      navigator.geolocation?.getCurrentPosition(
+        (pos) => {
+          localStorage.setItem('weather_permission', 'granted');
+          fetchWeather(pos);
+        },
+        () => {
+          localStorage.setItem('weather_permission', 'denied');
+        },
+        { timeout: 5000 }
+      );
+    }
   }, []);
 
   const WeatherIcon = weather?.description === "Rainy" ? CloudRain

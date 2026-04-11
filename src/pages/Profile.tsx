@@ -467,6 +467,27 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           </div>
         </div>
 
+        {/* Weather Permissions */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Weather Permissions</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Allow location access for weather-based outfit suggestions</p>
+            </div>
+            <button
+              onClick={() => {
+                const current = localStorage.getItem('weather_permission');
+                const next = current === 'granted' ? 'denied' : 'granted';
+                localStorage.setItem('weather_permission', next);
+                setWeatherPerm(next);
+              }}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors ${weatherPerm === 'granted' ? 'bg-accent' : 'bg-muted-foreground/30'}`}
+            >
+              <span className={`pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg transition-transform ${weatherPerm === 'granted' ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
+          </div>
+        </div>
+
         {/* Appearance */}
         <div className="rounded-2xl bg-card border border-border/40 p-4">
           <p className="text-sm font-semibold text-foreground mb-3">Appearance</p>
