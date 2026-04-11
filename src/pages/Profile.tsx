@@ -505,19 +505,15 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
             </div>
             <button
               onClick={() => {
-                const current = localStorage.getItem("weather_permission");
-                const next = current === "granted" ? "denied" : "granted";
+                const next = weatherPerm === "granted" ? "denied" : "granted";
                 localStorage.setItem("weather_permission", next);
-                // force re-render
-                window.dispatchEvent(new Event("storage"));
-                // update button text via local state
                 setWeatherPerm(next);
               }}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                (localStorage.getItem("weather_permission") === "granted") ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
+                weatherPerm === "granted" ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
               }`}
             >
-              {localStorage.getItem("weather_permission") === "granted" ? "On" : "Off"}
+              {weatherPerm === "granted" ? "On" : "Off"}
             </button>
           </div>
         </div>
