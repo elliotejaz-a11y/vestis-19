@@ -49,6 +49,12 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [wishlistItems, setWishlistItems] = useState<any[]>([]);
+  const [showWishlistForm, setShowWishlistForm] = useState(false);
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState<number>(0);
+  const [wfName, setWfName] = useState("");
+  const [wfPrice, setWfPrice] = useState("");
+  const [wfFile, setWfFile] = useState<File | null>(null);
+  const [wfSubmitting, setWfSubmitting] = useState(false);
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -290,9 +296,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   )}
                 </div>
               ) : (
-                <div key={`empty-${idx}`} className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center">
+                <button
+                  key={`empty-${idx}`}
+                  onClick={() => { setSelectedSlotIndex(idx); setShowWishlistForm(true); }}
+                  className="rounded-xl border-2 border-dashed border-border aspect-square flex items-center justify-center"
+                >
                   <Plus className="w-5 h-5 text-muted-foreground/40" />
-                </div>
+                </button>
               );
             })}
           </div>
@@ -588,6 +598,80 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         title="Delete your account?"
         description="This will permanently delete your account, wardrobe, outfits, and all associated data. This action cannot be undone."
       />
+
+      {/* Wishlist Form Modal */}
+      {showWishlistForm && (
+        <div className="fixed inset-0 z-[10003] bg-black/70 flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl p-5 w-full max-w-sm space-y-3" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-foreground">Add Wishlist Item</p>
+            <input
+              type="text"
+              placeholder="Item name"
+              value={wfName}
+              onChange={(e) => setWfName(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+            />
+            <input
+              type="text"
+              placeholder="Price"
+              value={wfPrice}
+              onChange={(e) => setWfPrice(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
+            />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setWfFile(e.target.files?.[0] || null)}
+              className="w-full text-xs text-foreground"
+            />
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => { setShowWishlistForm(false); setWfName(""); setWfPrice(""); setWfFile(null); }}
+                className="flex-1 rounded-lg border border-border py-2 text-sm text-foreground"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={wfSubmitting || !wfName.trim()}
+                onClick={async () => {
+                  if (!user) return;
+                  setWfSubmitting(true);
+                  try {
+                    let imageUrl = "";
+                    if (wfFile) {
+                      const ext = wfFile.name.split(".").pop() || "jpg";
+                      const filePath = `wishlist/${user.id}/${Date.now()}.${ext}`;
+                      const { error: upErr } = await supabase.storage.from("avatars").upload(filePath, wfFile);
+                      if (upErr) throw upErr;
+                      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+                      imageUrl = urlData.publicUrl;
+                    }
+                    const price = parseFloat(wfPrice);
+                    await supabase.from("wishlist_items").insert({
+                      user_id: user.id,
+                      name: wfName.trim(),
+                      image_url: imageUrl,
+                      estimated_price: isNaN(price) ? null : price,
+                    });
+                    setShowWishlistForm(false);
+                    setWfName("");
+                    setWfPrice("");
+                    setWfFile(null);
+                    fetchWishlist();
+                  } catch (err: any) {
+                    toast({ title: "Error", description: err.message || "Failed to add item", variant: "destructive" });
+                  } finally {
+                    setWfSubmitting(false);
+                  }
+                }}
+                className="flex-1 rounded-lg bg-accent text-accent-foreground py-2 text-sm font-medium disabled:opacity-50"
+              >
+                {wfSubmitting ? "Saving…" : "Submit"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Fullscreen Fit Pic Modal */}
       {fullscreenFitPic && (
