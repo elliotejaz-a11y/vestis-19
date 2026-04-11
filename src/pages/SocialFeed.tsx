@@ -109,10 +109,16 @@ export default function SocialFeed() {
                       </div>
                     )}
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
                     {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
                   </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); window.location.href = '/user/' + u.id; }}
+                    className="px-3 py-1 text-[10px] font-medium rounded-full bg-muted text-foreground hover:bg-muted/80 transition-colors"
+                  >
+                    View Profile
+                  </button>
                 </div>
               ))}
             </div>
