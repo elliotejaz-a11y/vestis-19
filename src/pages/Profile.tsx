@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X, Cloud } from "lucide-react";
+import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -55,7 +55,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [wfPrice, setWfPrice] = useState("");
   const [wfFile, setWfFile] = useState<File | null>(null);
   const [wfSubmitting, setWfSubmitting] = useState(false);
-  const [weatherPerm, setWeatherPerm] = useState(localStorage.getItem("weather_permission") || "");
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -487,33 +486,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               }`}
             >
               <Moon className="w-3.5 h-3.5" /> Dark
-            </button>
-          </div>
-        </div>
-
-        {/* Weather Permissions */}
-        <div className="rounded-2xl bg-card border border-border/40 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                <Cloud className="w-4 h-4 text-accent" />
-                Weather Permissions
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">
-                Allow the app to use your location to show weather for outfit suggestions
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                const next = weatherPerm === "granted" ? "denied" : "granted";
-                localStorage.setItem("weather_permission", next);
-                setWeatherPerm(next);
-              }}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                weatherPerm === "granted" ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {weatherPerm === "granted" ? "On" : "Off"}
             </button>
           </div>
         </div>
