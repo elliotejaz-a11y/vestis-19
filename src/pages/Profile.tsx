@@ -607,25 +607,72 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       />
 
       {/* Fullscreen Fit Pic Modal */}
-      {fullscreenFitPic && (
-        <div
-          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
-          onClick={() => setFullscreenFitPic(null)}
-        >
-          <button
-            onClick={() => setFullscreenFitPic(null)}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <img
-            src={fullscreenFitPic.image_url}
-            alt={fullscreenFitPic.description || ""}
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {/* Wishlist Add Sheet */}
+      <Sheet open={wishlistSheet} onOpenChange={setWishlistSheet}>
+        <SheetContent side="bottom" className="rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>Add to Wishlist</SheetTitle>
+          </SheetHeader>
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>Photo</Label>
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setWishlistPhoto(e.target.files?.[0] || null)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Item Name</Label>
+              <Input value={wishlistName} onChange={(e) => setWishlistName(e.target.value)} placeholder="e.g. Nike Air Max" className="mt-1" />
+            </div>
+            <div>
+              <Label>Price</Label>
+              <Input value={wishlistPrice} onChange={(e) => setWishlistPrice(e.target.value)} placeholder="e.g. 150" type="number" className="mt-1" />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setWishlistSheet(false)}>Cancel</Button>
+              <Button
+                className="flex-1"
+                disabled={wishlistSaving || !wishlistName.trim()}
+                onClick={async () => {
+                  if (!user) return;
+                  setWishlistSaving(true);
+                  try {
+                    let imageUrl = "";
+                    if (wishlistPhoto) {
+                      const ext = wishlistPhoto.name.split(".").pop() || "jpg";
+                      const path = `${user.id}/${Date.now()}.${ext}`;
+                      const { error: uploadErr } = await supabase.storage.from("wishlist-images").upload(path, wishlistPhoto);
+                      if (uploadErr) throw uploadErr;
+                      const { data: urlData } = supabase.storage.from("wishlist-images").getPublicUrl(path);
+                      imageUrl = urlData.publicUrl;
+                    }
+                    const { error: insertErr } = await supabase.from("wishlist_items").insert({
+                      user_id: user.id,
+                      image_url: imageUrl,
+                      name: wishlistName.trim(),
+                      estimated_price: wishlistPrice ? parseFloat(wishlistPrice) : null,
+                      created_at: new Date().toISOString(),
+                    });
+                    if (insertErr) throw insertErr;
+                    setWishlistSheet(false);
+                    await fetchWishlist();
+                    toast({ title: "Added to wishlist ✨" });
+                  } catch (e: any) {
+                    toast({ title: "Error", description: e.message || "Failed to add item", variant: "destructive" });
+                  } finally {
+                    setWishlistSaving(false);
+                  }
+                }}
+              >
+                {wishlistSaving ? "Saving..." : "Submit"}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
