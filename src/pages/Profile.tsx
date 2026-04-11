@@ -490,6 +490,37 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           </div>
         </div>
 
+        {/* Weather Permissions */}
+        <div className="rounded-2xl bg-card border border-border/40 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                <Cloud className="w-4 h-4 text-accent" />
+                Weather Permissions
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                Allow the app to use your location to show weather for outfit suggestions
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                const current = localStorage.getItem("weather_permission");
+                const next = current === "granted" ? "denied" : "granted";
+                localStorage.setItem("weather_permission", next);
+                // force re-render
+                window.dispatchEvent(new Event("storage"));
+                // update button text via local state
+                setWeatherPerm(next);
+              }}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                (localStorage.getItem("weather_permission") === "granted") ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"
+              }`}
+            >
+              {localStorage.getItem("weather_permission") === "granted" ? "On" : "Off"}
+            </button>
+          </div>
+        </div>
+
         <WardrobeServiceSheet>
           <Button variant="outline" className="w-full h-12 rounded-2xl text-sm">
             <Home className="w-4 h-4 mr-2" /> Wardrobe Upload Service
