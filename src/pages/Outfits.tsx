@@ -41,24 +41,43 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const hasTopHalf = items.some((item) => item.category === "tops" || item.category === "jumpers");
   const missingRequiredPieces = [!hasTopHalf ? "tops/jumpers" : null, !hasBottoms ? "bottoms" : null, !hasShoes ? "shoes" : null].filter(Boolean).join(" and ");
 
-  // Fetch weather
+  // Fetch weather — respects localStorage permission
   useEffect(() => {
-    navigator.geolocation?.getCurrentPosition(
-      async (pos) => {
-        try {
-          const resp = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current=temperature_2m,weather_code&timezone=auto`
-          );
-          const data = await resp.json();
-          const code = data.current.weather_code;
-          const temp = Math.round(data.current.temperature_2m);
-          const description = code <= 3 ? "Clear" : code <= 48 ? "Cloudy" : code <= 67 ? "Rainy" : "Snowy";
-          setWeather({ temp, description });
-        } catch {}
-      },
-      () => {},
-      { timeout: 5000 }
-    );
+    const perm = localStorage.getItem("weather_permission");
+
+    const fetchWeather = () => {
+      navigator.geolocation?.getCurrentPosition(
+        async (pos) => {
+          try {
+            const resp = await fetch(
+              `https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current=temperature_2m,weather_code&timezone=auto`
+            );
+            const data = await resp.json();
+            const code = data.current.weather_code;
+            const temp = Math.round(data.current.temperature_2m);
+            const description = code <= 3 ? "Clear" : code <= 48 ? "Cloudy" : code <= 67 ? "Rainy" : "Snowy";
+            setWeather({ temp, description });
+          } catch {}
+        },
+        () => {},
+        { timeout: 5000 }
+      );
+    };
+
+    if (perm === "granted") {
+      fetchWeather();
+    } else if (perm === "denied") {
+      // Do nothing — user opted out
+    } else {
+      // First time — ask once
+      const allowed = window.confirm("Allow Vestis to use your location for weather-based outfit suggestions?");
+      if (allowed) {
+        localStorage.setItem("weather_permission", "granted");
+        fetchWeather();
+      } else {
+        localStorage.setItem("weather_permission", "denied");
+      }
+    }
   }, []);
 
   const WeatherIcon = weather?.description === "Rainy" ? CloudRain
