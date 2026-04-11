@@ -21,7 +21,6 @@ interface Props {
 export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove, onDuplicated }: Props) {
   const [editing, setEditing] = useState(false);
   const [showBack, setShowBack] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const { profile, user } = useAuth();
   const currency = profile?.currency_preference || "NZD";
