@@ -895,10 +895,6 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
-      get_email_by_username: {
-        Args: { lookup_username: string }
-        Returns: string
-      }
       increment_feedback_votes: {
         Args: { feedback_id_param: string }
         Returns: undefined
