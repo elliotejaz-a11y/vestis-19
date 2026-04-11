@@ -52,9 +52,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const [wishlistItems, setWishlistItems] = useState<any[]>([]);
+  const [wishlistSheet, setWishlistSheet] = useState(false);
+  const [wishlistName, setWishlistName] = useState("");
+  const [wishlistPrice, setWishlistPrice] = useState("");
+  const [wishlistPhoto, setWishlistPhoto] = useState<File | null>(null);
+  const [wishlistSaving, setWishlistSaving] = useState(false);
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-
   const fetchFollowCounts = async () => {
     if (!user) return;
     const [{ count: followers }, { count: following }] = await Promise.all([
