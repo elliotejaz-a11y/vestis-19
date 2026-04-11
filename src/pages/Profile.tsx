@@ -641,9 +641,9 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                     if (wfFile) {
                       const ext = wfFile.name.split(".").pop() || "jpg";
                       const filePath = `wishlist/${user.id}/${Date.now()}.${ext}`;
-                      const { error: upErr } = await supabase.storage.from("avatars").upload(filePath, wfFile);
-                      if (upErr) throw upErr;
-                      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(filePath);
+                      const { error: upErr } = await supabase.storage.from("wishlist-images").upload(filePath, wfFile);
+                       if (upErr) throw upErr;
+                       const { data: urlData } = supabase.storage.from("wishlist-images").getPublicUrl(filePath);
                       imageUrl = urlData.publicUrl;
                     }
                     const price = parseFloat(wfPrice);
