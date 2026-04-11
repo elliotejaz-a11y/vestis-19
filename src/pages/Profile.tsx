@@ -57,6 +57,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [wfSubmitting, setWfSubmitting] = useState(false);
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [weatherPerm, setWeatherPerm] = useState(() => localStorage.getItem('weather_permission') || 'denied');
 
   const fetchFollowCounts = async () => {
     if (!user) return;
