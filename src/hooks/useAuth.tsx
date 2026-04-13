@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, displayName: string) => {
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -85,20 +85,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         data: { display_name: displayName },
       },
     });
-    console.log("signUp full response data:", JSON.stringify(data, null, 2));
-    console.log("signUp full error object:", JSON.stringify(error, null, 2));
-    if (error) {
-      alert("Sign up error: " + (error.message || JSON.stringify(error)));
-      return { error };
-    }
-    if (data?.user && !data?.session) {
-      console.log("Email confirmation is pending — OTP flow is correct.");
-      return { error: null };
-    }
-    if (data?.user && data?.session) {
-      alert("Email confirmation is disabled in Supabase settings please enable it");
-      return { error: null };
-    }
     return { error };
   };
 
