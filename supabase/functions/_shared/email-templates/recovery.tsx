@@ -4,7 +4,6 @@ import * as React from 'npm:react@18.3.1'
 
 import {
   Body,
-  Button,
   Container,
   Head,
   Heading,
@@ -66,12 +65,12 @@ const text = {
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
-const button = {
-  backgroundColor: 'hsl(350, 55%, 31%)',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '16px',
-  padding: '12px 20px',
-  textDecoration: 'none',
+const code = {
+  fontSize: '28px',
+  fontWeight: 'bold' as const,
+  color: 'hsl(350, 55%, 31%)',
+  letterSpacing: '4px',
+  textAlign: 'center' as const,
+  margin: '10px 0 25px',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
