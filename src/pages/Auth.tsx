@@ -10,12 +10,14 @@ import { Eye, EyeOff, Check, X, Loader2, Sun, Moon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
+import { useNavigate } from "react-router-dom";
 
 export default function Auth() {
   // If in recovery mode (OTP verified, setting new password), keep showing Auth
   const isRecoveryMode = sessionStorage.getItem("vestis_recovery_mode") === "true";
   const [isSignUp, setIsSignUp] = useState(false);
   const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,11 +34,11 @@ export default function Auth() {
   const [recoveryStep, setRecoveryStep] = useState<"email" | "otp" | "password">("email");
   const [recoveryOtp, setRecoveryOtp] = useState("");
   const [verifyingRecoveryOtp, setVerifyingRecoveryOtp] = useState(false);
+  const [recoveryOtpError, setRecoveryOtpError] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [updatingPassword, setUpdatingPassword] = useState(false);
-  const [resendRecoveryLoading, setResendRecoveryLoading] = useState(false);
   const [signUpSuccess, setSignUpSuccess] = useState(false);
   const [signUpEmail, setSignUpEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
@@ -50,31 +52,22 @@ export default function Auth() {
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
+      redirectTo: undefined,
+    });
     setForgotLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Code sent ✉️", description: "Check your inbox (and spam folder) for an 8-digit code." });
+      toast({ title: "Check your email for your 8-digit code" });
       setRecoveryStep("otp");
-    }
-  };
-
-  const handleResendRecoveryOtp = async () => {
-    setResendRecoveryLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
-    setResendRecoveryLoading(false);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Code resent ✉️", description: "Check your inbox and spam folder." });
     }
   };
 
   const handleVerifyRecoveryOtp = async () => {
     if (recoveryOtp.length !== 8) return;
     setVerifyingRecoveryOtp(true);
-    // Set flag BEFORE verifyOtp so the auth state change doesn't unmount us
+    setRecoveryOtpError("");
     sessionStorage.setItem("vestis_recovery_mode", "true");
     const { error } = await supabase.auth.verifyOtp({
       email: forgotEmail.trim(),
@@ -84,7 +77,7 @@ export default function Auth() {
     setVerifyingRecoveryOtp(false);
     if (error) {
       sessionStorage.removeItem("vestis_recovery_mode");
-      toast({ title: "Invalid code", description: error.message, variant: "destructive" });
+      setRecoveryOtpError("Invalid code please try again");
     } else {
       setRecoveryStep("password");
     }
@@ -92,31 +85,26 @@ export default function Auth() {
 
   const handleSetNewPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword !== confirmNewPassword) {
-      toast({ title: "Passwords don't match", variant: "destructive" });
-      return;
-    }
-    if (!passwordValid(newPassword)) {
-      toast({ title: "Weak password", description: "Must be 8+ characters with letters, numbers, and a special character.", variant: "destructive" });
-      return;
-    }
     setUpdatingPassword(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
       setUpdatingPassword(false);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Password updated ✓", description: "Please sign in with your new password." });
-      // Sign out and clean up recovery state
       await supabase.auth.signOut();
       sessionStorage.removeItem("vestis_recovery_mode");
-      setUpdatingPassword(false);
-      setShowForgotPassword(false);
-      setRecoveryStep("email");
-      setRecoveryOtp("");
-      setNewPassword("");
-      setConfirmNewPassword("");
-      setForgotEmail("");
+      toast({ title: "Password reset successfully" });
+      setTimeout(() => {
+        setUpdatingPassword(false);
+        setShowForgotPassword(false);
+        setRecoveryStep("email");
+        setRecoveryOtp("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setForgotEmail("");
+        setRecoveryOtpError("");
+        navigate("/");
+      }, 2000);
     }
   };
 
@@ -329,8 +317,8 @@ export default function Auth() {
                   required
                 />
               </div>
-              <Button type="submit" disabled={updatingPassword || !passwordValid(newPassword)} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm">
-                {updatingPassword ? "Updating..." : "Update Password"}
+              <Button type="submit" disabled={updatingPassword || newPassword.length < 8 || newPassword !== confirmNewPassword} className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm">
+                {updatingPassword ? "Updating..." : "Reset Password"}
               </Button>
             </form>
           </div>
@@ -352,34 +340,24 @@ export default function Auth() {
                 inputMode="numeric"
                 maxLength={8}
                 value={recoveryOtp}
-                onChange={(e) => setRecoveryOtp(e.target.value.replace(/\D/g, "").slice(0, 8))}
+                onChange={(e) => { setRecoveryOtp(e.target.value.replace(/\D/g, "").slice(0, 8)); setRecoveryOtpError(""); }}
                 placeholder="00000000"
                 className="text-center text-2xl tracking-[0.5em] font-mono rounded-xl bg-card h-14"
                 autoFocus
               />
             </div>
+            {recoveryOtpError && (
+              <p className="text-sm text-destructive font-medium">{recoveryOtpError}</p>
+            )}
             <Button
               onClick={handleVerifyRecoveryOtp}
               disabled={recoveryOtp.length !== 8 || verifyingRecoveryOtp}
               className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
             >
               {verifyingRecoveryOtp ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              {verifyingRecoveryOtp ? "Verifying..." : "Verify Code"}
+              {verifyingRecoveryOtp ? "Verifying..." : "Verify"}
             </Button>
-            <div className="rounded-2xl bg-card border border-border/40 p-4 text-left space-y-2">
-              <p className="text-xs text-muted-foreground">• Check your <span className="font-medium text-foreground">spam/junk</span> folder if you don't see it</p>
-              <p className="text-xs text-muted-foreground">• The code expires in 24 hours</p>
-            </div>
-            <Button
-              onClick={handleResendRecoveryOtp}
-              disabled={resendRecoveryLoading}
-              variant="outline"
-              className="w-full h-12 rounded-2xl text-sm"
-            >
-              {resendRecoveryLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Resend Code
-            </Button>
-            <button onClick={() => { setShowForgotPassword(false); setRecoveryStep("email"); setRecoveryOtp(""); }} className="text-xs text-accent font-semibold hover:underline">
+            <button onClick={() => { setShowForgotPassword(false); setRecoveryStep("email"); setRecoveryOtp(""); setRecoveryOtpError(""); }} className="text-xs text-accent font-semibold hover:underline">
               Back to Sign In
             </button>
           </div>
@@ -407,12 +385,12 @@ export default function Auth() {
               required
             />
           </div>
-          <Button
+           <Button
             onClick={handleForgotPassword}
             disabled={forgotLoading || !forgotEmail.trim()}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
           >
-            {forgotLoading ? "Sending..." : "Send Reset Code"}
+            {forgotLoading ? "Sending..." : "Send Code"}
           </Button>
           <p className="text-xs text-muted-foreground text-center">
             Remember your password?{" "}
