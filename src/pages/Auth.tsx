@@ -182,11 +182,15 @@ export default function Auth() {
         } else {
           toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
         }
-      } else {
+      } else if (data?.user && !data?.session) {
         localStorage.setItem("pending_username", username);
         localStorage.setItem("vestis_fresh_signup", "true");
         setSignUpEmail(email);
         setSignUpSuccess(true);
+      } else if (data?.user && data?.session) {
+        // Auto-confirmed (shouldn't happen with OTP flow, but handle gracefully)
+        localStorage.setItem("pending_username", username);
+        localStorage.setItem("vestis_fresh_signup", "true");
       }
     } else {
       let signInEmail = emailOrUsername.trim();
