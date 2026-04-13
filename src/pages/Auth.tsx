@@ -168,7 +168,14 @@ export default function Auth() {
         setLoading(false);
         return;
       }
-      const { error } = await signUp(email, password, displayName);
+      const { error, data } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          emailRedirectTo: undefined,
+          data: { display_name: displayName },
+        },
+      });
       if (error) {
         if (error.message?.toLowerCase().includes("already registered") || error.message?.toLowerCase().includes("already been registered")) {
           toast({ title: "Email already in use", description: "An account with this email already exists. Please sign in instead.", variant: "destructive" });
