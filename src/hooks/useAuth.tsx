@@ -80,10 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        emailRedirectTo: undefined,
-        data: { display_name: displayName },
-      },
+      options: { emailRedirectTo: undefined },
     });
     return { error };
   };
