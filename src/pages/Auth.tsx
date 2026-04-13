@@ -50,7 +50,7 @@ export default function Auth() {
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: undefined });
     setForgotLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -62,7 +62,7 @@ export default function Auth() {
 
   const handleResendRecoveryOtp = async () => {
     setResendRecoveryLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), { redirectTo: undefined });
     setResendRecoveryLoading(false);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -106,17 +106,18 @@ export default function Auth() {
       setUpdatingPassword(false);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Password updated ✓", description: "Please sign in with your new password." });
-      // Sign out and clean up recovery state
       await supabase.auth.signOut();
       sessionStorage.removeItem("vestis_recovery_mode");
       setUpdatingPassword(false);
-      setShowForgotPassword(false);
-      setRecoveryStep("email");
-      setRecoveryOtp("");
-      setNewPassword("");
-      setConfirmNewPassword("");
-      setForgotEmail("");
+      toast({ title: "Password reset successfully" });
+      setTimeout(() => {
+        setShowForgotPassword(false);
+        setRecoveryStep("email");
+        setRecoveryOtp("");
+        setNewPassword("");
+        setConfirmNewPassword("");
+        setForgotEmail("");
+      }, 2000);
     }
   };
 
