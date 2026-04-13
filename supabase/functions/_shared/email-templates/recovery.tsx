@@ -18,23 +18,29 @@ interface RecoveryEmailProps {
   confirmationUrl: string
 }
 
+interface RecoveryEmailProps {
+  siteName: string
+  token: string
+}
+
 export const RecoveryEmail = ({
   siteName,
-  confirmationUrl,
+  token,
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Reset your password for {siteName}</Preview>
+    <Preview>Your password reset code for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Click
-          the button below to choose a new password.
+          Your Vestis password reset code is:
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Reset Password
-        </Button>
+        <Text style={code}>{token}</Text>
+        <Text style={text}>
+          Enter this 8-digit code in the app to reset your password. This code
+          will expire shortly.
+        </Text>
         <Text style={footer}>
           If you didn't request a password reset, you can safely ignore this
           email. Your password will not be changed.
