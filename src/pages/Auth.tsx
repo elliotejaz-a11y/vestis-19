@@ -168,29 +168,18 @@ export default function Auth() {
         setLoading(false);
         return;
       }
-      const { error, data } = await supabase.auth.signUp({
-        email: email,
-        password: password,
-        options: {
-          emailRedirectTo: undefined,
-          data: { display_name: displayName },
-        },
-      });
+      const { error } = await signUp(email, password, displayName);
       if (error) {
         if (error.message?.toLowerCase().includes("already registered") || error.message?.toLowerCase().includes("already been registered")) {
           toast({ title: "Email already in use", description: "An account with this email already exists. Please sign in instead.", variant: "destructive" });
         } else {
           toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
         }
-      } else if (data?.user && !data?.session) {
+      } else {
         localStorage.setItem("pending_username", username);
         localStorage.setItem("vestis_fresh_signup", "true");
         setSignUpEmail(email);
         setSignUpSuccess(true);
-      } else if (data?.user && data?.session) {
-        // Auto-confirmed (shouldn't happen with OTP flow, but handle gracefully)
-        localStorage.setItem("pending_username", username);
-        localStorage.setItem("vestis_fresh_signup", "true");
       }
     } else {
       let signInEmail = emailOrUsername.trim();
