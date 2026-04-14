@@ -4,6 +4,7 @@ import * as React from 'npm:react@18.3.1'
 
 import {
   Body,
+  Button,
   Container,
   Head,
   Heading,
@@ -14,27 +15,29 @@ import {
 
 interface RecoveryEmailProps {
   siteName: string
-  token: string
+  confirmationUrl: string
 }
 
 export const RecoveryEmail = ({
   siteName,
-  token,
+  confirmationUrl,
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Reset your password</Preview>
+    <Preview>Reset your password for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Text style={text}>Your Vestis password reset code is:</Text>
-        <Text style={code}>{token}</Text>
+        <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
-          Enter this 8-digit code in the Vestis app to reset your password.
+          We received a request to reset your password for {siteName}. Click
+          the button below to choose a new password.
         </Text>
-        <Text style={text}>This code will expire in 1 hour.</Text>
+        <Button style={button} href={confirmationUrl}>
+          Reset Password
+        </Button>
         <Text style={footer}>
-          If you did not request a password reset you can safely ignore this
-          email.
+          If you didn't request a password reset, you can safely ignore this
+          email. Your password will not be changed.
         </Text>
       </Container>
     </Body>
@@ -45,18 +48,24 @@ export default RecoveryEmail
 
 const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
 const container = { padding: '20px 25px' }
+const h1 = {
+  fontSize: '22px',
+  fontWeight: 'bold' as const,
+  color: 'hsl(30, 10%, 15%)',
+  margin: '0 0 20px',
+}
 const text = {
   fontSize: '14px',
-  color: '#333333',
+  color: 'hsl(30, 8%, 50%)',
   lineHeight: '1.5',
-  margin: '0 0 16px',
+  margin: '0 0 25px',
 }
-const code = {
-  fontSize: '28px',
-  fontWeight: 'bold' as const,
-  color: '#1a1a1a',
-  letterSpacing: '4px',
-  margin: '8px 0 24px',
-  textAlign: 'center' as const,
+const button = {
+  backgroundColor: 'hsl(350, 55%, 31%)',
+  color: '#ffffff',
+  fontSize: '14px',
+  borderRadius: '16px',
+  padding: '12px 20px',
+  textDecoration: 'none',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
