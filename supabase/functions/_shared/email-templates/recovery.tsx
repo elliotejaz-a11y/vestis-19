@@ -4,6 +4,7 @@ import * as React from 'npm:react@18.3.1'
 
 import {
   Body,
+  Button,
   Container,
   Head,
   Heading,
@@ -14,30 +15,29 @@ import {
 
 interface RecoveryEmailProps {
   siteName: string
-  token: string
+  confirmationUrl: string
 }
 
 export const RecoveryEmail = ({
   siteName,
-  token,
+  confirmationUrl,
 }: RecoveryEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Your password reset code for {siteName}</Preview>
+    <Preview>Reset your password for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
-          We received a request to reset your password for {siteName}. Enter the code below in the app to verify your identity and choose a new password.
+          We received a request to reset your password for {siteName}. Click
+          the button below to choose a new password.
         </Text>
-        <Container style={codeContainer}>
-          <Text style={codeText}>{token}</Text>
-        </Container>
-        <Text style={text}>
-          This code will expire shortly. If you didn't request a password reset, you can safely ignore this email.
-        </Text>
+        <Button style={button} href={confirmationUrl}>
+          Reset Password
+        </Button>
         <Text style={footer}>
-          Do not share this code with anyone.
+          If you didn't request a password reset, you can safely ignore this
+          email. Your password will not be changed.
         </Text>
       </Container>
     </Body>
@@ -60,19 +60,12 @@ const text = {
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
-const codeContainer = {
-  backgroundColor: '#f4f4f4',
-  borderRadius: '12px',
-  padding: '16px',
-  textAlign: 'center' as const,
-  margin: '0 0 25px',
-}
-const codeText = {
-  fontSize: '32px',
-  fontWeight: 'bold' as const,
-  letterSpacing: '6px',
-  color: 'hsl(350, 55%, 31%)',
-  margin: '0',
-  fontFamily: 'monospace, Arial, sans-serif',
+const button = {
+  backgroundColor: 'hsl(350, 55%, 31%)',
+  color: '#ffffff',
+  fontSize: '14px',
+  borderRadius: '16px',
+  padding: '12px 20px',
+  textDecoration: 'none',
 }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
