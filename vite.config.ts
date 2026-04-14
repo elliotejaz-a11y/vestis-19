@@ -20,7 +20,10 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     rollupOptions: {
-      external: ["@imgly/background-removal"],
+      onwarn(warning, warn) {
+        if (warning.message?.includes('@imgly/background-removal')) return;
+        warn(warning);
+      },
     },
   },
 }));
