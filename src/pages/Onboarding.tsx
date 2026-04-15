@@ -169,7 +169,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const steps = [
     {
       title: "Set up your profile",
-      subtitle: "Add a profile picture and bio",
+      subtitle: "Add a profile picture, name and bio",
       content: (
         <div className="space-y-5">
           <div className="flex flex-col items-center gap-3">
@@ -186,15 +186,42 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             <p className="text-xs text-muted-foreground">{uploading ? "Uploading..." : "Tap to add a profile picture"}</p>
           </div>
+          {/* Display Name */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Display Name</p>
+            <Input
+              value={displayName}
+              onChange={(e) => { setDisplayName(e.target.value); setProfileError(""); }}
+              placeholder="Your name"
+              className="rounded-xl bg-card text-sm"
+              maxLength={50}
+            />
+          </div>
+          {/* Username - show read-only with edit pencil, or editable */}
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">Username</p>
-            <Input
-              value={username}
-              onChange={(e) => { setUsername(e.target.value); setProfileError(""); }}
-              placeholder="Choose a username"
-              className="rounded-xl bg-card text-sm"
-              maxLength={30}
-            />
+            {editingUsername ? (
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/60 select-none">@</span>
+                <Input
+                  value={username}
+                  onChange={(e) => { setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, "")); setProfileError(""); }}
+                  placeholder="username"
+                  className="rounded-xl bg-card text-sm pl-7"
+                  maxLength={30}
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => setEditingUsername(true)}
+                className="w-full flex items-center justify-between rounded-xl bg-card border border-border px-3 py-2.5 text-sm text-foreground hover:border-accent/40 transition-colors"
+              >
+                <span className="text-muted-foreground/60 mr-0.5">@</span>
+                <span className="flex-1 text-left">{username || <span className="text-muted-foreground">username</span>}</span>
+                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            )}
           </div>
           {profileError && (
             <p className="text-xs text-destructive font-medium">{profileError}</p>
@@ -212,7 +239,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           </div>
         </div>
       ),
-      valid: !!avatarUrl && !!username.trim(),
+      valid: !!avatarUrl && !!username.trim() && !!displayName.trim(),
     },
     {
       title: "Account Privacy",
