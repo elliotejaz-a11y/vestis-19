@@ -115,10 +115,19 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     }
   }, [editMode, profile]);
 
+  // Load username and display name from profile for first-time onboarding
+  useEffect(() => {
+    if (user && !editMode && profile) {
+      if (profile.username) setUsername(profile.username);
+      if (profile.display_name) setDisplayName(profile.display_name);
+    }
+  }, [user, editMode, profile]);
+
   useEffect(() => {
     if (user && !editMode) {
       const pendingUsername = localStorage.getItem("pending_username");
       if (pendingUsername) {
+        setUsername(pendingUsername);
         supabase.from("profiles").update({ username: pendingUsername, username_changed_at: new Date().toISOString() } as any).eq("id", user.id).then(() => {
           localStorage.removeItem("pending_username");
         });
