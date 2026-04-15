@@ -5,7 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload } from "lucide-react";
+import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, HelpCircle } from "lucide-react";
+import { StyleQuizSheet } from "@/components/StyleQuizSheet";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
 
@@ -81,6 +82,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [profileError, setProfileError] = useState("");
   const [skinTone, setSkinTone] = useState(50);
   const [styles, setStyles] = useState<string[]>([]);
+  const [showStyleQuiz, setShowStyleQuiz] = useState(false);
   const [customStyle, setCustomStyle] = useState("");
   const [bodyType, setBodyType] = useState("");
   const [bodyGender, setBodyGender] = useState<"female" | "male">("female");
@@ -300,6 +302,21 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
               className="rounded-xl bg-card text-sm"
             />
           </div>
+          <button
+            onClick={() => setShowStyleQuiz(true)}
+            className="w-full flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-dashed border-accent/40 text-accent hover:bg-accent/5 transition-all text-sm font-medium"
+          >
+            <HelpCircle className="w-4 h-4" />
+            Help me figure it out
+          </button>
+          <StyleQuizSheet
+            open={showStyleQuiz}
+            onClose={() => setShowStyleQuiz(false)}
+            onResult={(results) => {
+              setStyles(results);
+              setShowStyleQuiz(false);
+            }}
+          />
         </div>
       ),
       valid: true,
