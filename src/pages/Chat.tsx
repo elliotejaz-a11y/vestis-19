@@ -94,6 +94,7 @@ export default function Chat() {
         friendName={selectedFriend.name}
         friendAvatar={selectedFriend.avatar}
         onBack={() => {
+          refetchConversations();
           setSelectedFriend(null);
           navigate("/chat", { replace: true });
         }}
