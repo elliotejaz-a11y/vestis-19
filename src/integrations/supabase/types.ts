@@ -915,6 +915,7 @@ export type Database = {
         Args: { checker_id: string; target_id: string }
         Returns: boolean
       }
+      mark_messages_read: { Args: { friend_user_id: string }; Returns: number }
       move_to_dlq: {
         Args: {
           dlq_name: string
