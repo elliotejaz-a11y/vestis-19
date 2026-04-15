@@ -133,9 +133,10 @@ export default function Chat() {
           <MessagesTab
             conversations={conversations}
             loading={convsLoading}
-            onSelectFriend={(conv) =>
-              setSelectedFriend({ id: conv.friendId, name: conv.friendName, avatar: conv.friendAvatar })
-            }
+            onSelectFriend={(conv) => {
+              clearUnread(conv.friendId);
+              setSelectedFriend({ id: conv.friendId, name: conv.friendName, avatar: conv.friendAvatar });
+            }}
             onNewChat={(friend) =>
               setSelectedFriend({ id: friend.id, name: friend.display_name || friend.username || "User", avatar: friend.avatar_url })
             }
