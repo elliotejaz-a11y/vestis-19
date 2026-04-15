@@ -59,7 +59,7 @@ export default function Chat() {
   const initialFriendId = searchParams.get("with");
   const [selectedFriend, setSelectedFriend] = useState<{ id: string; name: string; avatar: string | null } | null>(null);
 
-  const { conversations, loading: convsLoading } = useChat();
+  const { conversations, loading: convsLoading, refetch: refetchConversations } = useChat();
 
   // Auto-mark all notifications as read when notifications tab is opened
   useEffect(() => {
@@ -94,6 +94,7 @@ export default function Chat() {
         friendName={selectedFriend.name}
         friendAvatar={selectedFriend.avatar}
         onBack={() => {
+          refetchConversations();
           setSelectedFriend(null);
           navigate("/chat", { replace: true });
         }}
