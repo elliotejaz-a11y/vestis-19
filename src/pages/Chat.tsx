@@ -700,6 +700,8 @@ function NotificationsTab() {
             // Also treat read follow_request as accepted if requester is already a follower
             const previouslyAccepted = isFollowRequestNotif && n.read && !requestAccepted && !requestDeclined && n.from_user_id ? followerIds.includes(n.from_user_id) : false;
             const showAccepted = requestAccepted || previouslyAccepted;
+
+            return (
               <div
                 key={n.id}
                 className="w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-colors bg-card"
