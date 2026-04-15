@@ -110,7 +110,13 @@ export function useChat() {
     return () => { supabase.removeChannel(channel); };
   }, [user, fetchConversations]);
 
-  return { conversations, loading, refetch: fetchConversations };
+  const clearUnread = useCallback((friendId: string) => {
+    setConversations((prev) =>
+      prev.map((c) => (c.friendId === friendId ? { ...c, unreadCount: 0 } : c))
+    );
+  }, []);
+
+  return { conversations, loading, refetch: fetchConversations, clearUnread };
 }
 
 export function useChatMessages(friendId: string | null) {
