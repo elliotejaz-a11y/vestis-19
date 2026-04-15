@@ -71,5 +71,12 @@ export function useNotifications() {
     setUnreadCount(0);
   };
 
-  return { notifications, unreadCount, loading, markAsRead, markAllAsRead, refresh: fetchNotifications };
+  const clearAll = async () => {
+    if (!user) return;
+    await supabase.from("notifications").delete().eq("user_id", user.id);
+    setNotifications([]);
+    setUnreadCount(0);
+  };
+
+  return { notifications, unreadCount, loading, markAsRead, markAllAsRead, clearAll, refresh: fetchNotifications };
 }
