@@ -600,7 +600,7 @@ function DiscoverTab() {
 // ─── Notifications Tab ───
 function NotificationsTab() {
   const { user } = useAuth();
-  const { notifications, markAsRead, loading, refresh } = useNotifications();
+  const { notifications, markAsRead, loading, refresh, clearAll } = useNotifications();
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
@@ -683,6 +683,13 @@ function NotificationsTab() {
 
   return (
     <div>
+      {!loading && notifications.length > 0 && (
+        <div className="flex justify-end mb-2">
+          <Button variant="ghost" size="sm" onClick={clearAll} className="text-xs text-destructive hover:text-destructive">
+            <X className="w-3.5 h-3.5 mr-1" /> Clear All
+          </Button>
+        </div>
+      )}
       {loading ? (
         <div className="flex justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-accent" /></div>
       ) : notifications.length === 0 ? (
