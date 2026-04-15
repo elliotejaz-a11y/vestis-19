@@ -602,18 +602,23 @@ function NotificationsTab() {
   const { user } = useAuth();
   const { notifications, markAsRead, loading, refresh } = useNotifications();
   const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
   const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
   const [acceptedRequestIds, setAcceptedRequestIds] = useState<string[]>([]);
   const [declinedRequestIds, setDeclinedRequestIds] = useState<string[]>([]);
 
-  const fetchFollowing = useCallback(async () => {
+  const fetchFollowData = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
-    setFollowingIds((data || []).map((f: any) => f.following_id));
+    const [{ data: following }, { data: followers }] = await Promise.all([
+      supabase.from("follows").select("following_id").eq("follower_id", user.id),
+      supabase.from("follows").select("follower_id").eq("following_id", user.id),
+    ]);
+    setFollowingIds((following || []).map((f: any) => f.following_id));
+    setFollowerIds((followers || []).map((f: any) => f.follower_id));
   }, [user]);
 
-  useEffect(() => { fetchFollowing(); }, [fetchFollowing]);
+  useEffect(() => { fetchFollowData(); }, [fetchFollowData]);
 
   const handleAcceptFollowRequest = async (notificationId: string, requesterId: string) => {
     if (!user) return;
