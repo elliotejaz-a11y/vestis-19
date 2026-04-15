@@ -47,12 +47,14 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
     if (!user) return;
     setProcessing(notificationId);
     try {
-      await supabase.from("follows").insert({ follower_id: requesterId, following_id: user.id } as any);
-      await supabase.from("follow_requests").delete().match({ requester_id: requesterId, target_id: user.id });
-      await supabase.rpc("notify_follow_accepted", { accepter_id: user.id, requester_id: requesterId });
-      await markAsRead(notificationId);
+      const { error } = await supabase.rpc("accept_follow_request", {
+        request_notification_id: notificationId,
+        request_requester_id: requesterId,
+      });
+      if (error) throw error;
       setAcceptedIds(prev => new Set(prev).add(notificationId));
       toast({ title: "Follow request accepted" });
+      await refresh();
     } catch (e) {
       toast({ title: "Error", description: "Failed to accept request", variant: "destructive" });
     }

@@ -624,10 +624,11 @@ function NotificationsTab() {
     if (!user) return;
     setRequestActionLoading(notificationId);
     try {
-      await supabase.from("follows").insert({ follower_id: requesterId, following_id: user.id });
-      await supabase.from("follow_requests").delete().match({ requester_id: requesterId, target_id: user.id });
-      await supabase.rpc("notify_follow_accepted", { accepter_id: user.id, requester_id: requesterId });
-      await markAsRead(notificationId);
+      const { error } = await supabase.rpc("accept_follow_request", {
+        request_notification_id: notificationId,
+        request_requester_id: requesterId,
+      });
+      if (error) throw error;
       setAcceptedRequestIds((prev) => [...prev, notificationId]);
       await refresh();
     } finally {
