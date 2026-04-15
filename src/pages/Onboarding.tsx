@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, HelpCircle } from "lucide-react";
+import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, HelpCircle, Pencil } from "lucide-react";
 import { StyleQuizSheet } from "@/components/StyleQuizSheet";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
@@ -77,7 +77,9 @@ interface OnboardingProps {
 export default function Onboarding({ editMode = false, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [editingUsername, setEditingUsername] = useState(false);
   const [bio, setBio] = useState("");
   const [profileError, setProfileError] = useState("");
   const [skinTone, setSkinTone] = useState(50);
@@ -97,6 +99,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   useEffect(() => {
     if (editMode && profile) {
       setAvatarUrl(profile.avatar_url || "");
+      setDisplayName(profile.display_name || "");
       setUsername(profile.username || "");
       setBio(profile.bio || "");
       setSkinTone(profile.skin_tone ? parseInt(profile.skin_tone) || 50 : 50);
@@ -112,10 +115,19 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     }
   }, [editMode, profile]);
 
+  // Load username and display name from profile for first-time onboarding
+  useEffect(() => {
+    if (user && !editMode && profile) {
+      if (profile.username) setUsername(profile.username);
+      if (profile.display_name) setDisplayName(profile.display_name);
+    }
+  }, [user, editMode, profile]);
+
   useEffect(() => {
     if (user && !editMode) {
       const pendingUsername = localStorage.getItem("pending_username");
       if (pendingUsername) {
+        setUsername(pendingUsername);
         supabase.from("profiles").update({ username: pendingUsername, username_changed_at: new Date().toISOString() } as any).eq("id", user.id).then(() => {
           localStorage.removeItem("pending_username");
         });
@@ -157,7 +169,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const steps = [
     {
       title: "Set up your profile",
-      subtitle: "Add a profile picture and bio",
+      subtitle: "Add a profile picture, name and bio",
       content: (
         <div className="space-y-5">
           <div className="flex flex-col items-center gap-3">
@@ -174,15 +186,42 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             <p className="text-xs text-muted-foreground">{uploading ? "Uploading..." : "Tap to add a profile picture"}</p>
           </div>
+          {/* Display Name */}
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1">Display Name</p>
+            <Input
+              value={displayName}
+              onChange={(e) => { setDisplayName(e.target.value); setProfileError(""); }}
+              placeholder="Your name"
+              className="rounded-xl bg-card text-sm"
+              maxLength={50}
+            />
+          </div>
+          {/* Username - show read-only with edit pencil, or editable */}
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1">Username</p>
-            <Input
-              value={username}
-              onChange={(e) => { setUsername(e.target.value); setProfileError(""); }}
-              placeholder="Choose a username"
-              className="rounded-xl bg-card text-sm"
-              maxLength={30}
-            />
+            {editingUsername ? (
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/60 select-none">@</span>
+                <Input
+                  value={username}
+                  onChange={(e) => { setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, "")); setProfileError(""); }}
+                  placeholder="username"
+                  className="rounded-xl bg-card text-sm pl-7"
+                  maxLength={30}
+                  autoFocus
+                />
+              </div>
+            ) : (
+              <button
+                onClick={() => setEditingUsername(true)}
+                className="w-full flex items-center justify-between rounded-xl bg-card border border-border px-3 py-2.5 text-sm text-foreground hover:border-accent/40 transition-colors"
+              >
+                <span className="text-muted-foreground/60 mr-0.5">@</span>
+                <span className="flex-1 text-left">{username || <span className="text-muted-foreground">username</span>}</span>
+                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            )}
           </div>
           {profileError && (
             <p className="text-xs text-destructive font-medium">{profileError}</p>
@@ -200,7 +239,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           </div>
         </div>
       ),
-      valid: !!avatarUrl && !!username.trim(),
+      valid: !!avatarUrl && !!username.trim() && !!displayName.trim(),
     },
     {
       title: "Account Privacy",
@@ -326,6 +365,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const handleNext = () => {
     if (step === 0) {
       if (!avatarUrl) { setProfileError("Please add a profile picture"); return; }
+      if (!displayName.trim()) { setProfileError("Please enter your display name"); return; }
       if (!username.trim()) { setProfileError("Please choose a username"); return; }
       setProfileError("");
     }
@@ -343,7 +383,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         preferred_colors: preferredColors,
         fashion_goals: null,
         onboarding_completed: true,
-        display_name: profile?.display_name || null,
+        display_name: displayName.trim() || null,
         avatar_url: avatarUrl || null,
         bio: bio || null,
         username: username.trim() || null,
