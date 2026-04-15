@@ -40,6 +40,7 @@ export default function UserProfilePage() {
   const { user } = useAuth();
   const { followingIds, followUser, unfollowUser, blockUser } = useSocial();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [loading, setLoading] = useState(true);
