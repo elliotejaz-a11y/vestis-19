@@ -365,6 +365,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const handleNext = () => {
     if (step === 0) {
       if (!avatarUrl) { setProfileError("Please add a profile picture"); return; }
+      if (!displayName.trim()) { setProfileError("Please enter your display name"); return; }
       if (!username.trim()) { setProfileError("Please choose a username"); return; }
       setProfileError("");
     }
@@ -382,7 +383,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         preferred_colors: preferredColors,
         fashion_goals: null,
         onboarding_completed: true,
-        display_name: profile?.display_name || null,
+        display_name: displayName.trim() || null,
         avatar_url: avatarUrl || null,
         bio: bio || null,
         username: username.trim() || null,
