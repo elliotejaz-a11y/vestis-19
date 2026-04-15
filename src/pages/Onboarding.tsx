@@ -77,7 +77,9 @@ interface OnboardingProps {
 export default function Onboarding({ editMode = false, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [editingUsername, setEditingUsername] = useState(false);
   const [bio, setBio] = useState("");
   const [profileError, setProfileError] = useState("");
   const [skinTone, setSkinTone] = useState(50);
@@ -97,6 +99,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   useEffect(() => {
     if (editMode && profile) {
       setAvatarUrl(profile.avatar_url || "");
+      setDisplayName(profile.display_name || "");
       setUsername(profile.username || "");
       setBio(profile.bio || "");
       setSkinTone(profile.skin_tone ? parseInt(profile.skin_tone) || 50 : 50);
