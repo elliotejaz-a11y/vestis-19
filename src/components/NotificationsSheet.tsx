@@ -15,7 +15,7 @@ interface Props {
 }
 
 export function NotificationsSheet({ open, onOpenChange }: Props) {
-  const { notifications, markAsRead, markAllAsRead, loading, refresh } = useNotifications();
+  const { notifications, markAsRead, markAllAsRead, loading, refresh, clearAll } = useNotifications();
   const { user } = useAuth();
   const { toast } = useToast();
   const [processing, setProcessing] = useState<string | null>(null);
