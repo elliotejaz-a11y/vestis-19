@@ -41,7 +41,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const hasTopHalf = items.some((item) => item.category === "tops" || item.category === "jumpers");
   const missingRequiredPieces = [!hasTopHalf ? "tops/jumpers" : null, !hasBottoms ? "bottoms" : null, !hasShoes ? "shoes" : null].filter(Boolean).join(" and ");
 
-  // Fetch weather
+  // Fetch weather - only prompt for permission once, then remember the choice
   useEffect(() => {
     const savedPermission = localStorage.getItem('weather_permission');
     if (savedPermission === 'denied') return;
@@ -62,7 +62,9 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
 
     if (savedPermission === 'granted') {
       navigator.geolocation?.getCurrentPosition(fetchWeather, () => {}, { timeout: 5000 });
-    } else {
+    } else if (savedPermission === null) {
+      // First time only — ask once and save the result permanently
+      localStorage.setItem('weather_permission', 'asked');
       navigator.geolocation?.getCurrentPosition(
         (pos) => {
           localStorage.setItem('weather_permission', 'granted');
