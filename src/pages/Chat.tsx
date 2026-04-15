@@ -749,7 +749,7 @@ function NotificationsTab() {
                     </div>
                   )}
 
-                  {isFollowRequestNotif && requestAccepted && (
+                  {isFollowRequestNotif && showAccepted && (
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <p className="text-[10px] text-accent font-medium">Accepted ✓</p>
                       {!alreadyFollowing && (
