@@ -697,8 +697,9 @@ function NotificationsTab() {
             const alreadyFollowing = n.from_user_id ? followingIds.includes(n.from_user_id) : false;
             const requestAccepted = acceptedRequestIds.includes(n.id);
             const requestDeclined = declinedRequestIds.includes(n.id);
-
-            return (
+            // Also treat read follow_request as accepted if requester is already a follower
+            const previouslyAccepted = isFollowRequestNotif && n.read && !requestAccepted && !requestDeclined && n.from_user_id ? followerIds.includes(n.from_user_id) : false;
+            const showAccepted = requestAccepted || previouslyAccepted;
               <div
                 key={n.id}
                 className="w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-colors bg-card"
