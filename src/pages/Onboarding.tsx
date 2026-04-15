@@ -82,6 +82,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [profileError, setProfileError] = useState("");
   const [skinTone, setSkinTone] = useState(50);
   const [styles, setStyles] = useState<string[]>([]);
+  const [showStyleQuiz, setShowStyleQuiz] = useState(false);
   const [customStyle, setCustomStyle] = useState("");
   const [bodyType, setBodyType] = useState("");
   const [bodyGender, setBodyGender] = useState<"female" | "male">("female");
