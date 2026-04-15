@@ -165,7 +165,7 @@ export default function Auth() {
         }
       } else {
         localStorage.setItem("pending_username", username);
-        localStorage.setItem("vestis_fresh_signup", "true");
+        
         setSignUpEmail(email);
         setSignUpSuccess(true);
       }
