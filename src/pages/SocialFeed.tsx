@@ -94,32 +94,25 @@ export default function SocialFeed() {
           {searchResults.length > 0 && (
             <div className="mt-2 rounded-xl bg-card border border-border/40 overflow-hidden">
               {searchResults.map((u) => (
-                <div
+                <button
                   key={u.id}
-                  className="w-full flex flex-col p-3 hover:bg-muted transition-colors"
+                  onClick={() => navigate(`/user/${u.id}`)}
+                  className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                      {u.avatar_url ? (
-                        <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs font-semibold text-foreground">{u.display_name || u.username}</p>
-                      {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
-                    </div>
+                  <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                    {u.avatar_url ? (
+                      <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
-                  <button
-                    onClick={() => { window.location.href = '/user/' + u.id; }}
-                    style={{ marginTop: '8px', padding: '6px 12px', borderRadius: '8px', backgroundColor: '#1a1a1a', color: 'white', border: 'none', cursor: 'pointer', fontSize: '13px', width: '100%' }}
-                  >
-                    View Profile
-                  </button>
-                </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-foreground truncate">{u.display_name || u.username}</p>
+                    {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
+                  </div>
+                </button>
               ))}
             </div>
           )}
