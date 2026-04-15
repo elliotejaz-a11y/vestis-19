@@ -600,7 +600,7 @@ function DiscoverTab() {
 // ─── Notifications Tab ───
 function NotificationsTab() {
   const { user } = useAuth();
-  const { notifications, markAsRead, loading, refresh } = useNotifications();
+  const { notifications, markAsRead, loading, refresh, clearAll } = useNotifications();
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
