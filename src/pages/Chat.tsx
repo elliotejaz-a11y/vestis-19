@@ -12,7 +12,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/currency";

@@ -194,7 +194,14 @@ export default function UserProfilePage() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-5">
         <p className="text-sm text-muted-foreground">User not found</p>
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mt-3">
+        <Button variant="ghost" onClick={() => {
+          const state = location.state as { from?: string } | null;
+          if (state?.from === "discover") {
+            navigate("/chat", { state: { tab: "discover" } });
+          } else {
+            navigate(-1);
+          }
+        }} className="mt-3">
           <ArrowLeft className="w-4 h-4 mr-1" /> Go Back
         </Button>
       </div>
@@ -204,7 +211,14 @@ export default function UserProfilePage() {
   return (
     <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-4 flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
+        <Button variant="ghost" size="sm" onClick={() => {
+          const state = location.state as { from?: string } | null;
+          if (state?.from === "discover") {
+            navigate("/chat", { state: { tab: "discover" } });
+          } else {
+            navigate(-1);
+          }
+        }} className="-ml-2">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back
         </Button>
         {!isOwnProfile && (
