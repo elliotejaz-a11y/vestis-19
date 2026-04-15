@@ -188,11 +188,18 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
         <SheetHeader>
           <div className="flex items-center justify-between">
             <SheetTitle className="text-lg font-bold tracking-tight">Notifications</SheetTitle>
-            {notifications.some(n => !n.read) && (
-              <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs text-accent">
-                <CheckCheck className="w-3.5 h-3.5 mr-1" /> Mark all read
-              </Button>
-            )}
+            <div className="flex items-center gap-1">
+              {notifications.some(n => !n.read) && (
+                <Button variant="ghost" size="sm" onClick={markAllAsRead} className="text-xs text-accent">
+                  <CheckCheck className="w-3.5 h-3.5 mr-1" /> Mark all read
+                </Button>
+              )}
+              {notifications.length > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearAll} className="text-xs text-destructive hover:text-destructive">
+                  <X className="w-3.5 h-3.5 mr-1" /> Clear All
+                </Button>
+              )}
+            </div>
           </div>
         </SheetHeader>
 
