@@ -600,9 +600,12 @@ function DiscoverTab() {
 // ─── Notifications Tab ───
 function NotificationsTab() {
   const { user } = useAuth();
-  const { notifications, markAsRead, markAllAsRead, loading, refresh } = useNotifications();
+  const { notifications, markAsRead, loading, refresh } = useNotifications();
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
+  const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
+  const [acceptedRequestIds, setAcceptedRequestIds] = useState<string[]>([]);
+  const [declinedRequestIds, setDeclinedRequestIds] = useState<string[]>([]);
 
   const fetchFollowing = useCallback(async () => {
     if (!user) return;
@@ -612,18 +615,63 @@ function NotificationsTab() {
 
   useEffect(() => { fetchFollowing(); }, [fetchFollowing]);
 
+  const handleAcceptFollowRequest = async (notificationId: string, requesterId: string) => {
+    if (!user) return;
+    setRequestActionLoading(notificationId);
+    try {
+      await supabase.from("follows").insert({ follower_id: requesterId, following_id: user.id });
+      await supabase.from("follow_requests").delete().match({ requester_id: requesterId, target_id: user.id });
+      await supabase.rpc("notify_follow_accepted", { accepter_id: user.id, requester_id: requesterId });
+      await markAsRead(notificationId);
+      setAcceptedRequestIds((prev) => [...prev, notificationId]);
+      await refresh();
+    } finally {
+      setRequestActionLoading(null);
+    }
+  };
+
+  const handleDeclineFollowRequest = async (notificationId: string, requesterId: string) => {
+    if (!user) return;
+    setRequestActionLoading(notificationId);
+    try {
+      await supabase.from("follow_requests").delete().match({ requester_id: requesterId, target_id: user.id });
+      await markAsRead(notificationId);
+      setDeclinedRequestIds((prev) => [...prev, notificationId]);
+      await refresh();
+    } finally {
+      setRequestActionLoading(null);
+    }
+  };
+
   const handleFollowBack = async (targetId: string) => {
     if (!user) return;
     setFollowingLoading(targetId);
-    await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_public")
+      .eq("id", targetId)
+      .single();
+
+    if (profile?.is_public === false) {
+      await supabase.from("follow_requests").insert({ requester_id: user.id, target_id: targetId, status: "pending" });
+      await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: targetId });
+    } else {
+      await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+    }
+
     setFollowingIds(prev => [...prev, targetId]);
     setFollowingLoading(null);
   };
 
   const getIcon = (type: string) => {
     switch (type) {
-      case "new_follower": return <UserPlus className="w-4 h-4 text-accent" />;
-      default: return <Bell className="w-4 h-4 text-muted-foreground" />;
+      case "new_follower":
+      case "follow_request":
+        return <UserPlus className="w-4 h-4 text-accent" />;
+      case "follow_accepted":
+        return <Check className="w-4 h-4 text-accent" />;
+      default:
+        return <Bell className="w-4 h-4 text-muted-foreground" />;
     }
   };
 
@@ -640,7 +688,10 @@ function NotificationsTab() {
         <div className="space-y-2">
           {notifications.map(n => {
             const isFollowerNotif = n.type === "new_follower" && n.from_user_id;
+            const isFollowRequestNotif = n.type === "follow_request" && n.from_user_id;
             const alreadyFollowing = n.from_user_id ? followingIds.includes(n.from_user_id) : false;
+            const requestAccepted = acceptedRequestIds.includes(n.id);
+            const requestDeclined = declinedRequestIds.includes(n.id);
 
             return (
               <div
@@ -659,6 +710,61 @@ function NotificationsTab() {
                   <p className="text-[10px] text-muted-foreground mt-0.5">
                     {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                   </p>
+
+                  {isFollowRequestNotif && !requestAccepted && !requestDeclined && !n.read && (
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAcceptFollowRequest(n.id, n.from_user_id!);
+                        }}
+                        disabled={requestActionLoading === n.id}
+                        className="rounded-xl text-xs h-7 bg-accent text-accent-foreground"
+                      >
+                        {requestActionLoading === n.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
+                        Accept
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeclineFollowRequest(n.id, n.from_user_id!);
+                        }}
+                        disabled={requestActionLoading === n.id}
+                        className="rounded-xl text-xs h-7"
+                      >
+                        <X className="w-3 h-3 mr-1" />
+                        Decline
+                      </Button>
+                    </div>
+                  )}
+
+                  {isFollowRequestNotif && requestAccepted && (
+                    <div className="flex items-center gap-2 mt-2 flex-wrap">
+                      <p className="text-[10px] text-accent font-medium">Accepted ✓</p>
+                      {!alreadyFollowing && (
+                        <Button
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleFollowBack(n.from_user_id!);
+                          }}
+                          disabled={followingLoading === n.from_user_id}
+                          className="rounded-xl text-xs h-7 bg-accent text-accent-foreground"
+                        >
+                          {followingLoading === n.from_user_id ? (
+                            <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                          ) : (
+                            <UserPlus className="w-3 h-3 mr-1" />
+                          )}
+                          Follow Back
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
                   {isFollowerNotif && !alreadyFollowing && (
                     <Button
                       size="sm"
