@@ -12,7 +12,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/currency";
@@ -54,7 +54,11 @@ export default function Chat() {
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const { notifications, unreadCount, markAllAsRead } = useNotifications();
-  const [activeTab, setActiveTab] = useState("messages");
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    const state = location.state as { tab?: string } | null;
+    return state?.tab || "messages";
+  });
 
   const initialFriendId = searchParams.get("with");
   const [selectedFriend, setSelectedFriend] = useState<{ id: string; name: string; avatar: string | null } | null>(null);
@@ -565,11 +569,11 @@ function DiscoverTab() {
                 key={p.id}
                 role="button"
                 tabIndex={0}
-                onClick={() => navigate(`/user/${p.id}`)}
+                onClick={() => navigate(`/user/${p.id}`, { state: { from: "discover" } })}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    navigate(`/user/${p.id}`);
+                    navigate(`/user/${p.id}`, { state: { from: "discover" } });
                   }
                 }}
                 className="flex cursor-pointer items-center gap-3 rounded-2xl border border-border/40 bg-card p-3 transition-colors hover:bg-muted/50"
