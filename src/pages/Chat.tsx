@@ -483,6 +483,7 @@ function FriendsTab() {
 // ─── Discover Tab ───
 function DiscoverTab() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [people, setPeople] = useState<FriendProfile[]>([]);
   const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [followerIds, setFollowerIds] = useState<string[]>([]);
@@ -560,7 +561,19 @@ function DiscoverTab() {
             const isFollowing = followingIds.includes(p.id);
             const isFriend = isMutualFriend(p.id);
             return (
-              <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40">
+              <div
+                key={p.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => navigate(`/user/${p.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    navigate(`/user/${p.id}`);
+                  }
+                }}
+                className="flex cursor-pointer items-center gap-3 rounded-2xl border border-border/40 bg-card p-3 transition-colors hover:bg-muted/50"
+              >
                 <Avatar url={p.avatar_url} name={p.display_name || p.username || "U"} size="w-12 h-12" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{p.display_name || p.username || "User"}</p>
@@ -576,7 +589,10 @@ function DiscoverTab() {
                 <Button
                   size="sm"
                   variant={isFollowing ? "outline" : "default"}
-                  onClick={() => handleFollow(p.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleFollow(p.id);
+                  }}
                   disabled={followingLoading === p.id}
                   className="rounded-xl text-xs h-8"
                 >
