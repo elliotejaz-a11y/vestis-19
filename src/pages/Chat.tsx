@@ -898,7 +898,7 @@ function ChatView({
 
   return (
     <div className="min-h-screen flex flex-col pb-24">
-      <header className="px-3 pt-12 pb-3 border-b border-border/40 flex items-center gap-3">
+      <header className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm px-3 pt-12 pb-3 border-b border-border/40 flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 -ml-1">
           <ArrowLeft className="w-5 h-5" />
         </Button>
