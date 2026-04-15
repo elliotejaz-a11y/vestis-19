@@ -145,11 +145,17 @@ export function useChatMessages(friendId: string | null) {
       const unreadIds = data
         .filter((m: any) => !m.read && m.receiver_id === user.id)
         .map((m: any) => m.id);
+
       if (unreadIds.length > 0) {
-        await supabase
-          .from("messages")
-          .update({ read: true })
-          .in("id", unreadIds);
+        setMessages((prev) =>
+          prev.map((message) =>
+            unreadIds.includes(message.id) ? { ...message, read: true } : message
+          )
+        );
+
+        await supabase.rpc("mark_messages_read", {
+          friend_user_id: friendId,
+        });
       }
     }
   }, [user, friendId]);
@@ -178,7 +184,8 @@ export function useChatMessages(friendId: string | null) {
               return [...filtered, msg];
             });
             if (msg.receiver_id === user.id && !msg.read) {
-              supabase.from("messages").update({ read: true }).eq("id", msg.id).then(() => {});
+              setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, read: true } : m));
+              supabase.rpc("mark_messages_read", { friend_user_id: friendId }).then(() => {});
             }
           }
         }
