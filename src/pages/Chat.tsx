@@ -719,7 +719,7 @@ function NotificationsTab() {
                     {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                   </p>
 
-                  {isFollowRequestNotif && !requestAccepted && !requestDeclined && !n.read && (
+                  {isFollowRequestNotif && !showAccepted && !requestDeclined && !n.read && (
                     <div className="flex gap-2 mt-2">
                       <Button
                         size="sm"
