@@ -602,18 +602,23 @@ function NotificationsTab() {
   const { user } = useAuth();
   const { notifications, markAsRead, loading, refresh } = useNotifications();
   const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
   const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
   const [acceptedRequestIds, setAcceptedRequestIds] = useState<string[]>([]);
   const [declinedRequestIds, setDeclinedRequestIds] = useState<string[]>([]);
 
-  const fetchFollowing = useCallback(async () => {
+  const fetchFollowData = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
-    setFollowingIds((data || []).map((f: any) => f.following_id));
+    const [{ data: following }, { data: followers }] = await Promise.all([
+      supabase.from("follows").select("following_id").eq("follower_id", user.id),
+      supabase.from("follows").select("follower_id").eq("following_id", user.id),
+    ]);
+    setFollowingIds((following || []).map((f: any) => f.following_id));
+    setFollowerIds((followers || []).map((f: any) => f.follower_id));
   }, [user]);
 
-  useEffect(() => { fetchFollowing(); }, [fetchFollowing]);
+  useEffect(() => { fetchFollowData(); }, [fetchFollowData]);
 
   const handleAcceptFollowRequest = async (notificationId: string, requesterId: string) => {
     if (!user) return;
@@ -692,6 +697,9 @@ function NotificationsTab() {
             const alreadyFollowing = n.from_user_id ? followingIds.includes(n.from_user_id) : false;
             const requestAccepted = acceptedRequestIds.includes(n.id);
             const requestDeclined = declinedRequestIds.includes(n.id);
+            // Also treat read follow_request as accepted if requester is already a follower
+            const previouslyAccepted = isFollowRequestNotif && n.read && !requestAccepted && !requestDeclined && n.from_user_id ? followerIds.includes(n.from_user_id) : false;
+            const showAccepted = requestAccepted || previouslyAccepted;
 
             return (
               <div
@@ -711,7 +719,7 @@ function NotificationsTab() {
                     {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
                   </p>
 
-                  {isFollowRequestNotif && !requestAccepted && !requestDeclined && !n.read && (
+                  {isFollowRequestNotif && !showAccepted && !requestDeclined && !n.read && (
                     <div className="flex gap-2 mt-2">
                       <Button
                         size="sm"
@@ -741,7 +749,7 @@ function NotificationsTab() {
                     </div>
                   )}
 
-                  {isFollowRequestNotif && requestAccepted && (
+                  {isFollowRequestNotif && showAccepted && (
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <p className="text-[10px] text-accent font-medium">Accepted ✓</p>
                       {!alreadyFollowing && (
