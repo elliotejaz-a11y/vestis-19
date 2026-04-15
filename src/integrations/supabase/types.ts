@@ -871,6 +871,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_follow_request: {
+        Args: { request_notification_id: string; request_requester_id: string }
+        Returns: undefined
+      }
       are_friends: {
         Args: { user_a: string; user_b: string }
         Returns: boolean
