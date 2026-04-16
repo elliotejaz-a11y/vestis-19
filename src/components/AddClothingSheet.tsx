@@ -17,7 +17,9 @@ const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leath
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  initialImageUrl?: string;
+  onClose?: () => void;
 }
 
 export function AddClothingSheet({ onAdd, children }: Props) {
