@@ -585,7 +585,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
       {/* Fullscreen image results overlay */}
       {showAllResults && (
-        <div className="fixed inset-0 bg-background z-[10001] flex flex-col">
+        <div className="fixed inset-0 bg-background z-[10001] flex flex-col overflow-hidden touch-auto">
           <div className="flex items-center justify-between px-5 pt-12 pb-3 border-b border-border">
             <button
               onClick={() => setShowAllResults(false)}
@@ -596,7 +596,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
             <h2 className="text-base font-bold text-foreground">Search Results</h2>
             <div className="w-10" />
           </div>
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto overscroll-contain p-4 -webkit-overflow-scrolling-touch" style={{ WebkitOverflowScrolling: 'touch' }}>
             <div className="grid grid-cols-3 gap-2">
               {searchResults.map((result, i) => (
                 <button
