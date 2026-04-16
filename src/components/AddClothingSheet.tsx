@@ -488,44 +488,6 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
           </Button>
         </div>
       </SheetContent>
-
-      {/* Fullscreen image results overlay */}
-      {showAllResults && (
-        <div className="fixed inset-0 bg-background z-[10001] flex flex-col overflow-hidden touch-auto">
-          <div className="flex items-center justify-between px-5 pt-12 pb-3 border-b border-border">
-            <button
-              onClick={() => setShowAllResults(false)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ← Back
-            </button>
-            <h2 className="text-base font-bold text-foreground">Search Results</h2>
-            <div className="w-10" />
-          </div>
-          <div className="flex-1 overflow-y-auto overscroll-contain p-4 -webkit-overflow-scrolling-touch" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <div className="grid grid-cols-3 gap-2">
-              {searchResults.map((result, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setShowAllResults(false);
-                    handleSelectSearchImage(result.url);
-                  }}
-                  className="relative aspect-square rounded-xl overflow-hidden border-2 border-border hover:border-accent transition-all hover:scale-[1.02]"
-                >
-                  <img
-                    src={result.thumbnail}
-                    alt={result.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </Sheet>
   );
 }
