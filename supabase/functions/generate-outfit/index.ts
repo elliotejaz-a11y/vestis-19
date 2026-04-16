@@ -249,7 +249,7 @@ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one p
                   },
                   reasoning: {
                     type: 'string',
-                    description: 'A detailed, personalised explanation (3-5 sentences) of why this outfit works. MUST reference: (1) how the chosen colours complement the user\'s skin tone specifically, (2) why the fabrics/textures suit the occasion and current weather conditions, (3) how the colour palette creates harmony (reference specific colour pairings), and (4) how it aligns with the user\'s style preference. Be specific — name the actual items, colours, and fabrics rather than speaking generically. Write as a knowledgeable stylist speaking directly to the user.',
+                    description: 'Fashion expert explanation of why these pieces work together, referencing color theory, fabric compatibility, occasion fit, and overall style cohesion. 2-4 sentences.',
                   },
                   style_tips: {
                     type: 'string',
