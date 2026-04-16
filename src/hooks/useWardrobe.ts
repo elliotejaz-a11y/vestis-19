@@ -178,7 +178,7 @@ export function useWardrobe() {
   const { toast } = useToast();
   const [items, setItems] = useState<ClothingItem[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!user) { setItems([]); setOutfits([]); setLoading(false); return; }
