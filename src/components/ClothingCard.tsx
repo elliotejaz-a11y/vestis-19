@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { Info, X, Loader2, RefreshCw } from "lucide-react";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
@@ -11,7 +11,7 @@ interface Props {
   compact?: boolean;
 }
 
-export function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemoval, compact }: Props) {
+export const ClothingCard = memo(function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemoval, compact }: Props) {
   const [showDelete, setShowDelete] = useState(false);
   const isProcessing = item.imageStatus === "processing";
   const isFailed = item.imageStatus === "failed";
@@ -82,4 +82,4 @@ export function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemova
       />
     </>
   );
-}
+});
