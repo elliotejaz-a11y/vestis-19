@@ -107,6 +107,80 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     return undefined;
   };
 
+  const handleImageSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    setSearchResults([]);
+    try {
+      const { data, error } = await supabase.functions.invoke("search-clothing-images", {
+        body: { query: searchQuery.trim() },
+      });
+      if (error) throw error;
+      setSearchResults(data?.images || []);
+      if (!data?.images?.length) {
+        toast({ title: "No results found", description: "Try a different search term." });
+      }
+    } catch (err) {
+      console.error("Image search failed:", err);
+      toast({ title: "Search failed", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSelectSearchImage = async (imgUrl: string) => {
+    setShowSearch(false);
+    setSearchResults([]);
+    setSearchQuery("");
+    setRemovingBg(true);
+    setImageUrl(imgUrl);
+
+    try {
+      const response = await fetch(imgUrl);
+      if (!response.ok) throw new Error("Failed to download image");
+      const blob = await response.blob();
+      const file = new File([blob], "search-image.png", { type: blob.type || "image/png" });
+
+      let cleanBlob: Blob;
+      try {
+        cleanBlob = await processClothingImage(file);
+        setImageUrl(URL.createObjectURL(cleanBlob));
+      } catch {
+        cleanBlob = file;
+        setImageUrl(URL.createObjectURL(file));
+      }
+      setRemovingBg(false);
+
+      // Run AI analysis
+      setAnalyzing(true);
+      try {
+        const resizedBlob = await resizeImageForAnalysis(cleanBlob, 1024);
+        const base64 = await fileToBase64(new File([resizedBlob], "search.jpg", { type: "image/jpeg" }));
+        const { data, error } = await supabase.functions.invoke("analyze-clothing", {
+          body: { imageBase64: base64 },
+        });
+        if (!error && data) {
+          setName(data.name || "");
+          setCategory(data.category || "");
+          setColors(data.color ? [data.color] : []);
+          setFabric(data.fabric || "");
+          setTags(data.style_tags || []);
+          if (data.estimated_price_nzd) setEstimatedPrice(data.estimated_price_nzd);
+          toast({ title: "AI Analysis Complete ✨", description: `Detected: ${data.name}` });
+        }
+      } catch (err) {
+        console.warn("AI analysis failed for searched image:", err);
+      } finally {
+        setAnalyzing(false);
+      }
+    } catch (err) {
+      console.error("Failed to process searched image:", err);
+      toast({ title: "Failed to load image", description: "Try another one.", variant: "destructive" });
+      setImageUrl("");
+      setRemovingBg(false);
+    }
+  };
+
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
