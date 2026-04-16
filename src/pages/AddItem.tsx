@@ -1,8 +1,9 @@
 import { useEffect } from "react";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { PresetItemsSheet } from "@/components/PresetItemsSheet";
+import { ImageSearchSheet } from "@/components/ImageSearchSheet";
 import { ClothingItem } from "@/types/wardrobe";
-import { Camera, Upload, Sparkles, Package, Home } from "lucide-react";
+import { Camera, Upload, Sparkles, Package, Home, Search } from "lucide-react";
 import heroImage from "@/assets/hero-wardrobe.jpg";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
 import { preloadBgRemovalModel } from "@/lib/image-processing";
