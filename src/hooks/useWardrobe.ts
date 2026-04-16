@@ -7,6 +7,14 @@ import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
 const isBottomsCategory = (category?: string) => (category || "").trim().toLowerCase() === "bottoms";
+const DETAILLESS_REASONING_PATTERNS = [
+  /^a curated look/i,
+  /curated look/i,
+  /combining complementary pieces/i,
+  /works well together/i,
+  /stylish choice/i,
+  /balanced outfit/i,
+];
 
 function ensureCategoryRequirement(
   selectedItems: ClothingItem[],
@@ -39,6 +47,86 @@ function ensureOutfitHasCorePieces(selectedItems: ClothingItem[], allItems: Clot
   const withBottoms = ensureCategoryRequirement(deduped, allItems, (item) => isBottomsCategory(item.category));
   const withShoes = ensureCategoryRequirement(withBottoms, allItems, (item) => isShoesCategory(item.category));
   return withShoes.slice(0, 5);
+}
+
+function formatList(values: string[]): string {
+  const unique = [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+  if (unique.length === 0) return "";
+  if (unique.length === 1) return unique[0];
+  if (unique.length === 2) return `${unique[0]} and ${unique[1]}`;
+  return `${unique.slice(0, -1).join(", ")}, and ${unique[unique.length - 1]}`;
+}
+
+function isDetailedReasoning(reasoning?: string | null): boolean {
+  const text = reasoning?.trim() ?? "";
+  if (text.length < 120) return false;
+  if (DETAILLESS_REASONING_PATTERNS.some((pattern) => pattern.test(text))) return false;
+
+  const detailSignals = [
+    /(skin tone|undertone|complexion)/i.test(text),
+    /(cotton|wool|linen|denim|silk|leather|knit|jersey|nylon|polyester|fabric|texture|breathable|structured|lightweight)/i.test(text),
+    /(weather|temperature|warm|cool|heat|chill|layer)/i.test(text),
+    /(occasion|business|casual|formal|meeting|workout|gym|date|interview|brunch|wedding)/i.test(text),
+    /(black|white|grey|gray|navy|beige|tan|blue|green|red|burgundy|maroon|pink|cream|brown|olive|yellow|orange|teal|charcoal|palette|colour|contrast|harmony)/i.test(text),
+    /(style|minimalist|classic|streetwear|preppy|smart|relaxed|sporty)/i.test(text),
+  ];
+
+  return detailSignals.filter(Boolean).length >= 4;
+}
+
+function buildOutfitReasoningFallback({
+  occasion,
+  selectedItems,
+  profile,
+  weather,
+}: {
+  occasion: string;
+  selectedItems: ClothingItem[];
+  profile?: {
+    skin_tone?: string | null;
+    style_preference?: string | null;
+  } | null;
+  weather?: { temp: number; description: string };
+}): string {
+  const itemNames = selectedItems.map((item) => item.name).filter(Boolean).slice(0, 4);
+  const colours = selectedItems.map((item) => item.color).filter(Boolean);
+  const fabrics = selectedItems.map((item) => item.fabric).filter(Boolean);
+  const categories = selectedItems.map((item) => item.category).filter(Boolean);
+  const colourText = formatList(colours).toLowerCase();
+  const fabricText = formatList(fabrics).toLowerCase();
+  const categoryText = formatList(categories).toLowerCase();
+  const itemText = formatList(itemNames);
+  const skinTone = profile?.skin_tone?.trim();
+  const stylePreference = profile?.style_preference?.trim();
+
+  const weatherFit = weather
+    ? weather.temp >= 22
+      ? "keeps the outfit light and breathable"
+      : weather.temp <= 12
+        ? "adds enough substance for cooler conditions without feeling bulky"
+        : "keeps the look comfortable and easy to wear through changing conditions"
+    : "suits the setting without feeling overdone";
+
+  const sentences = [
+    itemText
+      ? `${itemText} work together for ${occasion.toLowerCase()} because the mix of ${categoryText || "key wardrobe pieces"} feels intentional from top to bottom.`
+      : `This outfit feels right for ${occasion.toLowerCase()} because each piece supports the same overall direction rather than competing for attention.`,
+    colourText
+      ? skinTone
+        ? `The ${colourText} palette is balanced in a way that flatters your ${skinTone.toLowerCase()} skin tone, giving you contrast and depth without making the outfit feel too loud for the occasion.`
+        : `The ${colourText} palette creates clean contrast and visual balance, which helps the outfit feel polished and easy to wear.`
+      : null,
+    fabricText
+      ? weather
+        ? `The ${fabricText} fabrics also make sense here, because they match the ${occasion.toLowerCase()} brief while responding well to ${weather.description.toLowerCase()} weather at ${weather.temp}°C, which ${weatherFit}.`
+        : `The ${fabricText} fabrics fit the tone of ${occasion.toLowerCase()}, balancing comfort with the right amount of structure and texture.`
+      : null,
+    stylePreference
+      ? `It also aligns with your ${stylePreference.toLowerCase()} style preference, so the final look feels personal and believable instead of like a random mix of separate items.`
+      : `Overall, the outfit feels cohesive because the proportions, colours, and textures all point in the same direction.`,
+  ];
+
+  return sentences.filter(Boolean).join(" ");
 }
 
 export function useWardrobe() {
@@ -318,7 +406,7 @@ export function useWardrobe() {
         },
       });
     },
-    [user, items, toast]
+    [items, user, toast]
   );
 
   const updateItem = useCallback(
@@ -413,15 +501,22 @@ export function useWardrobe() {
 
         if (error) throw error;
 
+        const selectedItems: ClothingItem[] = ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
+        const resolvedReasoning = isDetailedReasoning(data.reasoning)
+          ? data.reasoning.trim()
+          : buildOutfitReasoningFallback({ occasion, selectedItems, profile, weather });
+        const resolvedStyleTips = typeof data.style_tips === "string" && data.style_tips.trim()
+          ? data.style_tips.trim()
+          : null;
+
         const { data: outfitRow, error: outfitErr } = await supabase
           .from("outfits")
-          .insert({ user_id: user.id, occasion, reasoning: data.reasoning || "", style_tips: data.style_tips || null })
+          .insert({ user_id: user.id, occasion, reasoning: resolvedReasoning, style_tips: resolvedStyleTips })
           .select()
           .single();
 
         if (outfitErr || !outfitRow) throw outfitErr;
 
-        const selectedItems: ClothingItem[] = ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
         if (selectedItems.length > 0) {
           await supabase.from("outfit_items").insert(
             selectedItems.map((si: ClothingItem) => ({ outfit_id: outfitRow.id, clothing_item_id: si.id }))
@@ -430,7 +525,7 @@ export function useWardrobe() {
 
         const outfit: Outfit = {
           id: outfitRow.id, occasion, items: selectedItems, createdAt: new Date(outfitRow.created_at),
-          reasoning: data.reasoning || "", styleTips: data.style_tips, saved: false,
+          reasoning: resolvedReasoning, styleTips: resolvedStyleTips || undefined, saved: false,
         };
         setOutfits((prev) => [outfit, ...prev]);
         return outfit;
@@ -453,10 +548,11 @@ export function useWardrobe() {
               .sort(() => Math.random() - 0.5)
               .slice(0, 2);
         const fallbackItems = ensureOutfitHasCorePieces(baseFallback, items);
+        const fallbackReasoning = buildOutfitReasoningFallback({ occasion, selectedItems: fallbackItems, profile, weather });
 
         const { data: outfitRow } = await supabase
           .from("outfits")
-          .insert({ user_id: user.id, occasion, reasoning: `A curated look for "${occasion}" combining complementary pieces.` })
+          .insert({ user_id: user.id, occasion, reasoning: fallbackReasoning })
           .select().single();
 
         if (outfitRow && fallbackItems.length > 0) {
@@ -467,7 +563,7 @@ export function useWardrobe() {
 
         const outfit: Outfit = {
           id: outfitRow?.id || crypto.randomUUID(), occasion, items: fallbackItems, createdAt: new Date(),
-          reasoning: `A curated look for "${occasion}" combining complementary pieces.`, saved: false,
+          reasoning: fallbackReasoning, saved: false,
         };
         setOutfits((prev) => [outfit, ...prev]);
         return outfit;
