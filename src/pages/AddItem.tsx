@@ -1,7 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { PresetItemsSheet } from "@/components/PresetItemsSheet";
-import { ImageSearchSheet } from "@/components/ImageSearchSheet";
+import { ImageSearchOverlay } from "@/components/ImageSearchSheet";
 import { ClothingItem } from "@/types/wardrobe";
 import { Camera, Upload, Sparkles, Package, Home, Search } from "lucide-react";
 import heroImage from "@/assets/hero-wardrobe.jpg";
