@@ -249,7 +249,7 @@ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one p
                   },
                   reasoning: {
                     type: 'string',
-                    description: 'Fashion expert explanation of why these pieces work together, referencing color theory, fabric compatibility, occasion fit, and overall style cohesion. 2-4 sentences.',
+                    description: 'Detailed explanation (4-6 sentences) of WHY this outfit works. MUST specifically address: (1) how the chosen colours complement the user\'s skin tone (reference the specific skin tone if provided), (2) why the fabrics/textures are appropriate for the occasion and current weather conditions, (3) how the colour palette creates harmony (reference specific colour pairings), (4) how the overall look aligns with the user\'s style preference. Be personal and specific — never generic filler. Example: "The navy wool blazer pairs beautifully with your olive skin tone, bringing out warm undertones. The cotton Oxford shirt in light blue creates a classic contrast against the navy..."',
                   },
                   style_tips: {
                     type: 'string',
