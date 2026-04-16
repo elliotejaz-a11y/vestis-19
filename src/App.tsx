@@ -9,11 +9,11 @@ import { useRecentlyDeleted } from "@/hooks/useRecentlyDeleted";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppTutorial } from "@/components/AppTutorial";
 
-import { lazy, Suspense, useCallback } from "react";
+import { lazy, Suspense, useCallback, useEffect } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { ThemeProvider } from "next-themes";
 
-// Lazy-loaded page components
+// Lazy-loaded page components — assigned to variables so we can preload them
 const Wardrobe = lazy(() => import("./pages/Wardrobe"));
 const AddItem = lazy(() => import("./pages/AddItem"));
 const Outfits = lazy(() => import("./pages/Outfits"));
@@ -34,6 +34,29 @@ const Community = lazy(() => import("./pages/policies/Community"));
 const Cookies = lazy(() => import("./pages/policies/Cookies"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
+// Eagerly preload ALL route chunks so every tab is instant on first tap.
+// This runs in the background after initial paint — users see the current page
+// immediately while the rest downloads silently.
+function preloadAllRoutes() {
+  const routes = [
+    () => import("./pages/Wardrobe"),
+    () => import("./pages/AddItem"),
+    () => import("./pages/Outfits"),
+    () => import("./pages/OutfitBuilder"),
+    () => import("./pages/Profile"),
+    () => import("./pages/Calendar"),
+    () => import("./pages/Feedback"),
+    () => import("./pages/SocialFeed"),
+    () => import("./pages/UserProfile"),
+    () => import("./pages/Friends"),
+    () => import("./pages/Chat"),
+  ];
+  // Stagger imports slightly so we don't block the main thread
+  routes.forEach((load, i) => {
+    setTimeout(load, i * 100);
+  });
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -45,13 +68,24 @@ const queryClient = new QueryClient({
   },
 });
 
-// Invisible fallback — no skeleton, no spinner, just an empty div that takes no space
+// Invisible fallback — no skeleton, no spinner
 const Noop = () => <div />;
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
 
-  // While auth is loading, show nothing — the HTML splash screen is still visible
+  // Preload all route chunks once auth resolves
+  useEffect(() => {
+    if (!loading && user) {
+      // Use requestIdleCallback if available, otherwise setTimeout
+      if ("requestIdleCallback" in window) {
+        (window as any).requestIdleCallback(preloadAllRoutes);
+      } else {
+        setTimeout(preloadAllRoutes, 200);
+      }
+    }
+  }, [loading, user]);
+
   if (loading) return <div />;
 
   if (!user || sessionStorage.getItem("vestis_recovery_mode") === "true") {
