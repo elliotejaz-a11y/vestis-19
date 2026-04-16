@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function AddItem({ onAdd }: Props) {
-  // Pre-download bg-removal model so uploads are instant
+  const [searchOpen, setSearchOpen] = useState(false);
   useEffect(() => { preloadBgRemovalModel(); }, []);
 
   return (
