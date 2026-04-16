@@ -497,6 +497,14 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
           </Button>
         </div>
       </SheetContent>
+      <ImageSearchOverlay
+        open={showSearch}
+        onClose={() => setShowSearch(false)}
+        onSelect={(url) => {
+          setShowSearch(false);
+          handleSelectSearchImage(url);
+        }}
+      />
     </Sheet>
   );
 }
