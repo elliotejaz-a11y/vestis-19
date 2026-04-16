@@ -162,7 +162,6 @@ export default function SocialFeed() {
               )}
             </>
           )}
-        </div>
       </div>
 
       {/* Story viewer */}
