@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 
@@ -33,8 +34,8 @@ function sortItems(items: ClothingItem[]) {
   });
 }
 
-export function OutfitCollagePreview({ items, showHeader = false, className, canvasClassName }: Props) {
-  const sorted = sortItems(items);
+export const OutfitCollagePreview = memo(function OutfitCollagePreview({ items, showHeader = false, className, canvasClassName }: Props) {
+  const sorted = useMemo(() => sortItems(items), [items]);
   const countByCategory: Record<string, number> = {};
 
   return (
@@ -75,4 +76,4 @@ export function OutfitCollagePreview({ items, showHeader = false, className, can
       </div>
     </div>
   );
-}
+});
