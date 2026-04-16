@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Sparkles, Loader2, DollarSign, RotateCw, RefreshCw, Search } from "lucide-react";
+import { Upload, Sparkles, Loader2, DollarSign, RotateCw, RefreshCw } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -17,11 +17,13 @@ const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leath
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  initialImageUrl?: string;
+  onClose?: () => void;
 }
 
-export function AddClothingSheet({ onAdd, children }: Props) {
-  const [open, setOpen] = useState(false);
+export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: Props) {
+  const [open, setOpen] = useState(!!initialImageUrl);
   const [imageUrl, setImageUrl] = useState("");
   const [backImageUrl, setBackImageUrl] = useState("");
   const [name, setName] = useState("");
@@ -38,12 +40,12 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [removingBg, setRemovingBg] = useState(false);
   const [rotation, setRotation] = useState(0);
 
-  // Image search state
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Array<{ url: string; thumbnail: string; title: string; source: string }>>([]);
-  const [searching, setSearching] = useState(false);
-  const [showAllResults, setShowAllResults] = useState(false);
+  // Auto-process initial image from search overlay
+  useEffect(() => {
+    if (initialImageUrl) {
+      handleSelectSearchImage(initialImageUrl);
+    }
+  }, [initialImageUrl]);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
@@ -108,31 +110,9 @@ export function AddClothingSheet({ onAdd, children }: Props) {
     return undefined;
   };
 
-  const handleImageSearch = async () => {
-    if (!searchQuery.trim()) return;
-    setSearching(true);
-    setSearchResults([]);
-    try {
-      const { data, error } = await supabase.functions.invoke("search-clothing-images", {
-        body: { query: searchQuery.trim() },
-      });
-      if (error) throw error;
-      setSearchResults(data?.images || []);
-      if (!data?.images?.length) {
-        toast({ title: "No results found", description: "Try a different search term." });
-      }
-    } catch (err) {
-      console.error("Image search failed:", err);
-      toast({ title: "Search failed", description: "Please try again.", variant: "destructive" });
-    } finally {
-      setSearching(false);
-    }
-  };
+  // handleSelectSearchImage is used both from inline and from initialImageUrl
 
   const handleSelectSearchImage = async (imgUrl: string) => {
-    setShowSearch(false);
-    setSearchResults([]);
-    setSearchQuery("");
     setRemovingBg(true);
     setImageUrl(imgUrl);
 
@@ -284,12 +264,19 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
     setSize(""); setPrivacy("public"); setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
-    setShowSearch(false); setSearchQuery(""); setSearchResults([]); setShowAllResults(false);
+  };
+
+  const handleOpenChange = (v: boolean) => {
+    setOpen(v);
+    if (!v) {
+      resetForm();
+      onClose?.();
+    }
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>{children}</SheetTrigger>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      {children && <SheetTrigger asChild>{children}</SheetTrigger>}
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
         <SheetHeader>
           <SheetTitle className="text-lg font-bold tracking-tight">Add to Wardrobe</SheetTitle>
@@ -297,97 +284,16 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
         <div className="mt-6 space-y-5">
           {!imageUrl ? (
-            <>
-              {!showSearch ? (
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-                  >
-                    <Upload className="w-8 h-8" />
-                    <span className="text-xs font-medium">Upload Photo</span>
-                  </button>
-                  <button
-                    onClick={() => setShowSearch(true)}
-                    className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-                  >
-                    <Search className="w-8 h-8" />
-                    <span className="text-xs font-medium">Search Online</span>
-                  </button>
-                  <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => { setShowSearch(false); setSearchResults([]); setSearchQuery(""); }}
-                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      ← Back
-                    </button>
-                    <span className="text-sm font-semibold text-foreground">Search Clothing Images</span>
-                  </div>
-                  <form onSubmit={(e) => { e.preventDefault(); handleImageSearch(); }} className="flex gap-2">
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="e.g. Black Nike running shorts"
-                      className="flex-1 rounded-xl bg-card"
-                      autoFocus
-                    />
-                    <Button
-                      type="submit"
-                      disabled={!searchQuery.trim() || searching}
-                      size="icon"
-                      className="rounded-xl shrink-0 bg-accent text-accent-foreground hover:bg-accent/90"
-                    >
-                      {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
-                    </Button>
-                  </form>
-                  {searching && (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 text-accent animate-spin" />
-                    </div>
-                  )}
-                  {!searching && searchResults.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-3 gap-2">
-                        {searchResults.slice(0, 3).map((result, i) => (
-                          <button
-                            key={i}
-                            onClick={() => handleSelectSearchImage(result.url)}
-                            className="relative aspect-square rounded-xl overflow-hidden border-2 border-border hover:border-accent transition-all hover:scale-[1.02]"
-                          >
-                            <img
-                              src={result.thumbnail}
-                              alt={result.title}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                            />
-                          </button>
-                        ))}
-                      </div>
-                      {searchResults.length > 3 && (
-                        <button
-                          onClick={() => setShowAllResults(true)}
-                          className="w-full py-2.5 rounded-xl bg-accent/10 text-accent text-xs font-semibold hover:bg-accent/20 transition-colors"
-                        >
-                          See all {searchResults.length} results
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {!searching && searchResults.length === 0 && (
-                    <div className="text-center py-6">
-                      <Search className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-                      <p className="text-xs text-muted-foreground">Search for any clothing item</p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">e.g. "white Nike Air Force 1" or "blue linen shirt"</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
+            <div className="flex gap-3">
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+              >
+                <Upload className="w-8 h-8" />
+                <span className="text-xs font-medium">Upload Photo</span>
+              </button>
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
+            </div>
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
               <img
@@ -582,44 +488,6 @@ export function AddClothingSheet({ onAdd, children }: Props) {
           </Button>
         </div>
       </SheetContent>
-
-      {/* Fullscreen image results overlay */}
-      {showAllResults && (
-        <div className="fixed inset-0 bg-background z-[10001] flex flex-col overflow-hidden touch-auto">
-          <div className="flex items-center justify-between px-5 pt-12 pb-3 border-b border-border">
-            <button
-              onClick={() => setShowAllResults(false)}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ← Back
-            </button>
-            <h2 className="text-base font-bold text-foreground">Search Results</h2>
-            <div className="w-10" />
-          </div>
-          <div className="flex-1 overflow-y-auto overscroll-contain p-4 -webkit-overflow-scrolling-touch" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <div className="grid grid-cols-3 gap-2">
-              {searchResults.map((result, i) => (
-                <button
-                  key={i}
-                  onClick={() => {
-                    setShowAllResults(false);
-                    handleSelectSearchImage(result.url);
-                  }}
-                  className="relative aspect-square rounded-xl overflow-hidden border-2 border-border hover:border-accent transition-all hover:scale-[1.02]"
-                >
-                  <img
-                    src={result.thumbnail}
-                    alt={result.title}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </Sheet>
   );
 }
