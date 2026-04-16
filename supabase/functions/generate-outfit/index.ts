@@ -211,7 +211,16 @@ If the user has a style preference (e.g. streetwear, minimalist, classic, preppy
 ## STEP 7: SELECT 2-5 ITEMS
 Build the outfit prioritising: 1 top, 1 bottom, 1 pair of shoes minimum. Add outerwear/accessories only if they genuinely enhance the outfit.
 
-Always explain your reasoning referencing the occasion tier, colour choices, and why pieces work together.`,
+## STEP 8: WRITE THE "WHY THIS WORKS" EXPLANATION
+Your reasoning is shown directly to the user and must read like a premium personal stylist speaking to them.
+- Write 4-6 full sentences and make it specific, not generic.
+- Explicitly explain why the chosen colours flatter the user's skin tone if skin tone is provided.
+- Explicitly explain why the fabrics and textures suit both the occasion and the weather.
+- Explicitly explain why the colours work together using the actual colours selected.
+- Explicitly explain how the outfit matches the user's stated style preference.
+- Name the actual selected items, colours, and fabrics where relevant.
+- NEVER write vague filler like "a curated look", "complementary pieces", "works well together", or "stylish choice" without giving a real reason.
+- If the explanation sounds generic, rewrite it until it feels personal and concrete.`,
           },
           {
             role: 'user',
@@ -228,7 +237,9 @@ User profile:
 Available wardrobe items:
 ${wardrobeSummary}
 
-Follow the 7-step decision process. First classify the occasion, then eliminate inappropriate items, then build a colour-harmonious outfit that flatters the user's skin tone and matches their style preference. Use their index numbers (1-based).
+Follow the 8-step decision process. First classify the occasion, then eliminate inappropriate items, then build a colour-harmonious outfit that flatters the user's skin tone and matches their style preference. Use their index numbers (1-based).
+
+The "reasoning" output is displayed in a WHY THIS WORKS section in the app, so it must be polished, user-facing, and detailed. Mention the user's skin tone or complexion if available, the actual colours chosen, the fabrics relative to the occasion and weather, and why the look fits their style preference. Do not use generic filler.
 
 MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes.`,
           },
