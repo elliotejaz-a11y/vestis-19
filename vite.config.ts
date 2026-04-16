@@ -18,4 +18,12 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  optimizeDeps: {
+    exclude: ["onnxruntime-web", "@imgly/background-removal"],
+  },
+  build: {
+    rollupOptions: {
+      external: ["onnxruntime-web", "onnxruntime-web/webgpu"],
+    },
+  },
 }));
