@@ -66,6 +66,7 @@ function AppRoutes() {
 function AuthenticatedApp() {
   const { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, loading } = useWardrobe();
   const { deletedItems, addToDeleted, removeFromDeleted } = useRecentlyDeleted();
+  const isFirstLoad = loading && items.length === 0;
 
   const handleSoftRemove = useCallback((id: string) => {
     const item = items.find((i) => i.id === id);
@@ -90,7 +91,7 @@ function AuthenticatedApp() {
       <Suspense fallback={<PageSkeleton />}>
       <Routes>
         <Route path="/" element={
-          loading ? <PageSkeleton /> :
+          isFirstLoad ? <PageSkeleton /> :
           <Wardrobe
             items={items}
             outfits={outfits}
@@ -104,21 +105,21 @@ function AuthenticatedApp() {
         } />
         <Route path="/add" element={<AddItem onAdd={addItem} />} />
         <Route path="/outfits" element={
-          loading ? <PageSkeleton /> :
+          isFirstLoad ? <PageSkeleton /> :
           <Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />
         } />
         <Route path="/builder" element={
-          loading ? <PageSkeleton /> :
+          isFirstLoad ? <PageSkeleton /> :
           <OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />
         } />
         <Route path="/friends" element={<Friends />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/calendar" element={
-          loading ? <PageSkeleton /> :
+          isFirstLoad ? <PageSkeleton /> :
           <CalendarPage outfits={outfits} />
         } />
         <Route path="/profile" element={
-          loading ? <PageSkeleton /> :
+          isFirstLoad ? <PageSkeleton /> :
           <Profile
             items={items}
             outfits={outfits}
