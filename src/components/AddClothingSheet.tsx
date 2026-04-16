@@ -40,12 +40,12 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
   const [removingBg, setRemovingBg] = useState(false);
   const [rotation, setRotation] = useState(0);
 
-  // Image search state
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<Array<{ url: string; thumbnail: string; title: string; source: string }>>([]);
-  const [searching, setSearching] = useState(false);
-  const [showAllResults, setShowAllResults] = useState(false);
+  // Auto-process initial image from search overlay
+  useEffect(() => {
+    if (initialImageUrl) {
+      handleSelectSearchImage(initialImageUrl);
+    }
+  }, [initialImageUrl]);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
