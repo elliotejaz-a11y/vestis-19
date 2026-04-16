@@ -350,22 +350,32 @@ export function AddClothingSheet({ onAdd, children }: Props) {
                     </div>
                   )}
                   {!searching && searchResults.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
-                      {searchResults.map((result, i) => (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-3 gap-2">
+                        {searchResults.slice(0, 3).map((result, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSelectSearchImage(result.url)}
+                            className="relative aspect-square rounded-xl overflow-hidden border-2 border-border hover:border-accent transition-all hover:scale-[1.02]"
+                          >
+                            <img
+                              src={result.thumbnail}
+                              alt={result.title}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                      {searchResults.length > 3 && (
                         <button
-                          key={i}
-                          onClick={() => handleSelectSearchImage(result.url)}
-                          className="relative aspect-square rounded-xl overflow-hidden border-2 border-border hover:border-accent transition-all hover:scale-[1.02]"
+                          onClick={() => setShowAllResults(true)}
+                          className="w-full py-2.5 rounded-xl bg-accent/10 text-accent text-xs font-semibold hover:bg-accent/20 transition-colors"
                         >
-                          <img
-                            src={result.thumbnail}
-                            alt={result.title}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                          />
+                          See all {searchResults.length} results
                         </button>
-                      ))}
+                      )}
                     </div>
                   )}
                   {!searching && searchResults.length === 0 && (
