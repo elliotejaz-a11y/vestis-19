@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -34,158 +35,196 @@ export interface SocialComment {
   user?: { display_name: string | null; username: string | null; avatar_url: string | null };
 }
 
+const PAGE_SIZE = 15;
+
+async function enrichPostsWithProfiles(postData: any[], userId: string) {
+  const userIds = [...new Set(postData.map((p: any) => p.user_id))];
+  const [{ data: profiles }, { data: myLikes }] = await Promise.all([
+    supabase.from("profiles").select("id, display_name, username, avatar_url").in("id", userIds),
+    supabase.from("social_likes").select("post_id").eq("user_id", userId),
+  ]);
+  const likedPostIds = new Set((myLikes || []).map((l: any) => l.post_id));
+  const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+  return postData.map((p: any) => ({
+    ...p,
+    user: profileMap.get(p.user_id),
+    liked_by_me: likedPostIds.has(p.id),
+  }));
+}
+
 export function useSocial() {
   const { user } = useAuth();
-  const [posts, setPosts] = useState<SocialPost[]>([]);
-  const [stories, setStories] = useState<SocialStory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [followingIds, setFollowingIds] = useState<string[]>([]);
+  const queryClient = useQueryClient();
 
-  const fetchFeed = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
+  // Following IDs
+  const { data: followingIds = [] } = useQuery({
+    queryKey: ["following", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
+      return (data || []).map((f: any) => f.following_id);
+    },
+    enabled: !!user,
+    staleTime: 30_000,
+  });
 
-    // Fetch following IDs
-    const { data: followData } = await supabase
-      .from("follows")
-      .select("following_id")
-      .eq("follower_id", user.id);
-    const fIds = (followData || []).map((f: any) => f.following_id);
-    setFollowingIds(fIds);
+  // Infinite scroll posts
+  const {
+    data: postsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: postsLoading,
+  } = useInfiniteQuery({
+    queryKey: ["social-posts", user?.id],
+    queryFn: async ({ pageParam }: { pageParam: string | null }) => {
+      if (!user) return { posts: [], nextCursor: null };
+      let query = supabase
+        .from("social_posts")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE);
 
-    // Fetch posts (from followed users + own + public)
-    const { data: postData } = await supabase
-      .from("social_posts")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(50);
+      if (pageParam) {
+        query = query.lt("created_at", pageParam);
+      }
 
-    if (postData) {
-      // Fetch profiles for post authors
-      const userIds = [...new Set(postData.map((p: any) => p.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, display_name, username, avatar_url")
-        .in("id", userIds);
+      const { data: postData } = await query;
+      if (!postData || postData.length === 0) return { posts: [], nextCursor: null };
 
-      // Check which posts I liked
-      const { data: myLikes } = await supabase
-        .from("social_likes")
-        .select("post_id")
-        .eq("user_id", user.id);
-      const likedPostIds = new Set((myLikes || []).map((l: any) => l.post_id));
+      const enriched = await enrichPostsWithProfiles(postData, user.id);
+      const nextCursor = postData.length === PAGE_SIZE ? postData[postData.length - 1].created_at : null;
+      return { posts: enriched as SocialPost[], nextCursor };
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: !!user,
+    staleTime: 15_000,
+    gcTime: 5 * 60_000,
+  });
 
-      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-      setPosts(postData.map((p: any) => ({
-        ...p,
-        user: profileMap.get(p.user_id),
-        liked_by_me: likedPostIds.has(p.id),
-      })));
-    }
+  const posts = postsData?.pages.flatMap((p) => p.posts) ?? [];
 
-    // Fetch active stories
-    const { data: storyData } = await supabase
-      .from("social_stories")
-      .select("*")
-      .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false });
-
-    if (storyData) {
+  // Stories
+  const { data: stories = [], isLoading: storiesLoading } = useQuery({
+    queryKey: ["social-stories", user?.id],
+    queryFn: async () => {
+      if (!user) return [];
+      const { data: storyData } = await supabase
+        .from("social_stories")
+        .select("*")
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false });
+      if (!storyData) return [];
       const userIds = [...new Set(storyData.map((s: any) => s.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, display_name, username, avatar_url")
-        .in("id", userIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url").in("id", userIds);
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-      setStories(storyData.map((s: any) => ({
-        ...s,
-        user: profileMap.get(s.user_id),
-      })));
-    }
+      return storyData.map((s: any) => ({ ...s, user: profileMap.get(s.user_id) })) as SocialStory[];
+    },
+    enabled: !!user,
+    staleTime: 30_000,
+  });
 
-    setLoading(false);
-  }, [user]);
+  const loading = postsLoading && storiesLoading;
 
-  useEffect(() => { fetchFeed(); }, [fetchFeed]);
+  // Optimistic like toggle
+  const toggleLikeMutation = useMutation({
+    mutationFn: async ({ postId, liked }: { postId: string; liked: boolean }) => {
+      if (!user) return;
+      if (liked) {
+        await supabase.from("social_likes").delete().match({ user_id: user.id, post_id: postId });
+        await supabase.rpc("decrement_post_likes", { post_id_param: postId });
+      } else {
+        await supabase.from("social_likes").insert({ user_id: user.id, post_id: postId } as any);
+        await supabase.rpc("increment_post_likes", { post_id_param: postId });
+      }
+    },
+    onMutate: async ({ postId, liked }) => {
+      await queryClient.cancelQueries({ queryKey: ["social-posts"] });
+      const prev = queryClient.getQueryData(["social-posts", user?.id]);
+      queryClient.setQueryData(["social-posts", user?.id], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            posts: page.posts.map((p: SocialPost) =>
+              p.id === postId
+                ? { ...p, liked_by_me: !liked, likes_count: liked ? Math.max(0, p.likes_count - 1) : p.likes_count + 1 }
+                : p
+            ),
+          })),
+        };
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(["social-posts", user?.id], context.prev);
+    },
+  });
 
+  const toggleLike = useCallback((postId: string, liked: boolean) => {
+    toggleLikeMutation.mutate({ postId, liked });
+  }, [toggleLikeMutation]);
+
+  // Create post
   const createPost = async (imageUrls: string[], caption: string, outfitId?: string) => {
     if (!user) return;
     const { error } = await supabase.from("social_posts").insert({
-      user_id: user.id,
-      image_urls: imageUrls,
-      caption,
-      outfit_id: outfitId || null,
+      user_id: user.id, image_urls: imageUrls, caption, outfit_id: outfitId || null,
     } as any);
-    if (!error) await fetchFeed();
+    if (!error) queryClient.invalidateQueries({ queryKey: ["social-posts"] });
     return error;
   };
 
   const createStory = async (imageUrl: string, caption: string) => {
     if (!user) return;
     const { error } = await supabase.from("social_stories").insert({
-      user_id: user.id,
-      image_url: imageUrl,
-      caption,
+      user_id: user.id, image_url: imageUrl, caption,
     } as any);
-    if (!error) await fetchFeed();
+    if (!error) queryClient.invalidateQueries({ queryKey: ["social-stories"] });
     return error;
   };
 
-  const toggleLike = async (postId: string, liked: boolean) => {
+  // Optimistic delete
+  const deletePost = useCallback(async (postId: string) => {
     if (!user) return;
-    if (liked) {
-      await supabase.from("social_likes").delete().match({ user_id: user.id, post_id: postId });
-      await supabase.rpc('decrement_post_likes', { post_id_param: postId });
-    } else {
-      await supabase.from("social_likes").insert({ user_id: user.id, post_id: postId } as any);
-      await supabase.rpc('increment_post_likes', { post_id_param: postId });
-    }
-    setPosts(prev => prev.map(p => p.id === postId ? {
-      ...p,
-      liked_by_me: !liked,
-      likes_count: liked ? Math.max(0, p.likes_count - 1) : p.likes_count + 1,
-    } : p));
-  };
+    queryClient.setQueryData(["social-posts", user.id], (old: any) => {
+      if (!old) return old;
+      return {
+        ...old,
+        pages: old.pages.map((page: any) => ({
+          ...page,
+          posts: page.posts.filter((p: SocialPost) => p.id !== postId),
+        })),
+      };
+    });
+    await supabase.from("social_posts").delete().eq("id", postId);
+  }, [user, queryClient]);
 
   const followUser = async (targetId: string) => {
     if (!user) return;
-    // Check if target is private
-    const { data: targetProfile } = await supabase
-      .from("profiles")
-      .select("is_public")
-      .eq("id", targetId)
-      .single();
-
+    const { data: targetProfile } = await supabase.from("profiles").select("is_public").eq("id", targetId).single();
     if (targetProfile && !targetProfile.is_public) {
-      // Send follow request
       await supabase.from("follow_requests").insert({ requester_id: user.id, target_id: targetId } as any);
       return "requested";
     }
-
     await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId } as any);
-    setFollowingIds(prev => [...prev, targetId]);
+    queryClient.invalidateQueries({ queryKey: ["following"] });
     return "followed";
   };
 
   const unfollowUser = async (targetId: string) => {
     if (!user) return;
     await supabase.from("follows").delete().match({ follower_id: user.id, following_id: targetId });
-    setFollowingIds(prev => prev.filter(id => id !== targetId));
-  };
-
-  const deletePost = async (postId: string) => {
-    if (!user) return;
-    await supabase.from("social_posts").delete().eq("id", postId);
-    setPosts(prev => prev.filter(p => p.id !== postId));
+    queryClient.invalidateQueries({ queryKey: ["following"] });
   };
 
   const uploadSocialImage = async (file: File): Promise<string | null> => {
     if (!user) return null;
     const ext = file.name.split(".").pop() || "jpg";
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage
-      .from("social-media")
-      .upload(path, file, { contentType: file.type });
+    const { error } = await supabase.storage.from("social-media").upload(path, file, { contentType: file.type });
     if (error) return null;
     const { data } = supabase.storage.from("social-media").getPublicUrl(path);
     return data.publicUrl;
@@ -207,10 +246,16 @@ export function useSocial() {
     return (data || []).map((b: any) => b.blocked_id);
   };
 
+  const refreshFeed = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["social-posts"] });
+    queryClient.invalidateQueries({ queryKey: ["social-stories"] });
+  }, [queryClient]);
+
   return {
     posts, stories, loading, followingIds,
     createPost, createStory, toggleLike, followUser, unfollowUser,
-    deletePost, uploadSocialImage, refreshFeed: fetchFeed,
+    deletePost, uploadSocialImage, refreshFeed,
     blockUser, unblockUser, getBlockedIds,
+    fetchNextPage, hasNextPage, isFetchingNextPage,
   };
 }
