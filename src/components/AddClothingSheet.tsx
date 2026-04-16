@@ -22,8 +22,8 @@ interface Props {
   onClose?: () => void;
 }
 
-export function AddClothingSheet({ onAdd, children }: Props) {
-  const [open, setOpen] = useState(false);
+export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: Props) {
+  const [open, setOpen] = useState(!!initialImageUrl);
   const [imageUrl, setImageUrl] = useState("");
   const [backImageUrl, setBackImageUrl] = useState("");
   const [name, setName] = useState("");
