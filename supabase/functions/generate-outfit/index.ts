@@ -171,10 +171,10 @@ Determine the formality tier:
 - **BUSINESS** (meeting, interview, office): Smart trousers/chinos, blazers, dress shoes, collared shirts. Muted, refined colours. NO streetwear, graphic tees, or casual trainers.
 - **SMART CASUAL** (dinner, date night, brunch): Mix of polished and relaxed — smart jeans, loafers, knitwear, clean sneakers acceptable.
 - **CASUAL** (day out, errands, weekend): Relaxed fits, t-shirts, jeans, trainers, hoodies all fine. NO suits or blazers unless the user's style is specifically formal.
-- **ACTIVE** (gym, sports, hiking): Performance fabrics, trainers, athletic wear.
+- **ACTIVE** (gym, sports, hiking): Performance fabrics, trainers, athletic wear. For GYM specifically: shorts + compression top or t-shirt ONLY. NO accessories, NO layering, NO thick/warm clothing, NO jackets, NO jumpers, NO hats, NO outerwear. Keep it to 3 items max (top, shorts, trainers).
 
 ## STEP 2: ELIMINATE INAPPROPRIATE ITEMS
-Before selecting, mentally remove ALL items that clash with the occasion tier. E.g. for BUSINESS: remove graphic tees, joggers, flip-flops, bucket hats. For CASUAL: deprioritise suits, ties, formal shoes.
+Before selecting, mentally remove ALL items that clash with the occasion tier. E.g. for BUSINESS: remove graphic tees, joggers, flip-flops, bucket hats. For CASUAL: deprioritise suits, ties, formal shoes. For GYM/ACTIVE: remove ALL accessories, hats, outerwear, jumpers, thick fabrics, warm clothing — only keep lightweight performance items like shorts, t-shirts, compression tops, and trainers.
 
 ## STEP 3: MATCH THE USER'S SKIN TONE (if provided)
 Use these flattering colour guidelines:
