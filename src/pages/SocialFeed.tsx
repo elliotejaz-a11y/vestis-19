@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { StoriesBar } from "@/components/StoriesBar";
 import { PostCard } from "@/components/PostCard";
 import { CreatePostSheet } from "@/components/CreatePostSheet";
-import { FeedSkeleton, StoriesSkeleton } from "@/components/FeedSkeleton";
 import { useSocial, SocialStory } from "@/hooks/useSocial";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -132,17 +131,12 @@ export default function SocialFeed() {
         </div>
       )}
 
-      {/* Stories */}
-      {loading ? <StoriesSkeleton /> : (
-        <StoriesBar stories={stories} onAdd={() => setShowCreateStory(true)} onView={setViewingStory} />
-      )}
+      {/* Stories — always render immediately */}
+      <StoriesBar stories={stories} onAdd={() => setShowCreateStory(true)} onView={setViewingStory} />
 
-      {/* Posts */}
-      {loading ? (
-        <FeedSkeleton />
-      ) : (
-        <div className="space-y-2 mt-2">
-          {displayPosts.length === 0 ? (
+      {/* Posts — always render immediately, data fills in */}
+      <div className="space-y-2 mt-2">
+        {displayPosts.length === 0 && !loading ? (
             <div className="text-center py-16 px-5">
               <p className="text-sm font-medium text-foreground">
                 {tab === "feed" ? "No posts yet" : "Nothing to discover"}
