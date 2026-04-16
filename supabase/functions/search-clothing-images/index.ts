@@ -28,8 +28,8 @@ serve(async (req) => {
       );
     }
 
-    // Append "clothing" to bias results toward clothing items
-    const searchQuery = `${query.trim()} clothing item product photo`;
+    // Bias toward product-only images: exclude people, models, lifestyle
+    const searchQuery = `${query.trim()} clothing item product photo flat lay -model -person -wearing -outfit -lifestyle`;
 
     const response = await fetch("https://google.serper.dev/images", {
       method: "POST",
