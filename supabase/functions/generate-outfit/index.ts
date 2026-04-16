@@ -306,13 +306,35 @@ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one p
     const result = JSON.parse(toolCall.function.arguments);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
-    const selectedItems = normalizeSelectionWithRequiredCore(
+    let selectedItems = normalizeSelectionWithRequiredCore(
       rawSelectedIndices
         .map((idx: unknown) => Number(idx))
         .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= items.length)
         .map((idx: number) => items[idx - 1]),
       items
     );
+
+    // Post-processing: enforce gym/workout rules — strip outerwear, jumpers, accessories
+    const occasionLower = occasion.toLowerCase();
+    const isGymOccasion = ['gym', 'workout', 'sports', 'hiking', 'active'].some(k => occasionLower.includes(k));
+    if (isGymOccasion) {
+      const forbiddenCategories = ['outerwear', 'jumpers', 'accessories', 'hats'];
+      selectedItems = selectedItems.filter((item: any) => !forbiddenCategories.includes(normalizeCategory(item?.category)));
+      // Ensure we still have top + bottom + shoes after filtering
+      if (!selectedItems.some(isTopHalf)) {
+        const fallbackTop = items.find((i: any) => normalizeCategory(i?.category) === 'tops');
+        if (fallbackTop) selectedItems.unshift(fallbackTop);
+      }
+      if (!selectedItems.some(isBottom)) {
+        const fallbackBottom = items.find(isBottom);
+        if (fallbackBottom) selectedItems.push(fallbackBottom);
+      }
+      if (!selectedItems.some(isShoe)) {
+        const fallbackShoe = items.find(isShoe);
+        if (fallbackShoe) selectedItems.push(fallbackShoe);
+      }
+      selectedItems = dedupeById(selectedItems).slice(0, 3);
+    }
 
     return new Response(JSON.stringify({
       items: selectedItems,
