@@ -284,7 +284,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
     setSize(""); setPrivacy("public"); setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
-    setShowSearch(false); setSearchQuery(""); setSearchResults([]);
+    setShowSearch(false); setSearchQuery(""); setSearchResults([]); setShowAllResults(false);
   };
 
   return (
