@@ -184,7 +184,6 @@ export function useWardrobe() {
     if (!user) { setItems([]); setOutfits([]); setLoading(false); return; }
 
     const fetchAll = async () => {
-      setLoading(true);
       const { data: clothingData } = await supabase
         .from("clothing_items")
         .select("*")
