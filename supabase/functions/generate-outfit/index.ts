@@ -171,10 +171,20 @@ Determine the formality tier:
 - **BUSINESS** (meeting, interview, office): Smart trousers/chinos, blazers, dress shoes, collared shirts. Muted, refined colours. NO streetwear, graphic tees, or casual trainers.
 - **SMART CASUAL** (dinner, date night, brunch): Mix of polished and relaxed — smart jeans, loafers, knitwear, clean sneakers acceptable.
 - **CASUAL** (day out, errands, weekend): Relaxed fits, t-shirts, jeans, trainers, hoodies all fine. NO suits or blazers unless the user's style is specifically formal.
-- **ACTIVE** (gym, sports, hiking): Performance fabrics, trainers, athletic wear.
+- **ACTIVE** (gym, sports, hiking): Performance fabrics, trainers, athletic wear. For gym/workout requests specifically, strongly prioritise shorts plus either a fitted compression top, fitted performance t-shirt, or athletic tank.
 
 ## STEP 2: ELIMINATE INAPPROPRIATE ITEMS
 Before selecting, mentally remove ALL items that clash with the occasion tier. E.g. for BUSINESS: remove graphic tees, joggers, flip-flops, bucket hats. For CASUAL: deprioritise suits, ties, formal shoes.
+
+### SPECIAL FILTER: GYM / WORKOUT
+If the occasion is gym, workout, training, lifting, cardio, or exercise:
+- DO NOT choose accessories, jewellery, hats, scarves, belts, bags, or decorative extras.
+- DO NOT layer clothing.
+- DO NOT choose coats, jackets, blazers, hoodies, jumpers, knitwear, or other warm/thick garments.
+- Prefer breathable, lightweight, fitted or performance-oriented fabrics.
+- Prefer shorts over trousers/joggers/jeans unless shorts are completely unavailable.
+- Prefer a compression top, fitted athletic top, or clean performance t-shirt over bulky tops.
+- Keep the outfit streamlined: ideally 3 items max = top + bottoms + shoes.
 
 ## STEP 3: MATCH THE USER'S SKIN TONE (if provided)
 Use these flattering colour guidelines:
@@ -204,12 +214,20 @@ Avoid clashing combinations (e.g. red+orange, navy+black in casual contexts, bro
 - Don't pair denim with denim unless intentionally styled
 - Mix textures: knit with cotton, wool with silk, leather with denim
 - Match fabric weight to weather/occasion
+- For gym/workout outfits, favour moisture-wicking, stretch, lightweight, breathable fabrics and avoid anything insulating or bulky.
 
 ## STEP 6: STYLE PREFERENCE ALIGNMENT
 If the user has a style preference (e.g. streetwear, minimalist, classic, preppy), STRONGLY favour items matching that aesthetic. A minimalist user shouldn't get loud patterns; a streetwear user shouldn't get formal blazers for casual occasions.
 
 ## STEP 7: SELECT 2-5 ITEMS
 Build the outfit prioritising: 1 top, 1 bottom, 1 pair of shoes minimum. Add outerwear/accessories only if they genuinely enhance the outfit.
+
+### GYM OUTPUT RULES
+If the occasion is gym/workout:
+- Return 2-3 items only.
+- Include exactly one top, exactly one bottom, and exactly one pair of shoes.
+- Do not include accessories or layering pieces.
+- Prefer simple, sporty colours and clean combinations over fashion-forward styling.
 
 Always explain your reasoning referencing the occasion tier, colour choices, and why pieces work together.`,
           },
@@ -229,6 +247,8 @@ Available wardrobe items:
 ${wardrobeSummary}
 
 Follow the 7-step decision process. First classify the occasion, then eliminate inappropriate items, then build a colour-harmonious outfit that flatters the user's skin tone and matches their style preference. Use their index numbers (1-based).
+
+If the occasion is gym/workout, prefer shorts and a fitted compression/performance top, avoid accessories, avoid layering, and avoid thick/warm clothing.
 
 MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes.`,
           },
