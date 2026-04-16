@@ -1,11 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Search, Compass } from "lucide-react";
+import { Plus, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StoriesBar } from "@/components/StoriesBar";
 import { PostCard } from "@/components/PostCard";
 import { CreatePostSheet } from "@/components/CreatePostSheet";
+import { FeedSkeleton, StoriesSkeleton } from "@/components/FeedSkeleton";
 import { useSocial, SocialStory } from "@/hooks/useSocial";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,7 +17,11 @@ type Tab = "feed" | "discover";
 
 export default function SocialFeed() {
   const { user } = useAuth();
-  const { posts, stories, loading, toggleLike, deletePost, createPost, createStory, uploadSocialImage, refreshFeed } = useSocial();
+  const {
+    posts, stories, loading, toggleLike, deletePost,
+    createPost, createStory, uploadSocialImage,
+    fetchNextPage, hasNextPage, isFetchingNextPage,
+  } = useSocial();
   const [tab, setTab] = useState<Tab>("feed");
   const [showCreatePost, setShowCreatePost] = useState(false);
   const [showCreateStory, setShowCreateStory] = useState(false);
@@ -25,8 +30,24 @@ export default function SocialFeed() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
   const navigate = useNavigate();
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const handleSearch = async (query: string) => {
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!sentinelRef.current || !hasNextPage) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query);
     if (query.trim().length < 3) { setSearchResults([]); return; }
     setSearching(true);
@@ -38,10 +59,11 @@ export default function SocialFeed() {
       .limit(10);
     setSearchResults((data || []).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
     setSearching(false);
-  };
+  }, []);
 
   const feedPosts = posts;
   const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.avatar_url && p.user?.username && !/^user\d*$/i.test(p.user.username));
+  const displayPosts = tab === "feed" ? feedPosts : discoverPosts;
 
   return (
     <div className="min-h-screen pb-24">
@@ -49,12 +71,7 @@ export default function SocialFeed() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Social</h1>
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9"
-              onClick={() => setShowCreatePost(true)}
-            >
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowCreatePost(true)}>
               <Plus className="w-5 h-5" />
             </Button>
           </div>
@@ -66,21 +83,17 @@ export default function SocialFeed() {
         <button
           onClick={() => setTab("feed")}
           className={cn(
-            "px-4 py-1.5 rounded-full text-xs font-medium transition-all",
+            "px-4 py-1.5 rounded-full text-xs font-medium transition-transform duration-150",
             tab === "feed" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border"
           )}
-        >
-          Feed
-        </button>
+        >Feed</button>
         <button
           onClick={() => setTab("discover")}
           className={cn(
-            "px-4 py-1.5 rounded-full text-xs font-medium transition-all",
+            "px-4 py-1.5 rounded-full text-xs font-medium transition-transform duration-150",
             tab === "discover" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border"
           )}
-        >
-          <Compass className="w-3 h-3 inline mr-1" /> Discover
-        </button>
+        ><Compass className="w-3 h-3 inline mr-1" /> Discover</button>
       </div>
 
       {tab === "discover" && (
@@ -97,7 +110,7 @@ export default function SocialFeed() {
                 <button
                   key={u.id}
                   onClick={() => navigate(`/user/${u.id}`)}
-                  className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-transform duration-150 text-left"
                 >
                   <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
                     {u.avatar_url ? (
@@ -120,57 +133,47 @@ export default function SocialFeed() {
       )}
 
       {/* Stories */}
-      <StoriesBar
-        stories={stories}
-        onAdd={() => setShowCreateStory(true)}
-        onView={setViewingStory}
-      />
+      {loading ? <StoriesSkeleton /> : (
+        <StoriesBar stories={stories} onAdd={() => setShowCreateStory(true)} onView={setViewingStory} />
+      )}
 
       {/* Posts */}
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-6 h-6 animate-spin text-accent" />
-        </div>
+        <FeedSkeleton />
       ) : (
         <div className="space-y-2 mt-2">
-          {(tab === "feed" ? feedPosts : discoverPosts).length === 0 ? (
+          {displayPosts.length === 0 ? (
             <div className="text-center py-16 px-5">
               <p className="text-sm font-medium text-foreground">
                 {tab === "feed" ? "No posts yet" : "Nothing to discover"}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {tab === "feed"
-                  ? "Follow people or share your first outfit!"
-                  : "Be the first to post!"}
+                {tab === "feed" ? "Follow people or share your first outfit!" : "Be the first to post!"}
               </p>
-              <Button
-                onClick={() => setShowCreatePost(true)}
-                className="mt-4 rounded-2xl bg-accent text-accent-foreground"
-                size="sm"
-              >
+              <Button onClick={() => setShowCreatePost(true)} className="mt-4 rounded-2xl bg-accent text-accent-foreground" size="sm">
                 <Plus className="w-4 h-4 mr-1" /> Create Post
               </Button>
             </div>
           ) : (
-            (tab === "feed" ? feedPosts : discoverPosts).map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                onLike={toggleLike}
-                onDelete={deletePost}
-                isOwn={post.user_id === user?.id}
-              />
-            ))
+            <>
+              {displayPosts.map((post) => (
+                <PostCard key={post.id} post={post} onLike={toggleLike} onDelete={deletePost} isOwn={post.user_id === user?.id} />
+              ))}
+              {/* Infinite scroll sentinel */}
+              <div ref={sentinelRef} className="h-1" />
+              {isFetchingNextPage && (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
 
       {/* Story viewer */}
       {viewingStory && (
-        <div
-          className="fixed inset-0 z-50 bg-background flex flex-col"
-          onClick={() => setViewingStory(null)}
-        >
+        <div className="fixed inset-0 z-50 bg-background flex flex-col" onClick={() => setViewingStory(null)}>
           <div className="flex items-center gap-3 px-4 py-3">
             <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
               {viewingStory.user?.avatar_url ? (
@@ -184,16 +187,10 @@ export default function SocialFeed() {
             <span className="text-xs font-semibold text-foreground">
               {viewingStory.user?.username || viewingStory.user?.display_name}
             </span>
-            <button className="ml-auto text-xs text-muted-foreground" onClick={() => setViewingStory(null)}>
-              ✕
-            </button>
+            <button className="ml-auto text-xs text-muted-foreground" onClick={() => setViewingStory(null)}>✕</button>
           </div>
           <div className="flex-1 relative">
-            <img
-              src={viewingStory.image_url}
-              alt=""
-              className="w-full h-full object-contain"
-            />
+            <img src={viewingStory.image_url} alt="" className="w-full h-full object-contain" />
             {viewingStory.caption && (
               <div className="absolute bottom-8 left-4 right-4 bg-background/70 backdrop-blur rounded-xl p-3">
                 <p className="text-sm text-foreground">{viewingStory.caption}</p>
@@ -203,21 +200,8 @@ export default function SocialFeed() {
         </div>
       )}
 
-      {/* Create sheets */}
-      <CreatePostSheet
-        open={showCreatePost}
-        onOpenChange={setShowCreatePost}
-        onSubmit={(urls, caption) => createPost(urls, caption)}
-        uploadImage={uploadSocialImage}
-        type="post"
-      />
-      <CreatePostSheet
-        open={showCreateStory}
-        onOpenChange={setShowCreateStory}
-        onSubmit={(urls, caption) => createStory(urls[0], caption)}
-        uploadImage={uploadSocialImage}
-        type="story"
-      />
+      <CreatePostSheet open={showCreatePost} onOpenChange={setShowCreatePost} onSubmit={(urls, caption) => createPost(urls, caption)} uploadImage={uploadSocialImage} type="post" />
+      <CreatePostSheet open={showCreateStory} onOpenChange={setShowCreateStory} onSubmit={(urls, caption) => createStory(urls[0], caption)} uploadImage={uploadSocialImage} type="story" />
     </div>
   );
 }

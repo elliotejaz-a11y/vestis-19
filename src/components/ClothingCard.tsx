@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, memo } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { Info, X, Loader2, RefreshCw } from "lucide-react";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { LazyImage } from "@/components/LazyImage";
 
 interface Props {
   item: ClothingItem;
@@ -11,23 +12,23 @@ interface Props {
   compact?: boolean;
 }
 
-export function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemoval, compact }: Props) {
+export const ClothingCard = memo(function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemoval, compact }: Props) {
   const [showDelete, setShowDelete] = useState(false);
   const isProcessing = item.imageStatus === "processing";
   const isFailed = item.imageStatus === "failed";
 
   return (
     <>
-      <div className="group relative rounded-2xl overflow-hidden bg-card border border-border/40 shadow-sm hover:shadow-md transition-shadow duration-300">
+      <div className="group relative rounded-2xl overflow-hidden bg-card border border-border/40 shadow-sm hover:shadow-md transition-transform duration-150">
         <div
           className={`${compact ? "aspect-square" : "aspect-[3/4]"} bg-white dark:bg-neutral-800 cursor-pointer relative`}
           onClick={() => onDetail?.(item)}
         >
-          <img
+          <LazyImage
             src={item.imageUrl}
             alt={item.name}
             className="w-full h-full object-contain"
-            loading="lazy"
+            fallbackClassName={compact ? "aspect-square" : "aspect-[3/4]"}
           />
           {isProcessing && (
             <div className="absolute inset-0 bg-background/75 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
@@ -55,7 +56,7 @@ export function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemova
           <p className="text-xs font-semibold truncate text-foreground">{item.name}</p>
           <p className="text-[10px] text-muted-foreground capitalize">{item.category} · {item.color}</p>
         </div>
-        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
           {onDetail && (
             <button
               onClick={() => onDetail(item)}
@@ -82,4 +83,4 @@ export function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemova
       />
     </>
   );
-}
+});

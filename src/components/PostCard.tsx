@@ -1,8 +1,9 @@
 import { SocialPost } from "@/hooks/useSocial";
 import { Heart, MessageCircle, Trash2, User, MoreVertical, Flag } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, memo } from "react";
 import { useNavigate } from "react-router-dom";
+import { LazyImage } from "@/components/LazyImage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,7 +19,7 @@ interface Props {
   isOwn?: boolean;
 }
 
-export function PostCard({ post, onLike, onDelete, isOwn }: Props) {
+export const PostCard = memo(function PostCard({ post, onLike, onDelete, isOwn }: Props) {
   const [currentImage, setCurrentImage] = useState(0);
   const [showReport, setShowReport] = useState(false);
   const navigate = useNavigate();
@@ -74,10 +75,11 @@ export function PostCard({ post, onLike, onDelete, isOwn }: Props) {
 
         {/* Images */}
         <div className="relative aspect-square bg-muted">
-          <img
+          <LazyImage
             src={post.image_urls[currentImage]}
             alt=""
             className="w-full h-full object-cover"
+            fallbackClassName="aspect-square"
           />
           {post.image_urls.length > 1 && (
             <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
@@ -101,8 +103,8 @@ export function PostCard({ post, onLike, onDelete, isOwn }: Props) {
             <button onClick={() => onLike(post.id, !!post.liked_by_me)}>
               <Heart
                 className={cn(
-                  "w-6 h-6 transition-all",
-                  post.liked_by_me ? "fill-accent text-accent" : "text-foreground"
+                  "w-6 h-6 transition-transform duration-150",
+                  post.liked_by_me ? "fill-accent text-accent scale-110" : "text-foreground scale-100"
                 )}
               />
             </button>
@@ -132,4 +134,4 @@ export function PostCard({ post, onLike, onDelete, isOwn }: Props) {
       />
     </>
   );
-}
+});
