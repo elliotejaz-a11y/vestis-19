@@ -17,6 +17,7 @@ import FollowListSheet from "@/components/FollowListSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import { ChangePasswordSheet } from "@/components/ChangePasswordSheet";
+import { getSkinToneDisplay } from "@/lib/skinTone";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -322,7 +323,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               {profile.skin_tone && (
                 <div className="bg-muted rounded-xl p-2.5">
                   <p className="text-muted-foreground">Skin Tone</p>
-                  <p className="font-medium text-foreground capitalize">{profile.skin_tone.replace(/-/g, " ")}</p>
+                  <p className="font-medium text-foreground">{getSkinToneDisplay(profile.skin_tone)}</p>
                 </div>
               )}
               {profile.style_preference && (

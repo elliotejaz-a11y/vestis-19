@@ -4,9 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
+import { getSkinToneDisplay } from "@/lib/skinTone";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
 const isBottomsCategory = (category?: string) => (category || "").trim().toLowerCase() === "bottoms";
+const isTopsCategory = (category?: string) => (category || "").trim().toLowerCase() === "tops";
+const GYM_OCCASION_PATTERN = /\b(gym|workout|training|exercise|fitness|run|running|jog|jogging|cardio|lift|lifting|weights?|pilates|yoga|sport|sports)\b/i;
+const GYM_TOP_POSITIVE_PATTERN = /\b(t-?shirt|tee|compression|activewear|athletic|performance|training|workout|gym|sport|sports|polyester|spandex|elastane|nylon|dry[-\s]?fit|moisture[-\s]?wicking|tight(?:-?fitting)?|fitted|muscle|jersey)\b/i;
+const GYM_TOP_NEGATIVE_PATTERN = /\b(jacket|coat|hoodie|jumper|sweater|cardigan|blazer|outerwear|parka|puffer|fleece|windbreaker|flannel|dress shirt|button[-\s]?up|oxford|knit|wool|zip[-\s]?up|anorak|shell)\b/i;
+const GYM_BOTTOM_POSITIVE_PATTERN = /\b(shorts?|track ?pants?|trackpants?|joggers?|training pants?|workout pants?|athletic|performance|training|workout|gym|sport|sports|lightweight|polyester|spandex|elastane|nylon)\b/i;
+const GYM_BOTTOM_NEGATIVE_PATTERN = /\b(jeans?|denim|chinos?|slacks?|trousers?|dress pants?|formal|corduroy|cargo|skirt|wool)\b/i;
+const GYM_SHOE_NEGATIVE_PATTERN = /\b(sandals?|slides?|flip[-\s]?flops?|heels?|boots?|loafers?|oxfords?|derbies?|brogues?|mules?|slippers?)\b/i;
 const DETAILLESS_REASONING_PATTERNS = [
   /^a curated look/i,
   /curated look/i,
@@ -57,6 +65,42 @@ function formatList(values: string[]): string {
   return `${unique.slice(0, -1).join(", ")}, and ${unique[unique.length - 1]}`;
 }
 
+function getItemSearchText(item: ClothingItem): string {
+  return [item.name, item.category, item.color, item.fabric, item.notes, ...(item.tags || [])]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function isGymOccasion(occasion: string): boolean {
+  return GYM_OCCASION_PATTERN.test(occasion);
+}
+
+function isGymTop(item: ClothingItem): boolean {
+  if (!isTopsCategory(item.category)) return false;
+  const text = getItemSearchText(item);
+  return !GYM_TOP_NEGATIVE_PATTERN.test(text) && GYM_TOP_POSITIVE_PATTERN.test(text);
+}
+
+function isGymBottom(item: ClothingItem): boolean {
+  if (!isBottomsCategory(item.category)) return false;
+  const text = getItemSearchText(item);
+  return !GYM_BOTTOM_NEGATIVE_PATTERN.test(text) && GYM_BOTTOM_POSITIVE_PATTERN.test(text);
+}
+
+function isGymShoe(item: ClothingItem): boolean {
+  if (!isShoesCategory(item.category)) return false;
+  return !GYM_SHOE_NEGATIVE_PATTERN.test(getItemSearchText(item));
+}
+
+function ensureGymOutfitHasOnlyAllowedPieces(selectedItems: ClothingItem[], allItems: ClothingItem[]): ClothingItem[] {
+  const deduped = selectedItems.filter((item, index, arr) => arr.findIndex((x) => x.id === item.id) === index);
+  const top = deduped.find(isGymTop) ?? allItems.find(isGymTop);
+  const bottom = deduped.find(isGymBottom) ?? allItems.find(isGymBottom);
+  const shoes = deduped.find(isGymShoe) ?? allItems.find(isGymShoe);
+  return [top, bottom, shoes].filter(Boolean) as ClothingItem[];
+}
+
 function isDetailedReasoning(reasoning?: string | null): boolean {
   const text = reasoning?.trim() ?? "";
   if (text.length < 120) return false;
@@ -96,7 +140,7 @@ function buildOutfitReasoningFallback({
   const fabricText = formatList(fabrics).toLowerCase();
   const categoryText = formatList(categories).toLowerCase();
   const itemText = formatList(itemNames);
-  const skinTone = profile?.skin_tone?.trim();
+  const skinTone = getSkinToneDisplay(profile?.skin_tone)?.trim();
   const stylePreference = profile?.style_preference?.trim();
 
   const weatherFit = weather
@@ -484,13 +528,14 @@ export function useWardrobe() {
       }
 
       try {
+        const gymRequest = isGymOccasion(occasion);
         const { data, error } = await supabase.functions.invoke("generate-outfit", {
           body: {
             occasion,
             items,
             weather,
             userProfile: profile ? {
-              skinTone: profile.skin_tone,
+              skinTone: getSkinToneDisplay(profile.skin_tone),
               stylePreference: profile.style_preference,
               bodyType: profile.body_type,
               preferredColors: profile.preferred_colors,
@@ -501,7 +546,9 @@ export function useWardrobe() {
 
         if (error) throw error;
 
-        const selectedItems: ClothingItem[] = ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
+        const selectedItems: ClothingItem[] = gymRequest
+          ? ensureGymOutfitHasOnlyAllowedPieces((data.items || []) as ClothingItem[], items)
+          : ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
         const resolvedReasoning = isDetailedReasoning(data.reasoning)
           ? data.reasoning.trim()
           : buildOutfitReasoningFallback({ occasion, selectedItems, profile, weather });
@@ -531,6 +578,31 @@ export function useWardrobe() {
         return outfit;
       } catch (err) {
         console.error("AI outfit generation failed:", err);
+        const gymRequest = isGymOccasion(occasion);
+        if (gymRequest) {
+          const gymFallbackItems = ensureGymOutfitHasOnlyAllowedPieces([], items);
+          if (gymFallbackItems.length === 3) {
+            const fallbackReasoning = buildOutfitReasoningFallback({ occasion, selectedItems: gymFallbackItems, profile, weather });
+            const { data: outfitRow } = await supabase
+              .from("outfits")
+              .insert({ user_id: user.id, occasion, reasoning: fallbackReasoning })
+              .select().single();
+
+            if (outfitRow) {
+              await supabase.from("outfit_items").insert(
+                gymFallbackItems.map((si) => ({ outfit_id: outfitRow.id, clothing_item_id: si.id }))
+              );
+            }
+
+            const outfit: Outfit = {
+              id: outfitRow?.id || crypto.randomUUID(), occasion, items: gymFallbackItems, createdAt: new Date(),
+              reasoning: fallbackReasoning, saved: false,
+            };
+            setOutfits((prev) => [outfit, ...prev]);
+            return outfit;
+          }
+        }
+
         const nonCoreCategories = [...new Set(
           items
             .filter((i) => !isShoesCategory(i.category) && !isBottomsCategory(i.category))

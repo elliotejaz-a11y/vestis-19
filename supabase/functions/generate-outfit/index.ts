@@ -7,12 +7,30 @@ const ALLOWED_ORIGINS = [
   'https://1830068e-1c44-4713-a94f-43ffd21bb2c7.lovableproject.com',
 ];
 
-const GYM_OCCASION_PATTERN = /\b(gym|workout|training|exercise|fitness)\b/i;
+const GYM_OCCASION_PATTERN = /\b(gym|workout|training|exercise|fitness|run|running|jog|jogging|cardio|lift|lifting|weights?|pilates|yoga|sport|sports)\b/i;
 const GYM_TOP_POSITIVE_PATTERN = /\b(t-?shirt|tee|compression|activewear|athletic|performance|training|workout|gym|sport|sports|polyester|spandex|elastane|nylon|dry[-\s]?fit|moisture[-\s]?wicking|tight(?:-?fitting)?|fitted)\b/i;
-const GYM_TOP_NEGATIVE_PATTERN = /\b(jacket|coat|hoodie|jumper|sweater|cardigan|blazer|outerwear|parka|puffer|fleece|windbreaker|flannel|dress shirt|button[-\s]?up|oxford|knit|wool)\b/i;
+const GYM_TOP_NEGATIVE_PATTERN = /\b(jacket|coat|hoodie|jumper|sweater|cardigan|blazer|outerwear|parka|puffer|fleece|windbreaker|flannel|dress shirt|button[-\s]?up|oxford|knit|wool|zip[-\s]?up|anorak|shell)\b/i;
 const GYM_BOTTOM_POSITIVE_PATTERN = /\b(shorts?|track ?pants?|trackpants?|joggers?|training pants?|workout pants?|athletic|performance|training|workout|gym|sport|sports|lightweight|polyester|spandex|elastane|nylon)\b/i;
 const GYM_BOTTOM_NEGATIVE_PATTERN = /\b(jeans?|denim|chinos?|slacks?|trousers?|dress pants?|formal|corduroy|cargo|skirt|wool)\b/i;
 const GYM_SHOE_NEGATIVE_PATTERN = /\b(sandals?|slides?|flip[-\s]?flops?|heels?|boots?|loafers?|oxfords?|derbies?|brogues?|mules?|slippers?)\b/i;
+
+const SKIN_TONE_LABELS = [
+  { value: 0, label: 'Porcelain' },
+  { value: 7, label: 'Ivory' },
+  { value: 14, label: 'Warm Ivory' },
+  { value: 21, label: 'Light Beige' },
+  { value: 29, label: 'Warm Beige' },
+  { value: 36, label: 'Golden Beige' },
+  { value: 43, label: 'Honey' },
+  { value: 50, label: 'Golden Tan' },
+  { value: 57, label: 'Caramel' },
+  { value: 64, label: 'Chestnut' },
+  { value: 71, label: 'Mocha' },
+  { value: 79, label: 'Espresso' },
+  { value: 86, label: 'Deep Cocoa' },
+  { value: 93, label: 'Rich Ebony' },
+  { value: 100, label: 'Midnight' },
+] as const;
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || '';
@@ -60,7 +78,7 @@ function isGymTop(item: any): boolean {
   if (normalizeCategory(item?.category) !== 'tops') return false;
   const text = getItemSearchText(item);
   if (GYM_TOP_NEGATIVE_PATTERN.test(text)) return false;
-  return GYM_TOP_POSITIVE_PATTERN.test(text) || true;
+  return GYM_TOP_POSITIVE_PATTERN.test(text);
 }
 
 function isGymBottom(item: any): boolean {
@@ -74,6 +92,23 @@ function isGymShoe(item: any): boolean {
   if (normalizeCategory(item?.category) !== 'shoes') return false;
   const text = getItemSearchText(item);
   return !GYM_SHOE_NEGATIVE_PATTERN.test(text);
+}
+
+function normalizeSkinTone(input: unknown): string {
+  const raw = String(input || '').trim();
+  if (!raw) return 'not specified';
+
+  const numeric = Number(raw);
+  if (Number.isFinite(numeric)) {
+    return SKIN_TONE_LABELS.reduce((closest, stop) => {
+      const currentDistance = Math.abs(stop.value - numeric);
+      const bestDistance = Math.abs(closest.value - numeric);
+      return currentDistance < bestDistance ? stop : closest;
+    }, SKIN_TONE_LABELS[0]).label;
+  }
+
+  const matched = SKIN_TONE_LABELS.find((stop) => stop.label.toLowerCase() === raw.toLowerCase());
+  return matched?.label ?? raw;
 }
 
 function dedupeById(items: any[]): any[] {
@@ -165,6 +200,7 @@ serve(async (req) => {
     }
 
     const { occasion, items, userProfile, weather } = await req.json();
+    const normalizedSkinTone = normalizeSkinTone(userProfile?.skinTone);
 
     // Input validation
     if (!occasion || typeof occasion !== 'string' || occasion.length > 200) {
@@ -306,7 +342,7 @@ Your reasoning is shown directly to the user and must read like a premium person
 ${weather ? `\nCurrent weather: ${weather.temp}\u00B0C, ${weather.description}. Factor this into your outfit choices.\n` : ''}
 ${userProfile ? `
 User profile:
-- Skin tone: ${userProfile.skinTone || 'not specified'} (USE THIS for colour flattery — see skin tone guidelines)
+ - Skin tone: ${normalizedSkinTone} (USE THIS for colour flattery — see skin tone guidelines)
 - Style preference: ${userProfile.stylePreference || 'not specified'} (CRITICAL: match this style closely!)
 - Body type: ${userProfile.bodyType || 'not specified'}
 - Preferred colour palettes: ${(userProfile.preferredColors || []).join(', ') || 'not specified'}
@@ -319,7 +355,7 @@ Follow the 8-step decision process. First classify the occasion, then eliminate 
 
 The "reasoning" output is displayed in a WHY THIS WORKS section in the app, so it must be polished, user-facing, and detailed. Mention the user's skin tone or complexion if available, the actual colours chosen, the fabrics relative to the occasion and weather, and why the look fits their style preference. Do not use generic filler.
 
-MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes. If the occasion is gym/workout, you MUST return exactly 3 items only: 1 gym top, 1 lightweight gym bottom, and 1 pair of normal closed gym shoes. Never return jackets, jumpers, hoodies, outerwear, accessories, or layered pieces for gym/workout.`,
+MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes. If the occasion is any gym/workout/exercise/sport request, you MUST return exactly 3 items only: 1 gym top, 1 lightweight gym bottom, and 1 pair of normal closed gym shoes. Never return jackets, jumpers, hoodies, coats, zip-ups, shells, outerwear, accessories, or layered pieces for gym/workout.`,
           },
         ],
         tools: [

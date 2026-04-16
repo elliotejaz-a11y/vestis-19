@@ -9,28 +9,7 @@ import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, HelpCircle, Pen
 import { StyleQuizSheet } from "@/components/StyleQuizSheet";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
-
-// Skin tone is now stored as a 0-100 slider value string
-const skinToneGradient = [
-  "#FFEEDE", "#FFF0E0", "#FDEBD0", "#F5CBA7", "#E8C9A0",
-  "#D4A76A", "#DC7633", "#BA9B68", "#C68642", "#A0522D",
-  "#8D6E63", "#6F4E37", "#4E342E", "#3B2F2F", "#2C1E1E"
-];
-
-function getSkinToneColor(value: number): string {
-  const idx = (value / 100) * (skinToneGradient.length - 1);
-  const lower = Math.floor(idx);
-  const upper = Math.min(Math.ceil(idx), skinToneGradient.length - 1);
-  if (lower === upper) return skinToneGradient[lower];
-  const t = idx - lower;
-  const hex = (c: string) => parseInt(c, 16);
-  const l = skinToneGradient[lower];
-  const u = skinToneGradient[upper];
-  const r = Math.round(hex(l.slice(1, 3)) * (1 - t) + hex(u.slice(1, 3)) * t);
-  const g = Math.round(hex(l.slice(3, 5)) * (1 - t) + hex(u.slice(3, 5)) * t);
-  const b = Math.round(hex(l.slice(5, 7)) * (1 - t) + hex(u.slice(5, 7)) * t);
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-}
+import { getSkinToneColor, getSkinToneLabel, getSkinToneValue, SKIN_TONE_GRADIENT } from "@/lib/skinTone";
 
 export const STYLES = [
   { value: "casual", label: "Casual", emoji: "👕" },
@@ -102,7 +81,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       setDisplayName(profile.display_name || "");
       setUsername(profile.username || "");
       setBio(profile.bio || "");
-      setSkinTone(profile.skin_tone ? parseInt(profile.skin_tone) || 50 : 50);
+      setSkinTone(getSkinToneValue(profile.skin_tone));
       // Parse comma-separated styles
       const existingStyles = profile.style_preference ? profile.style_preference.split(",").map(s => s.trim()).filter(Boolean) : [];
       const knownValues = STYLES.map(s => s.value);
@@ -287,6 +266,10 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
             className="w-32 h-32 rounded-full border-4 border-border shadow-lg transition-colors duration-150"
             style={{ backgroundColor: getSkinToneColor(skinTone) }}
           />
+            <div className="text-center space-y-1">
+              <p className="text-base font-semibold text-foreground">{getSkinToneLabel(skinTone)}</p>
+              <p className="text-xs text-muted-foreground">We’ll use this skin-tone colour when personalising outfit suggestions.</p>
+            </div>
           <div className="w-full space-y-3">
             <input
               type="range"
@@ -296,7 +279,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
               onChange={(e) => setSkinTone(Number(e.target.value))}
               className="w-full h-3 rounded-full appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, ${skinToneGradient.join(", ")})`,
+                  background: `linear-gradient(to right, ${SKIN_TONE_GRADIENT.join(", ")})`,
               }}
             />
             <div className="flex justify-between text-[10px] text-muted-foreground">
@@ -377,7 +360,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     try {
       const styleValue = allStyles.join(", ");
       await updateProfile({
-        skin_tone: String(skinTone),
+        skin_tone: getSkinToneLabel(skinTone),
         style_preference: styleValue || null,
         body_type: bodyType,
         preferred_colors: preferredColors,
