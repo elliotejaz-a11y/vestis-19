@@ -17,50 +17,9 @@
     <meta name="twitter:title" content="Vestis — AI Wardrobe Stylist">
     <meta property="og:description" content="Your AI-powered wardrobe stylist. Organize, style, and plan outfits effortlessly.">
     <meta name="twitter:description" content="Your AI-powered wardrobe stylist. Organize, style, and plan outfits effortlessly.">
-
-    <style>
-      #splash-screen {
-        position: fixed;
-        inset: 0;
-        z-index: 99999;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: hsl(36, 33%, 97%);
-        transition: opacity 0.3s ease-out;
-      }
-      @media (prefers-color-scheme: dark) {
-        #splash-screen { background: hsl(0, 0%, 7%); }
-        #splash-screen .splash-title { color: hsl(0, 0%, 92%); }
-        #splash-screen .splash-sub { color: hsl(0, 0%, 55%); }
-      }
-      #splash-screen .splash-title {
-        font-family: system-ui, -apple-system, sans-serif;
-        font-size: 2.5rem;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        color: hsl(30, 10%, 15%);
-        margin: 0;
-      }
-      #splash-screen .splash-sub {
-        font-family: system-ui, -apple-system, sans-serif;
-        font-size: 0.8rem;
-        color: hsl(30, 8%, 50%);
-        margin-top: 0.5rem;
-      }
-      #splash-screen.fade-out {
-        opacity: 0;
-        pointer-events: none;
-      }
-    </style>
   </head>
 
   <body>
-    <div id="splash-screen">
-      <p class="splash-title">Vestis</p>
-      <p class="splash-sub">Your AI Wardrobe Stylist</p>
-    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
