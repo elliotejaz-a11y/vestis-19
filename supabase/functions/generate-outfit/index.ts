@@ -237,7 +237,9 @@ User profile:
 Available wardrobe items:
 ${wardrobeSummary}
 
-Follow the 7-step decision process. First classify the occasion, then eliminate inappropriate items, then build a colour-harmonious outfit that flatters the user's skin tone and matches their style preference. Use their index numbers (1-based).
+Follow the 8-step decision process. First classify the occasion, then eliminate inappropriate items, then build a colour-harmonious outfit that flatters the user's skin tone and matches their style preference. Use their index numbers (1-based).
+
+The "reasoning" output is displayed in a WHY THIS WORKS section in the app, so it must be polished, user-facing, and detailed. Mention the user's skin tone or complexion if available, the actual colours chosen, the fabrics relative to the occasion and weather, and why the look fits their style preference. Do not use generic filler.
 
 MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes.`,
           },
