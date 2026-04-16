@@ -283,6 +283,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
     setSize(""); setPrivacy("public"); setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
+    setShowSearch(false); setSearchQuery(""); setSearchResults([]);
   };
 
   return (
@@ -295,16 +296,87 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
         <div className="mt-6 space-y-5">
           {!imageUrl ? (
-            <div className="flex gap-3">
-              <button
-                onClick={() => fileRef.current?.click()}
-                className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-              >
-                <Upload className="w-8 h-8" />
-                <span className="text-xs font-medium">Upload Photo</span>
-              </button>
-              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
-            </div>
+            <>
+              {!showSearch ? (
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => fileRef.current?.click()}
+                    className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+                  >
+                    <Upload className="w-8 h-8" />
+                    <span className="text-xs font-medium">Upload Photo</span>
+                  </button>
+                  <button
+                    onClick={() => setShowSearch(true)}
+                    className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+                  >
+                    <Search className="w-8 h-8" />
+                    <span className="text-xs font-medium">Search Online</span>
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => { setShowSearch(false); setSearchResults([]); setSearchQuery(""); }}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      ← Back
+                    </button>
+                    <span className="text-sm font-semibold text-foreground">Search Clothing Images</span>
+                  </div>
+                  <form onSubmit={(e) => { e.preventDefault(); handleImageSearch(); }} className="flex gap-2">
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="e.g. Black Nike running shorts"
+                      className="flex-1 rounded-xl bg-card"
+                      autoFocus
+                    />
+                    <Button
+                      type="submit"
+                      disabled={!searchQuery.trim() || searching}
+                      size="icon"
+                      className="rounded-xl shrink-0 bg-accent text-accent-foreground hover:bg-accent/90"
+                    >
+                      {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    </Button>
+                  </form>
+                  {searching && (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 text-accent animate-spin" />
+                    </div>
+                  )}
+                  {!searching && searchResults.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 max-h-60 overflow-y-auto">
+                      {searchResults.map((result, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleSelectSearchImage(result.url)}
+                          className="relative aspect-square rounded-xl overflow-hidden border-2 border-border hover:border-accent transition-all hover:scale-[1.02]"
+                        >
+                          <img
+                            src={result.thumbnail}
+                            alt={result.title}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!searching && searchResults.length === 0 && (
+                    <div className="text-center py-6">
+                      <Search className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+                      <p className="text-xs text-muted-foreground">Search for any clothing item</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">e.g. "white Nike Air Force 1" or "blue linen shirt"</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           ) : (
             <div className="relative rounded-2xl overflow-hidden bg-muted">
               <img
