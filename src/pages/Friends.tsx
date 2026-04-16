@@ -221,7 +221,7 @@ export default function Friends() {
                 className="pl-9 rounded-xl bg-card"
               />
             </div>
-            <Button onClick={handleSearch} disabled={searching} className="rounded-xl bg-accent text-accent-foreground">
+            <Button onClick={() => handleSearch()} disabled={searching} className="rounded-xl bg-accent text-accent-foreground">
               {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
             </Button>
           </div>
