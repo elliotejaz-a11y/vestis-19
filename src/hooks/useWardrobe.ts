@@ -188,13 +188,21 @@ export function useWardrobe() {
       // Only show loading skeleton on first load — keep stale data visible during refetch
       if (!hasLoadedOnce) setLoading(true);
 
-      const { data: clothingData } = await supabase
-        .from("clothing_items")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+      // Fetch items and outfits in parallel for faster initial load
+      const [clothingRes, outfitRes] = await Promise.all([
+        supabase
+          .from("clothing_items")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("outfits")
+          .select("*, outfit_items(clothing_item_id)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
 
-      const dbItems: ClothingItem[] = (clothingData || []).map((r: any) => ({
+      const dbItems: ClothingItem[] = (clothingRes.data || []).map((r: any) => ({
         id: r.id,
         name: r.name,
         category: r.category,
@@ -210,14 +218,8 @@ export function useWardrobe() {
       }));
       setItems(dbItems);
 
-      const { data: outfitData } = await supabase
-        .from("outfits")
-        .select("*, outfit_items(clothing_item_id)")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (outfitData) {
-        const dbOutfits: Outfit[] = outfitData.map((o: any) => {
+      if (outfitRes.data) {
+        const dbOutfits: Outfit[] = outfitRes.data.map((o: any) => {
           const outfitItemIds = (o.outfit_items || []).map((oi: any) => oi.clothing_item_id);
           const outfitClothes = dbItems.filter((i) => outfitItemIds.includes(i.id));
           return {
