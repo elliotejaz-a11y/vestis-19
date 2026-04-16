@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,19 +26,24 @@ export default function SocialFeed() {
   const [searching, setSearching] = useState(false);
   const navigate = useNavigate();
 
-  const handleSearch = async (query: string) => {
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleSearch = useCallback((query: string) => {
     setSearchQuery(query);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     if (query.trim().length < 3) { setSearchResults([]); return; }
-    setSearching(true);
-    const q = query.trim();
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, display_name, username, avatar_url")
-      .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
-      .limit(10);
-    setSearchResults((data || []).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
-    setSearching(false);
-  };
+    searchTimerRef.current = setTimeout(async () => {
+      setSearching(true);
+      const q = query.trim();
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, display_name, username, avatar_url")
+        .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+        .limit(10);
+      setSearchResults((data || []).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
+      setSearching(false);
+    }, 300);
+  }, []);
 
   const feedPosts = posts;
   const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.avatar_url && p.user?.username && !/^user\d*$/i.test(p.user.username));

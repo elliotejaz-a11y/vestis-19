@@ -7,7 +7,7 @@ import { Search, UserPlus, UserCheck, Users, ArrowLeft, Shirt, Lock, Loader2, X,
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/currency";
-import { useState as useStateImport } from "react";
+import { useState as useStateImport, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationsSheet } from "@/components/NotificationsSheet";
@@ -80,21 +80,24 @@ export default function Friends() {
   const isMutualFriend = (userId: string) =>
     followingIds.includes(userId) && followerIds.includes(userId);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim() || searchQuery.trim().length < 3 || !user) return;
-    setSearching(true);
-    const q = searchQuery.trim().toLowerCase();
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-    const { data } = await supabase
-      .from("profiles")
-      .select("id, display_name, username, avatar_url, is_public")
-      .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
-      .neq("id", user.id)
-      .limit(10);
-
-    setSearchResults(((data || []) as FriendProfile[]).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
-    setSearching(false);
-  };
+  const handleSearch = useCallback(async (query?: string) => {
+    const q = (query ?? searchQuery).trim().toLowerCase();
+    if (!q || q.length < 3 || !user) return;
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(async () => {
+      setSearching(true);
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, display_name, username, avatar_url, is_public")
+        .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+        .neq("id", user.id)
+        .limit(10);
+      setSearchResults(((data || []) as FriendProfile[]).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
+      setSearching(false);
+    }, 300);
+  }, [searchQuery, user]);
 
   const handleFollow = async (targetId: string) => {
     if (!user) return;
