@@ -105,6 +105,23 @@ export function AddItem({ onAdd }: Props) {
           </WardrobeServiceSheet>
         </div>
       </div>
+      <ImageSearchOverlay
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onSelect={(url) => {
+          setSearchOpen(false);
+          setSearchSelectedUrl(url);
+        }}
+      />
+
+      {/* Hidden AddClothingSheet trigger for search-selected images */}
+      {searchSelectedUrl && (
+        <AddClothingSheet
+          onAdd={onAdd}
+          initialImageUrl={searchSelectedUrl}
+          onClose={() => setSearchSelectedUrl(null)}
+        />
+      )}
     </div>
   );
 }
