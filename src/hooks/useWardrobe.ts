@@ -179,12 +179,15 @@ export function useWardrobe() {
   const [items, setItems] = useState<ClothingItem[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   useEffect(() => {
-    if (!user) { setItems([]); setOutfits([]); setLoading(false); return; }
+    if (!user) { setItems([]); setOutfits([]); setLoading(false); setHasLoadedOnce(false); return; }
 
     const fetchAll = async () => {
-      setLoading(true);
+      // Only show loading skeleton on first load — keep stale data visible during refetch
+      if (!hasLoadedOnce) setLoading(true);
+
       const { data: clothingData } = await supabase
         .from("clothing_items")
         .select("*")
@@ -232,6 +235,7 @@ export function useWardrobe() {
         setOutfits(dbOutfits);
       }
       setLoading(false);
+      setHasLoadedOnce(true);
     };
 
     fetchAll();
