@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { OutfitCard } from "@/components/OutfitCard";
+import { VirtualizedGrid } from "@/components/VirtualizedGrid";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { Plus, Shirt, Bookmark, Sparkles, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,10 +22,12 @@ interface Props {
 }
 
 export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
+  const setDetailItem = useCallback((item: ClothingItem | null) => _setDetailItem(item), []);
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
-  const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
+  const [_detailItem, _setDetailItem] = useState<ClothingItem | null>(null);
+  const detailItem = _detailItem;
   const navigate = useNavigate();
 
 
@@ -151,11 +154,16 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
               </AddClothingSheet>
             </div>
           ) : (
-            <div className="px-4 grid grid-cols-2 gap-3">
-              {filtered.map((item) => (
+            <VirtualizedGrid
+              items={filtered}
+              columns={2}
+              gap={12}
+              estimateRowHeight={280}
+              className="px-4"
+              renderItem={(item) => (
                 <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
-              ))}
-            </div>
+              )}
+            />
           )}
         </>
       )}
@@ -170,10 +178,10 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
       <ClothingDetailSheet
         item={detailItem}
         open={!!detailItem}
-        onOpenChange={(o) => { if (!o) setDetailItem(null); }}
+        onOpenChange={(o) => { if (!o) _setDetailItem(null); }}
         onSave={onUpdate}
         onRemove={onRemove}
-        onDuplicated={() => { setDetailItem(null); window.location.reload(); }}
+        onDuplicated={() => { _setDetailItem(null); window.location.reload(); }}
       />
     </div>
   );
