@@ -1,30 +1,27 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Sparkles, Loader2, DollarSign, RotateCw, RefreshCw, Search } from "lucide-react";
+import { Upload, Sparkles, Loader2, DollarSign, RotateCw, RefreshCw } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wardrobeImageProcessing";
 import { processClothingImage } from "@/lib/image-processing";
-import { ImageSearchOverlay } from "@/components/ImageSearchSheet";
 
 const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
-  children?: React.ReactNode;
-  initialImageUrl?: string;
-  onClose?: () => void;
+  children: React.ReactNode;
 }
 
-export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: Props) {
-  const [open, setOpen] = useState(!!initialImageUrl);
+export function AddClothingSheet({ onAdd, children }: Props) {
+  const [open, setOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState("");
   const [backImageUrl, setBackImageUrl] = useState("");
   const [name, setName] = useState("");
@@ -40,14 +37,6 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
   const [analyzing, setAnalyzing] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [showSearch, setShowSearch] = useState(false);
-
-  // Auto-process initial image from search overlay
-  useEffect(() => {
-    if (initialImageUrl) {
-      handleSelectSearchImage(initialImageUrl);
-    }
-  }, [initialImageUrl]);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
@@ -110,58 +99,6 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
       });
     }
     return undefined;
-  };
-
-  // handleSelectSearchImage is used both from inline and from initialImageUrl
-
-  const handleSelectSearchImage = async (imgUrl: string) => {
-    setRemovingBg(true);
-    setImageUrl(imgUrl);
-
-    try {
-      const response = await fetch(imgUrl);
-      if (!response.ok) throw new Error("Failed to download image");
-      const blob = await response.blob();
-      const file = new File([blob], "search-image.png", { type: blob.type || "image/png" });
-
-      let cleanBlob: Blob;
-      try {
-        cleanBlob = await processClothingImage(file);
-        setImageUrl(URL.createObjectURL(cleanBlob));
-      } catch {
-        cleanBlob = file;
-        setImageUrl(URL.createObjectURL(file));
-      }
-      setRemovingBg(false);
-
-      // Run AI analysis
-      setAnalyzing(true);
-      try {
-        const resizedBlob = await resizeImageForAnalysis(cleanBlob, 1024);
-        const base64 = await fileToBase64(new File([resizedBlob], "search.jpg", { type: "image/jpeg" }));
-        const { data, error } = await supabase.functions.invoke("analyze-clothing", {
-          body: { imageBase64: base64 },
-        });
-        if (!error && data) {
-          setName(data.name || "");
-          setCategory(data.category || "");
-          setColors(data.color ? [data.color] : []);
-          setFabric(data.fabric || "");
-          setTags(data.style_tags || []);
-          if (data.estimated_price_nzd) setEstimatedPrice(data.estimated_price_nzd);
-          toast({ title: "AI Analysis Complete ✨", description: `Detected: ${data.name}` });
-        }
-      } catch (err) {
-        console.warn("AI analysis failed for searched image:", err);
-      } finally {
-        setAnalyzing(false);
-      }
-    } catch (err) {
-      console.error("Failed to process searched image:", err);
-      toast({ title: "Failed to load image", description: "Try another one.", variant: "destructive" });
-      setImageUrl("");
-      setRemovingBg(false);
-    }
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -268,17 +205,9 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
     setSize(""); setPrivacy("public"); setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
   };
 
-  const handleOpenChange = (v: boolean) => {
-    setOpen(v);
-    if (!v) {
-      resetForm();
-      onClose?.();
-    }
-  };
-
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
-      {children && <SheetTrigger asChild>{children}</SheetTrigger>}
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
         <SheetHeader>
           <SheetTitle className="text-lg font-bold tracking-tight">Add to Wardrobe</SheetTitle>
@@ -293,13 +222,6 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
               >
                 <Upload className="w-8 h-8" />
                 <span className="text-xs font-medium">Upload Photo</span>
-              </button>
-              <button
-                onClick={() => setShowSearch(true)}
-                className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-              >
-                <Search className="w-8 h-8" />
-                <span className="text-xs font-medium">Search Online</span>
               </button>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
             </div>
@@ -497,14 +419,6 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
           </Button>
         </div>
       </SheetContent>
-      <ImageSearchOverlay
-        open={showSearch}
-        onClose={() => setShowSearch(false)}
-        onSelect={(url) => {
-          setShowSearch(false);
-          handleSelectSearchImage(url);
-        }}
-      />
     </Sheet>
   );
 }

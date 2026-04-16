@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { PresetItemsSheet } from "@/components/PresetItemsSheet";
-import { ImageSearchOverlay } from "@/components/ImageSearchSheet";
 import { ClothingItem } from "@/types/wardrobe";
-import { Camera, Upload, Sparkles, Package, Home, Search } from "lucide-react";
+import { Camera, Upload, Sparkles, Package, Home } from "lucide-react";
 import heroImage from "@/assets/hero-wardrobe.jpg";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
 import { preloadBgRemovalModel } from "@/lib/image-processing";
@@ -13,9 +12,6 @@ interface Props {
 }
 
 export function AddItem({ onAdd }: Props) {
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchSelectedUrl, setSearchSelectedUrl] = useState<string | null>(null);
-
   // Pre-download bg-removal model so uploads are instant
   useEffect(() => { preloadBgRemovalModel(); }, []);
 
@@ -65,19 +61,6 @@ export function AddItem({ onAdd }: Props) {
           </button>
         </AddClothingSheet>
 
-        <button
-          onClick={() => setSearchOpen(true)}
-          className="w-full h-16 rounded-2xl bg-card border border-border flex items-center gap-4 px-5 hover:bg-muted transition-colors"
-        >
-          <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
-            <Search className="w-5 h-5 text-accent" />
-          </div>
-          <div className="text-left">
-            <p className="text-sm font-semibold text-foreground">Search Online</p>
-            <p className="text-[11px] text-muted-foreground">Find clothing images from the web</p>
-          </div>
-        </button>
-
         <PresetItemsSheet onAdd={onAdd}>
           <button className="w-full h-16 rounded-2xl bg-card border border-border flex items-center gap-4 px-5 hover:bg-muted transition-colors">
             <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
@@ -105,23 +88,6 @@ export function AddItem({ onAdd }: Props) {
           </WardrobeServiceSheet>
         </div>
       </div>
-      <ImageSearchOverlay
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onSelect={(url) => {
-          setSearchOpen(false);
-          setSearchSelectedUrl(url);
-        }}
-      />
-
-      {/* Hidden AddClothingSheet trigger for search-selected images */}
-      {searchSelectedUrl && (
-        <AddClothingSheet
-          onAdd={onAdd}
-          initialImageUrl={searchSelectedUrl}
-          onClose={() => setSearchSelectedUrl(null)}
-        />
-      )}
     </div>
   );
 }
