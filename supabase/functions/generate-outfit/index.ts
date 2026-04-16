@@ -7,6 +7,13 @@ const ALLOWED_ORIGINS = [
   'https://1830068e-1c44-4713-a94f-43ffd21bb2c7.lovableproject.com',
 ];
 
+const GYM_OCCASION_PATTERN = /\b(gym|workout|training|exercise|fitness)\b/i;
+const GYM_TOP_POSITIVE_PATTERN = /\b(t-?shirt|tee|compression|activewear|athletic|performance|training|workout|gym|sport|sports|polyester|spandex|elastane|nylon|dry[-\s]?fit|moisture[-\s]?wicking|tight(?:-?fitting)?|fitted)\b/i;
+const GYM_TOP_NEGATIVE_PATTERN = /\b(jacket|coat|hoodie|jumper|sweater|cardigan|blazer|outerwear|parka|puffer|fleece|windbreaker|flannel|dress shirt|button[-\s]?up|oxford|knit|wool)\b/i;
+const GYM_BOTTOM_POSITIVE_PATTERN = /\b(shorts?|track ?pants?|trackpants?|joggers?|training pants?|workout pants?|athletic|performance|training|workout|gym|sport|sports|lightweight|polyester|spandex|elastane|nylon)\b/i;
+const GYM_BOTTOM_NEGATIVE_PATTERN = /\b(jeans?|denim|chinos?|slacks?|trousers?|dress pants?|formal|corduroy|cargo|skirt|wool)\b/i;
+const GYM_SHOE_NEGATIVE_PATTERN = /\b(sandals?|slides?|flip[-\s]?flops?|heels?|boots?|loafers?|oxfords?|derbies?|brogues?|mules?|slippers?)\b/i;
+
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || '';
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -20,6 +27,22 @@ function normalizeCategory(category: unknown): string {
   return String(category || '').trim().toLowerCase();
 }
 
+function getItemSearchText(item: any): string {
+  const tags = Array.isArray(item?.tags) ? item.tags.map((tag: unknown) => String(tag)) : [];
+  return [
+    String(item?.name || ''),
+    String(item?.category || ''),
+    String(item?.color || ''),
+    String(item?.fabric || ''),
+    String(item?.notes || ''),
+    ...tags,
+  ].join(' ').toLowerCase();
+}
+
+function isGymOccasion(occasion: string): boolean {
+  return GYM_OCCASION_PATTERN.test(occasion);
+}
+
 function isShoe(item: any): boolean {
   return normalizeCategory(item?.category) === 'shoes';
 }
@@ -31,6 +54,26 @@ function isBottom(item: any): boolean {
 function isTopHalf(item: any): boolean {
   const cat = normalizeCategory(item?.category);
   return cat === 'tops' || cat === 'jumpers';
+}
+
+function isGymTop(item: any): boolean {
+  if (normalizeCategory(item?.category) !== 'tops') return false;
+  const text = getItemSearchText(item);
+  if (GYM_TOP_NEGATIVE_PATTERN.test(text)) return false;
+  return GYM_TOP_POSITIVE_PATTERN.test(text) || true;
+}
+
+function isGymBottom(item: any): boolean {
+  if (normalizeCategory(item?.category) !== 'bottoms') return false;
+  const text = getItemSearchText(item);
+  if (GYM_BOTTOM_NEGATIVE_PATTERN.test(text)) return false;
+  return GYM_BOTTOM_POSITIVE_PATTERN.test(text);
+}
+
+function isGymShoe(item: any): boolean {
+  if (normalizeCategory(item?.category) !== 'shoes') return false;
+  const text = getItemSearchText(item);
+  return !GYM_SHOE_NEGATIVE_PATTERN.test(text);
 }
 
 function dedupeById(items: any[]): any[] {
@@ -85,6 +128,15 @@ function normalizeSelectionWithRequiredCore(selected: any[], allItems: any[]): a
   return dedupeById(next).slice(0, 5);
 }
 
+function normalizeSelectionForGym(selected: any[], allItems: any[]): any[] {
+  const deduped = dedupeById(selected.filter(Boolean));
+  const top = deduped.find(isGymTop) ?? allItems.find(isGymTop);
+  const bottom = deduped.find(isGymBottom) ?? allItems.find(isGymBottom);
+  const shoes = deduped.find(isGymShoe) ?? allItems.find(isGymShoe);
+
+  return dedupeById([top, bottom, shoes].filter(Boolean)).slice(0, 3);
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') {
@@ -126,32 +178,56 @@ serve(async (req) => {
       });
     }
 
-    if (!items.some(isShoe)) {
-      return new Response(JSON.stringify({ error: 'At least one shoe item is required to generate an outfit.' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    const isGymRequest = isGymOccasion(occasion);
+    const candidateItems = isGymRequest
+      ? items.filter((item: any) => isGymTop(item) || isGymBottom(item) || isGymShoe(item))
+      : items;
 
-    if (!items.some(isBottom)) {
-      return new Response(JSON.stringify({ error: 'At least one bottoms item is required to generate an outfit.' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    if (isGymRequest) {
+      if (!candidateItems.some(isGymTop)) {
+        return new Response(JSON.stringify({ error: 'Gym/workout outfits require at least one gym-appropriate top such as a t-shirt, tight-fitting t-shirt, compression top, or performance polyester/spandex top.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
-    if (!items.some(isTopHalf)) {
-      return new Response(JSON.stringify({ error: 'At least one tops or jumpers item is required to generate an outfit.' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      if (!candidateItems.some(isGymBottom)) {
+        return new Response(JSON.stringify({ error: 'Gym/workout outfits require at least one suitable bottom such as shorts, lightweight pants, or track pants.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!candidateItems.some(isGymShoe)) {
+        return new Response(JSON.stringify({ error: 'Gym/workout outfits require at least one normal closed shoe or trainer.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    } else {
+      if (!items.some(isShoe)) {
+        return new Response(JSON.stringify({ error: 'At least one shoe item is required to generate an outfit.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!items.some(isBottom)) {
+        return new Response(JSON.stringify({ error: 'At least one bottoms item is required to generate an outfit.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (!items.some(isTopHalf)) {
+        return new Response(JSON.stringify({ error: 'At least one tops or jumpers item is required to generate an outfit.' }), {
+          status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    const wardrobeSummary = items.map((item: any, i: number) => 
+    const wardrobeSummary = candidateItems.map((item: any, i: number) => 
       `${i + 1}. \"${String(item.name || '').slice(0, 100)}\" — ${String(item.category || '').slice(0, 50)}, ${String(item.color || '').slice(0, 30)}, ${String(item.fabric || '').slice(0, 30)}, tags: [${(item.tags || []).slice(0, 10).join(', ')}]${item.notes ? `, user notes: \"${String(item.notes).slice(0, 200)}\"` : ''}`
     ).join('\n');
 
-    
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -171,10 +247,10 @@ Determine the formality tier:
 - **BUSINESS** (meeting, interview, office): Smart trousers/chinos, blazers, dress shoes, collared shirts. Muted, refined colours. NO streetwear, graphic tees, or casual trainers.
 - **SMART CASUAL** (dinner, date night, brunch): Mix of polished and relaxed — smart jeans, loafers, knitwear, clean sneakers acceptable.
 - **CASUAL** (day out, errands, weekend): Relaxed fits, t-shirts, jeans, trainers, hoodies all fine. NO suits or blazers unless the user's style is specifically formal.
-- **ACTIVE/GYM** (gym, workout, sports, hiking): Performance fabrics, trainers, athletic wear ONLY. For gym/workout specifically: select ONLY shorts and a tight-fitting compression top or plain t-shirt. NO layering, NO thick clothes, NO warm clothing, NO jackets, NO hoodies, NO jumpers, NO outerwear, NO accessories (no hats, no jewellery, no bags). Cap the outfit at 3 items max (top + shorts + trainers). Keep it minimal and functional.
+- **ACTIVE/GYM** (gym, workout, sports, hiking): Athletic wear ONLY. For gym/workout specifically, you must select EXACTLY 3 items: (1) one top from T-shirts, tight-fitting T-shirts, compression tops, or performance polyester/spandex/nylon tops; (2) one bottom from shorts, lightweight pants, track pants, or joggers; and (3) one pair of normal closed trainers/sneakers/gym shoes. NO jackets, NO hoodies, NO jumpers, NO sweaters, NO outerwear, NO layering, NO thick or warm clothes, NO hats, NO jewellery, NO bags, NO accessories, NO sandals, NO boots, NO formal shoes.
 
 ## STEP 2: ELIMINATE INAPPROPRIATE ITEMS
-Before selecting, mentally remove ALL items that clash with the occasion tier. E.g. for BUSINESS: remove graphic tees, joggers, flip-flops, bucket hats. For CASUAL: deprioritise suits, ties, formal shoes.
+Before selecting, mentally remove ALL items that clash with the occasion tier. E.g. for BUSINESS: remove graphic tees, joggers, flip-flops, bucket hats. For CASUAL: deprioritise suits, ties, formal shoes. For ACTIVE/GYM: remove anything that is not a gym top, lightweight gym bottom, or normal closed gym shoe.
 
 ## STEP 3: MATCH THE USER'S SKIN TONE (if provided)
 Use these flattering colour guidelines:
@@ -204,12 +280,14 @@ Avoid clashing combinations (e.g. red+orange, navy+black in casual contexts, bro
 - Don't pair denim with denim unless intentionally styled
 - Mix textures: knit with cotton, wool with silk, leather with denim
 - Match fabric weight to weather/occasion
+- For ACTIVE/GYM, prioritise breathable, flexible, lightweight performance fabrics.
 
 ## STEP 6: STYLE PREFERENCE ALIGNMENT
 If the user has a style preference (e.g. streetwear, minimalist, classic, preppy), STRONGLY favour items matching that aesthetic. A minimalist user shouldn't get loud patterns; a streetwear user shouldn't get formal blazers for casual occasions.
 
 ## STEP 7: SELECT 2-5 ITEMS
 Build the outfit prioritising: 1 top, 1 bottom, 1 pair of shoes minimum. Add outerwear/accessories only if they genuinely enhance the outfit.
+For ACTIVE/GYM, override this and select EXACTLY 3 items only: 1 gym top + 1 gym bottom + 1 pair of closed gym shoes.
 
 ## STEP 8: WRITE THE "WHY THIS WORKS" EXPLANATION
 Your reasoning is shown directly to the user and must read like a premium personal stylist speaking to them.
@@ -241,7 +319,7 @@ Follow the 8-step decision process. First classify the occasion, then eliminate 
 
 The "reasoning" output is displayed in a WHY THIS WORKS section in the app, so it must be polished, user-facing, and detailed. Mention the user's skin tone or complexion if available, the actual colours chosen, the fabrics relative to the occasion and weather, and why the look fits their style preference. Do not use generic filler.
 
-MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes.`,
+MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes. If the occasion is gym/workout, you MUST return exactly 3 items only: 1 gym top, 1 lightweight gym bottom, and 1 pair of normal closed gym shoes. Never return jackets, jumpers, hoodies, outerwear, accessories, or layered pieces for gym/workout.`,
           },
         ],
         tools: [
@@ -300,13 +378,14 @@ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one p
     const result = JSON.parse(toolCall.function.arguments);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
-    const selectedItems = normalizeSelectionWithRequiredCore(
-      rawSelectedIndices
-        .map((idx: unknown) => Number(idx))
-        .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= items.length)
-        .map((idx: number) => items[idx - 1]),
-      items
-    );
+    const parsedSelectedItems = rawSelectedIndices
+      .map((idx: unknown) => Number(idx))
+      .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= candidateItems.length)
+      .map((idx: number) => candidateItems[idx - 1]);
+
+    const selectedItems = isGymRequest
+      ? normalizeSelectionForGym(parsedSelectedItems, candidateItems)
+      : normalizeSelectionWithRequiredCore(parsedSelectedItems, candidateItems);
 
     return new Response(JSON.stringify({
       items: selectedItems,
