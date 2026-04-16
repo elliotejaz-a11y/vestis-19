@@ -36,7 +36,16 @@ const Community = lazy(() => import("./pages/policies/Community"));
 const Cookies = lazy(() => import("./pages/policies/Cookies"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
