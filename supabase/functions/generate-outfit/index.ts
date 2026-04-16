@@ -33,6 +33,85 @@ function isTopHalf(item: any): boolean {
   return cat === 'tops' || cat === 'jumpers';
 }
 
+function normalizeText(value: unknown): string {
+  return String(value || '').trim().toLowerCase();
+}
+
+function getItemSearchText(item: any): string {
+  return [
+    item?.name,
+    item?.category,
+    item?.color,
+    item?.fabric,
+    item?.notes,
+    ...(Array.isArray(item?.tags) ? item.tags : []),
+  ]
+    .map((value) => normalizeText(value))
+    .filter(Boolean)
+    .join(' ');
+}
+
+function isWorkoutOccasion(occasion: string): boolean {
+  return /\b(gym|workout|training|exercise|fitness|cardio|lifting)\b/i.test(occasion);
+}
+
+function isOuterwear(item: any): boolean {
+  const text = getItemSearchText(item);
+  return normalizeCategory(item?.category) === 'outerwear'
+    || /(jacket|coat|blazer|hoodie|jumper|sweater|cardigan|fleece|puffer|parka|zip\s?up)/i.test(text);
+}
+
+function isAccessory(item: any): boolean {
+  const text = getItemSearchText(item);
+  const category = normalizeCategory(item?.category);
+  return category === 'accessories'
+    || category === 'hats'
+    || /(hat|cap|beanie|scarf|bag|jewell?ery|necklace|bracelet|watch|gloves)/i.test(text);
+}
+
+function isWorkoutFriendlyTop(item: any): boolean {
+  if (normalizeCategory(item?.category) !== 'tops' || isOuterwear(item) || isAccessory(item)) {
+    return false;
+  }
+
+  const text = getItemSearchText(item);
+  return !/(jumper|hoodie|sweater|cardigan|thermal|wool|fleece|thick|heavy|coat|jacket|blazer)/i.test(text);
+}
+
+function isWorkoutFriendlyBottom(item: any): boolean {
+  if (!isBottom(item) || isAccessory(item)) return false;
+
+  const text = getItemSearchText(item);
+  return !/(jeans|denim|wool|corduroy|formal|slacks|tailored|chinos|suit|trouser)/i.test(text);
+}
+
+function isWorkoutFriendlyShoe(item: any): boolean {
+  if (!isShoe(item) || isAccessory(item)) return false;
+
+  const text = getItemSearchText(item);
+  return !/(heel|loafer|oxford|derby|boot|sandal|flip\s?flop|slipper|open\s?toe)/i.test(text);
+}
+
+function normalizeWorkoutSelection(selected: any[], allItems: any[]): any[] {
+  const sanitizedSelected = dedupeById(
+    selected.filter((item) =>
+      !isAccessory(item)
+      && !isOuterwear(item)
+      && (isWorkoutFriendlyTop(item) || isWorkoutFriendlyBottom(item) || isWorkoutFriendlyShoe(item))
+    )
+  );
+
+  const workoutTops = allItems.filter(isWorkoutFriendlyTop);
+  const workoutBottoms = allItems.filter(isWorkoutFriendlyBottom);
+  const workoutShoes = allItems.filter(isWorkoutFriendlyShoe);
+
+  const top = sanitizedSelected.find(isWorkoutFriendlyTop) ?? workoutTops[0];
+  const bottom = sanitizedSelected.find(isWorkoutFriendlyBottom) ?? workoutBottoms[0];
+  const shoes = sanitizedSelected.find(isWorkoutFriendlyShoe) ?? workoutShoes[0];
+
+  return dedupeById([top, bottom, shoes].filter(Boolean)).slice(0, 3);
+}
+
 function dedupeById(items: any[]): any[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -171,7 +250,7 @@ Determine the formality tier:
 - **BUSINESS** (meeting, interview, office): Smart trousers/chinos, blazers, dress shoes, collared shirts. Muted, refined colours. NO streetwear, graphic tees, or casual trainers.
 - **SMART CASUAL** (dinner, date night, brunch): Mix of polished and relaxed — smart jeans, loafers, knitwear, clean sneakers acceptable.
 - **CASUAL** (day out, errands, weekend): Relaxed fits, t-shirts, jeans, trainers, hoodies all fine. NO suits or blazers unless the user's style is specifically formal.
-- **ACTIVE/GYM** (gym, workout, sports, hiking): Performance fabrics, trainers, athletic wear ONLY. For gym/workout specifically: select ONLY shorts and a tight-fitting compression top or plain t-shirt. NO layering, NO thick clothes, NO warm clothing, NO jackets, NO hoodies, NO jumpers, NO outerwear, NO accessories (no hats, no jewellery, no bags). Cap the outfit at 3 items max (top + shorts + trainers). Keep it minimal and functional.
+        - **ACTIVE/GYM** (gym, workout, sports, hiking): Performance fabrics, trainers, athletic wear ONLY. For gym/workout specifically, this is a STRICT RULESET: select exactly 1 top from the Tops category only (prefer a plain t-shirt, fitted t-shirt, compression top, polyester top, spandex top, or other lightweight gym top), exactly 1 bottom (prefer shorts, lightweight track pants, joggers, or other lightweight workout bottoms), and exactly 1 pair of normal closed athletic shoes/trainers. NO jackets, NO coats, NO blazers, NO hoodies, NO jumpers, NO sweaters, NO layering, NO thick clothes, NO warm clothes, NO outerwear, and NO accessories of any kind (no hats, jewellery, watches, or bags). Never choose outerwear for gym/workout.
 
 ## STEP 2: ELIMINATE INAPPROPRIATE ITEMS
 Before selecting, mentally remove ALL items that clash with the occasion tier. E.g. for BUSINESS: remove graphic tees, joggers, flip-flops, bucket hats. For CASUAL: deprioritise suits, ties, formal shoes.
@@ -208,8 +287,8 @@ Avoid clashing combinations (e.g. red+orange, navy+black in casual contexts, bro
 ## STEP 6: STYLE PREFERENCE ALIGNMENT
 If the user has a style preference (e.g. streetwear, minimalist, classic, preppy), STRONGLY favour items matching that aesthetic. A minimalist user shouldn't get loud patterns; a streetwear user shouldn't get formal blazers for casual occasions.
 
-## STEP 7: SELECT 2-5 ITEMS
-Build the outfit prioritising: 1 top, 1 bottom, 1 pair of shoes minimum. Add outerwear/accessories only if they genuinely enhance the outfit.
+        ## STEP 7: SELECT 2-5 ITEMS
+        Build the outfit prioritising: 1 top, 1 bottom, 1 pair of shoes minimum. Add outerwear/accessories only if they genuinely enhance the outfit. EXCEPTION: for gym/workout, select exactly 3 items only — 1 gym-appropriate top, 1 gym-appropriate bottom, and 1 pair of closed athletic shoes, with zero outerwear and zero accessories.
 
 ## STEP 8: WRITE THE "WHY THIS WORKS" EXPLANATION
 Your reasoning is shown directly to the user and must read like a premium personal stylist speaking to them.
@@ -241,7 +320,7 @@ Follow the 8-step decision process. First classify the occasion, then eliminate 
 
 The "reasoning" output is displayed in a WHY THIS WORKS section in the app, so it must be polished, user-facing, and detailed. Mention the user's skin tone or complexion if available, the actual colours chosen, the fabrics relative to the occasion and weather, and why the look fits their style preference. Do not use generic filler.
 
-MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes.`,
+ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes. If the occasion is gym/workout, you must select only gym-appropriate tops from the Tops category, lightweight gym bottoms, and closed athletic shoes — never jackets, hoodies, jumpers, outerwear, or accessories.`,
           },
         ],
         tools: [
@@ -300,13 +379,14 @@ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one p
     const result = JSON.parse(toolCall.function.arguments);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
-    const selectedItems = normalizeSelectionWithRequiredCore(
-      rawSelectedIndices
-        .map((idx: unknown) => Number(idx))
-        .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= items.length)
-        .map((idx: number) => items[idx - 1]),
-      items
-    );
+    const mappedSelectedItems = rawSelectedIndices
+      .map((idx: unknown) => Number(idx))
+      .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= items.length)
+      .map((idx: number) => items[idx - 1]);
+
+    const selectedItems = isWorkoutOccasion(occasion)
+      ? normalizeWorkoutSelection(mappedSelectedItems, items)
+      : normalizeSelectionWithRequiredCore(mappedSelectedItems, items);
 
     return new Response(JSON.stringify({
       items: selectedItems,
