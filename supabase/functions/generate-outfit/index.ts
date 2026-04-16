@@ -171,13 +171,7 @@ Determine the formality tier:
 - **BUSINESS** (meeting, interview, office): Smart trousers/chinos, blazers, dress shoes, collared shirts. Muted, refined colours. NO streetwear, graphic tees, or casual trainers.
 - **SMART CASUAL** (dinner, date night, brunch): Mix of polished and relaxed — smart jeans, loafers, knitwear, clean sneakers acceptable.
 - **CASUAL** (day out, errands, weekend): Relaxed fits, t-shirts, jeans, trainers, hoodies all fine. NO suits or blazers unless the user's style is specifically formal.
-- **ACTIVE/GYM** (gym, workout, sports, hiking): THIS IS THE STRICTEST TIER. You MUST follow these rules with ZERO exceptions:
-  1. SELECT EXACTLY 3 ITEMS: one top + one bottom + one pair of shoes. Never more, never less.
-  2. TOP: ONLY from the "tops" category. Pick a t-shirt, compression top, tank top, or athletic top. Prefer polyester, spandex, or lightweight cotton. NEVER select from "outerwear", "jumpers", or any jacket/hoodie/sweater — even if they are categorised as "tops".
-  3. BOTTOM: ONLY shorts, lightweight track pants, or joggers from the "bottoms" category. Prefer breathable/stretchy fabrics.
-  4. SHOES: ONLY trainers or athletic shoes from the "shoes" category. No boots, no dress shoes, no sandals.
-  5. ABSOLUTELY FORBIDDEN: outerwear, jackets, coats, blazers, hoodies, jumpers, sweaters, fleeces, puffer jackets, leather jackets, denim jackets, accessories of ANY kind (no hats, no watches, no bags, no belts, no jewellery, no sunglasses), layering of any kind, thick/warm/heavy clothing.
-  6. If the wardrobe has no suitable athletic top, pick the lightest/thinnest t-shirt available.
+- **ACTIVE/GYM** (gym, workout, sports, hiking): Performance fabrics, trainers, athletic wear ONLY. For gym/workout specifically: select ONLY shorts and a tight-fitting compression top or plain t-shirt. NO layering, NO thick clothes, NO warm clothing, NO jackets, NO hoodies, NO jumpers, NO outerwear, NO accessories (no hats, no jewellery, no bags). Cap the outfit at 3 items max (top + shorts + trainers). Keep it minimal and functional.
 
 ## STEP 2: ELIMINATE INAPPROPRIATE ITEMS
 Before selecting, mentally remove ALL items that clash with the occasion tier. E.g. for BUSINESS: remove graphic tees, joggers, flip-flops, bucket hats. For CASUAL: deprioritise suits, ties, formal shoes.
@@ -306,35 +300,13 @@ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one p
     const result = JSON.parse(toolCall.function.arguments);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
-    let selectedItems = normalizeSelectionWithRequiredCore(
+    const selectedItems = normalizeSelectionWithRequiredCore(
       rawSelectedIndices
         .map((idx: unknown) => Number(idx))
         .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= items.length)
         .map((idx: number) => items[idx - 1]),
       items
     );
-
-    // Post-processing: enforce gym/workout rules — strip outerwear, jumpers, accessories
-    const occasionLower = occasion.toLowerCase();
-    const isGymOccasion = ['gym', 'workout', 'sports', 'hiking', 'active'].some(k => occasionLower.includes(k));
-    if (isGymOccasion) {
-      const forbiddenCategories = ['outerwear', 'jumpers', 'accessories', 'hats'];
-      selectedItems = selectedItems.filter((item: any) => !forbiddenCategories.includes(normalizeCategory(item?.category)));
-      // Ensure we still have top + bottom + shoes after filtering
-      if (!selectedItems.some(isTopHalf)) {
-        const fallbackTop = items.find((i: any) => normalizeCategory(i?.category) === 'tops');
-        if (fallbackTop) selectedItems.unshift(fallbackTop);
-      }
-      if (!selectedItems.some(isBottom)) {
-        const fallbackBottom = items.find(isBottom);
-        if (fallbackBottom) selectedItems.push(fallbackBottom);
-      }
-      if (!selectedItems.some(isShoe)) {
-        const fallbackShoe = items.find(isShoe);
-        if (fallbackShoe) selectedItems.push(fallbackShoe);
-      }
-      selectedItems = dedupeById(selectedItems).slice(0, 3);
-    }
 
     return new Response(JSON.stringify({
       items: selectedItems,
