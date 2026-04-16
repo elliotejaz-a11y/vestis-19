@@ -275,8 +275,8 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
   };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>{children}</SheetTrigger>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
+      {children && <SheetTrigger asChild>{children}</SheetTrigger>}
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
         <SheetHeader>
           <SheetTitle className="text-lg font-bold tracking-tight">Add to Wardrobe</SheetTitle>
@@ -284,25 +284,16 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
 
         <div className="mt-6 space-y-5">
           {!imageUrl ? (
-            <>
-              {!showSearch ? (
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-                  >
-                    <Upload className="w-8 h-8" />
-                    <span className="text-xs font-medium">Upload Photo</span>
-                  </button>
-                  <button
-                    onClick={() => setShowSearch(true)}
-                    className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
-                  >
-                    <Search className="w-8 h-8" />
-                    <span className="text-xs font-medium">Search Online</span>
-                  </button>
-                  <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
-                </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+              >
+                <Upload className="w-8 h-8" />
+                <span className="text-xs font-medium">Upload Photo</span>
+              </button>
+              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
+            </div>
               ) : (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">
