@@ -53,8 +53,15 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    const PEOPLE_PATTERN = /\b(wearing|worn|model|outfit of the day|ootd|street style|person|man wearing|woman wearing|guy in|girl in)\b/i;
     const images = (data.images || [])
-      .filter((img: any) => img.imageUrl && typeof img.imageUrl === "string")
+      .filter((img: any) => {
+        if (!img.imageUrl || typeof img.imageUrl !== "string") return false;
+        const title = (img.title || "").toLowerCase();
+        // Filter out results that are clearly people/lifestyle shots
+        if (PEOPLE_PATTERN.test(title)) return false;
+        return true;
+      })
       .map((img: any) => ({
         url: img.imageUrl,
         thumbnail: img.thumbnailUrl || img.imageUrl,
