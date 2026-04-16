@@ -179,12 +179,12 @@ export function useWardrobe() {
   const [items, setItems] = useState<ClothingItem[]>([]);
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [loading, setLoading] = useState(false);
+  const [dataReady, setDataReady] = useState(false);
 
   useEffect(() => {
     if (!user) { setItems([]); setOutfits([]); setLoading(false); return; }
 
     const fetchAll = async () => {
-      setLoading(true);
       const { data: clothingData } = await supabase
         .from("clothing_items")
         .select("*")
@@ -232,6 +232,7 @@ export function useWardrobe() {
         setOutfits(dbOutfits);
       }
       setLoading(false);
+      setDataReady(true);
     };
 
     fetchAll();
@@ -651,5 +652,5 @@ export function useWardrobe() {
     });
   }, []);
 
-  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, loading };
+  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, loading, dataReady };
 }

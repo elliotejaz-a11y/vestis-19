@@ -19,9 +19,10 @@ interface Props {
   onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onDeleteOutfit?: (id: string) => void;
   onRetryBackgroundRemoval?: (id: string) => void;
+  dataReady?: boolean;
 }
 
-export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval }: Props) {
+export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval, dataReady }: Props) {
   const setDetailItem = useCallback((item: ClothingItem | null) => _setDetailItem(item), []);
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
@@ -140,7 +141,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
             ))}
           </div>
 
-          {filtered.length === 0 ? (
+          {filtered.length === 0 && dataReady ? (
             <div className="flex flex-col items-center justify-center px-5 py-20 text-center">
               <div className="w-16 h-16 rounded-full bg-card flex items-center justify-center mb-4">
                 <Shirt className="w-7 h-7 text-muted-foreground" />
