@@ -110,31 +110,9 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
     return undefined;
   };
 
-  const handleImageSearch = async () => {
-    if (!searchQuery.trim()) return;
-    setSearching(true);
-    setSearchResults([]);
-    try {
-      const { data, error } = await supabase.functions.invoke("search-clothing-images", {
-        body: { query: searchQuery.trim() },
-      });
-      if (error) throw error;
-      setSearchResults(data?.images || []);
-      if (!data?.images?.length) {
-        toast({ title: "No results found", description: "Try a different search term." });
-      }
-    } catch (err) {
-      console.error("Image search failed:", err);
-      toast({ title: "Search failed", description: "Please try again.", variant: "destructive" });
-    } finally {
-      setSearching(false);
-    }
-  };
+  // handleSelectSearchImage is used both from inline and from initialImageUrl
 
   const handleSelectSearchImage = async (imgUrl: string) => {
-    setShowSearch(false);
-    setSearchResults([]);
-    setSearchQuery("");
     setRemovingBg(true);
     setImageUrl(imgUrl);
 
@@ -286,7 +264,14 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
   const resetForm = () => {
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
     setSize(""); setPrivacy("public"); setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
-    setShowSearch(false); setSearchQuery(""); setSearchResults([]); setShowAllResults(false);
+  };
+
+  const handleOpenChange = (v: boolean) => {
+    setOpen(v);
+    if (!v) {
+      resetForm();
+      onClose?.();
+    }
   };
 
   return (
