@@ -249,7 +249,7 @@ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one p
                   },
                   reasoning: {
                     type: 'string',
-                    description: 'Fashion expert explanation of why these pieces work together, referencing color theory, fabric compatibility, occasion fit, and overall style cohesion. 2-4 sentences.',
+                    description: 'A detailed 3-5 sentence fashion expert explanation. MUST reference: (1) how the colours complement the user\'s skin tone (if provided), (2) why the fabrics/textures suit the occasion and weather (if provided), (3) colour harmony between the selected pieces, (4) overall style cohesion and silhouette. Be specific — name the actual colours, fabrics, and items. Never use generic filler like "complementary pieces".',
                   },
                   style_tips: {
                     type: 'string',
