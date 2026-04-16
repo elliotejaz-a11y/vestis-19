@@ -43,6 +43,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{ url: string; thumbnail: string; title: string; source: string }>>([]);
   const [searching, setSearching] = useState(false);
+  const [showAllResults, setShowAllResults] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
