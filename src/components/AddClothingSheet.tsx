@@ -5,13 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Upload, Sparkles, Loader2, DollarSign, RotateCw, RefreshCw } from "lucide-react";
+import { Upload, Sparkles, Loader2, DollarSign, RotateCw, RefreshCw, Search } from "lucide-react";
 import { ClothingItem, CATEGORIES } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { isAllowedWardrobeImageType, isAllowedWardrobeImageSize } from "@/lib/wardrobeImageProcessing";
 import { processClothingImage } from "@/lib/image-processing";
+import { ImageSearchOverlay } from "@/components/ImageSearchSheet";
 
 const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
 
@@ -39,6 +40,7 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
   const [analyzing, setAnalyzing] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const [showSearch, setShowSearch] = useState(false);
 
   // Auto-process initial image from search overlay
   useEffect(() => {
@@ -292,6 +294,13 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
                 <Upload className="w-8 h-8" />
                 <span className="text-xs font-medium">Upload Photo</span>
               </button>
+              <button
+                onClick={() => setShowSearch(true)}
+                className="flex-1 h-40 rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-accent hover:text-accent transition-colors"
+              >
+                <Search className="w-8 h-8" />
+                <span className="text-xs font-medium">Search Online</span>
+              </button>
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={handleFile} />
             </div>
           ) : (
@@ -488,6 +497,14 @@ export function AddClothingSheet({ onAdd, children, initialImageUrl, onClose }: 
           </Button>
         </div>
       </SheetContent>
+      <ImageSearchOverlay
+        open={showSearch}
+        onClose={() => setShowSearch(false)}
+        onSelect={(url) => {
+          setShowSearch(false);
+          handleSelectSearchImage(url);
+        }}
+      />
     </Sheet>
   );
 }
