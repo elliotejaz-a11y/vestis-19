@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
@@ -28,16 +28,14 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
   const navigate = useNavigate();
 
 
-  const savedOutfits = useMemo(() => outfits.filter((o) => o.saved), [outfits]);
-  const filtered = useMemo(() => {
-    const base = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
-    return [...base].sort((a, b) => {
-      if (sortBy === "oldest") return a.addedAt.getTime() - b.addedAt.getTime();
-      if (sortBy === "colour") return a.color.localeCompare(b.color);
-      if (sortBy === "fabric") return a.fabric.localeCompare(b.fabric);
-      return b.addedAt.getTime() - a.addedAt.getTime();
-    });
-  }, [items, activeFilter, sortBy]);
+  const savedOutfits = outfits.filter((o) => o.saved);
+  const filteredBase = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
+  const filtered = [...filteredBase].sort((a, b) => {
+    if (sortBy === "oldest") return a.addedAt.getTime() - b.addedAt.getTime();
+    if (sortBy === "colour") return a.color.localeCompare(b.color);
+    if (sortBy === "fabric") return a.fabric.localeCompare(b.fabric);
+    return b.addedAt.getTime() - a.addedAt.getTime(); // newest
+  });
 
   return (
     <div className="min-h-screen pb-24">
@@ -175,7 +173,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         onOpenChange={(o) => { if (!o) setDetailItem(null); }}
         onSave={onUpdate}
         onRemove={onRemove}
-        onDuplicated={() => { setDetailItem(null); }}
+        onDuplicated={() => { setDetailItem(null); window.location.reload(); }}
       />
     </div>
   );

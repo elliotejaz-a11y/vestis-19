@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X } from "lucide-react";
 import { convertPrice, formatPrice } from "@/lib/currency";
@@ -7,19 +7,17 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { OutfitCard } from "@/components/OutfitCard";
 import Onboarding from "@/pages/Onboarding";
+import { EditProfileSheet } from "@/components/EditProfileSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
+import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
+import { FitPicSheet } from "@/components/FitPicSheet";
+import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
+import FollowListSheet from "@/components/FollowListSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
+import { ChangePasswordSheet } from "@/components/ChangePasswordSheet";
 import { getSkinToneDisplay } from "@/lib/skinTone";
-
-// Lazy-load sheets that are only opened on user interaction
-const EditProfileSheet = lazy(() => import("@/components/EditProfileSheet").then(m => ({ default: m.EditProfileSheet })));
-const ChangePasswordSheet = lazy(() => import("@/components/ChangePasswordSheet").then(m => ({ default: m.ChangePasswordSheet })));
-const WardrobeServiceSheet = lazy(() => import("@/components/WardrobeServiceSheet").then(m => ({ default: m.WardrobeServiceSheet })));
-const FitPicSheet = lazy(() => import("@/components/FitPicSheet").then(m => ({ default: m.FitPicSheet })));
-const FitPicDetailSheet = lazy(() => import("@/components/FitPicDetailSheet").then(m => ({ default: m.FitPicDetailSheet })));
-const FollowListSheet = lazy(() => import("@/components/FollowListSheet"));
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -132,21 +130,21 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     fetchWishlist();
   }, [user]);
 
-  const savedOutfits = useMemo(() => outfits.filter((o) => o.saved), [outfits]);
+  const savedOutfits = outfits.filter((o) => o.saved);
 
-  const categoryBreakdown = useMemo(() => CATEGORIES.map((cat) => ({
+  const categoryBreakdown = CATEGORIES.map((cat) => ({
     ...cat,
     count: items.filter((i) => i.category === cat.value).length,
-  })), [items]);
+  }));
 
-  const topColors = useMemo(() => Object.entries(
+  const topColors = Object.entries(
     items.reduce<Record<string, number>>((acc, i) => {
       acc[i.color] = (acc[i.color] || 0) + 1;
       return acc;
     }, {})
-  ).sort(([, a], [, b]) => b - a).slice(0, 5), [items]);
+  ).sort(([, a], [, b]) => b - a).slice(0, 5);
 
-  const totalWardrobeValueNzd = useMemo(() => items.reduce((sum, i) => sum + (i.estimatedPrice || 0), 0), [items]);
+  const totalWardrobeValueNzd = items.reduce((sum, i) => sum + (i.estimatedPrice || 0), 0);
   const currency = profile?.currency_preference || "NZD";
   const totalWardrobeValue = convertPrice(totalWardrobeValueNzd, currency);
 

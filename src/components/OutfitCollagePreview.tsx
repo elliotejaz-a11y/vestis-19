@@ -1,4 +1,3 @@
-import { memo, useMemo } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 
@@ -34,8 +33,8 @@ function sortItems(items: ClothingItem[]) {
   });
 }
 
-export const OutfitCollagePreview = memo(function OutfitCollagePreview({ items, showHeader = false, className, canvasClassName }: Props) {
-  const sorted = useMemo(() => sortItems(items), [items]);
+export function OutfitCollagePreview({ items, showHeader = false, className, canvasClassName }: Props) {
+  const sorted = sortItems(items);
   const countByCategory: Record<string, number> = {};
 
   return (
@@ -76,4 +75,4 @@ export const OutfitCollagePreview = memo(function OutfitCollagePreview({ items, 
       </div>
     </div>
   );
-});
+}

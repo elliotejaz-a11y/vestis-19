@@ -1,4 +1,3 @@
-import { memo } from "react";
 import { Shirt, User, MessageCircle, CalendarDays } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -13,7 +12,7 @@ const tabs = [
   { path: "/profile", icon: User, label: "Profile" },
 ];
 
-export const BottomNav = memo(function BottomNav() {
+export function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -61,4 +60,4 @@ export const BottomNav = memo(function BottomNav() {
       <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
   );
-});
+}

@@ -1,4 +1,4 @@
-import { useState, memo } from "react";
+import { useState } from "react";
 import { Outfit } from "@/types/wardrobe";
 import { Sparkles, Lightbulb, Bookmark, MessageCircle, Trash2, Camera, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ interface Props {
   compact?: boolean;
 }
 
-export const OutfitCard = memo(function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props) {
+export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props) {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -132,4 +132,4 @@ export const OutfitCard = memo(function OutfitCard({ outfit, onSave, onDelete, o
       />
     </>
   );
-});
+}
