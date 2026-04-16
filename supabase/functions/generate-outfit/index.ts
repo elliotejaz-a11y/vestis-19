@@ -171,7 +171,11 @@ Determine the formality tier:
 - **BUSINESS** (meeting, interview, office): Smart trousers/chinos, blazers, dress shoes, collared shirts. Muted, refined colours. NO streetwear, graphic tees, or casual trainers.
 - **SMART CASUAL** (dinner, date night, brunch): Mix of polished and relaxed — smart jeans, loafers, knitwear, clean sneakers acceptable.
 - **CASUAL** (day out, errands, weekend): Relaxed fits, t-shirts, jeans, trainers, hoodies all fine. NO suits or blazers unless the user's style is specifically formal.
-- **ACTIVE/GYM** (gym, workout, sports, hiking): Performance fabrics, trainers, athletic wear ONLY. For gym/workout specifically: select ONLY shorts and a tight-fitting compression top or plain t-shirt. NO layering, NO thick clothes, NO warm clothing, NO jackets, NO hoodies, NO jumpers, NO outerwear, NO accessories (no hats, no jewellery, no bags). Cap the outfit at 3 items max (top + shorts + trainers). Keep it minimal and functional.
+- **ACTIVE/GYM** (gym, workout, sports, hiking): STRICT RULES — follow these exactly with ZERO exceptions:
+  1. TOP: Select exactly ONE top. It MUST be a t-shirt, tight-fitting t-shirt, compression top, tank top, or vest. Preferred fabrics: polyester, spandex, dri-fit, nylon. NEVER select outerwear, jackets, hoodies, jumpers, blazers, coats, puffer jackets, or any layering piece. If the only "top" available is a hoodie or jacket, skip it and pick a basic tee instead.
+  2. BOTTOM: Select exactly ONE bottom. It MUST be shorts, lightweight joggers, track pants, or athletic leggings. NO jeans, chinos, trousers, or heavy fabrics.
+  3. SHOES: Select exactly ONE pair of closed athletic shoes (trainers/sneakers). NO boots, dress shoes, sandals, or heels.
+  4. NOTHING ELSE: Do NOT add any outerwear, accessories, hats, bags, scarves, belts, watches, or jewellery. The outfit MUST contain exactly 3 items total (1 top + 1 bottom + 1 shoe). Never exceed 3 items for gym/workout.
 
 ## STEP 2: ELIMINATE INAPPROPRIATE ITEMS
 Before selecting, mentally remove ALL items that clash with the occasion tier. E.g. for BUSINESS: remove graphic tees, joggers, flip-flops, bucket hats. For CASUAL: deprioritise suits, ties, formal shoes.
