@@ -3,12 +3,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = [
   'https://vestis-19.lovable.app',
+  'https://vestisapp.online',
+  'https://www.vestisapp.online',
   'https://id-preview--1830068e-1c44-4713-a94f-43ffd21bb2c7.lovable.app',
   'https://1830068e-1c44-4713-a94f-43ffd21bb2c7.lovableproject.com',
 ];
 
 const GYM_OCCASION_PATTERN = /\b(gym|workout|training|exercise|fitness|run|running|jog|jogging|cardio|lift|lifting|weights?|pilates|yoga|sport|sports)\b/i;
-const GYM_TOP_POSITIVE_PATTERN = /\b(t-?shirt|tee|compression|activewear|athletic|performance|training|workout|gym|sport|sports|polyester|spandex|elastane|nylon|dry[-\s]?fit|moisture[-\s]?wicking|tight(?:-?fitting)?|fitted)\b/i;
+const FORMAL_OCCASION_PATTERN = /\b(wedding|gala|black[-\s]?tie|formal|cocktail|funeral|opera)\b/i;
+const BUSINESS_OCCASION_PATTERN = /\b(business|interview|meeting|office|work|corporate|conference|presentation)\b/i;
+const SMART_CASUAL_PATTERN = /\b(date|dinner|brunch|drinks|party|night out|event)\b/i;
+const BEACH_PATTERN = /\b(beach|pool|swim|holiday|vacation|tropical|summer)\b/i;
+
+const GYM_TOP_POSITIVE_PATTERN = /\b(t-?shirt|tee|compression|activewear|athletic|performance|training|workout|gym|sport|sports|polyester|spandex|elastane|nylon|dry[-\s]?fit|moisture[-\s]?wicking|tight(?:-?fitting)?|fitted|jersey|tank)\b/i;
 const GYM_TOP_NEGATIVE_PATTERN = /\b(jacket|coat|hoodie|jumper|sweater|cardigan|blazer|outerwear|parka|puffer|fleece|windbreaker|flannel|dress shirt|button[-\s]?up|oxford|knit|wool|zip[-\s]?up|anorak|shell)\b/i;
 const GYM_BOTTOM_POSITIVE_PATTERN = /\b(shorts?|track ?pants?|trackpants?|joggers?|training pants?|workout pants?|athletic|performance|training|workout|gym|sport|sports|lightweight|polyester|spandex|elastane|nylon)\b/i;
 const GYM_BOTTOM_NEGATIVE_PATTERN = /\b(jeans?|denim|chinos?|slacks?|trousers?|dress pants?|formal|corduroy|cargo|skirt|wool)\b/i;
@@ -57,18 +64,11 @@ function getItemSearchText(item: any): string {
   ].join(' ').toLowerCase();
 }
 
-function isGymOccasion(occasion: string): boolean {
-  return GYM_OCCASION_PATTERN.test(occasion);
-}
-
-function isShoe(item: any): boolean {
-  return normalizeCategory(item?.category) === 'shoes';
-}
-
-function isBottom(item: any): boolean {
-  return normalizeCategory(item?.category) === 'bottoms';
-}
-
+function isGymOccasion(occasion: string): boolean { return GYM_OCCASION_PATTERN.test(occasion); }
+function isFormalOccasion(occasion: string): boolean { return FORMAL_OCCASION_PATTERN.test(occasion); }
+function isBusinessOccasion(occasion: string): boolean { return BUSINESS_OCCASION_PATTERN.test(occasion); }
+function isShoe(item: any): boolean { return normalizeCategory(item?.category) === 'shoes'; }
+function isBottom(item: any): boolean { return normalizeCategory(item?.category) === 'bottoms'; }
 function isTopHalf(item: any): boolean {
   const cat = normalizeCategory(item?.category);
   return cat === 'tops' || cat === 'jumpers';
@@ -80,33 +80,48 @@ function isGymTop(item: any): boolean {
   if (GYM_TOP_NEGATIVE_PATTERN.test(text)) return false;
   return GYM_TOP_POSITIVE_PATTERN.test(text);
 }
-
 function isGymBottom(item: any): boolean {
   if (normalizeCategory(item?.category) !== 'bottoms') return false;
   const text = getItemSearchText(item);
   if (GYM_BOTTOM_NEGATIVE_PATTERN.test(text)) return false;
   return GYM_BOTTOM_POSITIVE_PATTERN.test(text);
 }
-
 function isGymShoe(item: any): boolean {
   if (normalizeCategory(item?.category) !== 'shoes') return false;
   const text = getItemSearchText(item);
   return !GYM_SHOE_NEGATIVE_PATTERN.test(text);
 }
 
+function getOccasionTier(occasion: string): { tier: string; guidance: string } {
+  if (isGymOccasion(occasion)) {
+    return { tier: 'ACTIVE/GYM', guidance: 'Athletic wear ONLY. EXACTLY 3 items: (1) one gym top — t-shirt, tight-fit tee, compression top, performance polyester/spandex/nylon top; (2) one gym bottom — shorts, track pants, joggers, lightweight athletic pants; (3) one closed trainer/sneaker. NO jackets, hoodies, jumpers, sweaters, blazers, outerwear, hats, jewellery, bags, sandals, boots, formal shoes.' };
+  }
+  if (isFormalOccasion(occasion)) {
+    return { tier: 'FORMAL', guidance: 'Formal pieces ONLY. Pick suit trousers / dress pants / smart trousers (NEVER jeans, joggers, shorts, athletic). Pair with a dress shirt or smart top, polished dress shoes (Oxfords/derbies/loafers — NEVER trainers/sandals/boots), and a blazer/suit jacket if available. NO hoodies, t-shirts with graphics, hats, trainers, athletic items.' };
+  }
+  if (isBusinessOccasion(occasion)) {
+    return { tier: 'BUSINESS', guidance: 'Smart workwear. Pick chinos, smart trousers, or dark/clean jeans (NEVER joggers, athletic, ripped). Pair with a collared shirt, polo, or fine-knit top, smart shoes or clean leather sneakers. Optional blazer. NO graphic tees, hoodies, athletic wear, sandals.' };
+  }
+  if (SMART_CASUAL_PATTERN.test(occasion)) {
+    return { tier: 'SMART CASUAL', guidance: 'Polished but relaxed. Smart jeans/chinos/trousers, knitwear or smart top, clean sneakers or loafers. Avoid athletic wear and sloppy casual.' };
+  }
+  if (BEACH_PATTERN.test(occasion)) {
+    return { tier: 'BEACH/HOLIDAY', guidance: 'Light, breathable. Shorts or linen trousers, t-shirt or short-sleeve shirt, sandals/slides or canvas sneakers. NO heavy outerwear, wool, dress shoes.' };
+  }
+  return { tier: 'CASUAL', guidance: 'Relaxed everyday wear. Jeans/chinos/casual trousers, t-shirt/sweatshirt/casual shirt, trainers or casual shoes. Avoid suits, blazers, dress shoes unless user style demands it.' };
+}
+
 function normalizeSkinTone(input: unknown): string {
   const raw = String(input || '').trim();
   if (!raw) return 'not specified';
-
   const numeric = Number(raw);
   if (Number.isFinite(numeric)) {
     return SKIN_TONE_LABELS.reduce((closest, stop) => {
-      const currentDistance = Math.abs(stop.value - numeric);
-      const bestDistance = Math.abs(closest.value - numeric);
-      return currentDistance < bestDistance ? stop : closest;
+      const cd = Math.abs(stop.value - numeric);
+      const bd = Math.abs(closest.value - numeric);
+      return cd < bd ? stop : closest;
     }, SKIN_TONE_LABELS[0]).label;
   }
-
   const matched = SKIN_TONE_LABELS.find((stop) => stop.label.toLowerCase() === raw.toLowerCase());
   return matched?.label ?? raw;
 }
@@ -122,44 +137,32 @@ function dedupeById(items: any[]): any[] {
   });
 }
 
-function ensureRequiredCategory(
-  selected: any[],
-  allItems: any[],
-  predicate: (item: any) => boolean,
-  replacementPriority: string[]
-): any[] {
+function ensureRequiredCategory(selected: any[], allItems: any[], predicate: (item: any) => boolean, replacementPriority: string[]): any[] {
   const available = allItems.filter(predicate);
   if (available.length === 0 || selected.some(predicate)) return selected;
-
   const replaceIndex = selected.findIndex((item) => replacementPriority.includes(normalizeCategory(item?.category)));
-
   if (replaceIndex >= 0) {
     const next = [...selected];
     next[replaceIndex] = available[0];
     return next;
   }
-
   if (selected.length >= 5) {
     const next = [...selected];
     next[next.length - 1] = available[0];
     return next;
   }
-
   return [...selected, available[0]];
 }
 
 function normalizeSelectionWithRequiredCore(selected: any[], allItems: any[]): any[] {
   let next = dedupeById(selected.filter(Boolean));
-
   if (next.length === 0 && allItems.length > 0) {
     next = allItems.slice(0, Math.min(4, allItems.length));
   }
-
   const replacementPriority = ['accessories', 'hats', 'outerwear'];
   next = ensureRequiredCategory(next, allItems, isTopHalf, replacementPriority);
   next = ensureRequiredCategory(next, allItems, isBottom, replacementPriority);
   next = ensureRequiredCategory(next, allItems, isShoe, replacementPriority);
-
   return dedupeById(next).slice(0, 5);
 }
 
@@ -168,7 +171,6 @@ function normalizeSelectionForGym(selected: any[], allItems: any[]): any[] {
   const top = deduped.find(isGymTop) ?? allItems.find(isGymTop);
   const bottom = deduped.find(isGymBottom) ?? allItems.find(isGymBottom);
   const shoes = deduped.find(isGymShoe) ?? allItems.find(isGymShoe);
-
   return dedupeById([top, bottom, shoes].filter(Boolean)).slice(0, 3);
 }
 
@@ -179,7 +181,6 @@ serve(async (req) => {
   }
 
   try {
-    // Auth check
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -202,13 +203,12 @@ serve(async (req) => {
     const { occasion, items, userProfile, weather } = await req.json();
     const normalizedSkinTone = normalizeSkinTone(userProfile?.skinTone);
 
-    // Input validation
     if (!occasion || typeof occasion !== 'string' || occasion.length > 200) {
       return new Response(JSON.stringify({ error: 'Invalid occasion' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    if (!Array.isArray(items) || items.length === 0 || items.length > 200) {
+    if (!Array.isArray(items) || items.length === 0 || items.length > 300) {
       return new Response(JSON.stringify({ error: 'Invalid items' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -221,37 +221,33 @@ serve(async (req) => {
 
     if (isGymRequest) {
       if (!candidateItems.some(isGymTop)) {
-        return new Response(JSON.stringify({ error: 'Gym/workout outfits require at least one gym-appropriate top such as a t-shirt, tight-fitting t-shirt, compression top, or performance polyester/spandex top.' }), {
+        return new Response(JSON.stringify({ error: 'Gym/workout outfits require a gym-appropriate top (t-shirt, compression, or performance polyester/spandex top).' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-
       if (!candidateItems.some(isGymBottom)) {
-        return new Response(JSON.stringify({ error: 'Gym/workout outfits require at least one suitable bottom such as shorts, lightweight pants, or track pants.' }), {
+        return new Response(JSON.stringify({ error: 'Gym/workout outfits require a suitable bottom (shorts, lightweight pants, or track pants).' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-
       if (!candidateItems.some(isGymShoe)) {
-        return new Response(JSON.stringify({ error: 'Gym/workout outfits require at least one normal closed shoe or trainer.' }), {
+        return new Response(JSON.stringify({ error: 'Gym/workout outfits require a closed shoe or trainer.' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
     } else {
       if (!items.some(isShoe)) {
-        return new Response(JSON.stringify({ error: 'At least one shoe item is required to generate an outfit.' }), {
+        return new Response(JSON.stringify({ error: 'At least one shoe item is required.' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-
       if (!items.some(isBottom)) {
-        return new Response(JSON.stringify({ error: 'At least one bottoms item is required to generate an outfit.' }), {
+        return new Response(JSON.stringify({ error: 'At least one bottoms item is required.' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-
       if (!items.some(isTopHalf)) {
-        return new Response(JSON.stringify({ error: 'At least one tops or jumpers item is required to generate an outfit.' }), {
+        return new Response(JSON.stringify({ error: 'At least one tops or jumpers item is required.' }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
@@ -260,9 +256,55 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    const wardrobeSummary = candidateItems.map((item: any, i: number) => 
-      `${i + 1}. \"${String(item.name || '').slice(0, 100)}\" — ${String(item.category || '').slice(0, 50)}, ${String(item.color || '').slice(0, 30)}, ${String(item.fabric || '').slice(0, 30)}, tags: [${(item.tags || []).slice(0, 10).join(', ')}]${item.notes ? `, user notes: \"${String(item.notes).slice(0, 200)}\"` : ''}`
-    ).join('\n');
+    const occasionTier = getOccasionTier(occasion);
+
+    // Build a richer wardrobe summary so the AI can intelligently pick from many options
+    const wardrobeSummary = candidateItems.map((item: any, i: number) => {
+      const tags = Array.isArray(item.tags) ? item.tags.slice(0, 8).join(', ') : '';
+      const notes = item.notes ? ` | notes: "${String(item.notes).slice(0, 120)}"` : '';
+      return `${i + 1}. [${String(item.category || '').toLowerCase()}] "${String(item.name || '').slice(0, 80)}" — colour: ${String(item.color || 'unspecified').slice(0, 30)}, fabric: ${String(item.fabric || 'unspecified').slice(0, 30)}${tags ? `, tags: [${tags}]` : ''}${notes}`;
+    }).join('\n');
+
+    const systemPrompt = `You are a senior personal fashion stylist with 30 years of experience dressing real people for real occasions. Your job is to build a sensible, flattering, occasion-appropriate outfit from the user's actual wardrobe. You think like a stylist, not a robot.
+
+## OCCASION TIER (locked in for this request)
+**${occasionTier.tier}** — ${occasionTier.guidance}
+
+## NON-NEGOTIABLE RULES
+1. The outfit MUST match the occasion tier above. Never put gym wear at a wedding, never put a blazer at the gym, never put dress shoes at the beach.
+2. The outfit MUST include exactly: 1 top (or jumper), 1 bottom, 1 pair of shoes — at minimum. Add outerwear/hat/accessory ONLY if it enhances the look and fits the occasion.
+3. For ACTIVE/GYM: return EXACTLY 3 items (top + bottom + shoes) — no exceptions.
+4. Pick items that genuinely make sense together. If the user has 10 pairs of pants, choose the ONE that best fits the occasion (e.g. track pants for gym, suit trousers for wedding, dark jeans for date night).
+5. Colour harmony matters: build a deliberate palette (2–3 colours max), avoid clashing.
+6. Fabric/weather: heavier fabrics for cold weather, lightweight breathable for warm. Match formality of fabric to occasion.
+
+## SKIN TONE FLATTERY
+Use the user's skin tone to pick colours that genuinely flatter:
+- Porcelain/Ivory/Light Beige: navy, burgundy, forest green, soft pink, charcoal
+- Warm Beige/Golden Beige/Honey: olive, terracotta, camel, cream, rust, jewel tones
+- Golden Tan/Caramel/Chestnut: cobalt, magenta, orange, gold, teal, white
+- Mocha/Espresso/Deep Cocoa/Rich Ebony/Midnight: bold brights (red, royal blue, fuchsia), pastels, white, metallics
+
+## STYLE PREFERENCE
+Strongly favour items matching the user's stated style. A minimalist user gets clean lines and neutral palettes; a streetwear user gets relaxed fits and statement pieces; a classic user gets timeless silhouettes.
+
+## REASONING (shown to user as "WHY THIS WORKS")
+Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the user's skin tone (using its descriptive name, not a number), the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.`;
+
+    const userPrompt = `Build the best outfit for: "${occasion}"
+Occasion tier: ${occasionTier.tier}
+${weather ? `Weather: ${weather.temp}°C, ${weather.description} — factor this in.\n` : ''}
+${userProfile ? `User profile:
+- Skin tone: ${normalizedSkinTone} (USE for colour flattery)
+- Style preference: ${userProfile.stylePreference || 'not specified'} (CRITICAL: match closely)
+- Body type: ${userProfile.bodyType || 'not specified'}
+- Preferred colours: ${(userProfile.preferredColors || []).join(', ') || 'not specified'}
+- Fashion goal: ${userProfile.fashionGoals || 'not specified'}
+` : ''}
+WARDROBE (${candidateItems.length} items):
+${wardrobeSummary}
+
+Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items (gym top + gym bottom + closed trainer).' : 'Return 3–5 items that genuinely work together.'}`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -271,93 +313,12 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
+        model: 'google/gemini-2.5-flash',
         messages: [
-          {
-            role: 'system',
-            content: `You are a world-class fashion stylist AI. You MUST follow this strict decision process:
-
-## STEP 1: CLASSIFY THE OCCASION
-Determine the formality tier:
-- **FORMAL** (black-tie, gala, wedding guest): Suits, dress shirts, polished shoes only. NO hats, caps, trainers, hoodies, or casual items.
-- **BUSINESS** (meeting, interview, office): Smart trousers/chinos, blazers, dress shoes, collared shirts. Muted, refined colours. NO streetwear, graphic tees, or casual trainers.
-- **SMART CASUAL** (dinner, date night, brunch): Mix of polished and relaxed — smart jeans, loafers, knitwear, clean sneakers acceptable.
-- **CASUAL** (day out, errands, weekend): Relaxed fits, t-shirts, jeans, trainers, hoodies all fine. NO suits or blazers unless the user's style is specifically formal.
-- **ACTIVE/GYM** (gym, workout, sports, hiking): Athletic wear ONLY. For gym/workout specifically, you must select EXACTLY 3 items: (1) one top from T-shirts, tight-fitting T-shirts, compression tops, or performance polyester/spandex/nylon tops; (2) one bottom from shorts, lightweight pants, track pants, or joggers; and (3) one pair of normal closed trainers/sneakers/gym shoes. NO jackets, NO hoodies, NO jumpers, NO sweaters, NO outerwear, NO layering, NO thick or warm clothes, NO hats, NO jewellery, NO bags, NO accessories, NO sandals, NO boots, NO formal shoes.
-
-## STEP 2: ELIMINATE INAPPROPRIATE ITEMS
-Before selecting, mentally remove ALL items that clash with the occasion tier. E.g. for BUSINESS: remove graphic tees, joggers, flip-flops, bucket hats. For CASUAL: deprioritise suits, ties, formal shoes. For ACTIVE/GYM: remove anything that is not a gym top, lightweight gym bottom, or normal closed gym shoe.
-
-## STEP 3: MATCH THE USER'S SKIN TONE (if provided)
-Use these flattering colour guidelines:
-- **Fair/Light skin**: Navy, burgundy, forest green, soft pink, charcoal. Avoid washing out with pastels or stark white.
-- **Medium/Olive skin**: Earth tones (olive, terracotta, camel), jewel tones (emerald, sapphire), cream, rust.
-- **Tan/Brown skin**: Rich colours (cobalt blue, magenta, orange, gold, teal). White and cream look striking.
-- **Dark/Deep skin**: Bold brights (red, yellow, royal blue, fuchsia), pastels (lavender, soft pink), white, metallics.
-
-## STEP 4: COLOUR HARMONY
-Follow these pairing rules (use as guidance, not gospel):
-- **Black** pairs with: dark red/maroon, navy, grey, white, light blue
-- **Navy** pairs with: black, beige/tan, grey, yellow, white
-- **Grey** pairs with: black, pink, white, blue, burgundy
-- **Beige/Tan** pairs with: black, navy, green, brown, white
-- **White** pairs with: everything, especially navy, black, green, blue
-- **Green** pairs with: black, navy, brown, yellow, white
-- **Blue** pairs with: black, yellow, white, light blue, grey
-- **Light blue** pairs with: black, navy, pink, dark red, grey, beige
-- **Burgundy/Maroon** pairs with: black, grey, pink, white, beige
-- **Red** pairs with: black, navy, grey, white, green
-- **Orange** pairs with: black, light blue, grey, yellow, white
-- **Yellow** pairs with: black, green, grey, white, beige
-- **Pink** pairs with: black, navy, grey, white, blue
-Avoid clashing combinations (e.g. red+orange, navy+black in casual contexts, brown+black unless intentional).
-
-## STEP 5: FABRIC & TEXTURE COMPATIBILITY
-- Don't pair denim with denim unless intentionally styled
-- Mix textures: knit with cotton, wool with silk, leather with denim
-- Match fabric weight to weather/occasion
-- For ACTIVE/GYM, prioritise breathable, flexible, lightweight performance fabrics.
-
-## STEP 6: STYLE PREFERENCE ALIGNMENT
-If the user has a style preference (e.g. streetwear, minimalist, classic, preppy), STRONGLY favour items matching that aesthetic. A minimalist user shouldn't get loud patterns; a streetwear user shouldn't get formal blazers for casual occasions.
-
-## STEP 7: SELECT 2-5 ITEMS
-Build the outfit prioritising: 1 top, 1 bottom, 1 pair of shoes minimum. Add outerwear/accessories only if they genuinely enhance the outfit.
-For ACTIVE/GYM, override this and select EXACTLY 3 items only: 1 gym top + 1 gym bottom + 1 pair of closed gym shoes.
-
-## STEP 8: WRITE THE "WHY THIS WORKS" EXPLANATION
-Your reasoning is shown directly to the user and must read like a premium personal stylist speaking to them.
-- Write 4-6 full sentences and make it specific, not generic.
-- Explicitly explain why the chosen colours flatter the user's skin tone if skin tone is provided.
-- Explicitly explain why the fabrics and textures suit both the occasion and the weather.
-- Explicitly explain why the colours work together using the actual colours selected.
-- Explicitly explain how the outfit matches the user's stated style preference.
-- Name the actual selected items, colours, and fabrics where relevant.
-- NEVER write vague filler like "a curated look", "complementary pieces", "works well together", or "stylish choice" without giving a real reason.
-- If the explanation sounds generic, rewrite it until it feels personal and concrete.`,
-          },
-          {
-            role: 'user',
-            content: `Create the best possible outfit for the occasion: "${occasion}"
-${weather ? `\nCurrent weather: ${weather.temp}\u00B0C, ${weather.description}. Factor this into your outfit choices.\n` : ''}
-${userProfile ? `
-User profile:
- - Skin tone: ${normalizedSkinTone} (USE THIS for colour flattery — see skin tone guidelines)
-- Style preference: ${userProfile.stylePreference || 'not specified'} (CRITICAL: match this style closely!)
-- Body type: ${userProfile.bodyType || 'not specified'}
-- Preferred colour palettes: ${(userProfile.preferredColors || []).join(', ') || 'not specified'}
-- Fashion goal: ${userProfile.fashionGoals || 'not specified'}
-` : ''}
-Available wardrobe items:
-${wardrobeSummary}
-
-Follow the 8-step decision process. First classify the occasion, then eliminate inappropriate items, then build a colour-harmonious outfit that flatters the user's skin tone and matches their style preference. Use their index numbers (1-based).
-
-The "reasoning" output is displayed in a WHY THIS WORKS section in the app, so it must be polished, user-facing, and detailed. Mention the user's skin tone or complexion if available, the actual colours chosen, the fabrics relative to the occasion and weather, and why the look fits their style preference. Do not use generic filler.
-
-MANDATORY: Every outfit MUST include at least one bottoms item and exactly one pair of shoes. If the occasion is any gym/workout/exercise/sport request, you MUST return exactly 3 items only: 1 gym top, 1 lightweight gym bottom, and 1 pair of normal closed gym shoes. Never return jackets, jumpers, hoodies, coats, zip-ups, shells, outerwear, accessories, or layered pieces for gym/workout.`,
-          },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
         ],
+        max_completion_tokens: 4096,
         tools: [
           {
             type: 'function',
@@ -370,15 +331,15 @@ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one p
                   selected_indices: {
                     type: 'array',
                     items: { type: 'integer' },
-                    description: 'The 1-based indices of selected wardrobe items',
+                    description: '1-based indices of selected wardrobe items',
                   },
                   reasoning: {
                     type: 'string',
-                    description: 'Detailed explanation (4-6 sentences) of WHY this outfit works. MUST specifically address: (1) how the chosen colours complement the user\'s skin tone (reference the specific skin tone if provided), (2) why the fabrics/textures are appropriate for the occasion and current weather conditions, (3) how the colour palette creates harmony (reference specific colour pairings), (4) how the overall look aligns with the user\'s style preference. Be personal and specific — never generic filler. Example: "The navy wool blazer pairs beautifully with your olive skin tone, bringing out warm undertones. The cotton Oxford shirt in light blue creates a classic contrast against the navy..."',
+                    description: 'Detailed 4–6 sentence stylist explanation referencing actual items, colours, fabrics, the user\'s skin tone (by name), the weather, and their style. No generic filler.',
                   },
                   style_tips: {
                     type: 'string',
-                    description: 'One quick styling tip for wearing this outfit (e.g., "Roll the sleeves for a relaxed vibe" or "Tuck in the shirt to elongate your silhouette").',
+                    description: 'One quick styling tip for wearing this outfit.',
                   },
                 },
                 required: ['selected_indices', 'reasoning', 'style_tips'],
