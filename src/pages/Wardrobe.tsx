@@ -155,16 +155,17 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
               </AddClothingSheet>
             </div>
           ) : (
-            <VirtualizedGrid
-              items={filtered}
-              columns={2}
-              gap={12}
-              estimateRowHeight={280}
-              className="px-4"
-              renderItem={(item) => (
-                <ClothingCard key={item.id} item={item} onRemove={onRemove} onDetail={setDetailItem} onRetryBackgroundRemoval={onRetryBackgroundRemoval} />
-              )}
-            />
+            <div className="px-4 grid grid-cols-2 gap-3">
+              {filtered.map((item) => (
+                <ClothingCard
+                  key={item.id}
+                  item={item}
+                  onRemove={onRemove}
+                  onDetail={setDetailItem}
+                  onRetryBackgroundRemoval={onRetryBackgroundRemoval}
+                />
+              ))}
+            </div>
           )}
         </>
       )}
