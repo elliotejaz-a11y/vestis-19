@@ -1,5 +1,4 @@
-import { useRef, memo } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { memo } from "react";
 
 interface VirtualizedGridProps<T> {
   items: T[];
@@ -11,79 +10,45 @@ interface VirtualizedGridProps<T> {
   overscan?: number;
 }
 
+/**
+ * Simple, robust grid that uses native CSS grid + the browser's built-in
+ * `content-visibility: auto` for off-screen virtualization. This avoids
+ * the misalignment / overlap glitches that absolute-positioned virtualizers
+ * cause once row heights vary (e.g. wrapping titles, different image aspect
+ * ratios, or LazyImage placeholders settling).
+ *
+ * Performance is more than enough for hundreds of items because rows that are
+ * off-screen are skipped during layout/paint by the browser.
+ */
 function VirtualizedGridInner<T>({
   items,
   columns = 2,
   gap = 12,
-  estimateRowHeight = 240,
+  estimateRowHeight = 280,
   renderItem,
   className,
-  overscan = 3,
 }: VirtualizedGridProps<T>) {
-  const parentRef = useRef<HTMLDivElement>(null);
-  const rowCount = Math.ceil(items.length / columns);
-
-  const virtualizer = useVirtualizer({
-    count: rowCount,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => estimateRowHeight,
-    overscan,
-  });
-
-  // For small lists, render directly without virtualization
-  if (items.length <= 20) {
-    return (
-      <div className={className}>
-        <div className="grid grid-cols-2 gap-3">
-          {items.map((item, i) => (
-            <div key={i}>{renderItem(item, i)}</div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div ref={parentRef} className={className} style={{ height: "calc(100vh - 280px)", overflow: "auto" }}>
+    <div className={className}>
       <div
         style={{
-          height: `${virtualizer.getTotalSize()}px`,
-          width: "100%",
-          position: "relative",
+          display: "grid",
+          gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+          gap: `${gap}px`,
+          alignItems: "start",
         }}
       >
-        {virtualizer.getVirtualItems().map((virtualRow) => {
-          const rowStart = virtualRow.index * columns;
-          const rowItems = items.slice(rowStart, rowStart + columns);
-
-          return (
-            <div
-              key={virtualRow.key}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: "100%",
-                height: `${virtualRow.size}px`,
-                transform: `translateY(${virtualRow.start}px)`,
-              }}
-            >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: `repeat(${columns}, 1fr)`,
-                  gap: `${gap}px`,
-                }}
-              >
-                {rowItems.map((item, colIndex) => (
-                  <div key={rowStart + colIndex}>
-                    {renderItem(item, rowStart + colIndex)}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        {items.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              contentVisibility: "auto",
+              containIntrinsicSize: `${estimateRowHeight}px`,
+            } as React.CSSProperties}
+          >
+            {renderItem(item, i)}
+          </div>
+        ))}
       </div>
     </div>
   );
