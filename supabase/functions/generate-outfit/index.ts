@@ -260,9 +260,40 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
-    const wardrobeSummary = candidateItems.map((item: any, i: number) => 
-      `${i + 1}. \"${String(item.name || '').slice(0, 100)}\" — ${String(item.category || '').slice(0, 50)}, ${String(item.color || '').slice(0, 30)}, ${String(item.fabric || '').slice(0, 30)}, tags: [${(item.tags || []).slice(0, 10).join(', ')}]${item.notes ? `, user notes: \"${String(item.notes).slice(0, 200)}\"` : ''}`
-    ).join('\n');
+    // Shuffle so the AI sees variety across the full wardrobe (with 100+ items
+    // it tends to lock onto whichever ones come first in the list).
+    const shuffledCandidates = [...candidateItems].sort(() => Math.random() - 0.5);
+
+    // Group by category so the model clearly sees ALL available bottoms, tops,
+    // shoes etc. and can pick the BEST one for the occasion (track pants for
+    // gym, suit pants for wedding, jeans for casual, etc.) instead of grabbing
+    // the first one it encounters.
+    const groupByCategory = (list: any[]): Record<string, { idx: number; item: any }[]> => {
+      const groups: Record<string, { idx: number; item: any }[]> = {};
+      list.forEach((item, i) => {
+        const cat = normalizeCategory(item?.category) || 'other';
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push({ idx: i + 1, item });
+      });
+      return groups;
+    };
+    // Re-index against shuffledCandidates so 1-based indices map back correctly.
+    const indexedCandidates = shuffledCandidates;
+    const categoryGroups = groupByCategory(indexedCandidates);
+    const categoryOrder = ['tops', 'jumpers', 'bottoms', 'shoes', 'outerwear', 'hats', 'accessories', 'dresses', 'other'];
+    const sortedCategoryKeys = Object.keys(categoryGroups).sort((a, b) => {
+      const ai = categoryOrder.indexOf(a); const bi = categoryOrder.indexOf(b);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+
+    const wardrobeSummary = sortedCategoryKeys.map((cat) => {
+      const entries = categoryGroups[cat];
+      const header = `\n=== ${cat.toUpperCase()} (${entries.length} available — review them ALL and pick the single BEST one for this occasion) ===`;
+      const lines = entries.map(({ idx, item }) =>
+        `${idx}. "${String(item.name || '').slice(0, 100)}" — ${String(item.color || '').slice(0, 30)}, ${String(item.fabric || '').slice(0, 30)}, tags: [${(item.tags || []).slice(0, 10).join(', ')}]${item.notes ? `, notes: "${String(item.notes).slice(0, 150)}"` : ''}`
+      ).join('\n');
+      return `${header}\n${lines}`;
+    }).join('\n');
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
