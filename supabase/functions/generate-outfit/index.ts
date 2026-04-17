@@ -454,12 +454,12 @@ MANDATORY: Every outfit MUST include at least one bottoms item and exactly one p
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
     const parsedSelectedItems = rawSelectedIndices
       .map((idx: unknown) => Number(idx))
-      .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= candidateItems.length)
-      .map((idx: number) => candidateItems[idx - 1]);
+      .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= indexedCandidates.length)
+      .map((idx: number) => indexedCandidates[idx - 1]);
 
     const selectedItems = isGymRequest
-      ? normalizeSelectionForGym(parsedSelectedItems, candidateItems)
-      : normalizeSelectionWithRequiredCore(parsedSelectedItems, candidateItems);
+      ? normalizeSelectionForGym(parsedSelectedItems, indexedCandidates)
+      : normalizeSelectionWithRequiredCore(parsedSelectedItems, indexedCandidates);
 
     return new Response(JSON.stringify({
       items: selectedItems,
