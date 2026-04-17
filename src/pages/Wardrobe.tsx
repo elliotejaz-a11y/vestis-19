@@ -3,7 +3,7 @@ import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { OutfitCard } from "@/components/OutfitCard";
-import { VirtualizedGrid } from "@/components/VirtualizedGrid";
+
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { Plus, Shirt, Bookmark, Sparkles, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
