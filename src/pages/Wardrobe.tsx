@@ -114,10 +114,8 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Newest First</SelectItem>
-                <SelectItem value="oldest">Oldest First</SelectItem>
-                <SelectItem value="colour">Colour</SelectItem>
-                <SelectItem value="fabric">Fabric</SelectItem>
+                <SelectItem value="newest">Newest to Oldest</SelectItem>
+                <SelectItem value="oldest">Oldest to Newest</SelectItem>
               </SelectContent>
             </Select>
           </div>
