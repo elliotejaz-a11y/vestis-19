@@ -172,22 +172,19 @@ export default function Auth() {
     } else {
       let signInEmail = emailOrUsername.trim();
 
-      // Detect if input is a username (no @ sign) and look up the email
       const isEmail = signInEmail.includes("@");
       if (!isEmail && signInEmail.length > 0) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("email")
-          .ilike("username", signInEmail)
-          .limit(1)
-          .single();
+        const { data: resolvedEmail, error: usernameLookupError } = await supabase.rpc("get_email_by_username", {
+          lookup_username: signInEmail,
+        });
 
-        if (!profileData?.email) {
+        if (usernameLookupError || !resolvedEmail) {
           toast({ title: "User not found", description: "No account found with that email or username.", variant: "destructive" });
           setLoading(false);
           return;
         }
-        signInEmail = profileData.email;
+
+        signInEmail = resolvedEmail;
       }
 
       // Handle remember me - if unchecked, we'll clear session on tab close
