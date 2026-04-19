@@ -36,6 +36,8 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
   const filteredBase = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
   const filtered = [...filteredBase].sort((a, b) => {
     if (sortBy === "oldest") return a.addedAt.getTime() - b.addedAt.getTime();
+    if (sortBy === "colour") return a.color.localeCompare(b.color);
+    if (sortBy === "fabric") return a.fabric.localeCompare(b.fabric);
     return b.addedAt.getTime() - a.addedAt.getTime(); // newest
   });
 
@@ -112,8 +114,10 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="newest">Newest to Oldest</SelectItem>
-                <SelectItem value="oldest">Oldest to Newest</SelectItem>
+                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="oldest">Oldest First</SelectItem>
+                <SelectItem value="colour">Colour</SelectItem>
+                <SelectItem value="fabric">Fabric</SelectItem>
               </SelectContent>
             </Select>
           </div>
