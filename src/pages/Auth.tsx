@@ -17,9 +17,7 @@ export default function Auth() {
   // If in recovery mode (OTP verified, setting new password), keep showing Auth
   const isRecoveryMode = sessionStorage.getItem("vestis_recovery_mode") === "true";
   const [isSignUp, setIsSignUp] = useState(false);
-  // The SignUpIntro flow now doubles as the brand landing screen, so it's
-  // shown by default to all visitors unless they're in password-recovery mode.
-  const [showSignUpIntro, setShowSignUpIntro] = useState(!isRecoveryMode);
+  const [showSignUpIntro, setShowSignUpIntro] = useState(false);
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -404,7 +402,7 @@ export default function Auth() {
     );
   }
 
-  // Pre-signup sales pitch flow (also serves as the brand landing screen)
+  // Pre-signup sales pitch flow
   if (showSignUpIntro) {
     return (
       <SignUpIntro
@@ -412,14 +410,7 @@ export default function Auth() {
           setShowSignUpIntro(false);
           setIsSignUp(true);
         }}
-        onBack={() => {
-          // From the landing step there's nowhere to go back to — keep them here.
-          setShowSignUpIntro(true);
-        }}
-        onSignIn={() => {
-          setShowSignUpIntro(false);
-          setIsSignUp(false);
-        }}
+        onBack={() => setShowSignUpIntro(false)}
       />
     );
   }

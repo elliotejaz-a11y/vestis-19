@@ -7,8 +7,6 @@ import vestisLogo from "@/assets/vestis-logo.png";
 interface SignUpIntroProps {
   onComplete: () => void;
   onBack: () => void;
-  /** Called when the user taps "I already have an account" on the first screen. */
-  onSignIn: () => void;
 }
 
 type DressFreq = "rarely" | "sometimes" | "always" | null;
@@ -18,11 +16,11 @@ type WardrobeSize = "small" | "medium" | "large" | null;
 const VESTIS_MINUTES = 2;
 
 /**
- * Pre-signup sales pitch flow. The first screen doubles as the app's
- * landing page (with Get Started + Sign-in CTAs). Subsequent screens
- * collect lifestyle info and reveal how much time Vestis saves.
+ * Pre-signup sales pitch flow. Collects the user's morning routine time
+ * and wardrobe info, then shows the yearly time they'd reclaim by
+ * switching to Vestis (which always takes 2 min/day).
  */
-export function SignUpIntro({ onComplete, onBack, onSignIn }: SignUpIntroProps) {
+export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
   const [step, setStep] = useState(0);
   const [minutesPerDay, setMinutesPerDay] = useState(11);
   const [nothingToWear, setNothingToWear] = useState<DressFreq>(null);
@@ -39,9 +37,7 @@ export function SignUpIntro({ onComplete, onBack, onSignIn }: SignUpIntroProps) 
   );
   const savedHours = Math.max(0, yearlyHoursNow - yearlyHoursVestis);
 
-  // Step 0 = brand landing screen. Steps 1..6 = pitch flow.
-  const totalSteps = 7;
-  const isLanding = step === 0;
+  const totalSteps = 6;
   const isLast = step === totalSteps - 1;
 
   const next = () => {
@@ -61,68 +57,6 @@ export function SignUpIntro({ onComplete, onBack, onSignIn }: SignUpIntroProps) 
     return true;
   })();
 
-  // ---- Bar chart heights: Vestis bar must always be smaller than "Right now" ----
-  const MAX_BAR = 220;
-  const MIN_BAR = 70;
-  const nowBarHeight = MAX_BAR;
-  // Cap Vestis bar at 60% of "Right now" so it is always visibly smaller,
-  // but never below MIN_BAR for legibility.
-  const vestisBarHeight = Math.min(
-    Math.round(MAX_BAR * 0.6),
-    Math.max(
-      MIN_BAR,
-      Math.round((yearlyHoursVestis / Math.max(yearlyHoursNow, 1)) * MAX_BAR)
-    )
-  );
-
-  // ---- Landing screen (step 0) — bold, brave, with CTAs ----
-  if (isLanding) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background px-6 pt-10 pb-8">
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <img src={vestisLogo} alt="Vestis" className="h-14 mb-8" />
-          <p className="text-xs font-bold tracking-[0.25em] uppercase text-accent mb-4">
-            Your wardrobe, reinvented
-          </p>
-          <h1 className="text-[3.25rem] font-extrabold text-foreground leading-[0.95] tracking-tight mb-5">
-            Get dressed <br />
-            in <span className="text-accent">2 minutes</span>. <br />
-            Every day. ⚡
-          </h1>
-          <p className="text-base text-muted-foreground max-w-xs leading-snug mb-10">
-            Stop staring at your closet. Vestis styles you in seconds — so you can get on with your life. ✨
-          </p>
-          <ul className="w-full max-w-xs space-y-3 text-left">
-            {[
-              { emoji: "👕", label: "Your whole wardrobe in your pocket" },
-              { emoji: "🪄", label: "AI outfits for any occasion" },
-              { emoji: "📅", label: "Plan & track what you wear" },
-            ].map(({ emoji, label }) => (
-              <li key={label} className="flex items-center gap-3 text-foreground">
-                <span className="text-2xl leading-none">{emoji}</span>
-                <span className="text-sm font-semibold">{label}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="space-y-3 pt-6">
-          <Button
-            onClick={next}
-            className="w-full h-14 rounded-2xl bg-accent text-accent-foreground font-bold text-base hover:bg-accent/90"
-          >
-            Get Started
-          </Button>
-          <button
-            onClick={onSignIn}
-            className="w-full h-12 text-sm font-semibold text-foreground hover:text-accent transition-colors"
-          >
-            I already have an account
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-background px-6 pt-6 pb-8">
       {/* Header: back + progress */}
@@ -137,25 +71,54 @@ export function SignUpIntro({ onComplete, onBack, onSignIn }: SignUpIntroProps) 
         <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
           <div
             className="h-full bg-accent transition-all duration-300"
-            style={{ width: `${(step / (totalSteps - 1)) * 100}%` }}
+            style={{ width: `${((step + 1) / totalSteps) * 100}%` }}
           />
         </div>
       </div>
 
       {/* Step content */}
       <div className="flex-1 flex flex-col">
+        {step === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+            <img src={vestisLogo} alt="Vestis" className="h-12" />
+            <div className="space-y-3">
+              <h1 className="text-3xl font-bold text-foreground leading-tight">
+                Welcome to Vestis ✨
+              </h1>
+              <p className="text-base text-muted-foreground max-w-xs">
+                Your AI-powered wardrobe. Let's see how much time we can give back to you.
+              </p>
+            </div>
+            <ul className="w-full max-w-xs pt-2 space-y-3 text-left">
+              {[
+                { emoji: "👕", label: "Digitise your entire wardrobe" },
+                { emoji: "🪄", label: "AI outfits for any occasion" },
+                { emoji: "📅", label: "Plan & track what you wear" },
+                { emoji: "👯", label: "Share fits with friends" },
+              ].map(({ emoji, label }) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-3 text-foreground"
+                >
+                  <span className="text-2xl leading-none">{emoji}</span>
+                  <span className="text-sm font-medium">{label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {step === 1 && (
           <div className="flex-1 flex flex-col">
-            <h1 className="text-4xl font-extrabold text-foreground leading-[1.05] tracking-tight mb-3">
+            <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
               How long do you spend picking an outfit each morning? ⏰
             </h1>
-            <p className="text-base text-muted-foreground mb-8">
-              Drag the slider to your daily average.
+            <p className="text-sm text-muted-foreground mb-8">
+              Drag the slider to your average.
             </p>
-            <div className="flex-1 flex flex-col items-center justify-center gap-8">
-              <p className="text-7xl font-extrabold text-foreground tracking-tight">
-                {minutesPerDay}
-                <span className="text-2xl font-semibold text-muted-foreground ml-1">min</span>
+            <div className="flex-1 flex flex-col items-center justify-center gap-6">
+              <p className="text-5xl font-bold text-foreground">
+                {minutesPerDay} <span className="text-2xl font-medium text-muted-foreground">min</span>
               </p>
               <div className="w-full max-w-xs space-y-3">
                 <div className="flex items-center gap-3">
@@ -175,7 +138,7 @@ export function SignUpIntro({ onComplete, onBack, onSignIn }: SignUpIntroProps) 
                   <span>30+ min</span>
                 </div>
               </div>
-              <p className="text-base text-muted-foreground text-center max-w-xs pt-2">
+              <p className="text-sm text-muted-foreground text-center max-w-xs pt-4">
                 That's around <span className="font-bold text-foreground">{yearlyHoursNow} hours</span> a year just deciding what to wear. 😮
               </p>
             </div>
@@ -193,7 +156,7 @@ export function SignUpIntro({ onComplete, onBack, onSignIn }: SignUpIntroProps) 
             <div className="flex-1 flex flex-col justify-center gap-3">
               {[
                 { v: "rarely" as const, t: "Rarely", d: "I've got my go-to outfits", e: "😎" },
-                { v: "sometimes" as const, t: "Sometimes", d: "Depends on the occasion", e: "🤷‍♂️" },
+                { v: "sometimes" as const, t: "Sometimes", d: "Depends on the occasion", e: "🤷" },
                 { v: "always" as const, t: "All the time", d: "Staring at my closet daily", e: "😩" },
               ].map((opt) => {
                 const active = nothingToWear === opt.v;
@@ -238,10 +201,7 @@ export function SignUpIntro({ onComplete, onBack, onSignIn }: SignUpIntroProps) 
             <div className="flex-1 flex flex-col items-center justify-center">
               <div className="w-full max-w-xs rounded-3xl bg-muted/50 p-6">
                 <div className="grid grid-cols-2 gap-4 items-end">
-                  <div
-                    className="rounded-2xl bg-card border border-border p-4 flex flex-col items-center justify-between"
-                    style={{ height: nowBarHeight }}
-                  >
+                  <div className="rounded-2xl bg-card border border-border p-4 flex flex-col items-center justify-between" style={{ height: 180 }}>
                     <p className="text-xs font-semibold text-muted-foreground text-center">
                       Right now
                     </p>
@@ -253,16 +213,13 @@ export function SignUpIntro({ onComplete, onBack, onSignIn }: SignUpIntroProps) 
                       <p className="text-[10px] text-muted-foreground mt-1">per year</p>
                     </div>
                   </div>
-                  <div
-                    className="rounded-2xl bg-accent p-4 flex flex-col items-center justify-between"
-                    style={{ height: vestisBarHeight }}
-                  >
+                  <div className="rounded-2xl bg-accent p-4 flex flex-col items-center justify-between" style={{ height: 240 }}>
                     <p className="text-xs font-semibold text-accent-foreground/80 text-center">
                       With Vestis
                     </p>
-                    <span className="text-2xl">✨</span>
+                    <span className="text-3xl">✨</span>
                     <div className="text-center">
-                      <p className="text-xl font-bold text-accent-foreground leading-none">
+                      <p className="text-2xl font-bold text-accent-foreground leading-none">
                         {yearlyHoursVestis}<span className="text-sm font-medium">h</span>
                       </p>
                       <p className="text-[10px] text-accent-foreground/80 mt-1">per year</p>
@@ -323,38 +280,6 @@ export function SignUpIntro({ onComplete, onBack, onSignIn }: SignUpIntroProps) 
         )}
 
         {step === 5 && (
-          <div className="flex-1 flex flex-col">
-            <h1 className="text-3xl font-extrabold text-foreground leading-[1.05] tracking-tight mb-3">
-              More time for the things that matter 🚿
-            </h1>
-            <p className="text-base text-muted-foreground mb-10">
-              Less time picking your outfit means more time in the shower. (Or sleeping in. We won't judge. 😴)
-            </p>
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="w-full max-w-xs space-y-3">
-                {[
-                  { e: "🚿", t: "Longer showers" },
-                  { e: "😴", t: "Extra sleep" },
-                  { e: "☕", t: "A proper coffee" },
-                  { e: "🏃", t: "A morning walk" },
-                ].map(({ e, t }) => (
-                  <div
-                    key={t}
-                    className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-card border border-border"
-                  >
-                    <span className="text-2xl">{e}</span>
-                    <p className="text-sm font-semibold text-foreground">{t}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="text-sm text-muted-foreground text-center mt-8 max-w-xs">
-                What would you do with an extra <span className="font-bold text-foreground">{savedHours} hours</span> a year? ✨
-              </p>
-            </div>
-          </div>
-        )}
-
-        {step === 6 && (
           <div className="flex-1 flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-3">
