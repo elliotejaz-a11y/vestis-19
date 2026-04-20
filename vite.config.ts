@@ -18,4 +18,11 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      // Required: these heavy ML modules are dynamically imported and must stay external
+      // to avoid bundling failures and runtime white screens.
+      external: ["@imgly/background-removal", "onnxruntime-web"],
+    },
+  },
 }));
