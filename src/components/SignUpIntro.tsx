@@ -11,25 +11,46 @@ interface SignUpIntroProps {
 
 type DressFreq = "rarely" | "sometimes" | "always" | null;
 type WardrobeSize = "small" | "medium" | "large" | null;
+type HearAbout =
+  | "instagram"
+  | "appstore"
+  | "tiktok"
+  | "youtube"
+  | "friends"
+  | "google"
+  | "facebook"
+  | null;
 
 /** With Vestis, getting ready always takes 2 minutes. */
 const VESTIS_MINUTES = 2;
 
+const HEAR_OPTIONS: { v: Exclude<HearAbout, null>; t: string; e: string }[] = [
+  { v: "instagram", t: "Instagram", e: "📸" },
+  { v: "appstore", t: "App Store", e: "🍎" },
+  { v: "tiktok", t: "TikTok", e: "🎵" },
+  { v: "youtube", t: "YouTube", e: "▶️" },
+  { v: "friends", t: "Friends or Family", e: "👯" },
+  { v: "google", t: "Google", e: "🔎" },
+  { v: "facebook", t: "Facebook", e: "👍" },
+];
+
 /**
  * Pre-signup sales pitch flow. Steps:
- * 0: Welcome to Vestis (hero / feature list)
+ * 0: Welcome to Vestis
  * 1: Time slider
  * 2: "Nothing to wear" frequency
- * 3: Yearly comparison graph (Vestis bar smaller than Right now)
- * 4: Lifestyle slide — "Less time picking your outfit = more time in the shower"
+ * 3: Yearly comparison graph
+ * 4: Lifestyle slide — "more time in the shower / coffee / phone / sleep"
  * 5: Wardrobe size
- * 6: Final reclaimed-hours reveal → Create account
+ * 6: Where did you hear about us
+ * 7: Final reclaimed-hours reveal → Create account
  */
 export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   const [step, setStep] = useState(0);
   const [minutesPerDay, setMinutesPerDay] = useState(11);
   const [nothingToWear, setNothingToWear] = useState<DressFreq>(null);
   const [wardrobeSize, setWardrobeSize] = useState<WardrobeSize>(null);
+  const [hearAbout, setHearAbout] = useState<HearAbout>(null);
 
   // ---- Derived savings ----
   const yearlyHoursNow = useMemo(
@@ -42,7 +63,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   );
   const savedHours = Math.max(0, yearlyHoursNow - yearlyHoursVestis);
 
-  const totalSteps = 7;
+  const totalSteps = 8;
   const isLast = step === totalSteps - 1;
   const isFirst = step === 0;
 
@@ -59,22 +80,36 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   const canContinue = (() => {
     if (step === 2) return nothingToWear !== null;
     if (step === 5) return wardrobeSize !== null;
+    if (step === 6) return hearAbout !== null;
     return true;
   })();
 
-  // ---- Bar heights for the comparison graph (step 3) ----
-  // Vestis bar must be smaller than "Right now". We compute proportional
-  // heights but cap "Right now" so the layout never breaks.
-  const MAX_BAR = 220;
-  const MIN_BAR = 70;
+  // ---- Bar widths for the comparison graph (step 3) ----
+  // Right Now bar should be SKINNIER (narrower) than the With Vestis bar,
+  // but both bars must be tall enough to clearly show their text.
+  // "Right now" stays TALLER (more wasted hours), "With Vestis" stays SHORTER
+  // but tall enough to read.
+  const MAX_BAR_HEIGHT = 230;
+  const MIN_BAR_HEIGHT = 130; // raised so With Vestis has room for its text
   const nowBarHeight = Math.min(
-    MAX_BAR,
-    Math.max(MIN_BAR + 40, (yearlyHoursNow / Math.max(yearlyHoursNow, 1)) * MAX_BAR)
+    MAX_BAR_HEIGHT,
+    Math.max(MIN_BAR_HEIGHT + 50, (yearlyHoursNow / Math.max(yearlyHoursNow, 1)) * MAX_BAR_HEIGHT)
   );
   const vestisBarHeight = Math.max(
-    MIN_BAR,
-    Math.min(nowBarHeight - 60, (yearlyHoursVestis / Math.max(yearlyHoursNow, 1)) * MAX_BAR)
+    MIN_BAR_HEIGHT,
+    Math.min(nowBarHeight - 30, (yearlyHoursVestis / Math.max(yearlyHoursNow, 1)) * MAX_BAR_HEIGHT + 80)
   );
+
+  // Animations: helper to pick a per-slide enter animation.
+  // We animate ~60% of slides (steps 0, 3, 4, 6, 7).
+  const stepAnim: Record<number, string> = {
+    0: "animate-fade-in",
+    3: "animate-scale-in",
+    4: "animate-fade-in",
+    6: "animate-fade-in",
+    7: "animate-scale-in",
+  };
+  const contentAnim = stepAnim[step] ?? "";
 
   return (
     <div className="min-h-screen flex flex-col bg-background px-6 pt-6 pb-8">
@@ -100,7 +135,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
       </div>
 
       {/* Step content */}
-      <div className="flex-1 flex flex-col">
+      <div className={cn("flex-1 flex flex-col", contentAnim)} key={step}>
         {step === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
             <img src={vestisLogo} alt="Vestis" className="h-12" />
@@ -224,36 +259,37 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
             </p>
             <div className="flex-1 flex flex-col items-center justify-center">
               <div className="w-full max-w-xs rounded-3xl bg-muted/50 p-6">
-                <div className="grid grid-cols-2 gap-4 items-end">
-                  {/* Right now — TALLER */}
+                <div className="flex items-end justify-center gap-6">
+                  {/* Right now — TALLER but SKINNIER */}
                   <div
-                    className="rounded-2xl bg-card border border-border p-4 flex flex-col items-center justify-between"
+                    className="rounded-2xl bg-card border border-border px-3 py-4 flex flex-col items-center justify-between w-[88px]"
                     style={{ height: nowBarHeight }}
                   >
-                    <p className="text-xs font-semibold text-muted-foreground text-center">
+                    <p className="text-[11px] font-semibold text-muted-foreground text-center leading-tight">
                       Right now
                     </p>
-                    <span className="text-3xl">😩</span>
+                    <span className="text-2xl">😩</span>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-foreground leading-none">
-                        {yearlyHoursNow}<span className="text-sm font-medium">h</span>
+                      <p className="text-xl font-bold text-foreground leading-none">
+                        {yearlyHoursNow}<span className="text-xs font-medium">h</span>
                       </p>
-                      <p className="text-[10px] text-muted-foreground mt-1">per year</p>
+                      <p className="text-[9px] text-muted-foreground mt-1">per year</p>
                     </div>
                   </div>
-                  {/* With Vestis — SHORTER */}
+                  {/* With Vestis — SHORTER but WIDER, with breathing room for text */}
                   <div
-                    className="rounded-2xl bg-accent p-4 flex flex-col items-center justify-between"
+                    className="rounded-2xl bg-accent px-4 py-4 flex flex-col items-center justify-between w-[130px]"
                     style={{ height: vestisBarHeight }}
                   >
-                    <p className="text-xs font-semibold text-accent-foreground/80 text-center">
+                    <p className="text-xs font-semibold text-accent-foreground text-center leading-tight">
                       With Vestis
                     </p>
                     <span className="text-2xl">✨</span>
                     <div className="text-center">
-                      <p className="text-xl font-bold text-accent-foreground leading-none">
-                        {yearlyHoursVestis}<span className="text-xs font-medium">h</span>
+                      <p className="text-2xl font-bold text-accent-foreground leading-none">
+                        {yearlyHoursVestis}<span className="text-sm font-medium">h</span>
                       </p>
+                      <p className="text-[9px] text-accent-foreground/80 mt-1">per year</p>
                     </div>
                   </div>
                 </div>
@@ -268,12 +304,17 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
         {step === 4 && (
           <div className="flex-1 flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-              <span className="text-6xl">🚿</span>
+              <div className="flex items-center gap-3 text-5xl">
+                <span>🚿</span>
+                <span>☕</span>
+                <span>📱</span>
+                <span>😴</span>
+              </div>
               <h1 className="text-3xl font-extrabold text-foreground leading-tight max-w-xs">
                 Less time picking your outfit means <span className="text-accent">more time in the shower.</span>
               </h1>
               <p className="text-base text-muted-foreground max-w-xs">
-                (Or sleeping in. Or your morning coffee. Your call. ☕)
+                Or sleeping in. Or your morning coffee. Or doomscrolling. Your call. ✌️
               </p>
             </div>
           </div>
@@ -326,13 +367,49 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
 
         {step === 6 && (
           <div className="flex-1 flex flex-col">
+            <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
+              Where did you hear about us? 👋
+            </h1>
+            <p className="text-sm text-muted-foreground mb-6">
+              Helps us know what's working.
+            </p>
+            <div className="flex-1 flex flex-col gap-2.5 overflow-y-auto pb-2">
+              {HEAR_OPTIONS.map((opt) => {
+                const active = hearAbout === opt.v;
+                return (
+                  <button
+                    key={opt.v}
+                    onClick={() => setHearAbout(opt.v)}
+                    className={cn(
+                      "w-full text-left rounded-2xl px-4 py-3 border-2 transition-all flex items-center gap-3",
+                      active
+                        ? "bg-accent text-accent-foreground border-accent"
+                        : "bg-card border-border hover:border-accent/40"
+                    )}
+                  >
+                    <span className="text-xl">{opt.e}</span>
+                    <p className="flex-1 text-sm font-bold">{opt.t}</p>
+                    {active && (
+                      <div className="w-5 h-5 rounded-full border-2 border-accent-foreground flex items-center justify-center">
+                        <Check className="w-3 h-3" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {step === 7 && (
+          <div className="flex-1 flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-3">
                 With Vestis you'll reclaim
               </p>
               <p className="text-6xl font-bold text-foreground leading-none">
                 {savedHours}
-                <span className="text-2xl font-medium text-muted-foreground"> hrs/yr</span>
+                <span className="text-2xl font-medium text-muted-foreground"> hours per year</span>
               </p>
               <div className="w-12 h-0.5 bg-accent rounded-full my-5" />
               <p className="text-base text-muted-foreground max-w-xs leading-relaxed mb-8">
@@ -341,7 +418,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
               <div className="w-full max-w-xs space-y-px rounded-2xl overflow-hidden border border-border">
                 {[
                   { e: "⚡", t: `Get ready in just 2 minutes a day` },
-                  { e: "🪄", t: `Reclaim ${savedHours} hours a year` },
+                  { e: "🪄", t: `Reclaim ${savedHours} hours per year` },
                   { e: "👕", t: "More outfit combinations per item" },
                 ].map(({ e, t }) => (
                   <div
