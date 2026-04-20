@@ -265,7 +265,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="flex-1 flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
               <span className="text-6xl">🚿</span>
