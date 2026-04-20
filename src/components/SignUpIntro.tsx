@@ -214,7 +214,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <div className="flex-1 flex flex-col">
             <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
               Get ready in just 2 minutes ⚡
