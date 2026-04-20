@@ -16,16 +16,16 @@ type WardrobeSize = "small" | "medium" | "large" | null;
 const VESTIS_MINUTES = 2;
 
 /**
- * Pre-signup sales pitch flow. The first screen is the bold time-slider
- * landing — there is no separate welcome screen. Steps:
- * 0: Time slider (landing, doubles as hero)
- * 1: "Nothing to wear" frequency
- * 2: Yearly comparison graph (Vestis bar smaller than Right now)
- * 3: Lifestyle slide — "Less time picking your outfit = more time in the shower"
- * 4: Wardrobe size
- * 5: Final reclaimed-hours reveal → Create account
+ * Pre-signup sales pitch flow. Steps:
+ * 0: Welcome to Vestis (hero / feature list)
+ * 1: Time slider
+ * 2: "Nothing to wear" frequency
+ * 3: Yearly comparison graph (Vestis bar smaller than Right now)
+ * 4: Lifestyle slide — "Less time picking your outfit = more time in the shower"
+ * 5: Wardrobe size
+ * 6: Final reclaimed-hours reveal → Create account
  */
-export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
+export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   const [step, setStep] = useState(0);
   const [minutesPerDay, setMinutesPerDay] = useState(11);
   const [nothingToWear, setNothingToWear] = useState<DressFreq>(null);
