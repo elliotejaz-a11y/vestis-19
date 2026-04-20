@@ -6,10 +6,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Eye, EyeOff, Check, X, Loader2, Sun, Moon } from "lucide-react";
+import { Eye, EyeOff, Check, X, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
-import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
 import { SignUpIntro } from "@/components/SignUpIntro";
 
