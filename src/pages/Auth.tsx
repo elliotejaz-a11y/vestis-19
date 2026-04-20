@@ -18,6 +18,9 @@ export default function Auth() {
   const isRecoveryMode = sessionStorage.getItem("vestis_recovery_mode") === "true";
   const [isSignUp, setIsSignUp] = useState(false);
   const [showSignUpIntro, setShowSignUpIntro] = useState(false);
+  // Landing screen ("Get Started" / "I already have an account") shows first.
+  // Skip it if user is in password-recovery mode.
+  const [showLanding, setShowLanding] = useState(!isRecoveryMode);
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
