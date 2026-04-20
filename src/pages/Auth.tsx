@@ -412,7 +412,14 @@ export default function Auth() {
           setShowSignUpIntro(false);
           setIsSignUp(true);
         }}
-        onBack={() => setShowSignUpIntro(false)}
+        onBack={() => {
+          setShowSignUpIntro(false);
+          setIsSignUp(false);
+        }}
+        onLogin={() => {
+          setShowSignUpIntro(false);
+          setIsSignUp(false);
+        }}
       />
     );
   }
