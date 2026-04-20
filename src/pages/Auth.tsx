@@ -11,11 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
+import { SignUpIntro } from "@/components/SignUpIntro";
 
 export default function Auth() {
   // If in recovery mode (OTP verified, setting new password), keep showing Auth
   const isRecoveryMode = sessionStorage.getItem("vestis_recovery_mode") === "true";
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showSignUpIntro, setShowSignUpIntro] = useState(false);
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -400,6 +402,19 @@ export default function Auth() {
     );
   }
 
+  // Pre-signup sales pitch flow
+  if (showSignUpIntro) {
+    return (
+      <SignUpIntro
+        onComplete={() => {
+          setShowSignUpIntro(false);
+          setIsSignUp(true);
+        }}
+        onBack={() => setShowSignUpIntro(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
       <div className="w-full max-w-sm space-y-8">
@@ -570,7 +585,13 @@ export default function Auth() {
         <p className="text-center text-xs text-muted-foreground">
           {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
           <button
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => {
+              if (isSignUp) {
+                setIsSignUp(false);
+              } else {
+                setShowSignUpIntro(true);
+              }
+            }}
             className="text-accent font-semibold hover:underline"
           >
             {isSignUp ? "Sign In" : "Sign Up"}
