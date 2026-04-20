@@ -82,6 +82,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
       options: { emailRedirectTo: undefined },
     });
+
+    // Fire-and-forget Klaviyo subscription on successful sign-up.
+    // Never block or fail the signup flow if Klaviyo errors out.
+    if (!error) {
+      supabase.functions
+        .invoke("klaviyo-subscribe", {
+          body: { email, first_name: displayName },
+        })
+        .catch((e) => console.warn("Klaviyo subscribe failed (non-blocking):", e));
+    }
+
     return { error };
   };
 
