@@ -19,7 +19,6 @@ export default function Auth() {
   // Show the intro/sales-pitch as the very first screen new visitors see.
   // Skip it automatically if we're in password-recovery mode.
   const [showSignUpIntro, setShowSignUpIntro] = useState(!isRecoveryMode);
-  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
