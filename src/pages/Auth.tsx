@@ -214,6 +214,13 @@ export default function Auth() {
     if (error) {
       toast({ title: "Invalid code", description: error.message, variant: "destructive" });
     } else {
+      // Sync the new user to Klaviyo (non-blocking — never block signup on marketing)
+      supabase.functions
+        .invoke("klaviyo-sync-signup", {
+          body: { email: signUpEmail, firstName: displayName },
+        })
+        .catch((err) => console.error("Klaviyo sync failed", err));
+
       toast({ title: "Email verified! ✨", description: "Welcome to Vestis!" });
     }
   };
