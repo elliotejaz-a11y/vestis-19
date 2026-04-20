@@ -404,57 +404,7 @@ export default function Auth() {
     );
   }
 
-  // Brand landing screen — shown to all new visitors before sign-in/sign-up
-  if (showLanding) {
-    return (
-      <div className="min-h-screen flex flex-col bg-background px-6 pt-10 pb-8">
-        <div className="flex-1 flex flex-col items-center justify-center text-center">
-          <img src={vestisLogo} alt="Vestis" className="h-16 mb-10" />
-          <h1 className="text-5xl font-extrabold text-foreground leading-[1.02] tracking-tight mb-4">
-            Welcome to <br /> Vestis ✨
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-xs leading-snug mb-12">
-            Your AI-powered wardrobe. Let's see how much time we can give back to you.
-          </p>
-          <ul className="w-full max-w-xs space-y-4 text-left">
-            {[
-              { emoji: "👕", label: "Digitise your entire wardrobe" },
-              { emoji: "🪄", label: "AI outfits for any occasion" },
-              { emoji: "📅", label: "Plan & track what you wear" },
-              { emoji: "👯", label: "Share fits with friends" },
-            ].map(({ emoji, label }) => (
-              <li key={label} className="flex items-center gap-3 text-foreground">
-                <span className="text-2xl leading-none">{emoji}</span>
-                <span className="text-base font-semibold">{label}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <div className="space-y-3 pt-6">
-          <Button
-            onClick={() => {
-              setShowLanding(false);
-              setShowSignUpIntro(true);
-            }}
-            className="w-full h-14 rounded-2xl bg-accent text-accent-foreground font-bold text-base hover:bg-accent/90"
-          >
-            Get Started
-          </Button>
-          <button
-            onClick={() => {
-              setShowLanding(false);
-              setIsSignUp(false);
-            }}
-            className="w-full h-12 text-sm font-semibold text-foreground hover:text-accent transition-colors"
-          >
-            I already have an account
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Pre-signup sales pitch flow
+  // Pre-signup sales pitch flow (also serves as the brand landing screen)
   if (showSignUpIntro) {
     return (
       <SignUpIntro
@@ -463,8 +413,12 @@ export default function Auth() {
           setIsSignUp(true);
         }}
         onBack={() => {
+          // From the landing step there's nowhere to go back to — keep them here.
+          setShowSignUpIntro(true);
+        }}
+        onSignIn={() => {
           setShowSignUpIntro(false);
-          setShowLanding(true);
+          setIsSignUp(false);
         }}
       />
     );
