@@ -2,10 +2,10 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import vestisLogo from "@/assets/vestis-logo.png";
 
 interface SignUpIntroProps {
   onComplete: () => void;
-  onBack: () => void;
   onLogin: () => void;
 }
 
@@ -16,16 +16,16 @@ type WardrobeSize = "small" | "medium" | "large" | null;
 const VESTIS_MINUTES = 2;
 
 /**
- * Pre-signup sales pitch flow. The first screen is the bold time-slider
- * landing — there is no separate welcome screen. Steps:
- * 0: Time slider (landing, doubles as hero)
- * 1: "Nothing to wear" frequency
- * 2: Yearly comparison graph (Vestis bar smaller than Right now)
- * 3: Lifestyle slide — "Less time picking your outfit = more time in the shower"
- * 4: Wardrobe size
- * 5: Final reclaimed-hours reveal → Create account
+ * Pre-signup sales pitch flow. Steps:
+ * 0: Welcome to Vestis (hero / feature list)
+ * 1: Time slider
+ * 2: "Nothing to wear" frequency
+ * 3: Yearly comparison graph (Vestis bar smaller than Right now)
+ * 4: Lifestyle slide — "Less time picking your outfit = more time in the shower"
+ * 5: Wardrobe size
+ * 6: Final reclaimed-hours reveal → Create account
  */
-export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
+export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   const [step, setStep] = useState(0);
   const [minutesPerDay, setMinutesPerDay] = useState(11);
   const [nothingToWear, setNothingToWear] = useState<DressFreq>(null);
@@ -42,7 +42,7 @@ export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
   );
   const savedHours = Math.max(0, yearlyHoursNow - yearlyHoursVestis);
 
-  const totalSteps = 6;
+  const totalSteps = 7;
   const isLast = step === totalSteps - 1;
   const isFirst = step === 0;
 
@@ -52,18 +52,17 @@ export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
   };
 
   const back = () => {
-    if (isFirst) onBack();
-    else setStep((s) => s - 1);
+    if (!isFirst) setStep((s) => s - 1);
   };
 
   // Per-step validity (Continue button enabled?)
   const canContinue = (() => {
-    if (step === 1) return nothingToWear !== null;
-    if (step === 4) return wardrobeSize !== null;
+    if (step === 2) return nothingToWear !== null;
+    if (step === 5) return wardrobeSize !== null;
     return true;
   })();
 
-  // ---- Bar heights for the comparison graph (step 2) ----
+  // ---- Bar heights for the comparison graph (step 3) ----
   // Vestis bar must be smaller than "Right now". We compute proportional
   // heights but cap "Right now" so the layout never breaks.
   const MAX_BAR = 220;
@@ -79,15 +78,19 @@ export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background px-6 pt-6 pb-8">
-      {/* Header: back + progress */}
+      {/* Header: back + progress. Back button hidden on the first screen. */}
       <div className="flex items-center gap-3 mb-8">
-        <button
-          onClick={back}
-          className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center text-foreground hover:bg-accent/10 transition-colors"
-          aria-label="Back"
-        >
-          <ArrowLeft className="w-4 h-4" />
-        </button>
+        {isFirst ? (
+          <div className="w-9 h-9" aria-hidden />
+        ) : (
+          <button
+            onClick={back}
+            className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center text-foreground hover:bg-accent/10 transition-colors"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+        )}
         <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
           <div
             className="h-full bg-accent transition-all duration-300"
@@ -99,6 +102,36 @@ export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
       {/* Step content */}
       <div className="flex-1 flex flex-col">
         {step === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
+            <img src={vestisLogo} alt="Vestis" className="h-12" />
+            <div className="space-y-3">
+              <h1 className="text-3xl font-bold text-foreground leading-tight">
+                Welcome to Vestis ✨
+              </h1>
+              <p className="text-base text-muted-foreground max-w-xs">
+                Your AI-powered wardrobe. Let's see how much time we can give back to you.
+              </p>
+            </div>
+            <ul className="w-full max-w-xs pt-2 space-y-3 text-left">
+              {[
+                { emoji: "👕", label: "Digitise your entire wardrobe" },
+                { emoji: "🪄", label: "AI outfits for any occasion" },
+                { emoji: "📅", label: "Plan & track what you wear" },
+                { emoji: "👯", label: "Share fits with friends" },
+              ].map(({ emoji, label }) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-3 text-foreground"
+                >
+                  <span className="text-2xl leading-none">{emoji}</span>
+                  <span className="text-sm font-medium">{label}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {step === 1 && (
           <div className="flex-1 flex flex-col">
             <h1 className="text-4xl font-extrabold text-foreground leading-[1.05] tracking-tight mb-3">
               How long does getting dressed <span className="text-accent">really</span> take you? ⏰
@@ -136,7 +169,7 @@ export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 1 && (
+        {step === 2 && (
           <div className="flex-1 flex flex-col">
             <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
               How often do you think "I have nothing to wear"? 🤔
@@ -181,7 +214,7 @@ export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <div className="flex-1 flex flex-col">
             <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
               Get ready in just 2 minutes ⚡
@@ -232,7 +265,7 @@ export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 4 && (
           <div className="flex-1 flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
               <span className="text-6xl">🚿</span>
@@ -246,7 +279,7 @@ export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <div className="flex-1 flex flex-col">
             <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
               How big is your wardrobe? 👗
@@ -291,7 +324,7 @@ export function SignUpIntro({ onComplete, onBack, onLogin }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <div className="flex-1 flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-3">
