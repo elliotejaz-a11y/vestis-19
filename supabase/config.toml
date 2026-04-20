@@ -9,3 +9,5 @@ project_id = "kvulebsvnmlxuhgtrney"
     verify_jwt = false
   [functions.outfit-chat]
     verify_jwt = false
+  [functions.klaviyo-subscribe]
+    verify_jwt = false

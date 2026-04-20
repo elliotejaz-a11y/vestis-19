@@ -77,11 +77,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, displayName: string) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: undefined },
+      options: { emailRedirectTo: undefined, data: { display_name: displayName } },
     });
+
+    // Fire-and-forget Klaviyo subscription on successful signup.
+    // Wrapped so any failure never blocks the auth flow.
+    if (!error && data?.user) {
+      try {
+        supabase.functions
+          .invoke("klaviyo-subscribe", {
+            body: { email, first_name: displayName },
+          })
+          .catch((err) => console.error("Klaviyo subscribe failed:", err));
+      } catch (err) {
+        console.error("Klaviyo subscribe invocation error:", err);
+      }
+    }
+
     return { error };
   };
 
