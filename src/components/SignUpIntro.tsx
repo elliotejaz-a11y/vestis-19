@@ -6,7 +6,6 @@ import vestisLogo from "@/assets/vestis-logo.png";
 
 interface SignUpIntroProps {
   onComplete: () => void;
-  onBack: () => void;
   onLogin: () => void;
 }
 
