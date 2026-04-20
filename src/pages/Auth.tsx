@@ -6,10 +6,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Eye, EyeOff, Check, X, Loader2, Sun, Moon } from "lucide-react";
+import { Eye, EyeOff, Check, X, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
-import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
 import { SignUpIntro } from "@/components/SignUpIntro";
 
@@ -20,7 +19,6 @@ export default function Auth() {
   // Show the intro/sales-pitch as the very first screen new visitors see.
   // Skip it automatically if we're in password-recovery mode.
   const [showSignUpIntro, setShowSignUpIntro] = useState(!isRecoveryMode);
-  const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -532,32 +530,6 @@ export default function Auth() {
             )}
           </div>
 
-          {/* Theme toggle */}
-          {isSignUp && (
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Appearance</Label>
-              <div className="flex gap-2 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setTheme("light")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                    theme === "light" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
-                  }`}
-                >
-                  <Sun className="w-3.5 h-3.5" /> Light
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setTheme("dark")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                    theme === "dark" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
-                  }`}
-                >
-                  <Moon className="w-3.5 h-3.5" /> Dark
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Remember me & forgot password - only on sign in */}
           {!isSignUp && (

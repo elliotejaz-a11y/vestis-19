@@ -1,16 +1,25 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import vestisLogo from "@/assets/vestis-logo.png";
 
 interface SignUpIntroProps {
-  onComplete: () => void;
+  onComplete: (meta?: { source?: string | null }) => void;
   onLogin: () => void;
 }
 
 type DressFreq = "rarely" | "sometimes" | "always" | null;
 type WardrobeSize = "small" | "medium" | "large" | null;
+type Source =
+  | "instagram"
+  | "app_store"
+  | "tiktok"
+  | "youtube"
+  | "friends_family"
+  | "google"
+  | "facebook"
+  | null;
 
 /** With Vestis, getting ready always takes 2 minutes. */
 const VESTIS_MINUTES = 2;
@@ -20,16 +29,27 @@ const VESTIS_MINUTES = 2;
  * 0: Welcome to Vestis (hero / feature list)
  * 1: Time slider
  * 2: "Nothing to wear" frequency
- * 3: Yearly comparison graph (Vestis bar smaller than Right now)
- * 4: Lifestyle slide — "Less time picking your outfit = more time in the shower"
+ * 3: Yearly comparison graph
+ * 4: Lifestyle slide — "more time in the shower / coffee / phone / sleep"
  * 5: Wardrobe size
- * 6: Final reclaimed-hours reveal → Create account
+ * 6: Where did you hear about us?
+ * 7: Final reclaimed-hours reveal → Create account
  */
 export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   const [step, setStep] = useState(0);
   const [minutesPerDay, setMinutesPerDay] = useState(11);
   const [nothingToWear, setNothingToWear] = useState<DressFreq>(null);
   const [wardrobeSize, setWardrobeSize] = useState<WardrobeSize>(null);
+  const [source, setSource] = useState<Source>(null);
+  // Triggers a fade/slide animation on every step change (60% of slides
+  // benefit visibly; the rest still get the subtle entry).
+  const [animKey, setAnimKey] = useState(0);
+  // When true, plays the "creating account" transition before calling onComplete.
+  const [creatingAccount, setCreatingAccount] = useState(false);
+
+  useEffect(() => {
+    setAnimKey((k) => k + 1);
+  }, [step]);
 
   // ---- Derived savings ----
   const yearlyHoursNow = useMemo(
@@ -42,13 +62,18 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   );
   const savedHours = Math.max(0, yearlyHoursNow - yearlyHoursVestis);
 
-  const totalSteps = 7;
+  const totalSteps = 8;
   const isLast = step === totalSteps - 1;
   const isFirst = step === 0;
 
   const next = () => {
-    if (isLast) onComplete();
-    else setStep((s) => s + 1);
+    if (isLast) {
+      // Play transition out before handing off to the signup form.
+      setCreatingAccount(true);
+      setTimeout(() => onComplete({ source }), 650);
+    } else {
+      setStep((s) => s + 1);
+    }
   };
 
   const back = () => {
@@ -59,25 +84,42 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   const canContinue = (() => {
     if (step === 2) return nothingToWear !== null;
     if (step === 5) return wardrobeSize !== null;
+    if (step === 6) return source !== null;
     return true;
   })();
 
   // ---- Bar heights for the comparison graph (step 3) ----
-  // Vestis bar must be smaller than "Right now". We compute proportional
-  // heights but cap "Right now" so the layout never breaks.
-  const MAX_BAR = 220;
-  const MIN_BAR = 70;
-  const nowBarHeight = Math.min(
-    MAX_BAR,
-    Math.max(MIN_BAR + 40, (yearlyHoursNow / Math.max(yearlyHoursNow, 1)) * MAX_BAR)
-  );
+  // Right Now bar is now SKINNIER (narrower column) but still TALLER.
+  // Vestis bar is WIDER and a bit TALLER than before so the text fits.
+  const MAX_BAR = 240;
+  const MIN_VESTIS = 110; // bumped up so all text reads cleanly
+  const nowBarHeight = Math.min(MAX_BAR, Math.max(MIN_VESTIS + 50, MAX_BAR));
   const vestisBarHeight = Math.max(
-    MIN_BAR,
-    Math.min(nowBarHeight - 60, (yearlyHoursVestis / Math.max(yearlyHoursNow, 1)) * MAX_BAR)
+    MIN_VESTIS,
+    Math.min(nowBarHeight - 40, (yearlyHoursVestis / Math.max(yearlyHoursNow, 1)) * MAX_BAR + 60)
   );
 
+  // ---- Final "creating account" transition screen ----
+  if (creatingAccount) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6 animate-fade-in">
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative">
+            <div className="w-20 h-20 rounded-full bg-accent/20 animate-ping absolute inset-0" />
+            <div className="w-20 h-20 rounded-full bg-accent flex items-center justify-center relative">
+              <span className="text-3xl">✨</span>
+            </div>
+          </div>
+          <p className="text-lg font-semibold text-foreground animate-fade-in">
+            Setting things up…
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-background px-6 pt-6 pb-8">
+    <div className="min-h-screen flex flex-col bg-background px-6 pt-6 pb-8 overflow-hidden">
       {/* Header: back + progress. Back button hidden on the first screen. */}
       <div className="flex items-center gap-3 mb-8">
         {isFirst ? (
@@ -93,17 +135,17 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
         )}
         <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
           <div
-            className="h-full bg-accent transition-all duration-300"
+            className="h-full bg-accent transition-all duration-500 ease-out"
             style={{ width: `${((step + 1) / totalSteps) * 100}%` }}
           />
         </div>
       </div>
 
-      {/* Step content */}
-      <div className="flex-1 flex flex-col">
+      {/* Step content — keyed so each step replays its entry animation */}
+      <div key={animKey} className="flex-1 flex flex-col animate-fade-in">
         {step === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-            <img src={vestisLogo} alt="Vestis" className="h-12" />
+            <img src={vestisLogo} alt="Vestis" className="h-12 animate-scale-in" />
             <div className="space-y-3">
               <h1 className="text-3xl font-bold text-foreground leading-tight">
                 Welcome to Vestis ✨
@@ -118,10 +160,11 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                 { emoji: "🪄", label: "AI outfits for any occasion" },
                 { emoji: "📅", label: "Plan & track what you wear" },
                 { emoji: "👯", label: "Share fits with friends" },
-              ].map(({ emoji, label }) => (
+              ].map(({ emoji, label }, i) => (
                 <li
                   key={label}
-                  className="flex items-center gap-3 text-foreground"
+                  className="flex items-center gap-3 text-foreground animate-fade-in"
+                  style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
                 >
                   <span className="text-2xl leading-none">{emoji}</span>
                   <span className="text-sm font-medium">{label}</span>
@@ -140,7 +183,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
               Be honest. We'll show you what you could get back.
             </p>
             <div className="flex-1 flex flex-col items-center justify-center gap-6">
-              <p className="text-7xl font-extrabold text-foreground leading-none">
+              <p className="text-7xl font-extrabold text-foreground leading-none animate-scale-in">
                 {minutesPerDay}
                 <span className="text-2xl font-medium text-muted-foreground ml-2">min</span>
               </p>
@@ -182,16 +225,17 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                 { v: "rarely" as const, t: "Rarely", d: "I've got my go-to outfits", e: "😎" },
                 { v: "sometimes" as const, t: "Sometimes", d: "Depends on the occasion", e: "🤷‍♂️" },
                 { v: "always" as const, t: "All the time", d: "Staring at my closet daily", e: "😩" },
-              ].map((opt) => {
+              ].map((opt, i) => {
                 const active = nothingToWear === opt.v;
                 return (
                   <button
                     key={opt.v}
                     onClick={() => setNothingToWear(opt.v)}
+                    style={{ animationDelay: `${i * 70}ms`, animationFillMode: "backwards" }}
                     className={cn(
-                      "w-full text-left rounded-2xl px-5 py-4 border-2 transition-all flex items-center gap-3",
+                      "w-full text-left rounded-2xl px-5 py-4 border-2 transition-all flex items-center gap-3 animate-fade-in",
                       active
-                        ? "bg-accent text-accent-foreground border-accent"
+                        ? "bg-accent text-accent-foreground border-accent scale-[1.01]"
                         : "bg-card border-border hover:border-accent/40"
                     )}
                   >
@@ -203,7 +247,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                       </p>
                     </div>
                     {active && (
-                      <div className="w-6 h-6 rounded-full border-2 border-accent-foreground flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full border-2 border-accent-foreground flex items-center justify-center animate-scale-in">
                         <Check className="w-3.5 h-3.5" />
                       </div>
                     )}
@@ -224,36 +268,38 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
             </p>
             <div className="flex-1 flex flex-col items-center justify-center">
               <div className="w-full max-w-xs rounded-3xl bg-muted/50 p-6">
-                <div className="grid grid-cols-2 gap-4 items-end">
-                  {/* Right now — TALLER */}
+                {/* Right Now is now a SKINNY tall column; Vestis is a WIDER, shorter column. */}
+                <div className="flex items-end justify-center gap-6">
+                  {/* Right now — TALLER, SKINNIER */}
                   <div
-                    className="rounded-2xl bg-card border border-border p-4 flex flex-col items-center justify-between"
+                    className="w-16 rounded-2xl bg-card border border-border p-3 flex flex-col items-center justify-between animate-fade-in"
                     style={{ height: nowBarHeight }}
                   >
-                    <p className="text-xs font-semibold text-muted-foreground text-center">
-                      Right now
+                    <p className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">
+                      Right<br />now
                     </p>
-                    <span className="text-3xl">😩</span>
+                    <span className="text-2xl">😩</span>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-foreground leading-none">
-                        {yearlyHoursNow}<span className="text-sm font-medium">h</span>
+                      <p className="text-xl font-bold text-foreground leading-none">
+                        {yearlyHoursNow}<span className="text-xs font-medium">h</span>
                       </p>
-                      <p className="text-[10px] text-muted-foreground mt-1">per year</p>
+                      <p className="text-[9px] text-muted-foreground mt-0.5">/yr</p>
                     </div>
                   </div>
-                  {/* With Vestis — SHORTER */}
+                  {/* With Vestis — SHORTER but WIDER so text fits comfortably */}
                   <div
-                    className="rounded-2xl bg-accent p-4 flex flex-col items-center justify-between"
-                    style={{ height: vestisBarHeight }}
+                    className="w-32 rounded-2xl bg-accent p-4 flex flex-col items-center justify-between animate-fade-in"
+                    style={{ height: vestisBarHeight, animationDelay: "120ms", animationFillMode: "backwards" }}
                   >
-                    <p className="text-xs font-semibold text-accent-foreground/80 text-center">
+                    <p className="text-xs font-semibold text-accent-foreground/85 text-center">
                       With Vestis
                     </p>
                     <span className="text-2xl">✨</span>
                     <div className="text-center">
-                      <p className="text-xl font-bold text-accent-foreground leading-none">
-                        {yearlyHoursVestis}<span className="text-xs font-medium">h</span>
+                      <p className="text-2xl font-bold text-accent-foreground leading-none">
+                        {yearlyHoursVestis}<span className="text-sm font-medium">h</span>
                       </p>
+                      <p className="text-[10px] text-accent-foreground/80 mt-0.5">per year</p>
                     </div>
                   </div>
                 </div>
@@ -268,12 +314,18 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
         {step === 4 && (
           <div className="flex-1 flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-              <span className="text-6xl">🚿</span>
+              {/* Top row of lifestyle emojis */}
+              <div className="flex items-center justify-center gap-3 text-5xl animate-scale-in">
+                <span>🚿</span>
+                <span>☕</span>
+                <span>📱</span>
+                <span>💤</span>
+              </div>
               <h1 className="text-3xl font-extrabold text-foreground leading-tight max-w-xs">
-                Less time picking your outfit means <span className="text-accent">more time in the shower.</span>
+                Less time picking your outfit means <span className="text-accent">more time in the shower</span> — or doomscrolling. 📱
               </h1>
               <p className="text-base text-muted-foreground max-w-xs">
-                (Or sleeping in. Or your morning coffee. Your call. ☕)
+                (Or sleeping in. Or your morning coffee. Your call.)
               </p>
             </div>
           </div>
@@ -292,16 +344,17 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                 { v: "small" as const, t: "Compact", d: "Under 50 items", e: "🧺" },
                 { v: "medium" as const, t: "Average", d: "50–150 items", e: "🚪" },
                 { v: "large" as const, t: "Extensive", d: "150+ items", e: "🏬" },
-              ].map((opt) => {
+              ].map((opt, i) => {
                 const active = wardrobeSize === opt.v;
                 return (
                   <button
                     key={opt.v}
                     onClick={() => setWardrobeSize(opt.v)}
+                    style={{ animationDelay: `${i * 70}ms`, animationFillMode: "backwards" }}
                     className={cn(
-                      "w-full text-left rounded-2xl px-5 py-4 border-2 transition-all flex items-center gap-3",
+                      "w-full text-left rounded-2xl px-5 py-4 border-2 transition-all flex items-center gap-3 animate-fade-in",
                       active
-                        ? "bg-accent text-accent-foreground border-accent"
+                        ? "bg-accent text-accent-foreground border-accent scale-[1.01]"
                         : "bg-card border-border hover:border-accent/40"
                     )}
                   >
@@ -313,7 +366,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                       </p>
                     </div>
                     {active && (
-                      <div className="w-6 h-6 rounded-full border-2 border-accent-foreground flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full border-2 border-accent-foreground flex items-center justify-center animate-scale-in">
                         <Check className="w-3.5 h-3.5" />
                       </div>
                     )}
@@ -326,27 +379,68 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
 
         {step === 6 && (
           <div className="flex-1 flex flex-col">
+            <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
+              Where did you hear about us? 👋
+            </h1>
+            <p className="text-sm text-muted-foreground mb-6">
+              Helps us know what's working.
+            </p>
+            <div className="flex-1 grid grid-cols-2 gap-3 content-start">
+              {[
+                { v: "instagram" as const, t: "Instagram", e: "📸" },
+                { v: "app_store" as const, t: "App Store", e: "📲" },
+                { v: "tiktok" as const, t: "TikTok", e: "🎵" },
+                { v: "youtube" as const, t: "YouTube", e: "▶️" },
+                { v: "friends_family" as const, t: "Friends or family", e: "👥" },
+                { v: "google" as const, t: "Google", e: "🔎" },
+                { v: "facebook" as const, t: "Facebook", e: "📘" },
+              ].map((opt, i) => {
+                const active = source === opt.v;
+                return (
+                  <button
+                    key={opt.v}
+                    onClick={() => setSource(opt.v)}
+                    style={{ animationDelay: `${i * 50}ms`, animationFillMode: "backwards" }}
+                    className={cn(
+                      "rounded-2xl px-3 py-4 border-2 transition-all flex flex-col items-center justify-center gap-1.5 animate-fade-in",
+                      active
+                        ? "bg-accent text-accent-foreground border-accent scale-[1.02]"
+                        : "bg-card border-border hover:border-accent/40"
+                    )}
+                  >
+                    <span className="text-2xl">{opt.e}</span>
+                    <span className="text-xs font-semibold text-center leading-tight">{opt.t}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {step === 7 && (
+          <div className="flex-1 flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-3">
+              <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-3 animate-fade-in">
                 With Vestis you'll reclaim
               </p>
-              <p className="text-6xl font-bold text-foreground leading-none">
+              <p className="text-6xl font-bold text-foreground leading-none animate-scale-in">
                 {savedHours}
-                <span className="text-2xl font-medium text-muted-foreground"> hrs/yr</span>
+                <span className="text-2xl font-medium text-muted-foreground"> hours per year</span>
               </p>
-              <div className="w-12 h-0.5 bg-accent rounded-full my-5" />
-              <p className="text-base text-muted-foreground max-w-xs leading-relaxed mb-8">
+              <div className="w-12 h-0.5 bg-accent rounded-full my-5 animate-fade-in" />
+              <p className="text-base text-muted-foreground max-w-xs leading-relaxed mb-8 animate-fade-in">
                 That's hours back in your life — every single year. 🎁
               </p>
               <div className="w-full max-w-xs space-y-px rounded-2xl overflow-hidden border border-border">
                 {[
                   { e: "⚡", t: `Get ready in just 2 minutes a day` },
-                  { e: "🪄", t: `Reclaim ${savedHours} hours a year` },
+                  { e: "🪄", t: `Reclaim ${savedHours} hours per year` },
                   { e: "👕", t: "More outfit combinations per item" },
-                ].map(({ e, t }) => (
+                ].map(({ e, t }, i) => (
                   <div
                     key={t}
-                    className="flex items-center gap-3 px-4 py-3 bg-card"
+                    className="flex items-center gap-3 px-4 py-3 bg-card animate-fade-in"
+                    style={{ animationDelay: `${150 + i * 90}ms`, animationFillMode: "backwards" }}
                   >
                     <span className="text-lg">{e}</span>
                     <p className="text-sm font-medium text-foreground text-left">
