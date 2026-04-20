@@ -585,7 +585,13 @@ export default function Auth() {
         <p className="text-center text-xs text-muted-foreground">
           {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
           <button
-            onClick={() => setIsSignUp(!isSignUp)}
+            onClick={() => {
+              if (isSignUp) {
+                setIsSignUp(false);
+              } else {
+                setShowSignUpIntro(true);
+              }
+            }}
             className="text-accent font-semibold hover:underline"
           >
             {isSignUp ? "Sign In" : "Sign Up"}
