@@ -17,6 +17,7 @@ export default function Auth() {
   // If in recovery mode (OTP verified, setting new password), keep showing Auth
   const isRecoveryMode = sessionStorage.getItem("vestis_recovery_mode") === "true";
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showSignUpIntro, setShowSignUpIntro] = useState(false);
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
