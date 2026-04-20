@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import vestisLogo from "@/assets/vestis-logo.png";
 
 interface SignUpIntroProps {
   onComplete: () => void;
@@ -37,7 +36,7 @@ export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
   );
   const savedHours = Math.max(0, yearlyHoursNow - yearlyHoursVestis);
 
-  const totalSteps = 6;
+  const totalSteps = 5;
   const isLast = step === totalSteps - 1;
 
   const next = () => {
@@ -52,10 +51,19 @@ export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
 
   // Per-step validity (Continue button enabled?)
   const canContinue = (() => {
-    if (step === 2) return nothingToWear !== null;
-    if (step === 4) return wardrobeSize !== null;
+    if (step === 1) return nothingToWear !== null;
+    if (step === 3) return wardrobeSize !== null;
     return true;
   })();
+
+  // ---- Bar chart heights: Vestis bar must always be smaller than "Right now" ----
+  const MAX_BAR = 220;
+  const MIN_BAR = 70;
+  const nowBarHeight = MAX_BAR;
+  const vestisBarHeight = Math.max(
+    MIN_BAR,
+    Math.round((yearlyHoursVestis / Math.max(yearlyHoursNow, 1)) * MAX_BAR)
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-background px-6 pt-6 pb-8">
@@ -79,46 +87,17 @@ export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
       {/* Step content */}
       <div className="flex-1 flex flex-col">
         {step === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-            <img src={vestisLogo} alt="Vestis" className="h-12" />
-            <div className="space-y-3">
-              <h1 className="text-3xl font-bold text-foreground leading-tight">
-                Welcome to Vestis ✨
-              </h1>
-              <p className="text-base text-muted-foreground max-w-xs">
-                Your AI-powered wardrobe. Let's see how much time we can give back to you.
-              </p>
-            </div>
-            <ul className="w-full max-w-xs pt-2 space-y-3 text-left">
-              {[
-                { emoji: "👕", label: "Digitise your entire wardrobe" },
-                { emoji: "🪄", label: "AI outfits for any occasion" },
-                { emoji: "📅", label: "Plan & track what you wear" },
-                { emoji: "👯", label: "Share fits with friends" },
-              ].map(({ emoji, label }) => (
-                <li
-                  key={label}
-                  className="flex items-center gap-3 text-foreground"
-                >
-                  <span className="text-2xl leading-none">{emoji}</span>
-                  <span className="text-sm font-medium">{label}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {step === 1 && (
           <div className="flex-1 flex flex-col">
-            <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
+            <h1 className="text-4xl font-extrabold text-foreground leading-[1.05] tracking-tight mb-3">
               How long do you spend picking an outfit each morning? ⏰
             </h1>
-            <p className="text-sm text-muted-foreground mb-8">
-              Drag the slider to your average.
+            <p className="text-base text-muted-foreground mb-8">
+              Drag the slider to your daily average.
             </p>
-            <div className="flex-1 flex flex-col items-center justify-center gap-6">
-              <p className="text-5xl font-bold text-foreground">
-                {minutesPerDay} <span className="text-2xl font-medium text-muted-foreground">min</span>
+            <div className="flex-1 flex flex-col items-center justify-center gap-8">
+              <p className="text-7xl font-extrabold text-foreground tracking-tight">
+                {minutesPerDay}
+                <span className="text-2xl font-semibold text-muted-foreground ml-1">min</span>
               </p>
               <div className="w-full max-w-xs space-y-3">
                 <div className="flex items-center gap-3">
@@ -138,14 +117,14 @@ export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
                   <span>30+ min</span>
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground text-center max-w-xs pt-4">
+              <p className="text-base text-muted-foreground text-center max-w-xs pt-2">
                 That's around <span className="font-bold text-foreground">{yearlyHoursNow} hours</span> a year just deciding what to wear. 😮
               </p>
             </div>
           </div>
         )}
 
-        {step === 2 && (
+        {step === 1 && (
           <div className="flex-1 flex flex-col">
             <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
               How often do you think "I have nothing to wear"? 🤔
@@ -156,7 +135,7 @@ export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
             <div className="flex-1 flex flex-col justify-center gap-3">
               {[
                 { v: "rarely" as const, t: "Rarely", d: "I've got my go-to outfits", e: "😎" },
-                { v: "sometimes" as const, t: "Sometimes", d: "Depends on the occasion", e: "🤷" },
+                { v: "sometimes" as const, t: "Sometimes", d: "Depends on the occasion", e: "👨‍💼" },
                 { v: "always" as const, t: "All the time", d: "Staring at my closet daily", e: "😩" },
               ].map((opt) => {
                 const active = nothingToWear === opt.v;
@@ -190,7 +169,7 @@ export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 3 && (
+        {step === 2 && (
           <div className="flex-1 flex flex-col">
             <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
               Get ready in just 2 minutes ⚡
@@ -201,7 +180,10 @@ export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
             <div className="flex-1 flex flex-col items-center justify-center">
               <div className="w-full max-w-xs rounded-3xl bg-muted/50 p-6">
                 <div className="grid grid-cols-2 gap-4 items-end">
-                  <div className="rounded-2xl bg-card border border-border p-4 flex flex-col items-center justify-between" style={{ height: 180 }}>
+                  <div
+                    className="rounded-2xl bg-card border border-border p-4 flex flex-col items-center justify-between"
+                    style={{ height: nowBarHeight }}
+                  >
                     <p className="text-xs font-semibold text-muted-foreground text-center">
                       Right now
                     </p>
@@ -213,13 +195,16 @@ export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
                       <p className="text-[10px] text-muted-foreground mt-1">per year</p>
                     </div>
                   </div>
-                  <div className="rounded-2xl bg-accent p-4 flex flex-col items-center justify-between" style={{ height: 240 }}>
+                  <div
+                    className="rounded-2xl bg-accent p-4 flex flex-col items-center justify-between"
+                    style={{ height: vestisBarHeight }}
+                  >
                     <p className="text-xs font-semibold text-accent-foreground/80 text-center">
                       With Vestis
                     </p>
-                    <span className="text-3xl">✨</span>
+                    <span className="text-2xl">✨</span>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-accent-foreground leading-none">
+                      <p className="text-xl font-bold text-accent-foreground leading-none">
                         {yearlyHoursVestis}<span className="text-sm font-medium">h</span>
                       </p>
                       <p className="text-[10px] text-accent-foreground/80 mt-1">per year</p>
@@ -234,7 +219,7 @@ export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 4 && (
+        {step === 3 && (
           <div className="flex-1 flex flex-col">
             <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
               How big is your wardrobe? 👗
@@ -279,7 +264,7 @@ export function SignUpIntro({ onComplete, onBack }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 5 && (
+        {step === 4 && (
           <div className="flex-1 flex flex-col">
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-3">
