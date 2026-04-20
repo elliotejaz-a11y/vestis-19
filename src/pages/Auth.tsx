@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useTheme } from "next-themes";
 import { useNavigate } from "react-router-dom";
+import { SignUpIntro } from "@/components/SignUpIntro";
 
 export default function Auth() {
   // If in recovery mode (OTP verified, setting new password), keep showing Auth
