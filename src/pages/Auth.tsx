@@ -532,6 +532,32 @@ export default function Auth() {
             )}
           </div>
 
+          {/* Theme toggle */}
+          {isSignUp && (
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Appearance</Label>
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setTheme("light")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                    theme === "light" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
+                  }`}
+                >
+                  <Sun className="w-3.5 h-3.5" /> Light
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTheme("dark")}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                    theme === "dark" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
+                  }`}
+                >
+                  <Moon className="w-3.5 h-3.5" /> Dark
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Remember me & forgot password - only on sign in */}
           {!isSignUp && (
