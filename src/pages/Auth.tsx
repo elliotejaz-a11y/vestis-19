@@ -17,10 +17,9 @@ export default function Auth() {
   // If in recovery mode (OTP verified, setting new password), keep showing Auth
   const isRecoveryMode = sessionStorage.getItem("vestis_recovery_mode") === "true";
   const [isSignUp, setIsSignUp] = useState(false);
-  const [showSignUpIntro, setShowSignUpIntro] = useState(false);
-  // Landing screen ("Get Started" / "I already have an account") shows first.
-  // Skip it if user is in password-recovery mode.
-  const [showLanding, setShowLanding] = useState(!isRecoveryMode);
+  // The SignUpIntro flow now doubles as the brand landing screen, so it's
+  // shown by default to all visitors unless they're in password-recovery mode.
+  const [showSignUpIntro, setShowSignUpIntro] = useState(!isRecoveryMode);
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
