@@ -17,7 +17,9 @@ export default function Auth() {
   // If in recovery mode (OTP verified, setting new password), keep showing Auth
   const isRecoveryMode = sessionStorage.getItem("vestis_recovery_mode") === "true";
   const [isSignUp, setIsSignUp] = useState(false);
-  const [showSignUpIntro, setShowSignUpIntro] = useState(false);
+  // Show the intro/sales-pitch as the very first screen new visitors see.
+  // Skip it automatically if we're in password-recovery mode.
+  const [showSignUpIntro, setShowSignUpIntro] = useState(!isRecoveryMode);
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -410,7 +412,14 @@ export default function Auth() {
           setShowSignUpIntro(false);
           setIsSignUp(true);
         }}
-        onBack={() => setShowSignUpIntro(false)}
+        onBack={() => {
+          setShowSignUpIntro(false);
+          setIsSignUp(false);
+        }}
+        onLogin={() => {
+          setShowSignUpIntro(false);
+          setIsSignUp(false);
+        }}
       />
     );
   }
