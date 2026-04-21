@@ -425,7 +425,7 @@ export default function Auth() {
   if (isSignUp) {
     const totalSteps = 3;
     const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-    const namesValid = !!displayName.trim() && username.length >= 3 && usernameAvailable !== false;
+    const namesValid = username.length >= 3 && usernameAvailable !== false;
     const canAdvance =
       (signUpStep === 0 && emailValid) ||
       (signUpStep === 1 && namesValid && !checkingUsername) ||
@@ -508,19 +508,8 @@ export default function Auth() {
             {signUpStep === 1 && (
               <div className="space-y-6 animate-fade-in">
                 <div className="space-y-2">
-                  <h1 className="text-3xl font-bold text-foreground">Pick your name & handle</h1>
-                  <p className="text-sm text-muted-foreground">Your display name is what friends see. Your username is your unique @handle.</p>
-                </div>
-                <div>
-                  <Label className="text-xs font-medium text-muted-foreground">Display Name</Label>
-                  <Input
-                    value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
-                    placeholder="Your name"
-                    className="mt-1 rounded-xl bg-card h-12 text-base"
-                    autoFocus
-                    required
-                  />
+                  <h1 className="text-3xl font-bold text-foreground">Pick your username</h1>
+                  <p className="text-sm text-muted-foreground">This is your unique @handle on Vestis. You can set your display name next.</p>
                 </div>
                 <div>
                   <Label className="text-xs font-medium text-muted-foreground">Username</Label>
@@ -531,6 +520,7 @@ export default function Auth() {
                       onChange={(e) => handleUsernameChange(e.target.value)}
                       placeholder="fashionista23"
                       className="mt-1 rounded-xl bg-card pl-7 pr-10 h-12 text-base"
+                      autoFocus
                       required
                       minLength={3}
                       maxLength={30}
