@@ -463,26 +463,29 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
             </div>
           </div>
         )}
+        </div>
       </div>
 
-      {/* Continue button */}
-      <Button
-        onClick={next}
-        disabled={!canContinue}
-        className="w-full h-14 rounded-2xl bg-accent text-accent-foreground font-semibold text-base hover:bg-accent/90 mt-6"
-      >
-        {isFirst ? "Get started" : isLast ? "Create my account" : "Continue"}
-      </Button>
-
-      {/* "Already have an account" — only on the landing/first step */}
-      {isFirst && (
-        <button
-          onClick={onLogin}
-          className="w-full text-center text-sm text-muted-foreground mt-4 hover:text-foreground transition-colors"
-        >
-          Already have an account? <span className="font-semibold text-foreground underline underline-offset-4">Log in</span>
-        </button>
-      )}
+      {/* Fixed footer — overlays the bottom of the scroll area with a fade */}
+      <div className="fixed bottom-0 left-0 right-0 px-6 pb-6 pt-12 bg-gradient-to-t from-background via-background to-transparent pointer-events-none">
+        <div className="pointer-events-auto max-w-md mx-auto">
+          <Button
+            onClick={next}
+            disabled={!canContinue}
+            className="w-full h-14 rounded-2xl bg-accent text-accent-foreground font-semibold text-base hover:bg-accent/90"
+          >
+            {isFirst ? "Get started" : isLast ? "Create my account" : "Continue"}
+          </Button>
+          {isFirst && (
+            <button
+              onClick={onLogin}
+              className="w-full text-center text-sm text-muted-foreground mt-3 hover:text-foreground transition-colors"
+            >
+              Already have an account? <span className="font-semibold text-foreground underline underline-offset-4">Log in</span>
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
