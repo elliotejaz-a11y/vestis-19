@@ -268,10 +268,15 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
                   value={username}
                   onChange={(e) => { setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, "")); setProfileError(""); }}
                   placeholder="username"
-                  className="rounded-xl bg-card text-sm pl-7"
+                  className="rounded-xl bg-card text-sm pl-7 pr-9"
                   maxLength={30}
                   autoFocus
                 />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {checkingUsername && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                  {!checkingUsername && username.trim().length >= 3 && usernameAvailable === true && <Check className="w-4 h-4 text-accent" />}
+                  {!checkingUsername && usernameAvailable === false && <X className="w-4 h-4 text-destructive" />}
+                </div>
               </div>
             ) : (
               <button
@@ -282,6 +287,12 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
                 <span className="flex-1 text-left">{username || <span className="text-muted-foreground">username</span>}</span>
                 <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
+            )}
+            {editingUsername && usernameAvailable === false && (
+              <p className="text-[11px] text-destructive mt-1">That username is already taken.</p>
+            )}
+            {editingUsername && username.trim().length > 0 && username.trim().length < 3 && (
+              <p className="text-[11px] text-muted-foreground mt-1">Username must be at least 3 characters.</p>
             )}
           </div>
           {profileError && (
