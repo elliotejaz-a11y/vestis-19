@@ -463,6 +463,9 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       if (!avatarUrl) { setProfileError("Please add a profile picture"); return; }
       if (!displayName.trim()) { setProfileError("Please enter your display name"); return; }
       if (!username.trim()) { setProfileError("Please choose a username"); return; }
+      if (username.trim().length < 3) { setProfileError("Username must be at least 3 characters"); return; }
+      if (checkingUsername) { setProfileError("Checking username availability…"); return; }
+      if (usernameAvailable === false) { setProfileError("That username is already taken"); return; }
       setProfileError("");
     }
     setStep(step + 1);
