@@ -517,9 +517,30 @@ function DiscoverTab() {
       .limit(50);
 
     if (profiles) {
-      // Filter out incomplete profiles, then shuffle
+      // Filter out incomplete profiles (no avatar / placeholder usernames)
       const filtered = profiles.filter((p: any) => p.avatar_url && p.username && !/^user\d*$/i.test(p.username));
-      const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+
+      // Validate that each avatar URL actually loads — drop ones that 404 or error
+      const validated = await Promise.all(
+        filtered.map(
+          (p: any) =>
+            new Promise<any | null>((resolve) => {
+              const img = new window.Image();
+              const timeout = setTimeout(() => resolve(null), 5000);
+              img.onload = () => {
+                clearTimeout(timeout);
+                resolve(img.naturalWidth > 0 ? p : null);
+              };
+              img.onerror = () => {
+                clearTimeout(timeout);
+                resolve(null);
+              };
+              img.src = p.avatar_url;
+            })
+        )
+      );
+      const usable = validated.filter(Boolean);
+      const shuffled = [...usable].sort(() => Math.random() - 0.5);
       setPeople(shuffled as FriendProfile[]);
     }
     setLoading(false);
