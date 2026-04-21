@@ -1,9 +1,62 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import vestisLogo from "@/assets/vestis-logo.png";
 import introOutfitGenerator from "@/assets/intro-outfit-generator.png";
+
+/**
+ * Animated counter — eases from 0 → target whenever `target` or `trigger` changes.
+ * Uses requestAnimationFrame with an ease-out cubic curve so the number ticks
+ * up quickly at first and gently settles on the final value.
+ */
+function useCountUp(target: number, durationMs = 1100, trigger: unknown = target) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    const start = performance.now();
+    const from = 0;
+    const to = Math.max(0, Math.round(target));
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(Math.round(from + (to - from) * eased));
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trigger, target, durationMs]);
+  return value;
+}
+
+/** Smoothly animates a numeric value (e.g. bar height) from 0 → target. */
+function useGrow(target: number, durationMs = 900, trigger: unknown = target) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    const start = performance.now();
+    const to = Math.max(0, target);
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      // ease-out quart for snappy growth that decelerates
+      const eased = 1 - Math.pow(1 - t, 4);
+      setValue(to * eased);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trigger, target, durationMs]);
+  return value;
+}
 
 interface SignUpIntroProps {
   onComplete: (meta?: { source?: string | null }) => void;
@@ -154,7 +207,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
         <div key={animKey} className="flex-1 flex flex-col animate-fade-in min-h-0">
           {step === 0 && (
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="space-y-2 mb-3 shrink-0">
+              <div className="space-y-2 mb-3 shrink-0 animate-intro-text">
                 <h1 className="text-[2.5rem] font-extrabold text-foreground leading-[0.98] tracking-tight">
                   Generate outfits effortlessly
                 </h1>
@@ -163,9 +216,9 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                 </p>
               </div>
               <div className="flex-1 flex items-start justify-center min-h-0 -mt-2">
-                <div className="relative h-full max-h-full mx-auto">
+                <div className="relative h-full max-h-full mx-auto animate-phone-fly-in">
                   <div
-                    className="absolute inset-0 -z-10 rounded-[3rem] blur-2xl opacity-40 bg-accent/30"
+                    className="absolute inset-0 -z-10 rounded-[3rem] blur-2xl opacity-40 bg-accent/30 animate-pulse-glow"
                     aria-hidden
                   />
                   <img
@@ -267,56 +320,13 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
         )}
 
         {step === 3 && (
-          <div className="flex-1 flex flex-col">
-            <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
-              Get ready in just 2 minutes ⚡
-            </h1>
-            <p className="text-sm text-muted-foreground mb-8">
-              Here's what your year looks like with Vestis.
-            </p>
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="w-full max-w-xs rounded-3xl bg-muted/50 p-6">
-                {/* Right Now is now a SKINNY tall column; Vestis is a WIDER, shorter column. */}
-                <div className="flex items-end justify-center gap-6">
-                  {/* Right now — TALLER, SKINNIER */}
-                  <div
-                    className="w-16 rounded-2xl bg-card border border-border p-3 flex flex-col items-center justify-between animate-fade-in"
-                    style={{ height: nowBarHeight }}
-                  >
-                    <p className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">
-                      Right<br />now
-                    </p>
-                    <span className="text-2xl">😩</span>
-                    <div className="text-center">
-                      <p className="text-xl font-bold text-foreground leading-none">
-                        {yearlyHoursNow}<span className="text-xs font-medium">h</span>
-                      </p>
-                      <p className="text-[9px] text-muted-foreground mt-0.5">/yr</p>
-                    </div>
-                  </div>
-                  {/* With Vestis — SHORTER but WIDER so text fits comfortably */}
-                  <div
-                    className="w-32 rounded-2xl bg-accent p-4 flex flex-col items-center justify-between animate-fade-in"
-                    style={{ height: vestisBarHeight, animationDelay: "120ms", animationFillMode: "backwards" }}
-                  >
-                    <p className="text-xs font-semibold text-accent-foreground/85 text-center">
-                      With Vestis
-                    </p>
-                    <span className="text-2xl">✨</span>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-accent-foreground leading-none">
-                        {yearlyHoursVestis}<span className="text-sm font-medium">h</span>
-                      </p>
-                      <p className="text-[10px] text-accent-foreground/80 mt-0.5">per year</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground text-center mt-6 max-w-xs">
-                That's <span className="font-bold text-foreground">{savedHours} hours</span> a year back in your life. 🎉
-              </p>
-            </div>
-          </div>
+          <ComparisonGraph
+            yearlyHoursNow={yearlyHoursNow}
+            yearlyHoursVestis={yearlyHoursVestis}
+            savedHours={savedHours}
+            nowBarHeight={nowBarHeight}
+            vestisBarHeight={vestisBarHeight}
+          />
         )}
 
         {step === 4 && (
@@ -425,44 +435,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 7 && (
-          <div className="flex-1 flex flex-col">
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-3 animate-fade-in">
-                With Vestis you'll reclaim
-              </p>
-              <p className="text-6xl font-bold text-foreground leading-none animate-scale-in">
-                {savedHours}
-                <span className="text-2xl font-medium text-muted-foreground"> hours per year</span>
-              </p>
-              <div className="w-12 h-0.5 bg-accent rounded-full my-5 animate-fade-in" />
-              <p className="text-base text-muted-foreground max-w-xs leading-relaxed mb-8 animate-fade-in">
-                That's hours back in your life — every single year. 🎁
-              </p>
-              <div className="w-full max-w-xs space-y-px rounded-2xl overflow-hidden border border-border">
-                {[
-                  { e: "⚡", t: `Get ready in just 2 minutes a day` },
-                  { e: "🪄", t: `Reclaim ${savedHours} hours per year` },
-                  { e: "👕", t: "More outfit combinations per item" },
-                ].map(({ e, t }, i) => (
-                  <div
-                    key={t}
-                    className="flex items-center gap-3 px-4 py-3 bg-card animate-fade-in"
-                    style={{ animationDelay: `${150 + i * 90}ms`, animationFillMode: "backwards" }}
-                  >
-                    <span className="text-lg">{e}</span>
-                    <p className="text-sm font-medium text-foreground text-left">
-                      {t}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-5 max-w-xs">
-                Estimates based on average Vestis users.
-              </p>
-            </div>
-          </div>
-        )}
+        {step === 7 && <ReclaimReveal savedHours={savedHours} />}
         </div>
       </div>
 
@@ -485,6 +458,133 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
             </button>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Step 3 — Yearly comparison graph.
+ * Bars grow up from the floor (height 0 → final), and the hour numbers tick
+ * upward from 0 in sync. Animations replay every time the step is mounted.
+ */
+function ComparisonGraph({
+  yearlyHoursNow,
+  yearlyHoursVestis,
+  savedHours,
+  nowBarHeight,
+  vestisBarHeight,
+}: {
+  yearlyHoursNow: number;
+  yearlyHoursVestis: number;
+  savedHours: number;
+  nowBarHeight: number;
+  vestisBarHeight: number;
+}) {
+  const nowH = useGrow(nowBarHeight, 1100);
+  const vestisH = useGrow(vestisBarHeight, 1100);
+  const nowCount = useCountUp(yearlyHoursNow, 1100);
+  const vestisCount = useCountUp(yearlyHoursVestis, 900);
+  const savedCount = useCountUp(savedHours, 1300);
+
+  return (
+    <div className="flex-1 flex flex-col">
+      <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
+        Get ready in just 2 minutes ⚡
+      </h1>
+      <p className="text-sm text-muted-foreground mb-8">
+        Here's what your year looks like with Vestis.
+      </p>
+      <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="w-full max-w-xs rounded-3xl bg-muted/50 p-6">
+          <div className="flex items-end justify-center gap-6">
+            {/* Right now — grows tall & skinny */}
+            <div
+              className="w-16 rounded-2xl bg-card border border-border p-3 flex flex-col items-center justify-between overflow-hidden will-change-[height] transition-none"
+              style={{ height: nowH }}
+            >
+              <p className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">
+                Right<br />now
+              </p>
+              <span className="text-2xl">😩</span>
+              <div className="text-center">
+                <p className="text-xl font-bold text-foreground leading-none tabular-nums">
+                  {nowCount}<span className="text-xs font-medium">h</span>
+                </p>
+                <p className="text-[9px] text-muted-foreground mt-0.5">/yr</p>
+              </div>
+            </div>
+            {/* With Vestis — grows wider & shorter */}
+            <div
+              className="w-32 rounded-2xl bg-accent p-4 flex flex-col items-center justify-between overflow-hidden will-change-[height]"
+              style={{ height: vestisH }}
+            >
+              <p className="text-xs font-semibold text-accent-foreground/85 text-center">
+                With Vestis
+              </p>
+              <span className="text-2xl">✨</span>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-accent-foreground leading-none tabular-nums">
+                  {vestisCount}<span className="text-sm font-medium">h</span>
+                </p>
+                <p className="text-[10px] text-accent-foreground/80 mt-0.5">per year</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground text-center mt-6 max-w-xs">
+          That's <span className="font-bold text-foreground tabular-nums">{savedCount} hours</span> a year back in your life. 🎉
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Step 7 — Final reclaimed-hours reveal.
+ * The big number ticks up from 0 → savedHours, the divider expands outward,
+ * and the feature rows cascade in from below.
+ */
+function ReclaimReveal({ savedHours }: { savedHours: number }) {
+  const display = useCountUp(savedHours, 1500);
+  return (
+    <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col items-center justify-center text-center">
+        <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-3 animate-fade-in">
+          With Vestis you'll reclaim
+        </p>
+        <p className="text-6xl font-bold text-foreground leading-none animate-scale-in tabular-nums">
+          {display}
+          <span className="text-2xl font-medium text-muted-foreground"> hours per year</span>
+        </p>
+        <div className="h-0.5 bg-accent rounded-full my-5 animate-divider-expand" />
+        <p
+          className="text-base text-muted-foreground max-w-xs leading-relaxed mb-8 animate-fade-in"
+          style={{ animationDelay: "300ms", animationFillMode: "backwards" }}
+        >
+          That's hours back in your life — every single year. 🎁
+        </p>
+        <div className="w-full max-w-xs space-y-px rounded-2xl overflow-hidden border border-border">
+          {[
+            { e: "⚡", t: `Get ready in just 2 minutes a day` },
+            { e: "🪄", t: `Reclaim ${savedHours} hours per year` },
+            { e: "👕", t: "More outfit combinations per item" },
+          ].map(({ e, t }, i) => (
+            <div
+              key={t}
+              className="flex items-center gap-3 px-4 py-3 bg-card animate-slide-up"
+              style={{ animationDelay: `${500 + i * 120}ms`, animationFillMode: "backwards" }}
+            >
+              <span className="text-lg">{e}</span>
+              <p className="text-sm font-medium text-foreground text-left">
+                {t}
+              </p>
+            </div>
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-5 max-w-xs">
+          Estimates based on average Vestis users.
+        </p>
       </div>
     </div>
   );
