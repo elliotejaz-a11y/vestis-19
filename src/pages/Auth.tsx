@@ -16,6 +16,8 @@ export default function Auth() {
   // If in recovery mode (OTP verified, setting new password), keep showing Auth
   const isRecoveryMode = sessionStorage.getItem("vestis_recovery_mode") === "true";
   const [isSignUp, setIsSignUp] = useState(false);
+  // Sign-up is now a multi-step "sell" flow: 0 = email, 1 = username + display name, 2 = password.
+  const [signUpStep, setSignUpStep] = useState(0);
   // Show the intro/sales-pitch as the very first screen new visitors see.
   // Skip it automatically if we're in password-recovery mode.
   const [showSignUpIntro, setShowSignUpIntro] = useState(!isRecoveryMode);
