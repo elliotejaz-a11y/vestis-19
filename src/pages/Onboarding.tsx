@@ -311,7 +311,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           </div>
         </div>
       ),
-      valid: !!avatarUrl && !!username.trim() && !!displayName.trim(),
+      valid: !!avatarUrl && !!username.trim() && username.trim().length >= 3 && usernameAvailable !== false && !checkingUsername && !!displayName.trim(),
     },
     {
       title: "Account Privacy",
