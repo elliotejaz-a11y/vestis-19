@@ -1,9 +1,62 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import vestisLogo from "@/assets/vestis-logo.png";
 import introOutfitGenerator from "@/assets/intro-outfit-generator.png";
+
+/**
+ * Animated counter — eases from 0 → target whenever `target` or `trigger` changes.
+ * Uses requestAnimationFrame with an ease-out cubic curve so the number ticks
+ * up quickly at first and gently settles on the final value.
+ */
+function useCountUp(target: number, durationMs = 1100, trigger: unknown = target) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    const start = performance.now();
+    const from = 0;
+    const to = Math.max(0, Math.round(target));
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(Math.round(from + (to - from) * eased));
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trigger, target, durationMs]);
+  return value;
+}
+
+/** Smoothly animates a numeric value (e.g. bar height) from 0 → target. */
+function useGrow(target: number, durationMs = 900, trigger: unknown = target) {
+  const [value, setValue] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  useEffect(() => {
+    const start = performance.now();
+    const to = Math.max(0, target);
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / durationMs);
+      // ease-out quart for snappy growth that decelerates
+      const eased = 1 - Math.pow(1 - t, 4);
+      setValue(to * eased);
+      if (t < 1) rafRef.current = requestAnimationFrame(tick);
+    };
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trigger, target, durationMs]);
+  return value;
+}
 
 interface SignUpIntroProps {
   onComplete: (meta?: { source?: string | null }) => void;
