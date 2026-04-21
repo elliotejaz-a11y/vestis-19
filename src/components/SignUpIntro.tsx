@@ -320,56 +320,13 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
         )}
 
         {step === 3 && (
-          <div className="flex-1 flex flex-col">
-            <h1 className="text-2xl font-bold text-foreground leading-tight mb-2">
-              Get ready in just 2 minutes ⚡
-            </h1>
-            <p className="text-sm text-muted-foreground mb-8">
-              Here's what your year looks like with Vestis.
-            </p>
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <div className="w-full max-w-xs rounded-3xl bg-muted/50 p-6">
-                {/* Right Now is now a SKINNY tall column; Vestis is a WIDER, shorter column. */}
-                <div className="flex items-end justify-center gap-6">
-                  {/* Right now — TALLER, SKINNIER */}
-                  <div
-                    className="w-16 rounded-2xl bg-card border border-border p-3 flex flex-col items-center justify-between animate-fade-in"
-                    style={{ height: nowBarHeight }}
-                  >
-                    <p className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">
-                      Right<br />now
-                    </p>
-                    <span className="text-2xl">😩</span>
-                    <div className="text-center">
-                      <p className="text-xl font-bold text-foreground leading-none">
-                        {yearlyHoursNow}<span className="text-xs font-medium">h</span>
-                      </p>
-                      <p className="text-[9px] text-muted-foreground mt-0.5">/yr</p>
-                    </div>
-                  </div>
-                  {/* With Vestis — SHORTER but WIDER so text fits comfortably */}
-                  <div
-                    className="w-32 rounded-2xl bg-accent p-4 flex flex-col items-center justify-between animate-fade-in"
-                    style={{ height: vestisBarHeight, animationDelay: "120ms", animationFillMode: "backwards" }}
-                  >
-                    <p className="text-xs font-semibold text-accent-foreground/85 text-center">
-                      With Vestis
-                    </p>
-                    <span className="text-2xl">✨</span>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-accent-foreground leading-none">
-                        {yearlyHoursVestis}<span className="text-sm font-medium">h</span>
-                      </p>
-                      <p className="text-[10px] text-accent-foreground/80 mt-0.5">per year</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground text-center mt-6 max-w-xs">
-                That's <span className="font-bold text-foreground">{savedHours} hours</span> a year back in your life. 🎉
-              </p>
-            </div>
-          </div>
+          <ComparisonGraph
+            yearlyHoursNow={yearlyHoursNow}
+            yearlyHoursVestis={yearlyHoursVestis}
+            savedHours={savedHours}
+            nowBarHeight={nowBarHeight}
+            vestisBarHeight={vestisBarHeight}
+          />
         )}
 
         {step === 4 && (
