@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import vestisLogo from "@/assets/vestis-logo.png";
+import introOutfitGenerator from "@/assets/intro-outfit-generator.png";
 
 interface SignUpIntroProps {
   onComplete: (meta?: { source?: string | null }) => void;
@@ -144,41 +145,43 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
       {/* Step content — keyed so each step replays its entry animation */}
       <div key={animKey} className="flex-1 flex flex-col animate-fade-in">
         {step === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-            <img
-              src={vestisLogo}
-              alt="Vestis"
-              className="h-12"
-              loading="eager"
-              decoding="sync"
-              // @ts-expect-error - fetchpriority is valid HTML, not yet in TS DOM types
-              fetchpriority="high"
-            />
-            <div className="space-y-3">
-              <h1 className="text-3xl font-bold text-foreground leading-tight">
-                Welcome to Vestis ✨
+          <div className="flex-1 flex flex-col">
+            <div className="space-y-3 mb-6">
+              <h1 className="text-4xl font-extrabold text-foreground leading-[1.05] tracking-tight">
+                Generate outfits<br />effortlessly
               </h1>
               <p className="text-base text-muted-foreground max-w-xs">
-                Your AI-powered wardrobe. Let's see how much time we can give back to you.
+                AI-styled looks for any occasion — built from your wardrobe in seconds.
               </p>
             </div>
-            <ul className="w-full max-w-xs pt-2 space-y-3 text-left">
-              {[
-                { emoji: "👕", label: "Digitise your entire wardrobe" },
-                { emoji: "🪄", label: "AI outfits for any occasion" },
-                { emoji: "📅", label: "Plan & track what you wear" },
-                { emoji: "👯", label: "Share fits with friends" },
-              ].map(({ emoji, label }, i) => (
-                <li
-                  key={label}
-                  className="flex items-center gap-3 text-foreground animate-fade-in"
-                  style={{ animationDelay: `${i * 80}ms`, animationFillMode: "backwards" }}
-                >
-                  <span className="text-2xl leading-none">{emoji}</span>
-                  <span className="text-sm font-medium">{label}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="flex-1 flex items-center justify-center">
+              <div className="relative w-full max-w-[260px] mx-auto">
+                {/* Soft glow behind the phone */}
+                <div
+                  className="absolute inset-0 -z-10 rounded-[3rem] blur-2xl opacity-40 bg-accent/30"
+                  aria-hidden
+                />
+                <img
+                  src={introOutfitGenerator}
+                  alt="Vestis Outfit Generator preview"
+                  className="w-full h-auto drop-shadow-2xl animate-fade-in"
+                  loading="eager"
+                  decoding="sync"
+                  // @ts-expect-error - fetchpriority is valid HTML, not yet in TS DOM types
+                  fetchpriority="high"
+                />
+              </div>
+            </div>
+            {/* Tiny brand mark under the phone */}
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <img
+                src={vestisLogo}
+                alt="Vestis"
+                className="h-5 opacity-80"
+                loading="eager"
+                decoding="sync"
+              />
+            </div>
           </div>
         )}
 
