@@ -556,7 +556,7 @@ function ComparisonGraph({
             </div>
             {/* With Vestis — grows wider & shorter */}
             <div
-              className="w-32 rounded-2xl bg-accent p-4 flex flex-col items-center justify-between overflow-hidden will-change-[height]"
+              className="w-24 rounded-2xl bg-accent p-4 flex flex-col items-center justify-between overflow-hidden will-change-[height]"
               style={{ height: vestisH }}
             >
               <p className="text-xs font-semibold text-accent-foreground/85 text-center">
