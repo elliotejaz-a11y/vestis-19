@@ -435,44 +435,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
           </div>
         )}
 
-        {step === 7 && (
-          <div className="flex-1 flex flex-col">
-            <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <p className="text-sm font-medium text-muted-foreground tracking-widest uppercase mb-3 animate-fade-in">
-                With Vestis you'll reclaim
-              </p>
-              <p className="text-6xl font-bold text-foreground leading-none animate-scale-in">
-                {savedHours}
-                <span className="text-2xl font-medium text-muted-foreground"> hours per year</span>
-              </p>
-              <div className="w-12 h-0.5 bg-accent rounded-full my-5 animate-fade-in" />
-              <p className="text-base text-muted-foreground max-w-xs leading-relaxed mb-8 animate-fade-in">
-                That's hours back in your life — every single year. 🎁
-              </p>
-              <div className="w-full max-w-xs space-y-px rounded-2xl overflow-hidden border border-border">
-                {[
-                  { e: "⚡", t: `Get ready in just 2 minutes a day` },
-                  { e: "🪄", t: `Reclaim ${savedHours} hours per year` },
-                  { e: "👕", t: "More outfit combinations per item" },
-                ].map(({ e, t }, i) => (
-                  <div
-                    key={t}
-                    className="flex items-center gap-3 px-4 py-3 bg-card animate-fade-in"
-                    style={{ animationDelay: `${150 + i * 90}ms`, animationFillMode: "backwards" }}
-                  >
-                    <span className="text-lg">{e}</span>
-                    <p className="text-sm font-medium text-foreground text-left">
-                      {t}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-5 max-w-xs">
-                Estimates based on average Vestis users.
-              </p>
-            </div>
-          </div>
-        )}
+        {step === 7 && <ReclaimReveal savedHours={savedHours} />}
         </div>
       </div>
 
