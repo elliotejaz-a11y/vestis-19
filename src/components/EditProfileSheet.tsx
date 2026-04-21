@@ -117,6 +117,16 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
 
   const handleSave = async () => {
     if (!user) return;
+
+    if (!avatarUrl) {
+      toast({
+        title: "Profile picture required",
+        description: "Please add a profile picture to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setSaving(true);
 
     const usernameChanged = username !== (profile?.username || "");
