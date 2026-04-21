@@ -209,7 +209,11 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div
+      className="h-screen flex flex-col bg-background overflow-hidden touch-pan-y"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Fixed content area — no scrolling */}
       <div className="flex-1 flex flex-col px-6 pt-6 pb-36 overflow-hidden">
         {/* Header: back button sits ABOVE a centered segmented progress bar */}
