@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ArrowLeft, MessageCircle, Send, Loader2, AlertTriangle,
-  Search, UserPlus, UserCheck, Users, Bell, Check, CheckCheck, Shirt, Compass, Sparkles, Image, MoreVertical, Flag, X
+  Search, UserPlus, UserCheck, Users, Bell, Check, CheckCheck, Shirt, Compass, Sparkles, Image, MoreVertical, Flag, X, User
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -517,9 +517,30 @@ function DiscoverTab() {
       .limit(50);
 
     if (profiles) {
-      // Filter out incomplete profiles, then shuffle
+      // Filter out incomplete profiles (no avatar / placeholder usernames)
       const filtered = profiles.filter((p: any) => p.avatar_url && p.username && !/^user\d*$/i.test(p.username));
-      const shuffled = [...filtered].sort(() => Math.random() - 0.5);
+
+      // Validate that each avatar URL actually loads — drop ones that 404 or error
+      const validated = await Promise.all(
+        filtered.map(
+          (p: any) =>
+            new Promise<any | null>((resolve) => {
+              const img = new window.Image();
+              const timeout = setTimeout(() => resolve(null), 5000);
+              img.onload = () => {
+                clearTimeout(timeout);
+                resolve(img.naturalWidth > 0 ? p : null);
+              };
+              img.onerror = () => {
+                clearTimeout(timeout);
+                resolve(null);
+              };
+              img.src = p.avatar_url;
+            })
+        )
+      );
+      const usable = validated.filter(Boolean);
+      const shuffled = [...usable].sort(() => Math.random() - 0.5);
       setPeople(shuffled as FriendProfile[]);
     }
     setLoading(false);
@@ -1025,15 +1046,20 @@ function ChatView({
 }
 
 // ─── Shared Avatar Component ───
-function Avatar({ url, name, size = "w-11 h-11" }: { url: string | null; name: string; size?: string }) {
+function Avatar({ url, name: _name, size = "w-11 h-11" }: { url: string | null; name: string; size?: string }) {
+  const [errored, setErrored] = useState(false);
+  const showImage = !!url && !errored;
   return (
-    <div className={cn(size, "rounded-full overflow-hidden bg-muted border border-border flex-shrink-0")}>
-      {url ? (
-        <img src={url} alt="" className="w-full h-full object-cover" />
+    <div className={cn(size, "rounded-full overflow-hidden bg-muted border border-border flex-shrink-0 flex items-center justify-center")}>
+      {showImage ? (
+        <img
+          src={url!}
+          alt=""
+          className="w-full h-full object-cover"
+          onError={() => setErrored(true)}
+        />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm font-semibold">
-          {name.charAt(0).toUpperCase()}
-        </div>
+        <User className="w-1/2 h-1/2 text-muted-foreground" />
       )}
     </div>
   );
