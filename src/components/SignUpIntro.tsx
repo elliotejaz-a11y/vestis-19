@@ -145,7 +145,15 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
       <div key={animKey} className="flex-1 flex flex-col animate-fade-in">
         {step === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-            <img src={vestisLogo} alt="Vestis" className="h-12 animate-scale-in" />
+            <img
+              src={vestisLogo}
+              alt="Vestis"
+              className="h-12"
+              loading="eager"
+              decoding="sync"
+              // @ts-expect-error - fetchpriority is valid HTML, not yet in TS DOM types
+              fetchpriority="high"
+            />
             <div className="space-y-3">
               <h1 className="text-3xl font-bold text-foreground leading-tight">
                 Welcome to Vestis ✨
