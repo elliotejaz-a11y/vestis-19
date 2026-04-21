@@ -9,7 +9,7 @@ import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, HelpCircle, Pen
 import { StyleQuizSheet } from "@/components/StyleQuizSheet";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
-import { getSkinToneColor, getSkinToneLabel, getSkinToneValue, SKIN_TONE_GRADIENT } from "@/lib/skinTone";
+import { getSkinToneColor, getSkinToneLabel, getSkinToneValue, getSkinToneValueFromRgb, SKIN_TONE_GRADIENT } from "@/lib/skinTone";
 
 export const STYLES = [
   { value: "casual", label: "Casual", emoji: "👕" },
