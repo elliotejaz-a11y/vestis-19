@@ -207,7 +207,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
         <div key={animKey} className="flex-1 flex flex-col animate-fade-in min-h-0">
           {step === 0 && (
             <div className="flex-1 flex flex-col min-h-0">
-              <div className="space-y-2 mb-3 shrink-0">
+              <div className="space-y-2 mb-3 shrink-0 animate-intro-text">
                 <h1 className="text-[2.5rem] font-extrabold text-foreground leading-[0.98] tracking-tight">
                   Generate outfits effortlessly
                 </h1>
@@ -216,9 +216,9 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                 </p>
               </div>
               <div className="flex-1 flex items-start justify-center min-h-0 -mt-2">
-                <div className="relative h-full max-h-full mx-auto">
+                <div className="relative h-full max-h-full mx-auto animate-phone-fly-in">
                   <div
-                    className="absolute inset-0 -z-10 rounded-[3rem] blur-2xl opacity-40 bg-accent/30"
+                    className="absolute inset-0 -z-10 rounded-[3rem] blur-2xl opacity-40 bg-accent/30 animate-pulse-glow"
                     aria-hidden
                   />
                   <img
