@@ -538,9 +538,9 @@ function ComparisonGraph({
       <div className="flex-1 flex flex-col items-center justify-center">
         <div className="w-full max-w-xs rounded-3xl bg-muted/50 p-6">
           <div className="flex items-end justify-center gap-6">
-            {/* Right now — grows tall */}
+            {/* Right now — grows tall & skinny */}
             <div
-              className="w-24 rounded-2xl bg-card border border-border p-3 flex flex-col items-center justify-between overflow-hidden will-change-[height] transition-none"
+              className="w-16 rounded-2xl bg-card border border-border p-3 flex flex-col items-center justify-between overflow-hidden will-change-[height] transition-none"
               style={{ height: nowH }}
             >
               <p className="text-[10px] font-semibold text-muted-foreground text-center leading-tight">
@@ -554,9 +554,9 @@ function ComparisonGraph({
                 <p className="text-[9px] text-muted-foreground mt-0.5">/yr</p>
               </div>
             </div>
-            {/* With Vestis — grows shorter */}
+            {/* With Vestis — grows wider & shorter */}
             <div
-              className="w-24 rounded-2xl bg-accent p-4 flex flex-col items-center justify-between overflow-hidden will-change-[height]"
+              className="w-32 rounded-2xl bg-accent p-4 flex flex-col items-center justify-between overflow-hidden will-change-[height]"
               style={{ height: vestisH }}
             >
               <p className="text-xs font-semibold text-accent-foreground/85 text-center">
