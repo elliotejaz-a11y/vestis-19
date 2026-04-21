@@ -120,70 +120,67 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background px-6 pt-6 pb-8 overflow-hidden">
-      {/* Header: back + progress. Back button hidden on the first screen. */}
-      <div className="flex items-center gap-3 mb-8">
-        {isFirst ? (
-          <div className="w-9 h-9" aria-hidden />
-        ) : (
-          <button
-            onClick={back}
-            className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center text-foreground hover:bg-accent/10 transition-colors"
-            aria-label="Back"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-        )}
-        <div className="flex-1 h-1.5 rounded-full bg-border overflow-hidden">
-          <div
-            className="h-full bg-accent transition-all duration-500 ease-out"
-            style={{ width: `${((step + 1) / totalSteps) * 100}%` }}
-          />
+    <div className="min-h-screen flex flex-col bg-background">
+      {/* Scrollable content area */}
+      <div className="flex-1 overflow-y-auto px-6 pt-6 pb-40">
+        {/* Header: back button sits ABOVE a centered segmented progress bar */}
+        <div className="mb-6 space-y-3">
+          <div className="h-9 flex items-center">
+            {!isFirst && (
+              <button
+                onClick={back}
+                className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center text-foreground hover:bg-accent/10 transition-colors"
+                aria-label="Back"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          {/* Segmented progress bar — one pill per step, centered */}
+          <div className="flex items-center justify-center gap-1.5 w-full">
+            {Array.from({ length: totalSteps }).map((_, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "h-1 flex-1 max-w-[44px] rounded-full transition-all duration-500",
+                  i <= step ? "bg-foreground" : "bg-border"
+                )}
+              />
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Step content — keyed so each step replays its entry animation */}
-      <div key={animKey} className="flex-1 flex flex-col animate-fade-in">
-        {step === 0 && (
-          <div className="flex-1 flex flex-col">
-            <div className="space-y-3 mb-6">
-              <h1 className="text-4xl font-extrabold text-foreground leading-[1.05] tracking-tight">
-                Generate outfits<br />effortlessly
-              </h1>
-              <p className="text-base text-muted-foreground max-w-xs">
-                AI-styled looks for any occasion — built from your wardrobe in seconds.
-              </p>
-            </div>
-            <div className="flex-1 flex items-center justify-center">
-              <div className="relative w-full max-w-[260px] mx-auto">
-                {/* Soft glow behind the phone */}
-                <div
-                  className="absolute inset-0 -z-10 rounded-[3rem] blur-2xl opacity-40 bg-accent/30"
-                  aria-hidden
-                />
-                <img
-                  src={introOutfitGenerator}
-                  alt="Vestis Outfit Generator preview"
-                  className="w-full h-auto drop-shadow-2xl animate-fade-in"
-                  loading="eager"
-                  decoding="sync"
-                  // @ts-expect-error - fetchpriority is valid HTML, not yet in TS DOM types
-                  fetchpriority="high"
-                />
+        {/* Step content — keyed so each step replays its entry animation */}
+        <div key={animKey} className="flex flex-col animate-fade-in">
+          {step === 0 && (
+            <div className="flex flex-col">
+              <div className="space-y-3 mb-8">
+                <h1 className="text-5xl font-extrabold text-foreground leading-[1.02] tracking-tight">
+                  Generate outfits effortlessly
+                </h1>
+                <p className="text-base text-muted-foreground max-w-xs">
+                  AI-styled looks for any occasion — built from your wardrobe in seconds.
+                </p>
+              </div>
+              <div className="flex items-start justify-center">
+                <div className="relative w-full max-w-[340px] mx-auto">
+                  <div
+                    className="absolute inset-0 -z-10 rounded-[3rem] blur-2xl opacity-40 bg-accent/30"
+                    aria-hidden
+                  />
+                  <img
+                    src={introOutfitGenerator}
+                    alt="Vestis Outfit Generator preview"
+                    className="w-full h-auto drop-shadow-2xl animate-fade-in"
+                    loading="eager"
+                    decoding="sync"
+                    // @ts-expect-error - fetchpriority is valid HTML, not yet in TS DOM types
+                    fetchpriority="high"
+                  />
+                </div>
               </div>
             </div>
-            {/* Tiny brand mark under the phone */}
-            <div className="flex items-center justify-center gap-2 pt-2">
-              <img
-                src={vestisLogo}
-                alt="Vestis"
-                className="h-5 opacity-80"
-                loading="eager"
-                decoding="sync"
-              />
-            </div>
-          </div>
-        )}
+          )}
 
         {step === 1 && (
           <div className="flex-1 flex flex-col">
