@@ -250,10 +250,10 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                 ) : (
                   <button
                     onClick={() => fileRef.current?.click()}
-                    className="text-[10px] text-muted-foreground"
+                    className="text-[10px] text-destructive font-medium"
                     disabled={uploading}
                   >
-                    {uploading ? "Uploading..." : "Tap to add photo"}
+                    {uploading ? "Uploading..." : "Tap to add photo (required)"}
                   </button>
                 )}
               </div>
