@@ -345,6 +345,26 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
               <span>Dark</span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => skinScanRef.current?.click()}
+            disabled={scanningSkin}
+            className="w-full flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-dashed border-accent/40 text-accent hover:bg-accent/5 transition-all text-sm font-medium disabled:opacity-60"
+          >
+            <Camera className="w-4 h-4" />
+            {scanningSkin ? "Scanning..." : "Scan my skin tone"}
+          </button>
+          <p className="text-[10px] text-muted-foreground text-center -mt-2">
+            Snap a photo of your skin (face, arm, or hand) in good lighting.
+          </p>
+          <input
+            ref={skinScanRef}
+            type="file"
+            accept="image/*"
+            capture="user"
+            className="hidden"
+            onChange={handleSkinScan}
+          />
         </div>
       ),
       valid: true,
