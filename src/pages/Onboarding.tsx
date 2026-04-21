@@ -116,6 +116,29 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     }
   }, [user, editMode]);
 
+  // Debounced username uniqueness check (case-insensitive). Skip if it matches the user's own current username.
+  useEffect(() => {
+    const value = username.trim();
+    if (value.length < 3) { setUsernameAvailable(null); setCheckingUsername(false); return; }
+    if (profile?.username && value.toLowerCase() === profile.username.toLowerCase()) {
+      setUsernameAvailable(true);
+      setCheckingUsername(false);
+      return;
+    }
+    setCheckingUsername(true);
+    const handle = setTimeout(async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", value)
+        .limit(1);
+      const taken = !!data && data.length > 0 && data[0].id !== user?.id;
+      setUsernameAvailable(!taken);
+      setCheckingUsername(false);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [username, profile?.username, user?.id]);
+
   const skinScanRef = useRef<HTMLInputElement>(null);
   const [scanningSkin, setScanningSkin] = useState(false);
 
