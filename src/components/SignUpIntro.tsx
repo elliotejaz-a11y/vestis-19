@@ -120,11 +120,11 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto px-6 pt-6 pb-40">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* Fixed content area — no scrolling */}
+      <div className="flex-1 flex flex-col px-6 pt-6 pb-36 overflow-hidden">
         {/* Header: back button sits ABOVE a centered segmented progress bar */}
-        <div className="mb-6 space-y-3">
+        <div className="mb-4 space-y-2 shrink-0">
           <div className="h-9 flex items-center">
             {!isFirst && (
               <button
@@ -151,19 +151,19 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
         </div>
 
         {/* Step content — keyed so each step replays its entry animation */}
-        <div key={animKey} className="flex flex-col animate-fade-in">
+        <div key={animKey} className="flex-1 flex flex-col animate-fade-in min-h-0">
           {step === 0 && (
-            <div className="flex flex-col">
-              <div className="space-y-3 mb-8">
-                <h1 className="text-5xl font-extrabold text-foreground leading-[1.02] tracking-tight">
+            <div className="flex-1 flex flex-col min-h-0">
+              <div className="space-y-2 mb-3 shrink-0">
+                <h1 className="text-[2.5rem] font-extrabold text-foreground leading-[0.98] tracking-tight">
                   Generate outfits effortlessly
                 </h1>
-                <p className="text-base text-muted-foreground max-w-xs">
+                <p className="text-sm text-muted-foreground max-w-xs">
                   AI-styled looks for any occasion — built from your wardrobe in seconds.
                 </p>
               </div>
-              <div className="flex items-start justify-center">
-                <div className="relative w-full max-w-[340px] mx-auto">
+              <div className="flex-1 flex items-start justify-center min-h-0 -mt-2">
+                <div className="relative h-full max-h-full mx-auto">
                   <div
                     className="absolute inset-0 -z-10 rounded-[3rem] blur-2xl opacity-40 bg-accent/30"
                     aria-hidden
@@ -171,7 +171,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                   <img
                     src={introOutfitGenerator}
                     alt="Vestis Outfit Generator preview"
-                    className="w-full h-auto drop-shadow-2xl animate-fade-in"
+                    className="h-full w-auto max-w-full object-contain drop-shadow-2xl"
                     loading="eager"
                     decoding="sync"
                     // @ts-expect-error - fetchpriority is valid HTML, not yet in TS DOM types
