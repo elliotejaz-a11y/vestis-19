@@ -77,17 +77,17 @@ export function getSkinToneValue(input?: string | null): number {
  * Uses simple Euclidean distance in RGB space against the gradient stops.
  */
 export function getSkinToneValueFromRgb(r: number, g: number, b: number): number {
-  let best = skinToneStops[0];
+  let bestValue = skinToneStops[0].value as number;
   let bestDist = Infinity;
   for (const stop of skinToneStops) {
     const c = hexToRgb(stop.color);
     const d = (c.r - r) ** 2 + (c.g - g) ** 2 + (c.b - b) ** 2;
     if (d < bestDist) {
       bestDist = d;
-      best = stop;
+      bestValue = stop.value;
     }
   }
-  return best.value;
+  return bestValue;
 }
 
 export function getSkinToneDisplay(input?: string | null): string | null {
