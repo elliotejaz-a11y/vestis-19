@@ -162,8 +162,8 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                   AI-styled looks for any occasion — built from your wardrobe in seconds.
                 </p>
               </div>
-              <div className="flex-1 flex items-start justify-center min-h-0 -mt-2">
-                <div className="relative h-full max-h-full mx-auto">
+              <div className="flex-1 flex items-start justify-center min-h-0 -mt-2 -mb-36 relative z-0">
+                <div className="relative h-[120%] max-h-[120%] mx-auto">
                   <div
                     className="absolute inset-0 -z-10 rounded-[3rem] blur-2xl opacity-40 bg-accent/30"
                     aria-hidden
@@ -171,7 +171,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                   <img
                     src={introOutfitGenerator}
                     alt="Vestis Outfit Generator preview"
-                    className="h-full w-auto max-w-full object-contain drop-shadow-2xl"
+                    className="h-full w-auto max-w-none object-contain drop-shadow-2xl"
                     loading="eager"
                     decoding="sync"
                     // @ts-expect-error - fetchpriority is valid HTML, not yet in TS DOM types
