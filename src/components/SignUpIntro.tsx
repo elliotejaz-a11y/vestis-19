@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import vestisLogo from "@/assets/vestis-logo.png";
+import introOutfitGenerator from "@/assets/intro-outfit-generator.png";
 
 interface SignUpIntroProps {
   onComplete: (meta?: { source?: string | null }) => void;
