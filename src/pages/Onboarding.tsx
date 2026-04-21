@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, HelpCircle, Pencil } from "lucide-react";
+import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, HelpCircle, Pencil, Loader2, X } from "lucide-react";
 import { StyleQuizSheet } from "@/components/StyleQuizSheet";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
@@ -59,6 +59,8 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [checkingUsername, setCheckingUsername] = useState(false);
   const [bio, setBio] = useState("");
   const [profileError, setProfileError] = useState("");
   const [skinTone, setSkinTone] = useState(50);
@@ -113,6 +115,29 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       }
     }
   }, [user, editMode]);
+
+  // Debounced username uniqueness check (case-insensitive). Skip if it matches the user's own current username.
+  useEffect(() => {
+    const value = username.trim();
+    if (value.length < 3) { setUsernameAvailable(null); setCheckingUsername(false); return; }
+    if (profile?.username && value.toLowerCase() === profile.username.toLowerCase()) {
+      setUsernameAvailable(true);
+      setCheckingUsername(false);
+      return;
+    }
+    setCheckingUsername(true);
+    const handle = setTimeout(async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id")
+        .ilike("username", value)
+        .limit(1);
+      const taken = !!data && data.length > 0 && data[0].id !== user?.id;
+      setUsernameAvailable(!taken);
+      setCheckingUsername(false);
+    }, 400);
+    return () => clearTimeout(handle);
+  }, [username, profile?.username, user?.id]);
 
   const skinScanRef = useRef<HTMLInputElement>(null);
   const [scanningSkin, setScanningSkin] = useState(false);
@@ -243,10 +268,15 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
                   value={username}
                   onChange={(e) => { setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9._]/g, "")); setProfileError(""); }}
                   placeholder="username"
-                  className="rounded-xl bg-card text-sm pl-7"
+                  className="rounded-xl bg-card text-sm pl-7 pr-9"
                   maxLength={30}
                   autoFocus
                 />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  {checkingUsername && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                  {!checkingUsername && username.trim().length >= 3 && usernameAvailable === true && <Check className="w-4 h-4 text-accent" />}
+                  {!checkingUsername && usernameAvailable === false && <X className="w-4 h-4 text-destructive" />}
+                </div>
               </div>
             ) : (
               <button
@@ -257,6 +287,12 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
                 <span className="flex-1 text-left">{username || <span className="text-muted-foreground">username</span>}</span>
                 <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
+            )}
+            {editingUsername && usernameAvailable === false && (
+              <p className="text-[11px] text-destructive mt-1">That username is already taken.</p>
+            )}
+            {editingUsername && username.trim().length > 0 && username.trim().length < 3 && (
+              <p className="text-[11px] text-muted-foreground mt-1">Username must be at least 3 characters.</p>
             )}
           </div>
           {profileError && (
@@ -275,7 +311,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           </div>
         </div>
       ),
-      valid: !!avatarUrl && !!username.trim() && !!displayName.trim(),
+      valid: !!avatarUrl && !!username.trim() && username.trim().length >= 3 && usernameAvailable !== false && !checkingUsername && !!displayName.trim(),
     },
     {
       title: "Account Privacy",
@@ -427,6 +463,9 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       if (!avatarUrl) { setProfileError("Please add a profile picture"); return; }
       if (!displayName.trim()) { setProfileError("Please enter your display name"); return; }
       if (!username.trim()) { setProfileError("Please choose a username"); return; }
+      if (username.trim().length < 3) { setProfileError("Username must be at least 3 characters"); return; }
+      if (checkingUsername) { setProfileError("Checking username availability…"); return; }
+      if (usernameAvailable === false) { setProfileError("That username is already taken"); return; }
       setProfileError("");
     }
     setStep(step + 1);
@@ -435,6 +474,26 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const handleFinish = async () => {
     setSaving(true);
     try {
+      // Final uniqueness guard before saving (case-insensitive). Skip if unchanged from current.
+      const usernameTrimmed = username.trim();
+      const isSameAsCurrent = profile?.username && usernameTrimmed.toLowerCase() === profile.username.toLowerCase();
+      if (usernameTrimmed && !isSameAsCurrent) {
+        const { data: existing } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("username", usernameTrimmed)
+          .limit(1);
+        const taken = !!existing && existing.length > 0 && existing[0].id !== user?.id;
+        if (taken) {
+          setStep(0);
+          setEditingUsername(true);
+          setUsernameAvailable(false);
+          setProfileError("That username is already taken");
+          toast({ title: "Username taken", description: "Please choose a different username.", variant: "destructive" });
+          setSaving(false);
+          return;
+        }
+      }
       const styleValue = allStyles.join(", ");
       await updateProfile({
         skin_tone: getSkinToneLabel(skinTone),
