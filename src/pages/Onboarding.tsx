@@ -435,6 +435,24 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const handleFinish = async () => {
     setSaving(true);
     try {
+      // Validate username uniqueness (case-insensitive) if it changed
+      const trimmedUsername = username.trim();
+      if (trimmedUsername && trimmedUsername !== (profile?.username || "")) {
+        const { data: existing } = await supabase
+          .from("profiles")
+          .select("id")
+          .ilike("username", trimmedUsername)
+          .neq("id", user?.id || "")
+          .limit(1);
+        if (existing && existing.length > 0) {
+          toast({ title: "Username taken", description: "Please choose a different username.", variant: "destructive" });
+          setSaving(false);
+          setStep(0);
+          setProfileError("This username is already taken");
+          setEditingUsername(true);
+          return;
+        }
+      }
       const styleValue = allStyles.join(", ");
       await updateProfile({
         skin_tone: getSkinToneLabel(skinTone),
