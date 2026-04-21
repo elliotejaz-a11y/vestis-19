@@ -411,6 +411,7 @@ export default function Auth() {
         onComplete={() => {
           setShowSignUpIntro(false);
           setIsSignUp(true);
+          setSignUpStep(0);
         }}
         onLogin={() => {
           setShowSignUpIntro(false);
