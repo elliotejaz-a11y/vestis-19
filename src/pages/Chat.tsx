@@ -1025,15 +1025,20 @@ function ChatView({
 }
 
 // ─── Shared Avatar Component ───
-function Avatar({ url, name, size = "w-11 h-11" }: { url: string | null; name: string; size?: string }) {
+function Avatar({ url, name: _name, size = "w-11 h-11" }: { url: string | null; name: string; size?: string }) {
+  const [errored, setErrored] = useState(false);
+  const showImage = !!url && !errored;
   return (
-    <div className={cn(size, "rounded-full overflow-hidden bg-muted border border-border flex-shrink-0")}>
-      {url ? (
-        <img src={url} alt="" className="w-full h-full object-cover" />
+    <div className={cn(size, "rounded-full overflow-hidden bg-muted border border-border flex-shrink-0 flex items-center justify-center")}>
+      {showImage ? (
+        <img
+          src={url!}
+          alt=""
+          className="w-full h-full object-cover"
+          onError={() => setErrored(true)}
+        />
       ) : (
-        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm font-semibold">
-          {name.charAt(0).toUpperCase()}
-        </div>
+        <User className="w-1/2 h-1/2 text-muted-foreground" />
       )}
     </div>
   );
