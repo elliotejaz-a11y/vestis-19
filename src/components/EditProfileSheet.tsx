@@ -117,16 +117,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
 
   const handleSave = async () => {
     if (!user) return;
-
-    if (!avatarUrl) {
-      toast({
-        title: "Profile picture required",
-        description: "Please add a profile picture to continue.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setSaving(true);
 
     const usernameChanged = username !== (profile?.username || "");
@@ -250,10 +240,10 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                 ) : (
                   <button
                     onClick={() => fileRef.current?.click()}
-                    className="text-[10px] text-destructive font-medium"
+                    className="text-[10px] text-muted-foreground"
                     disabled={uploading}
                   >
-                    {uploading ? "Uploading..." : "Tap to add photo (required)"}
+                    {uploading ? "Uploading..." : "Tap to add photo"}
                   </button>
                 )}
               </div>
