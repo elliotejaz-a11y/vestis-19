@@ -134,6 +134,42 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
     if (!isFirst) setStep((s) => s - 1);
   };
 
+  // ---- Swipe navigation (intentional only) ----
+  // Thresholds tuned to avoid accidental triggers:
+  //  - min 70px horizontal travel
+  //  - horizontal must dominate vertical by 2x
+  //  - completed within 800ms (deliberate flick, not slow drag)
+  //  - ignore swipes that begin on sliders / range inputs so the time-slider
+  //    (step 1) keeps working normally.
+  const swipeRef = useRef<{ x: number; y: number; t: number; ignore: boolean } | null>(null);
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    if (!t) return;
+    const target = e.target as HTMLElement | null;
+    const ignore = !!target?.closest('input[type="range"], [role="slider"]');
+    swipeRef.current = { x: t.clientX, y: t.clientY, t: performance.now(), ignore };
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = swipeRef.current;
+    swipeRef.current = null;
+    if (!start || start.ignore) return;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    const dt = performance.now() - start.t;
+    if (dt > 800) return;
+    if (Math.abs(dx) < 70) return;
+    if (Math.abs(dx) < Math.abs(dy) * 2) return;
+    if (dx < 0) {
+      if (canContinue) next();
+    } else {
+      back();
+    }
+  };
+
   // Per-step validity (Continue button enabled?)
   const canContinue = (() => {
     if (step === 2) return nothingToWear !== null;
@@ -173,7 +209,11 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div
+      className="h-screen flex flex-col bg-background overflow-hidden touch-pan-y"
+      onTouchStart={onTouchStart}
+      onTouchEnd={onTouchEnd}
+    >
       {/* Fixed content area — no scrolling */}
       <div className="flex-1 flex flex-col px-6 pt-6 pb-36 overflow-hidden">
         {/* Header: back button sits ABOVE a centered segmented progress bar */}
