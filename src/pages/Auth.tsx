@@ -420,79 +420,233 @@ export default function Auth() {
     );
   }
 
+  // ============ SIGN-UP MULTI-STEP FLOW ============
+  if (isSignUp) {
+    const totalSteps = 3;
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    const namesValid = !!displayName.trim() && username.length >= 3 && usernameAvailable !== false;
+    const canAdvance =
+      (signUpStep === 0 && emailValid) ||
+      (signUpStep === 1 && namesValid && !checkingUsername) ||
+      (signUpStep === 2 && passwordValid(password));
+
+    const goNext = () => {
+      if (!canAdvance) return;
+      if (signUpStep < totalSteps - 1) {
+        setSignUpStep(signUpStep + 1);
+      }
+    };
+
+    const goBack = () => {
+      if (signUpStep === 0) {
+        // Back to intro / sign-in chooser
+        setIsSignUp(false);
+        setShowSignUpIntro(true);
+        setSignUpStep(0);
+      } else {
+        setSignUpStep(signUpStep - 1);
+      }
+    };
+
+    return (
+      <div className="min-h-screen flex flex-col px-6 py-10 bg-background">
+        {/* Progress bar */}
+        <div className="flex gap-1.5 mb-8">
+          {Array.from({ length: totalSteps }).map((_, i) => (
+            <div
+              key={i}
+              className={`h-1 rounded-full flex-1 transition-all ${i <= signUpStep ? "bg-accent" : "bg-border"}`}
+            />
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2 mb-8">
+          <button
+            onClick={goBack}
+            className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center text-foreground hover:bg-accent/10 transition-colors"
+            aria-label="Back"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <img src={vestisLogo} alt="Vestis" className="h-8 ml-1" />
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (signUpStep < totalSteps - 1) {
+              goNext();
+            } else {
+              handleSubmit(e);
+            }
+          }}
+          className="flex-1 flex flex-col"
+        >
+          <div className="flex-1">
+            {signUpStep === 0 && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold text-foreground">What's your email?</h1>
+                  <p className="text-sm text-muted-foreground">We'll use this to create your account and send important updates.</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="mt-1 rounded-xl bg-card h-12 text-base"
+                    autoFocus
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {signUpStep === 1 && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold text-foreground">Pick your name & handle</h1>
+                  <p className="text-sm text-muted-foreground">Your display name is what friends see. Your username is your unique @handle.</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">Display Name</Label>
+                  <Input
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder="Your name"
+                    className="mt-1 rounded-xl bg-card h-12 text-base"
+                    autoFocus
+                    required
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">Username</Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 select-none">@</span>
+                    <Input
+                      value={username}
+                      onChange={(e) => handleUsernameChange(e.target.value)}
+                      placeholder="fashionista23"
+                      className="mt-1 rounded-xl bg-card pl-7 pr-10 h-12 text-base"
+                      required
+                      minLength={3}
+                      maxLength={30}
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {checkingUsername && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+                      {!checkingUsername && username.length >= 3 && usernameAvailable === true && <Check className="w-4 h-4 text-accent" />}
+                      {!checkingUsername && usernameAvailable === false && <X className="w-4 h-4 text-destructive" />}
+                    </div>
+                  </div>
+                  {usernameAvailable === false && (
+                    <p className="text-[10px] text-destructive mt-1">Username is already taken</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {signUpStep === 2 && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold text-foreground">Create a password</h1>
+                  <p className="text-sm text-muted-foreground">Make it strong — this protects your wardrobe.</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">Password</Label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="mt-1 rounded-xl bg-card pr-10 h-12 text-base"
+                      autoFocus
+                      required
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {password.length > 0 && (
+                    <div className="space-y-1 mt-2">
+                      <p className={`text-[10px] ${password.length >= 8 ? "text-accent" : "text-muted-foreground"}`}>
+                        {password.length >= 8 ? "✓" : "○"} At least 8 characters
+                      </p>
+                      <p className={`text-[10px] ${/[a-zA-Z]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
+                        {/[a-zA-Z]/.test(password) ? "✓" : "○"} Contains a letter
+                      </p>
+                      <p className={`text-[10px] ${/[0-9]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
+                        {/[0-9]/.test(password) ? "✓" : "○"} Contains a number
+                      </p>
+                      <p className={`text-[10px] ${/[^a-zA-Z0-9]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
+                        {/[^a-zA-Z0-9]/.test(password) ? "✓" : "○"} Contains a special character
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 space-y-4">
+            <Button
+              type="submit"
+              disabled={!canAdvance || loading}
+              className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
+            >
+              {signUpStep < totalSteps - 1 ? (
+                <>Continue <ArrowRight className="w-4 h-4 ml-2" /></>
+              ) : loading ? (
+                "Creating..."
+              ) : (
+                "Create Account"
+              )}
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Already have an account?{" "}
+              <button
+                type="button"
+                onClick={() => { setIsSignUp(false); setSignUpStep(0); }}
+                className="text-accent font-semibold hover:underline"
+              >
+                Sign In
+              </button>
+            </p>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  // ============ SIGN-IN FORM ============
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-2">
             <img src={vestisLogo} alt="Vestis" className="h-12" />
-            
           </div>
           <p className="text-sm text-muted-foreground">Your AI-powered wardrobe stylist</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isSignUp && (
-            <>
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground">Name</Label>
-                <Input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  placeholder="Your name"
-                  className="mt-1 rounded-xl bg-card"
-                  required
-                />
-              </div>
-              <div>
-                <Label className="text-xs font-medium text-muted-foreground">Username</Label>
-                <div className="relative">
-                  <Input
-                    value={username}
-                    onChange={(e) => handleUsernameChange(e.target.value)}
-                    placeholder="e.g. fashionista23"
-                    className="mt-1 rounded-xl bg-card pr-10"
-                    required
-                    minLength={3}
-                    maxLength={30}
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {checkingUsername && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                    {!checkingUsername && usernameAvailable === true && <Check className="w-4 h-4 text-accent" />}
-                    {!checkingUsername && usernameAvailable === false && <X className="w-4 h-4 text-destructive" />}
-                  </div>
-                </div>
-                {usernameAvailable === false && (
-                  <p className="text-[10px] text-destructive mt-1">Username is already taken</p>
-                )}
-              </div>
-            </>
-          )}
-
-          {isSignUp ? (
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Email</Label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="mt-1 rounded-xl bg-card"
-                required
-              />
-            </div>
-          ) : (
-            <div>
-              <Label className="text-xs font-medium text-muted-foreground">Email or Username</Label>
-              <Input
-                value={emailOrUsername}
-                onChange={(e) => setEmailOrUsername(e.target.value)}
-                placeholder="you@example.com or username"
-                className="mt-1 rounded-xl bg-card"
-                required
-              />
-            </div>
-          )}
+          <div>
+            <Label className="text-xs font-medium text-muted-foreground">Email or Username</Label>
+            <Input
+              value={emailOrUsername}
+              onChange={(e) => setEmailOrUsername(e.target.value)}
+              placeholder="you@example.com or username"
+              className="mt-1 rounded-xl bg-card"
+              required
+            />
+          </div>
 
           <div>
             <Label className="text-xs font-medium text-muted-foreground">Password</Label>
@@ -514,66 +668,40 @@ export default function Auth() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
-            {isSignUp && password.length > 0 && (
-              <div className="space-y-1 mt-1">
-                <p className={`text-[10px] ${password.length >= 8 ? "text-accent" : "text-muted-foreground"}`}>
-                  {password.length >= 8 ? "✓" : "○"} At least 8 characters
-                </p>
-                <p className={`text-[10px] ${/[a-zA-Z]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
-                  {/[a-zA-Z]/.test(password) ? "✓" : "○"} Contains a letter
-                </p>
-                <p className={`text-[10px] ${/[0-9]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
-                  {/[0-9]/.test(password) ? "✓" : "○"} Contains a number
-                </p>
-                <p className={`text-[10px] ${/[^a-zA-Z0-9]/.test(password) ? "text-accent" : "text-muted-foreground"}`}>
-                  {/[^a-zA-Z0-9]/.test(password) ? "✓" : "○"} Contains a special character
-                </p>
-              </div>
-            )}
           </div>
 
-
-          {/* Remember me & forgot password - only on sign in */}
-          {!isSignUp && (
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="remember"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) => setRememberMe(checked === true)}
-                />
-                <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer">
-                  Remember me
-                </label>
-              </div>
-              <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-accent font-medium hover:underline">
-                Forgot password?
-              </button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="remember"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked === true)}
+              />
+              <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer">
+                Remember me
+              </label>
             </div>
-          )}
+            <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-accent font-medium hover:underline">
+              Forgot password?
+            </button>
+          </div>
 
           <Button
             type="submit"
-            disabled={loading || (isSignUp && (!displayName.trim() || username.length < 3 || usernameAvailable === false))}
+            disabled={loading}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
           >
-            {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
+            {loading ? "Please wait..." : "Sign In"}
           </Button>
         </form>
 
         <p className="text-center text-xs text-muted-foreground">
-          {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
+          Don't have an account?{" "}
           <button
-            onClick={() => {
-              if (isSignUp) {
-                setIsSignUp(false);
-              } else {
-                setShowSignUpIntro(true);
-              }
-            }}
+            onClick={() => setShowSignUpIntro(true)}
             className="text-accent font-semibold hover:underline"
           >
-            {isSignUp ? "Sign In" : "Sign Up"}
+            Sign Up
           </button>
         </p>
       </div>
