@@ -9,7 +9,7 @@ import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
 import { preloadBgRemovalModel } from "@/lib/image-processing";
 
 interface Props {
-  onAdd: (item: ClothingItem) => void;
+  onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
 }
 
 export function AddItem({ onAdd }: Props) {
