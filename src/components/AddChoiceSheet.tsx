@@ -18,7 +18,7 @@ export function AddChoiceSheet({ onAdd, children }: Props) {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>{children}</SheetTrigger>
-      <SheetContent side="bottom" className="rounded-t-3xl bg-background px-5 pb-8 pt-6">
+      <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-3xl bg-background px-5 pb-32 pt-6">
         <SheetHeader className="text-left">
           <SheetTitle className="tracking-tight">Add to Wardrobe</SheetTitle>
           <SheetDescription>Choose how you want to add your clothing.</SheetDescription>
