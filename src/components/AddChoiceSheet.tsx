@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { MassUploadSheet } from "@/components/MassUploadSheet";
@@ -86,20 +86,13 @@ export function AddChoiceSheet({ onAdd, children }: Props) {
  * Used to programmatically open a Sheet whose trigger expects a real DOM click.
  */
 function AutoClickTrigger({ onDone }: { onDone: () => void }) {
-  return (
-    <button
-      type="button"
-      ref={(el) => {
-        if (el) {
-          // Defer to next tick so the sheet portal mounts before the click fires
-          requestAnimationFrame(() => {
-            el.click();
-            onDone();
-          });
-        }
-      }}
-      className="sr-only"
-      aria-hidden="true"
-    />
-  );
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      ref.current?.click();
+      onDone();
+    }, 50);
+    return () => clearTimeout(t);
+  }, [onDone]);
+  return <button ref={ref} type="button" className="sr-only" aria-hidden="true" />;
 }
