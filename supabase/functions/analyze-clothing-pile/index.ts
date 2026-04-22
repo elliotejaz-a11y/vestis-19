@@ -11,7 +11,8 @@ serve(async (req) => {
   }
 
   try {
-    const { imageBase64 } = await req.json();
+    const { imageBase64, mode } = await req.json();
+    const isOutfit = mode === "outfit";
     if (!imageBase64 || typeof imageBase64 !== "string") {
       return new Response(JSON.stringify({ error: "No image provided" }), {
         status: 400,
@@ -33,16 +34,18 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content:
-              "You identify distinct wardrobe items from a single photo that may contain a pile of clothes, rails, shelves, shoes, hats, and accessories. Return only clearly visible items worth reviewing individually. Keep bounding boxes approximate, normalised from 0 to 1.",
+            content: isOutfit
+              ? "You identify every distinct clothing item, footwear and accessory worn by a person in an outfit photo. Scan the full body: hats, tops, jumpers/outerwear, bottoms, dresses, shoes, watches, jewellery, bags, belts and other accessories. Return each visible item separately. Keep bounding boxes approximate, normalised from 0 to 1."
+              : "You identify distinct wardrobe items from a single photo that may contain a pile of clothes, rails, shelves, shoes, hats, and accessories. Return only clearly visible items worth reviewing individually. Keep bounding boxes approximate, normalised from 0 to 1.",
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text:
-                  "Analyse this wardrobe pile image and return up to 8 distinct items. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1.",
+                text: isOutfit
+                  ? "Analyse this outfit photo and return up to 8 distinct worn items (clothing, shoes, accessories like watches/bags/belts/jewellery). Skip the person and background. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1."
+                  : "Analyse this wardrobe pile image and return up to 8 distinct items. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1.",
               },
               {
                 type: "image_url",
