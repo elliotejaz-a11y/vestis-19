@@ -10,21 +10,23 @@ interface Props {
   children: React.ReactNode;
 }
 
-type Choice = "single" | "mass" | null;
-
 export function AddChoiceSheet({ onAdd, children }: Props) {
-  const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState<Choice>(null);
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [singleOpen, setSingleOpen] = useState(false);
+  const [massOpen, setMassOpen] = useState(false);
 
-  const pick = (choice: Choice) => {
-    setOpen(false);
-    // Wait for the chooser sheet to finish closing before opening the next sheet
-    setTimeout(() => setPending(choice), 250);
+  const pick = (which: "single" | "mass") => {
+    setChooserOpen(false);
+    // Wait for chooser close animation before opening the next sheet
+    setTimeout(() => {
+      if (which === "single") setSingleOpen(true);
+      else setMassOpen(true);
+    }, 250);
   };
 
   return (
     <>
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet open={chooserOpen} onOpenChange={setChooserOpen}>
         <SheetTrigger asChild>{children}</SheetTrigger>
         <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-3xl bg-background px-5 pb-32 pt-6">
           <SheetHeader className="text-left">
@@ -66,40 +68,8 @@ export function AddChoiceSheet({ onAdd, children }: Props) {
         </SheetContent>
       </Sheet>
 
-      {/* Programmatic openers: mount fresh trigger that auto-clicks itself */}
-      {pending === "single" && (
-        <AddClothingSheet onAdd={onAdd}>
-          <AutoClickTrigger onDone={() => setPending(null)} />
-        </AddClothingSheet>
-      )}
-      {pending === "mass" && (
-        <MassUploadSheet onAdd={onAdd}>
-          <AutoClickTrigger onDone={() => setPending(null)} />
-        </MassUploadSheet>
-      )}
+      <AddClothingSheet onAdd={onAdd} open={singleOpen} onOpenChange={setSingleOpen} />
+      <MassUploadSheet onAdd={onAdd} open={massOpen} onOpenChange={setMassOpen} />
     </>
-  );
-}
-
-/**
- * Hidden button that immediately clicks itself once mounted, then notifies the parent.
- * Used to programmatically open a Sheet whose trigger expects a real DOM click.
- */
-function AutoClickTrigger({ onDone }: { onDone: () => void }) {
-  return (
-    <button
-      type="button"
-      ref={(el) => {
-        if (el) {
-          // Defer to next tick so the sheet portal mounts before the click fires
-          requestAnimationFrame(() => {
-            el.click();
-            onDone();
-          });
-        }
-      }}
-      className="sr-only"
-      aria-hidden="true"
-    />
   );
 }
