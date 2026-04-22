@@ -214,7 +214,7 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>{children}</SheetTrigger>
+      {children ? <SheetTrigger asChild>{children}</SheetTrigger> : null}
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
         <SheetHeader>
           <SheetTitle className="text-lg font-bold tracking-tight">Add to Wardrobe</SheetTitle>

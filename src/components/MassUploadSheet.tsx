@@ -16,7 +16,9 @@ import { Check, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => Promise<void> | void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 interface AnalyseResponse {
@@ -37,8 +39,13 @@ interface AnalyseResponse {
 
 const EMPTY_PROGRESS = { analysed: false, extracted: 0, total: 0 };
 
-export function MassUploadSheet({ onAdd, children }: Props) {
-  const [open, setOpen] = useState(false);
+export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange }: Props) {
+  const [openState, setOpenState] = useState(false);
+  const open = openProp !== undefined ? openProp : openState;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setOpenState(next);
+    onOpenChange?.(next);
+  };
   const [scenePreviewUrl, setScenePreviewUrl] = useState<string>("");
   const [analysing, setAnalysing] = useState(false);
   const [extracting, setExtracting] = useState(false);
