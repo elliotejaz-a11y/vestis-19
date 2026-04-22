@@ -19,6 +19,8 @@ interface Props {
   children?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /** "pile" = pile/closet photo (default). "outfit" = a worn outfit photo. */
+  mode?: "pile" | "outfit";
 }
 
 interface AnalyseResponse {
@@ -39,7 +41,8 @@ interface AnalyseResponse {
 
 const EMPTY_PROGRESS = { analysed: false, extracted: 0, total: 0 };
 
-export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange }: Props) {
+export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange, mode = "pile" }: Props) {
+  const isOutfit = mode === "outfit";
   const [openState, setOpenState] = useState(false);
   const open = openProp !== undefined ? openProp : openState;
   const setOpen = (next: boolean) => {
@@ -127,7 +130,7 @@ export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange 
       const optimisedBase64 = await optimiseMassUploadImage(file);
 
       const { data, error } = await supabase.functions.invoke("analyze-clothing-pile", {
-        body: { imageBase64: optimisedBase64 },
+        body: { imageBase64: optimisedBase64, mode },
       });
 
       if (error) throw error;
@@ -152,10 +155,12 @@ export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange 
       setProgress({ analysed: true, extracted: 0, total: detectedItems.length });
 
       toast({
-        title: "Pile analysed ✨",
+        title: isOutfit ? "Outfit scanned ✨" : "Pile analysed ✨",
         description: detectedItems.length
           ? `Found ${detectedItems.length} item${detectedItems.length === 1 ? "" : "s"}.`
-          : "No clear items were found — try a brighter, less cluttered photo.",
+          : isOutfit
+            ? "No clear items were found — try a well-lit, full-body outfit photo."
+            : "No clear items were found — try a brighter, less cluttered photo.",
       });
 
       await extractPreviews(optimisedBase64, (data as AnalyseResponse)?.items ?? []);
@@ -218,9 +223,13 @@ export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange 
       {children ? <SheetTrigger asChild>{children}</SheetTrigger> : null}
       <SheetContent side="bottom" className="max-h-[92vh] overflow-y-auto rounded-t-3xl bg-background px-5 pb-32 pt-8">
         <SheetHeader>
-          <SheetTitle className="tracking-tight">Mass Upload</SheetTitle>
+          <SheetTitle className="tracking-tight">
+            {isOutfit ? "Extract from Outfit Photo" : "Mass Upload"}
+          </SheetTitle>
           <SheetDescription>
-            Upload one photo of a pile, rail, or wardrobe section and review each detected piece before adding it.
+            {isOutfit
+              ? "Upload a photo of an outfit being worn — AI will detect each clothing item, shoe, watch and accessory, then create a clean cut-out for each."
+              : "Upload one photo of a pile, rail, or wardrobe section and review each detected piece before adding it."}
           </SheetDescription>
         </SheetHeader>
 
@@ -235,8 +244,14 @@ export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange 
                 <ImagePlus className="h-6 w-6" />
               </div>
               <div className="space-y-1">
-                <p className="text-sm font-semibold text-foreground">Upload a pile or closet photo</p>
-                <p className="text-xs text-muted-foreground">The AI will detect separate items, cut them out, and prefill wardrobe details.</p>
+                <p className="text-sm font-semibold text-foreground">
+                  {isOutfit ? "Upload an outfit photo" : "Upload a pile or closet photo"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {isOutfit
+                    ? "AI will scan every worn item — clothing, shoes, watches, accessories — and generate a clean cut-out for each."
+                    : "The AI will detect separate items, cut them out, and prefill wardrobe details."}
+                </p>
               </div>
             </button>
           ) : (
