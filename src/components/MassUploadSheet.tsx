@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { base64ToDataUrl, fileToDataUrl, isAllowedMassUploadImage, optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
 import { CATEGORIES, ClothingItem } from "@/types/wardrobe";
 import { MassUploadCandidate, WARDROBE_FABRICS } from "@/types/massUpload";
-import { Check, ImagePlus, Loader2, ScanSearch, Sparkles, X } from "lucide-react";
+import { Check, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => Promise<void> | void;
@@ -40,7 +40,6 @@ const EMPTY_PROGRESS = { analysed: false, extracted: 0, total: 0 };
 export function MassUploadSheet({ onAdd, children }: Props) {
   const [open, setOpen] = useState(false);
   const [scenePreviewUrl, setScenePreviewUrl] = useState<string>("");
-  const [sceneBase64, setSceneBase64] = useState<string>("");
   const [analysing, setAnalysing] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [candidates, setCandidates] = useState<MassUploadCandidate[]>([]);
@@ -55,7 +54,6 @@ export function MassUploadSheet({ onAdd, children }: Props) {
 
   const reset = () => {
     setScenePreviewUrl("");
-    setSceneBase64("");
     setCandidates([]);
     setAnalysing(false);
     setExtracting(false);
@@ -72,32 +70,30 @@ export function MassUploadSheet({ onAdd, children }: Props) {
     setExtracting(true);
     setProgress({ analysed: true, extracted: 0, total: detectedItems.length });
 
-    await Promise.all(
-      detectedItems.map(async (item, index) => {
-        try {
-          const { data, error } = await supabase.functions.invoke("extract-pile-item", {
-            body: {
-              sourceImageBase64: imageBase64,
-              item,
-            },
-          });
+    for (const item of detectedItems) {
+      try {
+        const { data, error } = await supabase.functions.invoke("extract-pile-item", {
+          body: {
+            sourceImageBase64: imageBase64,
+            item,
+          },
+        });
 
-          if (error) throw error;
+        if (error) throw error;
 
-          updateCandidate(item.id, {
-            previewStatus: "ready",
-            previewUrl: base64ToDataUrl(data.imageBase64),
-          });
-        } catch (error) {
-          updateCandidate(item.id, {
-            previewStatus: "failed",
-            error: error instanceof Error ? error.message : "Preview extraction failed",
-          });
-        } finally {
-          setProgress((prev) => ({ ...prev, extracted: Math.min(prev.total, prev.extracted + 1) }));
-        }
-      }),
-    );
+        updateCandidate(item.id, {
+          previewStatus: "ready",
+          previewUrl: base64ToDataUrl(data.imageBase64),
+        });
+      } catch (error) {
+        updateCandidate(item.id, {
+          previewStatus: "failed",
+          error: error instanceof Error ? error.message : "Preview extraction failed",
+        });
+      } finally {
+        setProgress((prev) => ({ ...prev, extracted: Math.min(prev.total, prev.extracted + 1) }));
+      }
+    }
 
     setExtracting(false);
   };
@@ -122,7 +118,6 @@ export function MassUploadSheet({ onAdd, children }: Props) {
 
     try {
       const optimisedBase64 = await optimiseMassUploadImage(file);
-      setSceneBase64(optimisedBase64);
 
       const { data, error } = await supabase.functions.invoke("analyze-clothing-pile", {
         body: { imageBase64: optimisedBase64 },
@@ -133,7 +128,7 @@ export function MassUploadSheet({ onAdd, children }: Props) {
       const detectedItems = ((data as AnalyseResponse)?.items ?? []).map<MassUploadCandidate>((item) => ({
         id: item.id,
         name: item.name,
-        category: item.category,
+        category: item.category as ClothingItem["category"],
         color: item.color,
         fabric: item.fabric,
         tags: item.tags || [],
@@ -347,7 +342,7 @@ function MassUploadCandidateCard({
             </div>
             <div>
               <Label className="text-[11px] text-muted-foreground">Category</Label>
-              <Select value={candidate.category} disabled={disabled} onValueChange={(value) => update({ category: value })}>
+              <Select value={candidate.category} disabled={disabled} onValueChange={(value) => update({ category: value as ClothingItem["category"] })}>
                 <SelectTrigger className="mt-1 rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((option) => (
