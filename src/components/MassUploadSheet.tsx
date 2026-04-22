@@ -215,7 +215,7 @@ export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange 
         if (!nextOpen) reset();
       }}
     >
-      <SheetTrigger asChild>{children}</SheetTrigger>
+      {children ? <SheetTrigger asChild>{children}</SheetTrigger> : null}
       <SheetContent side="bottom" className="max-h-[90vh] overflow-y-auto rounded-t-3xl bg-background px-5 pb-10 pt-8">
         <SheetHeader>
           <SheetTitle className="tracking-tight">Mass Upload</SheetTitle>
