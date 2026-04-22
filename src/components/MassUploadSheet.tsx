@@ -10,7 +10,7 @@ import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { base64ToDataUrl, fileToDataUrl, isAllowedMassUploadImage, optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
-import { CATEGORIES, ClothingItem } from "@/types/wardrobe";
+import { CATEGORIES, ClothingCategory, ClothingItem } from "@/types/wardrobe";
 import { MassUploadCandidate, WARDROBE_FABRICS } from "@/types/massUpload";
 import { Check, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
 
@@ -128,7 +128,7 @@ export function MassUploadSheet({ onAdd, children }: Props) {
       const detectedItems = ((data as AnalyseResponse)?.items ?? []).map<MassUploadCandidate>((item) => ({
         id: item.id,
         name: item.name,
-        category: item.category as ClothingItem["category"],
+        category: item.category as ClothingCategory,
         color: item.color,
         fabric: item.fabric,
         tags: item.tags || [],
@@ -342,7 +342,7 @@ function MassUploadCandidateCard({
             </div>
             <div>
               <Label className="text-[11px] text-muted-foreground">Category</Label>
-              <Select value={candidate.category} disabled={disabled} onValueChange={(value) => update({ category: value as ClothingItem["category"] })}>
+              <Select value={candidate.category} disabled={disabled} onValueChange={(value) => update({ category: value as ClothingCategory })}>
                 <SelectTrigger className="mt-1 rounded-xl bg-background text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((option) => (
