@@ -2,7 +2,6 @@ import { useState, useCallback } from "react";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
-import { AddChoiceSheet } from "@/components/AddChoiceSheet";
 import { OutfitCard } from "@/components/OutfitCard";
 
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
@@ -145,11 +144,11 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
               </div>
               <p className="text-sm font-medium text-foreground">Your wardrobe is empty</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">Add your first piece by tapping the + button below</p>
-              <AddChoiceSheet onAdd={onAdd}>
+              <AddClothingSheet onAdd={onAdd}>
                 <button className="mt-4 px-5 py-2 rounded-full bg-accent text-accent-foreground text-xs font-semibold flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5" /> Add Clothing
                 </button>
-              </AddChoiceSheet>
+              </AddClothingSheet>
             </div>
           ) : (
             <div className="px-4 grid grid-cols-2 gap-3">
@@ -168,11 +167,11 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
       )}
 
       {/* Always-visible floating add button */}
-      <AddChoiceSheet onAdd={onAdd}>
+      <AddClothingSheet onAdd={onAdd}>
         <button className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center hover:bg-accent/90 transition-colors">
           <Plus className="w-6 h-6" />
         </button>
-      </AddChoiceSheet>
+      </AddClothingSheet>
 
       <ClothingDetailSheet
         item={detailItem}
