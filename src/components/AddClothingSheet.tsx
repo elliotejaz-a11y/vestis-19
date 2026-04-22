@@ -17,11 +17,18 @@ const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leath
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function AddClothingSheet({ onAdd, children }: Props) {
-  const [open, setOpen] = useState(false);
+export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange }: Props) {
+  const [openState, setOpenState] = useState(false);
+  const open = openProp !== undefined ? openProp : openState;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setOpenState(next);
+    onOpenChange?.(next);
+  };
   const [imageUrl, setImageUrl] = useState("");
   const [backImageUrl, setBackImageUrl] = useState("");
   const [name, setName] = useState("");
@@ -207,7 +214,7 @@ export function AddClothingSheet({ onAdd, children }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>{children}</SheetTrigger>
+      {children ? <SheetTrigger asChild>{children}</SheetTrigger> : null}
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>
         <SheetHeader>
           <SheetTitle className="text-lg font-bold tracking-tight">Add to Wardrobe</SheetTitle>
