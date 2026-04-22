@@ -17,11 +17,18 @@ const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leath
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function AddClothingSheet({ onAdd, children }: Props) {
-  const [open, setOpen] = useState(false);
+export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange }: Props) {
+  const [openState, setOpenState] = useState(false);
+  const open = openProp !== undefined ? openProp : openState;
+  const setOpen = (next: boolean) => {
+    if (openProp === undefined) setOpenState(next);
+    onOpenChange?.(next);
+  };
   const [imageUrl, setImageUrl] = useState("");
   const [backImageUrl, setBackImageUrl] = useState("");
   const [name, setName] = useState("");
