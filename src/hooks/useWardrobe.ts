@@ -549,10 +549,20 @@ export function useWardrobe() {
       try {
         const gymRequest = isGymOccasion(occasion);
         const recentOutfitItemIds = outfits.slice(0, 5).map(o => (o.items || []).map(i => i.id));
+
+        // Count how many recent outfits each item appeared in
+        const usageCount = new Map<string, number>();
+        recentOutfitItemIds.forEach(idSet => {
+          idSet.forEach(id => usageCount.set(id, (usageCount.get(id) || 0) + 1));
+        });
+
+        // Sort items so least-recently-used appear first — AI strongly favours early items
+        const sortedItems = [...items].sort((a, b) => (usageCount.get(a.id) || 0) - (usageCount.get(b.id) || 0));
+
         const { data, error } = await supabase.functions.invoke("generate-outfit", {
           body: {
             occasion,
-            items,
+            items: sortedItems,
             weather,
             userProfile: profile ? {
               skinTone: getSkinToneDisplay(profile.skin_tone),
@@ -572,24 +582,17 @@ export function useWardrobe() {
           ? ensureGymOutfitHasOnlyAllowedPieces((data.items || []) as ClothingItem[], items)
           : ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
 
-        // If AI returned the exact same items as the last outfit, force-swap one non-essential item
+        // For each item repeated from the last outfit, swap it for an alternative of the same category
         const lastOutfitIds = new Set((outfits[0]?.items || []).map(i => i.id));
-        const currentIds = selectedItems.map(i => i.id);
-        const isDuplicate = currentIds.length > 0 && currentIds.every(id => lastOutfitIds.has(id)) && lastOutfitIds.size === currentIds.length;
-        if (isDuplicate) {
-          const essentialCategories = ["tops", "jumpers", "bottoms", "shoes"];
-          const swapIndex = selectedItems.findIndex(i => !essentialCategories.includes((i.category || "").toLowerCase()));
-          const targetIndex = swapIndex >= 0 ? swapIndex : 0;
-          const targetCategory = selectedItems[targetIndex]?.category;
-          const alternatives = items.filter(i =>
-            i.category?.toLowerCase() === targetCategory?.toLowerCase() &&
-            !currentIds.includes(i.id)
+        selectedItems = selectedItems.map(item => {
+          if (!lastOutfitIds.has(item.id)) return item;
+          const alternative = items.find(i =>
+            i.category?.toLowerCase() === item.category?.toLowerCase() &&
+            !lastOutfitIds.has(i.id) &&
+            !selectedItems.some(s => s.id === i.id)
           );
-          if (alternatives.length > 0) {
-            const pick = alternatives[Math.floor(Math.random() * alternatives.length)];
-            selectedItems = selectedItems.map((item, idx) => idx === targetIndex ? pick : item);
-          }
-        }
+          return alternative ?? item;
+        });
         const resolvedReasoning = isDetailedReasoning(data.reasoning)
           ? data.reasoning.trim()
           : buildOutfitReasoningFallback({ occasion, selectedItems, profile, weather });
