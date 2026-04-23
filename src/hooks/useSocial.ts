@@ -224,9 +224,12 @@ export function useSocial() {
     if (!user) return null;
     const ext = file.name.split(".").pop() || "jpg";
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from("social-media").upload(path, file, { contentType: file.type });
+    // Upload to private "social-content" bucket. Reads are gated by storage RLS
+    // tied to the related social_posts / social_stories row visibility.
+    const { error } = await supabase.storage.from("social-content").upload(path, file, { contentType: file.type });
     if (error) return null;
-    const { data } = supabase.storage.from("social-media").getPublicUrl(path);
+    // Store the canonical (non-public) object URL so consumers can resolve a signed URL at render.
+    const { data } = supabase.storage.from("social-content").getPublicUrl(path);
     return data.publicUrl;
   };
 
