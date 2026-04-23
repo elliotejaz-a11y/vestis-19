@@ -7,9 +7,25 @@ type ImageFields = {
   backImagePath?: string | null;
 };
 
-type SignedStorageBucket = "clothing-images" | "wishlist-images";
+type SignedStorageBucket = "clothing-images" | "wishlist-images" | "social-content";
 
 const SIGNED_URL_EXPIRES_IN_SECONDS = 60 * 60;
+
+export const SOCIAL_CONTENT_BUCKET = "social-content" as const;
+
+export async function getSignedSocialUrl(value: string | null | undefined): Promise<string | null> {
+  if (!value) return null;
+  // Legacy public URLs from old "social-media" bucket — return as-is (avatars, old posts).
+  if (/^https?:\/\//i.test(value) && !value.includes("/social-content/")) return value;
+  const path = getStoragePathFromUrl("social-content", value) ?? (isStoragePath(value) ? value : null);
+  if (!path) return value;
+  return getSignedStorageUrl("social-content", path, { fallbackUrl: value });
+}
+
+export async function getSignedSocialUrls(values: (string | null | undefined)[]): Promise<string[]> {
+  const results = await Promise.all(values.map((v) => getSignedSocialUrl(v)));
+  return results.filter((v): v is string => Boolean(v));
+}
 
 export function isStoragePath(value: string | null | undefined): boolean {
   return Boolean(value) && !/^https?:\/\//i.test(value as string) && !value!.startsWith("blob:") && !value!.startsWith("data:");
