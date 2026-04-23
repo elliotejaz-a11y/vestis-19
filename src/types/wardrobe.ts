@@ -8,7 +8,9 @@ export interface ClothingItem {
   color: string;
   fabric: string;
   imageUrl: string;
+  imagePath?: string;
   backImageUrl?: string;
+  backImagePath?: string;
   /** Original image URL before background removal (for retry/fallback). */
   imageOriginalUrl?: string | null;
   /** processing | ready | failed */
