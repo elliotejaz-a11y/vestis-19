@@ -497,6 +497,7 @@ export type Database = {
       profiles: {
         Row: {
           avatar_position: string
+          avatar_preset: string | null
           avatar_url: string | null
           bio: string | null
           body_type: string | null
@@ -517,6 +518,7 @@ export type Database = {
         }
         Insert: {
           avatar_position?: string
+          avatar_preset?: string | null
           avatar_url?: string | null
           bio?: string | null
           body_type?: string | null
@@ -537,6 +539,7 @@ export type Database = {
         }
         Update: {
           avatar_position?: string
+          avatar_preset?: string | null
           avatar_url?: string | null
           bio?: string | null
           body_type?: string | null
@@ -868,7 +871,45 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_profiles: {
+        Row: {
+          avatar_position: string | null
+          avatar_preset: string | null
+          avatar_url: string | null
+          bio: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+          is_public: boolean | null
+          style_preference: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_position?: string | null
+          avatar_preset?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          style_preference?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_position?: string | null
+          avatar_preset?: string | null
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+          is_public?: boolean | null
+          style_preference?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_follow_request: {

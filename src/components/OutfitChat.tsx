@@ -56,11 +56,12 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("You must be signed in to chat.");
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/outfit-chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           messages: allMessages,
