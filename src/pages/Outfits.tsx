@@ -7,6 +7,12 @@ import { OutfitCard } from "@/components/OutfitCard";
 import { OutfitChat } from "@/components/OutfitChat";
 import { OutfitCollagePreview } from "@/components/OutfitCollagePreview";
 import { ClothingItem, Outfit, OCCASIONS } from "@/types/wardrobe";
+
+const WEATHER_ICON_MAP: Record<string, typeof Sun> = {
+  Rainy: CloudRain,
+  Snowy: Snowflake,
+  Cloudy: Cloud,
+};
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -47,7 +53,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
     const savedPermission = localStorage.getItem('weather_permission');
     if (savedPermission === 'denied') return;
 
-    const fetchWeather = (pos: GeolocationPosition) => {
+    const fetchWeather = (pos: GeolocationPosition, persistGranted = false) => {
       fetch(
         `https://api.open-meteo.com/v1/forecast?latitude=${pos.coords.latitude}&longitude=${pos.coords.longitude}&current=temperature_2m,weather_code&timezone=auto`
       )
@@ -57,6 +63,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
           const temp = Math.round(data.current.temperature_2m);
           const description = code <= 3 ? "Clear" : code <= 48 ? "Cloudy" : code <= 67 ? "Rainy" : "Snowy";
           setWeather({ temp, description });
+          if (persistGranted) localStorage.setItem('weather_permission', 'granted');
         })
         .catch(() => {});
     };
@@ -64,24 +71,16 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
     if (savedPermission === 'granted') {
       navigator.geolocation?.getCurrentPosition(fetchWeather, () => {}, { timeout: 5000 });
     } else if (savedPermission === null) {
-      // First time only — ask once and save the result permanently
-      localStorage.setItem('weather_permission', 'asked');
+      // First time only — only persist 'granted' once the weather fetch actually succeeds
       navigator.geolocation?.getCurrentPosition(
-        (pos) => {
-          localStorage.setItem('weather_permission', 'granted');
-          fetchWeather(pos);
-        },
-        () => {
-          localStorage.setItem('weather_permission', 'denied');
-        },
+        (pos) => fetchWeather(pos, true),
+        () => { localStorage.setItem('weather_permission', 'denied'); },
         { timeout: 5000 }
       );
     }
   }, []);
 
-  const WeatherIcon = weather?.description === "Rainy" ? CloudRain
-    : weather?.description === "Snowy" ? Snowflake
-    : weather?.description === "Cloudy" ? Cloud : Sun;
+  const WeatherIcon = (weather?.description && WEATHER_ICON_MAP[weather.description]) || Sun;
 
   const handleGenerate = async () => {
     if (!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms || !hasTopHalf) return;

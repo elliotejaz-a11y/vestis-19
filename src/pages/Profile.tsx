@@ -60,6 +60,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [wfSubmitting, setWfSubmitting] = useState(false);
   const touchStartY = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
   const [weatherPerm, setWeatherPerm] = useState(() => localStorage.getItem('weather_permission') || 'denied');
 
   const navigate = useNavigate();
@@ -112,13 +113,20 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const onTouchMove = useCallback((e: React.TouchEvent) => {
     if (!touchStartY.current || refreshing) return;
     if (scrollRef.current && scrollRef.current.scrollTop > 0) return;
-    const diff = e.touches[0].clientY - touchStartY.current;
-    if (diff > 0) {
-      setPullDistance(Math.min(diff * 0.4, 80));
-    }
+    if (rafRef.current !== null) return;
+    const y = e.touches[0].clientY;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const diff = y - touchStartY.current;
+      if (diff > 0) setPullDistance(Math.min(diff * 0.4, 80));
+    });
   }, [refreshing]);
 
   const onTouchEnd = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
     if (pullDistance > 50) {
       handleRefresh();
     }

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -211,6 +211,21 @@ export function useWardrobe() {
   itemsRef.current = items;
   outfitsRef.current = outfits;
   profileRef.current = profile;
+
+  // Dedup guard for retryBackgroundRemoval
+  const retryingIdsRef = useRef(new Set<string>());
+
+  // Pre-sorted wardrobe — least-recently-used items first; only recomputes when wardrobe changes
+  const sortedItemsByUsage = useMemo(() => {
+    const recentIds = outfits.slice(0, 5).map(o => (o.items || []).map(i => i.id));
+    const usageCount = new Map<string, number>();
+    recentIds.forEach(idSet => {
+      idSet.forEach(id => usageCount.set(id, (usageCount.get(id) || 0) + 1));
+    });
+    return [...items].sort((a, b) => (usageCount.get(a.id) || 0) - (usageCount.get(b.id) || 0));
+  }, [items, outfits]);
+  const sortedItemsByUsageRef = useRef(sortedItemsByUsage);
+  sortedItemsByUsageRef.current = sortedItemsByUsage;
 
   useEffect(() => {
     if (!user) { setItems([]); setOutfits([]); setLoading(false); return; }
@@ -434,43 +449,49 @@ export function useWardrobe() {
   const retryBackgroundRemoval = useCallback(
     async (itemId: string) => {
       if (!user) return;
-      const item = items.find((i) => i.id === itemId);
-      if (!item) return;
-      const sourceUrl = item.imageOriginalUrl || item.imagePath || item.imageUrl;
-      await supabase
-        .from("clothing_items")
-        .update({ image_status: "processing", image_error: null } as any)
-        .eq("id", itemId)
-        .eq("user_id", user.id);
-      setItems((prev) =>
-        prev.map((i) => (i.id === itemId ? { ...i, imageStatus: "processing" as const, imageError: undefined } : i))
-      );
-      processBackgroundRemoval({
-        itemId,
-        imageUrl: sourceUrl,
-        userId: user.id,
-        onStatusUpdate: (payload) => {
-          setItems((prev) =>
-            prev.map((i) =>
-              i.id === itemId
-                ? {
-                    ...i,
-                    imageUrl: payload.imageUrl ?? i.imageUrl,
-                    imageStatus: payload.imageStatus,
-                    imageError: payload.imageError ?? i.imageError,
-                  }
-                : i
-            )
-          );
-          if (payload.imageStatus === "failed") {
-            toast({
-              title: "Background removal didn’t complete",
-              description: payload.imageError || "Try again later.",
-              variant: "destructive",
-            });
-          }
-        },
-      });
+      if (retryingIdsRef.current.has(itemId)) return;
+      retryingIdsRef.current.add(itemId);
+      try {
+        const item = items.find((i) => i.id === itemId);
+        if (!item) return;
+        const sourceUrl = item.imageOriginalUrl || item.imagePath || item.imageUrl;
+        await supabase
+          .from("clothing_items")
+          .update({ image_status: "processing", image_error: null } as any)
+          .eq("id", itemId)
+          .eq("user_id", user.id);
+        setItems((prev) =>
+          prev.map((i) => (i.id === itemId ? { ...i, imageStatus: "processing" as const, imageError: undefined } : i))
+        );
+        processBackgroundRemoval({
+          itemId,
+          imageUrl: sourceUrl,
+          userId: user.id,
+          onStatusUpdate: (payload) => {
+            setItems((prev) =>
+              prev.map((i) =>
+                i.id === itemId
+                  ? {
+                      ...i,
+                      imageUrl: payload.imageUrl ?? i.imageUrl,
+                      imageStatus: payload.imageStatus,
+                      imageError: payload.imageError ?? i.imageError,
+                    }
+                  : i
+              )
+            );
+            if (payload.imageStatus === "failed") {
+              toast({
+                title: "Background removal didn’t complete",
+                description: payload.imageError || "Try again later.",
+                variant: "destructive",
+              });
+            }
+          },
+        });
+      } finally {
+        retryingIdsRef.current.delete(itemId);
+      }
     },
     [items, user, toast]
   );
@@ -555,15 +576,7 @@ export function useWardrobe() {
       try {
         const gymRequest = isGymOccasion(occasion);
         const recentOutfitItemIds = outfits.slice(0, 5).map(o => (o.items || []).map(i => i.id));
-
-        // Count how many recent outfits each item appeared in
-        const usageCount = new Map<string, number>();
-        recentOutfitItemIds.forEach(idSet => {
-          idSet.forEach(id => usageCount.set(id, (usageCount.get(id) || 0) + 1));
-        });
-
-        // Sort items so least-recently-used appear first — AI strongly favours early items
-        const sortedItems = [...items].sort((a, b) => (usageCount.get(a.id) || 0) - (usageCount.get(b.id) || 0));
+        const sortedItems = sortedItemsByUsageRef.current;
 
         const { data, error } = await supabase.functions.invoke("generate-outfit", {
           body: {
