@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +35,7 @@ function sortItems(items: ClothingItem[]) {
 }
 
 export function OutfitCollagePreview({ items, showHeader = false, className, canvasClassName }: Props) {
-  const sorted = sortItems(items);
+  const sorted = useMemo(() => sortItems(items), [items]);
   const countByCategory: Record<string, number> = {};
 
   return (

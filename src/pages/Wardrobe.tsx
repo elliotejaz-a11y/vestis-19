@@ -15,6 +15,7 @@ interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => void;
+  onAddDuplicated?: (item: ClothingItem) => void;
   onRemove: (id: string) => void;
   onUpdate: (item: ClothingItem) => void;
   onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
@@ -23,7 +24,7 @@ interface Props {
   dataReady?: boolean;
 }
 
-export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval, dataReady }: Props) {
+export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval, dataReady }: Props) {
   const setDetailItem = useCallback((item: ClothingItem | null) => _setDetailItem(item), []);
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
@@ -52,7 +53,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         <button
           onClick={() => setActiveTab("clothes")}
           className={cn(
-            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
             activeTab === "clothes" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
           )}
         >
@@ -61,7 +62,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         <button
           onClick={() => setActiveTab("outfits")}
           className={cn(
-            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5",
+            "flex-1 py-2.5 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
             activeTab === "outfits" ? "bg-accent text-accent-foreground" : "bg-card text-muted-foreground border border-border"
           )}
         >
@@ -122,7 +123,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
             <button
               onClick={() => setActiveFilter("all")}
               className={cn(
-                "px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                "px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                 activeFilter === "all" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border"
               )}
             >All</button>
@@ -131,7 +132,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
                 key={cat.value}
                 onClick={() => setActiveFilter(cat.value)}
                 className={cn(
-                  "px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
+                  "px-4 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                   activeFilter === cat.value ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border"
                 )}
               >{cat.icon} {cat.label}</button>
@@ -180,7 +181,7 @@ export function Wardrobe({ items, outfits, onAdd, onRemove, onUpdate, onSaveOutf
         onOpenChange={(o) => { if (!o) _setDetailItem(null); }}
         onSave={onUpdate}
         onRemove={onRemove}
-        onDuplicated={() => { _setDetailItem(null); window.location.reload(); }}
+        onDuplicated={(newItem) => { _setDetailItem(null); onAddDuplicated?.(newItem); }}
       />
     </div>
   );

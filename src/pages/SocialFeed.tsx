@@ -88,14 +88,14 @@ export default function SocialFeed() {
         <button
           onClick={() => setTab("feed")}
           className={cn(
-            "px-4 py-1.5 rounded-full text-xs font-medium transition-transform duration-150",
+            "px-4 py-1.5 rounded-full text-xs font-medium transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
             tab === "feed" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border"
           )}
         >Feed</button>
         <button
           onClick={() => setTab("discover")}
           className={cn(
-            "px-4 py-1.5 rounded-full text-xs font-medium transition-transform duration-150",
+            "px-4 py-1.5 rounded-full text-xs font-medium transition-transform duration-150 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
             tab === "discover" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground border border-border"
           )}
         ><Compass className="w-3 h-3 inline mr-1" /> Discover</button>
@@ -178,7 +178,15 @@ export default function SocialFeed() {
 
       {/* Story viewer */}
       {viewingStory && (
-        <div className="fixed inset-0 z-50 bg-background flex flex-col" onClick={() => setViewingStory(null)}>
+        <div
+          className="fixed inset-0 z-50 bg-background flex flex-col"
+          onClick={() => setViewingStory(null)}
+          onKeyDown={(e) => e.key === "Escape" && setViewingStory(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Story viewer"
+          tabIndex={-1}
+        >
           <div className="flex items-center gap-3 px-4 py-3">
             <UserAvatar
               avatarUrl={viewingStory.user?.avatar_url}
@@ -189,7 +197,7 @@ export default function SocialFeed() {
             <span className="text-xs font-semibold text-foreground">
               {viewingStory.user?.username || viewingStory.user?.display_name}
             </span>
-            <button className="ml-auto text-xs text-muted-foreground" onClick={() => setViewingStory(null)}>✕</button>
+            <button className="ml-auto text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent rounded" onClick={() => setViewingStory(null)}>✕</button>
           </div>
           <div className="flex-1 relative">
             <SignedSocialImage src={viewingStory.image_url} alt="" className="w-full h-full object-contain" />

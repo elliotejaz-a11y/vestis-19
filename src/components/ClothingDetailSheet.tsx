@@ -8,6 +8,7 @@ import { Pencil, DollarSign, Tag, Palette, Shirt, StickyNote, ImageIcon, Copy, R
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { formatPrice } from "@/lib/currency";
+import { isStoragePath, resolveSignedClothingImageFields } from "@/lib/storage";
 
 interface Props {
   item: ClothingItem | null;
@@ -15,7 +16,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onSave: (item: ClothingItem) => void;
   onRemove?: (id: string) => void;
-  onDuplicated?: () => void;
+  onDuplicated?: (item: ClothingItem) => void;
 }
 
 export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove, onDuplicated }: Props) {
@@ -28,7 +29,7 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
   const handleDuplicate = async () => {
     if (!item || !user) return;
     setDuplicating(true);
-    const { error } = await supabase.from("clothing_items").insert({
+    const { data, error } = await supabase.from("clothing_items").insert({
       user_id: user.id,
       name: `${item.name} (copy)`,
       category: item.category,
@@ -40,10 +41,26 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
       notes: item.notes,
       estimated_price: item.estimatedPrice || null,
       is_private: item.isPrivate || false,
-    });
+    }).select().single();
     setDuplicating(false);
-    if (!error) {
-      onDuplicated?.();
+    if (!error && data) {
+      const newItem = await resolveSignedClothingImageFields({
+        id: data.id,
+        name: data.name,
+        category: data.category,
+        color: data.color,
+        fabric: data.fabric,
+        imageUrl: isStoragePath(data.image_url) ? "" : (data.image_url || ""),
+        imagePath: isStoragePath(data.image_url) ? data.image_url : undefined,
+        backImageUrl: data.back_image_url && !isStoragePath(data.back_image_url) ? data.back_image_url : undefined,
+        backImagePath: isStoragePath(data.back_image_url) ? data.back_image_url : undefined,
+        tags: data.tags || [],
+        notes: data.notes || "",
+        addedAt: new Date(data.created_at),
+        estimatedPrice: data.estimated_price ? Number(data.estimated_price) : undefined,
+        isPrivate: data.is_private ?? false,
+      });
+      onDuplicated?.(newItem);
       onOpenChange(false);
     }
   };

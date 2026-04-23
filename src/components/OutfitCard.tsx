@@ -39,8 +39,9 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
 
   return (
     <>
-      <div
-        className="rounded-2xl bg-card border border-border/40 overflow-hidden shadow-sm cursor-pointer active:scale-[0.98] transition-transform"
+      <button
+        type="button"
+        className="w-full text-left rounded-2xl bg-card border border-border/40 overflow-hidden shadow-sm cursor-pointer active:scale-[0.98] transition-transform focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         onClick={() => setDetailOpen(true)}
       >
         {/* Flat-lay outfit display */}
@@ -108,7 +109,7 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
             </>
           )}
         </div>
-      </div>
+      </button>
 
       <OutfitDetailSheet outfit={outfit} open={detailOpen} onOpenChange={setDetailOpen} />
 

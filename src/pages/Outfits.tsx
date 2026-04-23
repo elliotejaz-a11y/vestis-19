@@ -174,7 +174,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
               key={occ}
               onClick={() => { setSelectedOccasion(occ); setCustomOccasion(""); }}
               className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all",
+                "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                 selectedOccasion === occ && !customOccasion
                   ? "bg-accent text-accent-foreground"
                   : "bg-card text-muted-foreground border border-border hover:border-accent/50"
@@ -213,7 +213,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
                 key={opt.id}
                 onClick={() => setColourStory(opt.id)}
                 className={cn(
-                  "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all",
+                  "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                   colourStory === opt.id
                     ? "bg-accent text-accent-foreground"
                     : "bg-card text-muted-foreground border border-border hover:border-accent/50"

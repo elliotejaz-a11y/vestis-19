@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
-import { isStoragePath, resolveSignedClothingImageFields, getSignedStorageUrl } from "@/lib/storage";
+import { isStoragePath, resolveSignedClothingImageFields, batchResolveSignedClothingImageFields, getSignedStorageUrl } from "@/lib/storage";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
 const isBottomsCategory = (category?: string) => (category || "").trim().toLowerCase() === "bottoms";
@@ -357,7 +357,7 @@ export function useWardrobe() {
         estimatedPrice: r.estimated_price ? Number(r.estimated_price) : undefined,
         isPrivate: r.is_private || false,
       }));
-      const dbItems = await Promise.all(rawItems.map((item) => resolveSignedClothingImageFields(item)));
+      const dbItems = await batchResolveSignedClothingImageFields(rawItems);
       setItems(dbItems);
 
       const { data: outfitData } = await supabase
@@ -806,5 +806,12 @@ export function useWardrobe() {
     });
   }, []);
 
-  return { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, loading, dataReady };
+  const addItemToState = useCallback((item: ClothingItem) => {
+    setItems((prev) => {
+      if (prev.some(i => i.id === item.id)) return prev;
+      return [item, ...prev];
+    });
+  }, []);
+
+  return { items, outfits, addItem, addItemToState, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, loading, dataReady };
 }

@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Outfit } from "@/types/wardrobe";
-import { Send, Loader2, Sparkles } from "lucide-react";
+import { Send, Loader2, Sparkles, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -29,6 +29,7 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,9 +41,22 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
     }
   }, [open]);
 
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (atBottom) scrollToBottom();
+  }, [messages, scrollToBottom]);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setShowScrollButton(el.scrollHeight - el.scrollTop - el.clientHeight > 80);
+  }, []);
 
   const sendMessage = async () => {
     if (!input.trim() || isStreaming) return;
@@ -126,7 +140,16 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
           </SheetTitle>
         </SheetHeader>
 
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        <div className="relative flex-1 overflow-hidden">
+        {showScrollButton && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute bottom-3 right-3 z-10 flex items-center gap-1 bg-accent text-accent-foreground rounded-full px-2.5 py-1 text-xs font-medium shadow-md focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          >
+            <ChevronDown className="w-3.5 h-3.5" /> Latest
+          </button>
+        )}
+        <div ref={scrollRef} onScroll={handleScroll} className="h-full overflow-y-auto px-5 py-4 space-y-3">
           {messages.map((msg, i) => (
             <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
               <div
@@ -148,6 +171,7 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
               </div>
             </div>
           )}
+        </div>
         </div>
 
         <div className="px-5 py-3 pb-24 border-t border-border/40 flex gap-2">

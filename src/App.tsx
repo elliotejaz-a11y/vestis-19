@@ -103,7 +103,7 @@ function AppRoutes() {
 }
 
 function AuthenticatedApp() {
-  const { items, outfits, addItem, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, dataReady } = useWardrobe();
+  const { items, outfits, addItem, addItemToState, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, dataReady } = useWardrobe();
   const { deletedItems, addToDeleted, removeFromDeleted } = useRecentlyDeleted();
 
   const handleSoftRemove = useCallback((id: string) => {
@@ -133,6 +133,7 @@ function AuthenticatedApp() {
             items={items}
             outfits={outfits}
             onAdd={addItem}
+            onAddDuplicated={addItemToState}
             onRemove={handleSoftRemove}
             onUpdate={updateItem}
             onSaveOutfit={saveOutfit}

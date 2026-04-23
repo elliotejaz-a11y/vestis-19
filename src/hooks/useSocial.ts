@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { getSignedSocialUrl, getSignedSocialUrls } from "@/lib/storage";
+import { getSignedSocialUrl, batchGetSignedSocialUrls } from "@/lib/storage";
 
 export interface SocialPost {
   id: string;
@@ -48,23 +48,22 @@ async function enrichPostsWithProfiles(postData: any[], userId: string) {
   const myLikes = myLikesResult.status === "fulfilled" ? myLikesResult.value.data : null;
   const likedPostIds = new Set((myLikes || []).map((l: any) => l.post_id));
   const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-  // Resolve signed URLs for any social-content images in parallel
-  const urlResults = await Promise.allSettled(
-    postData.map(async (p: any) => ({
+  // Batch-sign all image URLs across all posts in a single storage request
+  const allImageUrls = postData.flatMap((p: any) => p.image_urls || []);
+  const signedFlat = await batchGetSignedSocialUrls(allImageUrls);
+
+  let urlOffset = 0;
+  const enriched = postData.map((p: any) => {
+    const count = (p.image_urls || []).length;
+    const image_urls = signedFlat.slice(urlOffset, urlOffset + count).filter(Boolean) as string[];
+    urlOffset += count;
+    return {
       ...p,
-      image_urls: await getSignedSocialUrls(p.image_urls || []),
+      image_urls,
       user: profileMap.get(p.user_id),
       liked_by_me: likedPostIds.has(p.id),
-    }))
-  );
-  const enriched = urlResults.map((r, i) =>
-    r.status === "fulfilled" ? r.value : {
-      ...postData[i],
-      user: profileMap.get(postData[i].user_id),
-      liked_by_me: likedPostIds.has(postData[i].id),
-      image_urls: postData[i].image_urls || [],
-    }
-  );
+    };
+  });
   return enriched;
 }
 
@@ -135,16 +134,12 @@ export function useSocial() {
       const userIds = [...new Set(storyData.map((s: any) => s.user_id))];
       const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url").in("id", userIds);
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-      const storyResults = await Promise.allSettled(
-        storyData.map(async (s: any) => ({
-          ...s,
-          image_url: (await getSignedSocialUrl(s.image_url)) || s.image_url,
-          user: profileMap.get(s.user_id),
-        }))
-      );
-      const enriched = storyResults.map((r, i) =>
-        r.status === "fulfilled" ? r.value : { ...storyData[i], user: profileMap.get(storyData[i].user_id) }
-      );
+      const signedStoryUrls = await batchGetSignedSocialUrls(storyData.map((s: any) => s.image_url));
+      const enriched = storyData.map((s: any, i: number) => ({
+        ...s,
+        image_url: signedStoryUrls[i] || s.image_url,
+        user: profileMap.get(s.user_id),
+      }));
       return enriched as SocialStory[];
     },
     enabled: !!user,

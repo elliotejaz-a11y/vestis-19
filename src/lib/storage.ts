@@ -72,3 +72,72 @@ export async function resolveSignedClothingImageFields<T extends ImageFields>(it
     backImageUrl: backImageUrl ?? undefined,
   };
 }
+
+// Batches all clothing image paths into a single createSignedUrls call instead of one per item.
+export async function batchResolveSignedClothingImageFields<T extends ImageFields>(items: T[]): Promise<T[]> {
+  if (items.length === 0) return items;
+
+  const itemPaths = items.map((item) => ({
+    imagePath: item.imagePath ?? getStoragePathFromUrl("clothing-images", item.imageUrl),
+    backImagePath: item.backImagePath ?? getStoragePathFromUrl("clothing-images", item.backImageUrl),
+  }));
+
+  const uniquePaths = [...new Set(
+    itemPaths.flatMap((p) => [p.imagePath, p.backImagePath]).filter(Boolean) as string[]
+  )];
+
+  if (uniquePaths.length === 0) return items;
+
+  const { data } = await supabase.storage
+    .from("clothing-images")
+    .createSignedUrls(uniquePaths, SIGNED_URL_EXPIRES_IN_SECONDS);
+
+  const signedMap = new Map<string, string>(
+    (data || []).filter((d) => d.signedUrl).map((d) => [d.path, d.signedUrl!])
+  );
+
+  return items.map((item, i) => {
+    const { imagePath, backImagePath } = itemPaths[i];
+    return {
+      ...item,
+      imagePath: imagePath ?? undefined,
+      backImagePath: backImagePath ?? undefined,
+      imageUrl: (imagePath ? signedMap.get(imagePath) : null) ?? item.imageUrl ?? "",
+      backImageUrl: (backImagePath ? signedMap.get(backImagePath) : null) ?? item.backImageUrl ?? undefined,
+    };
+  });
+}
+
+// Batches social image URL signing — all paths in one createSignedUrls call.
+export async function batchGetSignedSocialUrls(values: (string | null | undefined)[]): Promise<(string | null)[]> {
+  if (values.length === 0) return [];
+
+  type Entry = { index: number; path: string } | { index: number; passthrough: string };
+  const entries: Entry[] = [];
+  const pathsToSign: string[] = [];
+
+  values.forEach((value, index) => {
+    if (!value) { entries.push({ index, passthrough: "" }); return; }
+    if (/^https?:\/\//i.test(value) && !value.includes("/social-content/")) {
+      entries.push({ index, passthrough: value });
+      return;
+    }
+    const path = getStoragePathFromUrl("social-content", value) ?? (isStoragePath(value) ? value : null);
+    if (!path) { entries.push({ index, passthrough: value }); return; }
+    pathsToSign.push(path);
+    entries.push({ index, path });
+  });
+
+  const signedMap = new Map<string, string>();
+  if (pathsToSign.length > 0) {
+    const { data } = await supabase.storage
+      .from("social-content")
+      .createSignedUrls([...new Set(pathsToSign)], SIGNED_URL_EXPIRES_IN_SECONDS);
+    (data || []).filter((d) => d.signedUrl).forEach((d) => signedMap.set(d.path, d.signedUrl!));
+  }
+
+  return entries.map((entry) => {
+    if ("passthrough" in entry) return entry.passthrough || null;
+    return signedMap.get(entry.path) ?? values[entry.index] ?? null;
+  });
+}
