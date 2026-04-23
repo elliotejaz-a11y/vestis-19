@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -93,7 +93,14 @@ export function useChat() {
     fetchConversations();
   }, [fetchConversations]);
 
-  // Realtime subscription
+  // Keep a stable ref so the realtime callback can call fetchConversations
+  // without it becoming a subscription dependency (which would re-subscribe on every render)
+  const fetchConversationsRef = useRef(fetchConversations);
+  useEffect(() => {
+    fetchConversationsRef.current = fetchConversations;
+  }, [fetchConversations]);
+
+  // Realtime subscription — updates conversations in-place instead of re-fetching everything
   useEffect(() => {
     if (!user) return;
     const channel = supabase
@@ -101,14 +108,49 @@ export function useChat() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "messages" },
-        () => {
-          fetchConversations();
+        (payload) => {
+          const msg = payload.new as ChatMessage;
+          if (!msg?.sender_id || !msg?.receiver_id) return;
+
+          const friendId = msg.sender_id === user.id ? msg.receiver_id : msg.sender_id;
+
+          // Track whether the conversation already exists so we can fall back outside setState
+          let isKnown = false;
+
+          setConversations((prev) => {
+            const convIndex = prev.findIndex((c) => c.friendId === friendId);
+            if (convIndex === -1) {
+              isKnown = false;
+              return prev; // unchanged — full refetch triggered below
+            }
+            isKnown = true;
+            const updated = prev.map((c) => {
+              if (c.friendId !== friendId) return c;
+              return {
+                ...c,
+                lastMessage: msg.content,
+                lastMessageAt: msg.created_at,
+                unreadCount:
+                  msg.receiver_id === user.id && !msg.read
+                    ? c.unreadCount + 1
+                    : c.unreadCount,
+              };
+            });
+            return updated.sort(
+              (a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()
+            );
+          });
+
+          // Only do a full refetch when the message is from a brand-new conversation partner
+          if (!isKnown) {
+            fetchConversationsRef.current();
+          }
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user, fetchConversations]);
+  }, [user]); // no longer depends on fetchConversations
 
   const clearUnread = useCallback((friendId: string) => {
     setConversations((prev) =>
@@ -164,9 +206,21 @@ export function useChatMessages(friendId: string | null) {
     fetchMessages();
   }, [fetchMessages]);
 
+  // Stable ref for the active channel — lets us synchronously tear down the old
+  // subscription before creating a new one when friendId changes
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
   // Realtime
   useEffect(() => {
     if (!user || !friendId) return;
+
+    // Synchronously remove any existing channel before subscribing to the new one.
+    // This prevents orphaned channels when the user switches conversations quickly.
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
     const channel = supabase
       .channel(`chat-${friendId}`)
       .on(
@@ -200,7 +254,14 @@ export function useChatMessages(friendId: string | null) {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
   }, [user, friendId]);
 
   const sendMessage = async (content: string) => {
