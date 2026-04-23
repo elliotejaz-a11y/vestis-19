@@ -258,11 +258,19 @@ serve(async (req) => {
 
     const occasionTier = getOccasionTier(occasion);
 
+    // Collect item IDs used in the most recent outfit for inline marking
+    const lastOutfitIds = new Set<string>(
+      Array.isArray(recentOutfitItemIds) && recentOutfitItemIds.length > 0
+        ? (Array.isArray(recentOutfitItemIds[0]) ? recentOutfitItemIds[0] : []).map(String)
+        : []
+    );
+
     // Build a richer wardrobe summary so the AI can intelligently pick from many options
     const wardrobeSummary = candidateItems.map((item: any, i: number) => {
       const tags = Array.isArray(item.tags) ? item.tags.slice(0, 8).join(', ') : '';
       const notes = item.notes ? ` | notes: "${String(item.notes).slice(0, 120)}"` : '';
-      return `${i + 1}. [${String(item.category || '').toLowerCase()}] "${String(item.name || '').slice(0, 80)}" — colour: ${String(item.color || 'unspecified').slice(0, 30)}, fabric: ${String(item.fabric || 'unspecified').slice(0, 30)}${tags ? `, tags: [${tags}]` : ''}${notes}`;
+      const usedMarker = lastOutfitIds.has(String(item.id)) ? ' ⚠️ USED IN LAST OUTFIT — pick something else if possible' : '';
+      return `${i + 1}. [${String(item.category || '').toLowerCase()}] "${String(item.name || '').slice(0, 80)}" — colour: ${String(item.color || 'unspecified').slice(0, 30)}, fabric: ${String(item.fabric || 'unspecified').slice(0, 30)}${tags ? `, tags: [${tags}]` : ''}${notes}${usedMarker}`;
     }).join('\n');
 
     const recentOutfitIndices = Array.isArray(recentOutfitItemIds)

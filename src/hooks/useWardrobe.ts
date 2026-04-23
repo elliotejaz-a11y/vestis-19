@@ -568,9 +568,28 @@ export function useWardrobe() {
 
         if (error) throw error;
 
-        const selectedItems: ClothingItem[] = gymRequest
+        let selectedItems: ClothingItem[] = gymRequest
           ? ensureGymOutfitHasOnlyAllowedPieces((data.items || []) as ClothingItem[], items)
           : ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
+
+        // If AI returned the exact same items as the last outfit, force-swap one non-essential item
+        const lastOutfitIds = new Set((outfits[0]?.items || []).map(i => i.id));
+        const currentIds = selectedItems.map(i => i.id);
+        const isDuplicate = currentIds.length > 0 && currentIds.every(id => lastOutfitIds.has(id)) && lastOutfitIds.size === currentIds.length;
+        if (isDuplicate) {
+          const essentialCategories = ["tops", "jumpers", "bottoms", "shoes"];
+          const swapIndex = selectedItems.findIndex(i => !essentialCategories.includes((i.category || "").toLowerCase()));
+          const targetIndex = swapIndex >= 0 ? swapIndex : 0;
+          const targetCategory = selectedItems[targetIndex]?.category;
+          const alternatives = items.filter(i =>
+            i.category?.toLowerCase() === targetCategory?.toLowerCase() &&
+            !currentIds.includes(i.id)
+          );
+          if (alternatives.length > 0) {
+            const pick = alternatives[Math.floor(Math.random() * alternatives.length)];
+            selectedItems = selectedItems.map((item, idx) => idx === targetIndex ? pick : item);
+          }
+        }
         const resolvedReasoning = isDetailedReasoning(data.reasoning)
           ? data.reasoning.trim()
           : buildOutfitReasoningFallback({ occasion, selectedItems, profile, weather });
