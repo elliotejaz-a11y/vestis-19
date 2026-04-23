@@ -11,7 +11,7 @@ type SignedStorageBucket = "clothing-images" | "wishlist-images";
 
 const SIGNED_URL_EXPIRES_IN_SECONDS = 60 * 60;
 
-export function isStoragePath(value: string | null | undefined): value is string {
+export function isStoragePath(value: string | null | undefined): boolean {
   return Boolean(value) && !/^https?:\/\//i.test(value as string) && !value!.startsWith("blob:") && !value!.startsWith("data:");
 }
 
