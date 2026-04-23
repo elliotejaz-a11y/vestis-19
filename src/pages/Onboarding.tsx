@@ -10,7 +10,6 @@ import { UserAvatar, AVATAR_PRESET_LIST } from "@/components/UserAvatar";
 import { StyleQuizSheet } from "@/components/StyleQuizSheet";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
-import { getSkinToneColor, getSkinToneLabel, getSkinToneValue, getSkinToneValueFromRgb, SKIN_TONE_GRADIENT } from "@/lib/skinTone";
 
 export const STYLES = [
   { value: "casual", label: "Casual", emoji: "👕" },
@@ -65,7 +64,6 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [bio, setBio] = useState("");
   const [profileError, setProfileError] = useState("");
-  const [skinTone, setSkinTone] = useState(50);
   const [styles, setStyles] = useState<string[]>([]);
   const [showStyleQuiz, setShowStyleQuiz] = useState(false);
   const [customStyle, setCustomStyle] = useState("");
@@ -86,7 +84,6 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       setDisplayName(profile.display_name || "");
       setUsername(profile.username || "");
       setBio(profile.bio || "");
-      setSkinTone(getSkinToneValue(profile.skin_tone));
       // Parse comma-separated styles
       const existingStyles = profile.style_preference ? profile.style_preference.split(",").map(s => s.trim()).filter(Boolean) : [];
       const knownValues = STYLES.map(s => s.value);
@@ -142,9 +139,6 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     return () => clearTimeout(handle);
   }, [username, profile?.username, user?.id]);
 
-  const skinScanRef = useRef<HTMLInputElement>(null);
-  const [scanningSkin, setScanningSkin] = useState(false);
-
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -178,60 +172,6 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
     }
     setUploading(false);
   };
-
-  const handleSkinScan = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setScanningSkin(true);
-    try {
-      const url = URL.createObjectURL(file);
-      const img = new window.Image();
-      img.crossOrigin = "anonymous";
-      await new Promise<void>((res, rej) => {
-        img.onload = () => res();
-        img.onerror = () => rej(new Error("load failed"));
-        img.src = url;
-      });
-      const canvas = document.createElement("canvas");
-      const max = 256;
-      const scale = Math.min(1, max / Math.max(img.width, img.height));
-      canvas.width = Math.max(1, Math.round(img.width * scale));
-      canvas.height = Math.max(1, Math.round(img.height * scale));
-      const ctx = canvas.getContext("2d");
-      if (!ctx) throw new Error("no ctx");
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      // Sample center 40% region (likely face/skin area)
-      const sx = Math.floor(canvas.width * 0.3);
-      const sy = Math.floor(canvas.height * 0.3);
-      const sw = Math.floor(canvas.width * 0.4);
-      const sh = Math.floor(canvas.height * 0.4);
-      const data = ctx.getImageData(sx, sy, sw, sh).data;
-      let r = 0, g = 0, b = 0, count = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        const pr = data[i], pg = data[i + 1], pb = data[i + 2];
-        // Heuristic: keep pixels that look skin-like (R > B, not too dark/bright extremes filtered later)
-        if (pr > pb && pr >= 30 && pr <= 250) {
-          r += pr; g += pg; b += pb; count++;
-        }
-      }
-      if (count === 0) {
-        // Fallback: average everything
-        for (let i = 0; i < data.length; i += 4) {
-          r += data[i]; g += data[i + 1]; b += data[i + 2]; count++;
-        }
-      }
-      r = Math.round(r / count); g = Math.round(g / count); b = Math.round(b / count);
-      const value = getSkinToneValueFromRgb(r, g, b);
-      setSkinTone(value);
-      URL.revokeObjectURL(url);
-      toast({ title: "Skin tone detected ✨", description: getSkinToneLabel(value) });
-    } catch {
-      toast({ title: "Couldn't detect skin tone", description: "Try a clearer, well-lit photo.", variant: "destructive" });
-    }
-    setScanningSkin(false);
-    if (skinScanRef.current) skinScanRef.current.value = "";
-  };
-
 
   const toggleColor = (c: string) =>
     setPreferredColors((prev) =>
@@ -420,62 +360,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       valid: true,
     },
     {
-      title: "What's your skin tone?",
-      subtitle: "Drag the slider to match your skin tone",
-      content: (
-        <div className="flex flex-col items-center gap-6">
-          <div
-            className="w-32 h-32 rounded-full border-4 border-border shadow-lg transition-colors duration-150"
-            style={{ backgroundColor: getSkinToneColor(skinTone) }}
-          />
-            <div className="text-center space-y-1">
-              <p className="text-base font-semibold text-foreground">{getSkinToneLabel(skinTone)}</p>
-              <p className="text-xs text-muted-foreground">We’ll use this skin-tone colour when personalising outfit suggestions.</p>
-            </div>
-          <div className="w-full space-y-3">
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={skinTone}
-              onChange={(e) => setSkinTone(Number(e.target.value))}
-              className="w-full h-3 rounded-full appearance-none cursor-pointer"
-              style={{
-                  background: `linear-gradient(to right, ${SKIN_TONE_GRADIENT.join(", ")})`,
-              }}
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span>Light</span>
-              <span>Medium</span>
-              <span>Dark</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => skinScanRef.current?.click()}
-            disabled={scanningSkin}
-            className="w-full flex items-center justify-center gap-2 p-3 rounded-2xl border-2 border-dashed border-accent/40 text-accent hover:bg-accent/5 transition-all text-sm font-medium disabled:opacity-60"
-          >
-            <Camera className="w-4 h-4" />
-            {scanningSkin ? "Scanning..." : "Scan my skin tone"}
-          </button>
-          <p className="text-[10px] text-muted-foreground text-center -mt-2">
-            Snap a photo of your skin (face, arm, or hand) in good lighting.
-          </p>
-          <input
-            ref={skinScanRef}
-            type="file"
-            accept="image/*"
-            capture="user"
-            className="hidden"
-            onChange={handleSkinScan}
-          />
-        </div>
-      ),
-      valid: true,
-    },
-    {
-      title: "What's your aesthetic?",
+      title: "What’s your aesthetic?",
       subtitle: "Select all that apply, or type your own",
       content: (
         <div className="space-y-4">
@@ -564,7 +449,6 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       }
       const styleValue = allStyles.join(", ");
       await updateProfile({
-        skin_tone: getSkinToneLabel(skinTone),
         style_preference: styleValue || null,
         body_type: bodyType,
         preferred_colors: preferredColors,

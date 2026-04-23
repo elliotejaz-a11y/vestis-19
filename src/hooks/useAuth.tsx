@@ -11,7 +11,6 @@ interface Profile {
   avatar_position: string;
   bio: string | null;
   is_public: boolean;
-  skin_tone: string | null;
   style_preference: string | null;
   body_type: string | null;
   preferred_colors: string[] | null;

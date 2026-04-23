@@ -28,23 +28,6 @@ const COLD_THRESHOLD = 10;
 const HOT_THRESHOLD = 25;
 const RAINY_PATTERN = /\b(rain|rainy|drizzle|shower|showers|wet|precipitation|storm|stormy|downpour)\b/i;
 
-const SKIN_TONE_LABELS = [
-  { value: 0, label: 'Porcelain' },
-  { value: 7, label: 'Ivory' },
-  { value: 14, label: 'Warm Ivory' },
-  { value: 21, label: 'Light Beige' },
-  { value: 29, label: 'Warm Beige' },
-  { value: 36, label: 'Golden Beige' },
-  { value: 43, label: 'Honey' },
-  { value: 50, label: 'Golden Tan' },
-  { value: 57, label: 'Caramel' },
-  { value: 64, label: 'Chestnut' },
-  { value: 71, label: 'Mocha' },
-  { value: 79, label: 'Espresso' },
-  { value: 86, label: 'Deep Cocoa' },
-  { value: 93, label: 'Rich Ebony' },
-  { value: 100, label: 'Midnight' },
-] as const;
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || '';
@@ -257,20 +240,6 @@ function getOccasionTier(occasion: string): { tier: string; guidance: string } {
   return { tier: 'CASUAL', guidance: 'Relaxed everyday wear. Jeans/chinos/casual trousers, t-shirt/sweatshirt/casual shirt, trainers or casual shoes. Avoid suits, blazers, dress shoes unless user style demands it.' };
 }
 
-function normalizeSkinTone(input: unknown): string {
-  const raw = String(input || '').trim();
-  if (!raw) return 'not specified';
-  const numeric = Number(raw);
-  if (Number.isFinite(numeric)) {
-    return SKIN_TONE_LABELS.reduce((closest, stop) => {
-      const cd = Math.abs(stop.value - numeric);
-      const bd = Math.abs(closest.value - numeric);
-      return cd < bd ? stop : closest;
-    }, SKIN_TONE_LABELS[0]).label;
-  }
-  const matched = SKIN_TONE_LABELS.find((stop) => stop.label.toLowerCase() === raw.toLowerCase());
-  return matched?.label ?? raw;
-}
 
 function dedupeById(items: any[]): any[] {
   const seen = new Set<string>();
@@ -347,7 +316,6 @@ serve(async (req) => {
     }
 
     const { occasion, items, userProfile, weather, recentOutfitItemIds, colourStory } = await req.json();
-    const normalizedSkinTone = normalizeSkinTone(userProfile?.skinTone);
 
     if (!occasion || typeof occasion !== 'string' || occasion.length > 200) {
       return new Response(JSON.stringify({ error: 'Invalid occasion' }), {
@@ -460,23 +428,15 @@ serve(async (req) => {
    Always name the colour story in your reasoning. Never randomly pick items hoping the colours work.
 6. Fabric/weather: heavier fabrics for cold weather, lightweight breathable for warm. Match formality of fabric to occasion.
 
-## SKIN TONE FLATTERY
-Use the user's skin tone to pick colours that genuinely flatter:
-- Porcelain/Ivory/Light Beige: navy, burgundy, forest green, soft pink, charcoal
-- Warm Beige/Golden Beige/Honey: olive, terracotta, camel, cream, rust, jewel tones
-- Golden Tan/Caramel/Chestnut: cobalt, magenta, orange, gold, teal, white
-- Mocha/Espresso/Deep Cocoa/Rich Ebony/Midnight: bold brights (red, royal blue, fuchsia), pastels, white, metallics
-
 ## STYLE PREFERENCE
 Strongly favour items matching the user's stated style. A minimalist user gets clean lines and neutral palettes; a streetwear user gets relaxed fits and statement pieces; a classic user gets timeless silhouettes.
 
 ## REASONING (shown to user as "WHY THIS WORKS")
-Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the user's skin tone (using its descriptive name, not a number), the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.`;
+Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.`;
 
     const userPrompt = `Build the best outfit for: "${occasion}"
 Occasion tier: ${occasionTier.tier}
 ${weather ? `${getWeatherDirective(weather, occasion)}\n` : ''}${colourStoryDirective}${avoidanceSection}${userProfile ? `User profile:
-- Skin tone: ${normalizedSkinTone} (USE for colour flattery)
 - Style preference: ${userProfile.stylePreference || 'not specified'} (CRITICAL: match closely)
 - Body type: ${userProfile.bodyType || 'not specified'}
 - Preferred colours: ${(userProfile.preferredColors || []).join(', ') || 'not specified'}

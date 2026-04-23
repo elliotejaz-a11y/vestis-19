@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 import { isStoragePath, resolveSignedClothingImageFields, getSignedStorageUrl } from "@/lib/storage";
-import { getSkinToneDisplay } from "@/lib/skinTone";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
 const isBottomsCategory = (category?: string) => (category || "").trim().toLowerCase() === "bottoms";
@@ -240,7 +239,6 @@ function isDetailedReasoning(reasoning?: string | null): boolean {
   if (DETAILLESS_REASONING_PATTERNS.some((pattern) => pattern.test(text))) return false;
 
   const detailSignals = [
-    /(skin tone|undertone|complexion)/i.test(text),
     /(cotton|wool|linen|denim|silk|leather|knit|jersey|nylon|polyester|fabric|texture|breathable|structured|lightweight)/i.test(text),
     /(weather|temperature|warm|cool|heat|chill|layer)/i.test(text),
     /(occasion|business|casual|formal|meeting|workout|gym|date|interview|brunch|wedding)/i.test(text),
@@ -260,7 +258,6 @@ function buildOutfitReasoningFallback({
   occasion: string;
   selectedItems: ClothingItem[];
   profile?: {
-    skin_tone?: string | null;
     style_preference?: string | null;
   } | null;
   weather?: { temp: number; description: string };
@@ -273,7 +270,6 @@ function buildOutfitReasoningFallback({
   const fabricText = formatList(fabrics).toLowerCase();
   const categoryText = formatList(categories).toLowerCase();
   const itemText = formatList(itemNames);
-  const skinTone = getSkinToneDisplay(profile?.skin_tone)?.trim();
   const stylePreference = profile?.style_preference?.trim();
 
   const weatherFit = weather
@@ -289,9 +285,7 @@ function buildOutfitReasoningFallback({
       ? `${itemText} work together for ${occasion.toLowerCase()} because the mix of ${categoryText || "key wardrobe pieces"} feels intentional from top to bottom.`
       : `This outfit feels right for ${occasion.toLowerCase()} because each piece supports the same overall direction rather than competing for attention.`,
     colourText
-      ? skinTone
-        ? `The ${colourText} palette is balanced in a way that flatters your ${skinTone.toLowerCase()} skin tone, giving you contrast and depth without making the outfit feel too loud for the occasion.`
-        : `The ${colourText} palette creates clean contrast and visual balance, which helps the outfit feel polished and easy to wear.`
+      ? `The ${colourText} palette creates clean contrast and visual balance, which helps the outfit feel polished and easy to wear.`
       : null,
     fabricText
       ? weather
@@ -695,7 +689,6 @@ export function useWardrobe() {
             items: sortedItems,
             weather,
             userProfile: profile ? {
-              skinTone: getSkinToneDisplay(profile.skin_tone),
               stylePreference: profile.style_preference,
               bodyType: profile.body_type,
               preferredColors: profile.preferred_colors,
