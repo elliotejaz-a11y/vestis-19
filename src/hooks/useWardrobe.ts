@@ -20,6 +20,11 @@ const ATHLETIC_SHOE_PATTERN = /\b(TN|TNs|air ?max|air ?force|running shoe|trail 
 const GYM_WEAR_ITEM_PATTERN = /\b(compression|activewear|athletic wear|performance top|training top|workout top|gym top|sports top|spandex|elastane|dry[-\s]?fit|moisture[-\s]?wicking)\b/i;
 const FORMAL_OCCASION_PATTERN = /\b(wedding|gala|black[-\s]?tie|formal|cocktail|funeral|opera)\b/i;
 const BUSINESS_OCCASION_PATTERN = /\b(business|interview|meeting|office|work|corporate|conference|presentation)\b/i;
+const HEAVY_OUTERWEAR_PATTERN = /\b(puffer|parka|duvet jacket|padded jacket|quilted jacket|winter coat|heavy coat|fur|shearling|down jacket|anorak|peacoat|overcoat|trench coat|duffel coat|toggle coat|wool coat)\b/i;
+const WATERPROOF_PATTERN = /\b(waterproof|water[-\s]?resistant|rain ?jacket|windbreaker|shell jacket|gore[-\s]?tex|mac|mackintosh|cagoule|pac[-\s]?a[-\s]?mac|hardshell)\b/i;
+const RAINY_PATTERN = /\b(rain|rainy|drizzle|shower|showers|wet|precipitation|storm|stormy|downpour)\b/i;
+const COLD_THRESHOLD = 10;
+const HOT_THRESHOLD = 25;
 const DETAILLESS_REASONING_PATTERNS = [
   /^a curated look/i,
   /curated look/i,
@@ -106,6 +111,84 @@ function filterItemsForOccasion(items: ClothingItem[], occasion: string): Clothi
     return items.filter(item => !isHatCategory(item) && !isAthleticShoe(item) && !isGymWearItem(item));
   }
   return items.filter(item => !isGymWearItem(item));
+}
+
+function isOuterwearCategory(item: ClothingItem): boolean {
+  return (item.category || "").trim().toLowerCase() === "outerwear";
+}
+
+function isHeavyOuterwear(item: ClothingItem): boolean {
+  if (!isOuterwearCategory(item)) return false;
+  return HEAVY_OUTERWEAR_PATTERN.test(getItemSearchText(item));
+}
+
+function isWaterproofOuterwear(item: ClothingItem): boolean {
+  return WATERPROOF_PATTERN.test(getItemSearchText(item));
+}
+
+function filterItemsForWeather(items: ClothingItem[], weather: { temp: number; description: string }, occasion: string): ClothingItem[] {
+  if (weather.temp > HOT_THRESHOLD) {
+    if (FORMAL_OCCASION_PATTERN.test(occasion) || BUSINESS_OCCASION_PATTERN.test(occasion)) {
+      return items.filter(item => !isHeavyOuterwear(item));
+    }
+    return items.filter(item => !isOuterwearCategory(item));
+  }
+  return items;
+}
+
+function normalizeSelectionForWeather(
+  selected: ClothingItem[],
+  allCandidates: ClothingItem[],
+  weather: { temp: number; description: string } | undefined
+): ClothingItem[] {
+  if (!weather) return selected;
+
+  let result = [...selected];
+  const cold = weather.temp < COLD_THRESHOLD;
+  const rainy = RAINY_PATTERN.test(weather.description);
+  const hot = weather.temp > HOT_THRESHOLD;
+
+  if (hot) {
+    return result.filter(item => !isHeavyOuterwear(item));
+  }
+
+  if (cold || rainy) {
+    const hasOuterwear = result.some(isOuterwearCategory);
+    const outerwearPool = allCandidates.filter(isOuterwearCategory);
+
+    if (!hasOuterwear && outerwearPool.length > 0) {
+      const inject = rainy
+        ? (outerwearPool.find(isWaterproofOuterwear) ?? outerwearPool[0])
+        : outerwearPool[0];
+      const replaceIdx = result.findIndex(item => {
+        const cat = (item.category || "").trim().toLowerCase();
+        return cat === "accessories" || cat === "hats";
+      });
+      if (replaceIdx >= 0) {
+        result = [...result];
+        result[replaceIdx] = inject;
+      } else if (result.length < 5) {
+        result = [...result, inject];
+      } else {
+        result = [...result];
+        result[result.length - 1] = inject;
+      }
+    } else if (rainy && hasOuterwear) {
+      const hasWaterproof = result.some(isWaterproofOuterwear);
+      if (!hasWaterproof) {
+        const waterproofItem = allCandidates.find(item => isOuterwearCategory(item) && isWaterproofOuterwear(item));
+        if (waterproofItem) {
+          const replaceIdx = result.findIndex(item => isOuterwearCategory(item) && !isWaterproofOuterwear(item));
+          if (replaceIdx >= 0) {
+            result = [...result];
+            result[replaceIdx] = waterproofItem;
+          }
+        }
+      }
+    }
+  }
+
+  return result.filter((item, i, arr) => arr.findIndex(x => x.id === item.id) === i);
 }
 
 function isGymTop(item: ClothingItem): boolean {
@@ -695,8 +778,10 @@ export function useWardrobe() {
         }
 
         const occasionFilteredItems = filterItemsForOccasion(items, occasion);
-        const monochromeBase = buildMonochromeFallback(occasionFilteredItems);
-        const fallbackItems = ensureOutfitHasCorePieces(monochromeBase, occasionFilteredItems);
+        const weatherFilteredItems = weather ? filterItemsForWeather(occasionFilteredItems, weather, occasion) : occasionFilteredItems;
+        const monochromeBase = buildMonochromeFallback(weatherFilteredItems);
+        const coreItems = ensureOutfitHasCorePieces(monochromeBase, weatherFilteredItems);
+        const fallbackItems = normalizeSelectionForWeather(coreItems, weatherFilteredItems, weather);
         const fallbackReasoning = buildOutfitReasoningFallback({ occasion, selectedItems: fallbackItems, profile, weather });
 
         const { data: outfitRow } = await supabase

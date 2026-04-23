@@ -22,6 +22,11 @@ const GYM_BOTTOM_NEGATIVE_PATTERN = /\b(jeans?|denim|chinos?|slacks?|trousers?|d
 const GYM_SHOE_NEGATIVE_PATTERN = /\b(sandals?|slides?|flip[-\s]?flops?|heels?|boots?|loafers?|oxfords?|derbies?|brogues?|mules?|slippers?)\b/i;
 const ATHLETIC_SHOE_PATTERN = /\b(TN|TNs|air ?max|air ?force|running shoe|trail shoe|training shoe|gym shoe|sports shoe|basketball shoe|trainer|trainers|jogger shoe|tech runner|boost|ultra ?boost|foam ?runner)\b/i;
 const GYM_WEAR_ITEM_PATTERN = /\b(compression|activewear|athletic wear|performance top|training top|workout top|gym top|sports top|spandex|elastane|dry[-\s]?fit|moisture[-\s]?wicking)\b/i;
+const HEAVY_OUTERWEAR_PATTERN = /\b(puffer|parka|duvet jacket|padded jacket|quilted jacket|winter coat|heavy coat|fur|shearling|down jacket|anorak|peacoat|overcoat|trench coat|duffel coat|toggle coat|wool coat)\b/i;
+const WATERPROOF_PATTERN = /\b(waterproof|water[-\s]?resistant|rain ?jacket|windbreaker|shell jacket|gore[-\s]?tex|mac|mackintosh|cagoule|pac[-\s]?a[-\s]?mac|hardshell)\b/i;
+const COLD_THRESHOLD = 10;
+const HOT_THRESHOLD = 25;
+const RAINY_PATTERN = /\b(rain|rainy|drizzle|shower|showers|wet|precipitation|storm|stormy|downpour)\b/i;
 
 const SKIN_TONE_LABELS = [
   { value: 0, label: 'Porcelain' },
@@ -116,6 +121,121 @@ function filterItemsForOccasion(items: any[], occasion: string): any[] {
   }
   // Smart casual and casual: allow hats and non-gym shoes but strip gym-specific clothing
   return items.filter(item => !isGymWearItem(item));
+}
+
+function isOuterwearCategory(item: any): boolean {
+  return normalizeCategory(item?.category) === 'outerwear';
+}
+
+function isHeavyOuterwear(item: any): boolean {
+  if (!isOuterwearCategory(item)) return false;
+  return HEAVY_OUTERWEAR_PATTERN.test(getItemSearchText(item));
+}
+
+function isWaterproofOuterwear(item: any): boolean {
+  return WATERPROOF_PATTERN.test(getItemSearchText(item));
+}
+
+function isRainyWeather(weather: { description: string }): boolean {
+  return RAINY_PATTERN.test(weather.description);
+}
+
+function getWeatherDirective(weather: { temp: number; description: string }, occasion: string): string {
+  const rainy = isRainyWeather(weather);
+  const cold = weather.temp < COLD_THRESHOLD;
+  const hot = weather.temp > HOT_THRESHOLD;
+
+  if (cold && rainy) {
+    return `WEATHER REQUIREMENT (MANDATORY): It is cold and rainy (${weather.temp}°C, ${weather.description}). You MUST include a waterproof outer layer — a rain jacket, waterproof coat, or windbreaker. Also include warm fabrics (wool, knit, fleece). This is required regardless of occasion.`;
+  }
+  if (cold) {
+    return `WEATHER REQUIREMENT (MANDATORY): It is cold (${weather.temp}°C, ${weather.description}). You MUST include a jacket, coat, or outerwear. Favour warm fabrics (wool, knit, fleece, padded). This is non-negotiable — an outfit without outerwear is wrong for this weather.`;
+  }
+  if (rainy) {
+    return `WEATHER REQUIREMENT (MANDATORY): It is rainy (${weather.temp}°C, ${weather.description}). You MUST include a waterproof outer layer — rain jacket, windbreaker, or waterproof coat. Do not skip outerwear even if it is mild.`;
+  }
+  if (hot) {
+    const hatNote = !isFormalOccasion(occasion) && !isBusinessOccasion(occasion)
+      ? ' A hat or sunglasses for sun protection is a good addition if available.'
+      : '';
+    return `WEATHER: Hot (${weather.temp}°C, ${weather.description}). Prioritise lightweight, breathable fabrics (linen, cotton, light jersey). NO heavy coats, puffers, thick jackets, or wool layers.${hatNote}`;
+  }
+  // Mild
+  return `WEATHER: Mild (${weather.temp}°C, ${weather.description}). Light layering is fine. A light jacket is optional but not required.`;
+}
+
+function filterItemsForWeather(items: any[], weather: { temp: number; description: string }, occasion: string): any[] {
+  if (weather.temp > HOT_THRESHOLD) {
+    if (isFormalOccasion(occasion) || isBusinessOccasion(occasion)) {
+      // Hot formal/business: keep blazers and light jackets, strip heavy coats only
+      return items.filter(item => !isHeavyOuterwear(item));
+    }
+    // Hot casual/smart casual: strip all outerwear
+    return items.filter(item => !isOuterwearCategory(item));
+  }
+  return items;
+}
+
+function normalizeSelectionForWeather(
+  selected: any[],
+  allCandidates: any[],
+  weather: { temp: number; description: string } | undefined,
+  isGym: boolean
+): any[] {
+  if (!weather || isGym) return selected;
+
+  let result = [...selected];
+  const cold = weather.temp < COLD_THRESHOLD;
+  const rainy = isRainyWeather(weather);
+  const hot = weather.temp > HOT_THRESHOLD;
+
+  // Hot: strip heavy outerwear that slipped through
+  if (hot) {
+    return dedupeById(result.filter(item => !isHeavyOuterwear(item)));
+  }
+
+  // Cold or rainy: ensure outerwear is present
+  if (cold || rainy) {
+    const hasOuterwear = result.some(isOuterwearCategory);
+    const outerwearPool = allCandidates.filter(isOuterwearCategory);
+
+    if (!hasOuterwear && outerwearPool.length > 0) {
+      // Prefer waterproof if rainy, otherwise first available
+      const inject = rainy
+        ? (outerwearPool.find(isWaterproofOuterwear) ?? outerwearPool[0])
+        : outerwearPool[0];
+
+      // Replace accessories/hats first, then add if room, then replace last item
+      const replaceIdx = result.findIndex(item => {
+        const cat = normalizeCategory(item?.category);
+        return cat === 'accessories' || cat === 'hats';
+      });
+      if (replaceIdx >= 0) {
+        result = [...result];
+        result[replaceIdx] = inject;
+      } else if (result.length < 5) {
+        result = [...result, inject];
+      } else {
+        result = [...result];
+        result[result.length - 1] = inject;
+      }
+    } else if (rainy && hasOuterwear) {
+      // Has outerwear but check it's waterproof
+      const hasWaterproof = result.some(isWaterproofOuterwear);
+      if (!hasWaterproof) {
+        const waterproofItem = allCandidates.find(item => isOuterwearCategory(item) && isWaterproofOuterwear(item));
+        if (waterproofItem) {
+          const replaceIdx = result.findIndex(item => isOuterwearCategory(item) && !isWaterproofOuterwear(item));
+          if (replaceIdx >= 0) {
+            result = [...result];
+            result[replaceIdx] = waterproofItem;
+          }
+        }
+      }
+    }
+  }
+
+  return dedupeById(result);
 }
 
 function getOccasionTier(occasion: string): { tier: string; guidance: string } {
@@ -241,9 +361,12 @@ serve(async (req) => {
     }
 
     const isGymRequest = isGymOccasion(occasion);
-    const candidateItems = isGymRequest
+    const occasionFiltered = isGymRequest
       ? items.filter((item: any) => isGymTop(item) || isGymBottom(item) || isGymShoe(item))
       : filterItemsForOccasion(items, occasion);
+    const candidateItems = (!isGymRequest && weather)
+      ? filterItemsForWeather(occasionFiltered, weather, occasion)
+      : occasionFiltered;
 
     if (isGymRequest) {
       if (!candidateItems.some(isGymTop)) {
@@ -352,7 +475,7 @@ Write 4–6 specific sentences. Reference the actual items chosen, the actual co
 
     const userPrompt = `Build the best outfit for: "${occasion}"
 Occasion tier: ${occasionTier.tier}
-${weather ? `Weather: ${weather.temp}°C, ${weather.description} — factor this in.\n` : ''}${colourStoryDirective}${avoidanceSection}${userProfile ? `User profile:
+${weather ? `${getWeatherDirective(weather, occasion)}\n` : ''}${colourStoryDirective}${avoidanceSection}${userProfile ? `User profile:
 - Skin tone: ${normalizedSkinTone} (USE for colour flattery)
 - Style preference: ${userProfile.stylePreference || 'not specified'} (CRITICAL: match closely)
 - Body type: ${userProfile.bodyType || 'not specified'}
@@ -438,9 +561,10 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
       .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= candidateItems.length)
       .map((idx: number) => candidateItems[idx - 1]);
 
-    const selectedItems = isGymRequest
+    const coreNormalized = isGymRequest
       ? normalizeSelectionForGym(parsedSelectedItems, candidateItems)
       : normalizeSelectionWithRequiredCore(parsedSelectedItems, candidateItems);
+    const selectedItems = normalizeSelectionForWeather(coreNormalized, candidateItems, weather, isGymRequest);
 
     return new Response(JSON.stringify({
       items: selectedItems,
