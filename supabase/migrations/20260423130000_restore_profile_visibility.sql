@@ -10,6 +10,8 @@
 -- or where they follow the target user, without exposing sensitive columns to
 -- any code that doesn't deliberately SELECT them.
 
+DROP POLICY IF EXISTS "Profiles: visible profile rows" ON public.profiles;
+
 CREATE POLICY "Profiles: visible profile rows"
 ON public.profiles
 FOR SELECT
