@@ -71,11 +71,11 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
     try {
       const path = `${user.id}/fit-pics/${Date.now()}.jpg`;
       const { error: uploadErr } = await supabase.storage
-        .from("social-media")
+        .from("social-content")
         .upload(path, croppedBlob, { contentType: "image/jpeg", cacheControl: "3600" });
       if (uploadErr) throw uploadErr;
 
-      const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
+      const { data: urlData } = supabase.storage.from("social-content").getPublicUrl(path);
       const imageUrl = urlData.publicUrl;
 
       const { error: insertErr } = await supabase.from("fit_pics").insert({

@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import { ChangePasswordSheet } from "@/components/ChangePasswordSheet";
 import { getSkinToneDisplay } from "@/lib/skinTone";
+import { SignedSocialImage } from "@/components/SignedSocialImage";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -253,7 +254,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   onContextMenu={(e) => { e.preventDefault(); setSelectedFitPic(pic); }}
                   className="aspect-square rounded-xl overflow-hidden relative"
                 >
-                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                  <SignedSocialImage src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
                   {pic.is_private && (
                     <div className="absolute top-1 right-1 bg-foreground/60 rounded-full px-1.5 py-0.5">
                       <span className="text-[8px] text-background">Private</span>
@@ -711,7 +712,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           >
             <X className="w-5 h-5" />
           </button>
-          <img
+          <SignedSocialImage
             src={fullscreenFitPic.image_url}
             alt={fullscreenFitPic.description || ""}
             className="max-w-full max-h-full object-contain"

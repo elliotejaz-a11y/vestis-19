@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SignedSocialImage } from "@/components/SignedSocialImage";
 interface UserProfileData {
   id: string;
   display_name: string | null;
@@ -393,7 +394,7 @@ export default function UserProfilePage() {
                     onClick={() => setFullscreenFitPic(pic)}
                     className="aspect-square relative"
                   >
-                    <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
+                    <SignedSocialImage src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
                   </button>
                 ))}
               </div>
@@ -436,7 +437,7 @@ export default function UserProfilePage() {
           >
             <X className="w-5 h-5" />
           </button>
-          <img
+          <SignedSocialImage
             src={fullscreenFitPic.image_url}
             alt={fullscreenFitPic.description || ""}
             className="max-w-full max-h-full object-contain"

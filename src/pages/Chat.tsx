@@ -20,6 +20,7 @@ import { formatPrice } from "@/lib/currency";
 import { ClothingItem } from "@/types/wardrobe";
 import { resolveSignedClothingImageFields } from "@/lib/storage";
 import { ReportSheet } from "@/components/ReportSheet";
+import { SignedSocialImage } from "@/components/SignedSocialImage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -894,10 +895,10 @@ function ChatView({
     try {
       const path = `${user.id}/chat-images/${Date.now()}-${file.name}`;
       const { error: uploadErr } = await supabase.storage
-        .from("social-media")
+        .from("social-content")
         .upload(path, file, { contentType: file.type, cacheControl: "3600" });
       if (uploadErr) throw uploadErr;
-      const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
+      const { data: urlData } = supabase.storage.from("social-content").getPublicUrl(path);
       const { error } = await sendMessage(`[IMG]${urlData.publicUrl}[/IMG]`);
       if (error) {
         toast({ title: "Failed to send image", description: error, variant: "destructive" });
@@ -960,7 +961,7 @@ function ChatView({
                     )}
                     <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm break-words whitespace-pre-wrap", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
                       {isImage && imageUrl ? (
-                        <img src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
+                        <SignedSocialImage src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
                       ) : renderBoldText(msg.content)}
                     </div>
                   </div>
@@ -993,7 +994,7 @@ function ChatView({
             <div className="grid grid-cols-4 gap-1">
               {fitPics.map((pic: any) => (
                 <button key={pic.id} onClick={() => sendFitPic(pic.image_url)} className="aspect-square rounded-lg overflow-hidden">
-                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                  <SignedSocialImage src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>

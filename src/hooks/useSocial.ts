@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { getSignedSocialUrl, getSignedSocialUrls } from "@/lib/storage";
 
 export interface SocialPost {
   id: string;
@@ -45,11 +46,16 @@ async function enrichPostsWithProfiles(postData: any[], userId: string) {
   ]);
   const likedPostIds = new Set((myLikes || []).map((l: any) => l.post_id));
   const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-  return postData.map((p: any) => ({
-    ...p,
-    user: profileMap.get(p.user_id),
-    liked_by_me: likedPostIds.has(p.id),
-  }));
+  // Resolve signed URLs for any social-content images in parallel
+  const enriched = await Promise.all(
+    postData.map(async (p: any) => ({
+      ...p,
+      image_urls: await getSignedSocialUrls(p.image_urls || []),
+      user: profileMap.get(p.user_id),
+      liked_by_me: likedPostIds.has(p.id),
+    }))
+  );
+  return enriched;
 }
 
 export function useSocial() {
@@ -119,7 +125,14 @@ export function useSocial() {
       const userIds = [...new Set(storyData.map((s: any) => s.user_id))];
       const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url").in("id", userIds);
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-      return storyData.map((s: any) => ({ ...s, user: profileMap.get(s.user_id) })) as SocialStory[];
+      const enriched = await Promise.all(
+        storyData.map(async (s: any) => ({
+          ...s,
+          image_url: (await getSignedSocialUrl(s.image_url)) || s.image_url,
+          user: profileMap.get(s.user_id),
+        }))
+      );
+      return enriched as SocialStory[];
     },
     enabled: !!user,
     staleTime: 30_000,
@@ -224,9 +237,12 @@ export function useSocial() {
     if (!user) return null;
     const ext = file.name.split(".").pop() || "jpg";
     const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
-    const { error } = await supabase.storage.from("social-media").upload(path, file, { contentType: file.type });
+    // Upload to private "social-content" bucket. Reads are gated by storage RLS
+    // tied to the related social_posts / social_stories row visibility.
+    const { error } = await supabase.storage.from("social-content").upload(path, file, { contentType: file.type });
     if (error) return null;
-    const { data } = supabase.storage.from("social-media").getPublicUrl(path);
+    // Store the canonical (non-public) object URL so consumers can resolve a signed URL at render.
+    const { data } = supabase.storage.from("social-content").getPublicUrl(path);
     return data.publicUrl;
   };
 
