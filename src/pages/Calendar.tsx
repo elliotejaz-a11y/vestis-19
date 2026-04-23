@@ -63,6 +63,7 @@ export function CalendarPage({ outfits }: Props) {
   const handleAssignOutfit = async (outfitId: string) => {
     if (!user || !selectedDate) return;
     setAssigning(true);
+    const previousState = plannedOutfits;
     try {
       const dateStr = format(selectedDate, "yyyy-MM-dd");
       const { data, error } = await supabase
@@ -73,29 +74,55 @@ export function CalendarPage({ outfits }: Props) {
       if (error) throw error;
       setPlannedOutfits((prev) => [...prev, data]);
       toast({ title: "Outfit planned! 📅" });
-    } catch {
-      toast({ title: "Failed to plan outfit", variant: "destructive" });
+    } catch (err) {
+      setPlannedOutfits(previousState);
+      toast({ title: "Couldn't save — please try again", variant: "destructive" });
+      console.error("handleAssignOutfit failed:", err);
     } finally {
       setAssigning(false);
     }
   };
 
   const handleMarkWorn = async (plannedId: string) => {
-    await supabase.from("planned_outfits").update({ worn: true } as any).eq("id", plannedId);
+    const previousState = plannedOutfits;
     setPlannedOutfits((prev) => prev.map((p) => (p.id === plannedId ? { ...p, worn: true } : p)));
-    toast({ title: "Marked as worn ✓" });
+    try {
+      const { error } = await supabase.from("planned_outfits").update({ worn: true } as any).eq("id", plannedId);
+      if (error) throw error;
+      toast({ title: "Marked as worn ✓" });
+    } catch (err) {
+      setPlannedOutfits(previousState);
+      toast({ title: "Couldn't save — please try again", variant: "destructive" });
+      console.error("handleMarkWorn failed:", err);
+    }
   };
 
   const handleUnmarkWorn = async (plannedId: string) => {
-    await supabase.from("planned_outfits").update({ worn: false } as any).eq("id", plannedId);
+    const previousState = plannedOutfits;
     setPlannedOutfits((prev) => prev.map((p) => (p.id === plannedId ? { ...p, worn: false } : p)));
-    toast({ title: "Unmarked as worn" });
+    try {
+      const { error } = await supabase.from("planned_outfits").update({ worn: false } as any).eq("id", plannedId);
+      if (error) throw error;
+      toast({ title: "Unmarked as worn" });
+    } catch (err) {
+      setPlannedOutfits(previousState);
+      toast({ title: "Couldn't save — please try again", variant: "destructive" });
+      console.error("handleUnmarkWorn failed:", err);
+    }
   };
 
   const handleRemovePlan = async (plannedId: string) => {
-    await supabase.from("planned_outfits").delete().eq("id", plannedId);
+    const previousState = plannedOutfits;
     setPlannedOutfits((prev) => prev.filter((p) => p.id !== plannedId));
-    toast({ title: "Plan removed" });
+    try {
+      const { error } = await supabase.from("planned_outfits").delete().eq("id", plannedId);
+      if (error) throw error;
+      toast({ title: "Plan removed" });
+    } catch (err) {
+      setPlannedOutfits(previousState);
+      toast({ title: "Couldn't save — please try again", variant: "destructive" });
+      console.error("handleRemovePlan failed:", err);
+    }
   };
 
   const handleCreateOutfit = () => {
