@@ -19,6 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import { ChangePasswordSheet } from "@/components/ChangePasswordSheet";
 import { getSkinToneDisplay } from "@/lib/skinTone";
+import { SignedSocialImage } from "@/components/SignedSocialImage";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;

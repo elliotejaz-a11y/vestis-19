@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SignedSocialImage } from "@/components/SignedSocialImage";
 interface UserProfileData {
   id: string;
   display_name: string | null;

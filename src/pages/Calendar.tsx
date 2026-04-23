@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, isToday, isBefore } from "date-fns";
 import { FitPicSheet } from "@/components/FitPicSheet";
 import { FitPicDetailSheet } from "@/components/FitPicDetailSheet";
+import { SignedSocialImage } from "@/components/SignedSocialImage";
 
 interface Props {
   outfits: Outfit[];
