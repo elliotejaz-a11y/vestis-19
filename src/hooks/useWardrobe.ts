@@ -442,7 +442,7 @@ export function useWardrobe() {
       if (!user) return;
       const item = items.find((i) => i.id === itemId);
       if (!item) return;
-      const sourceUrl = item.imageOriginalUrl || item.imageUrl;
+      const sourceUrl = item.imageOriginalUrl || item.imagePath || item.imageUrl;
       await supabase
         .from("clothing_items")
         .update({ image_status: "processing", image_error: null } as any)
@@ -494,7 +494,7 @@ export function useWardrobe() {
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
           is_private: item.isPrivate || false,
-          image_url: item.imageUrl,
+          image_url: item.imagePath || item.imageUrl,
           size: (item as any).size || "",
           privacy: (item as any).privacy || "public",
         } as any)
