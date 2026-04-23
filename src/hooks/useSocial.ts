@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { getSignedSocialUrl, getSignedSocialUrls } from "@/lib/storage";
 
 export interface SocialPost {
   id: string;
