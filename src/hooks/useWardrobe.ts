@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
+import { isStoragePath } from "@/lib/storage";
 import { getSkinToneDisplay } from "@/lib/skinTone";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
@@ -63,6 +64,10 @@ function formatList(values: string[]): string {
   if (unique.length === 1) return unique[0];
   if (unique.length === 2) return `${unique[0]} and ${unique[1]}`;
   return `${unique.slice(0, -1).join(", ")}, and ${unique[unique.length - 1]}`;
+}
+
+function normalizeStorageObjectPath(value: string): string {
+  return value.replace(/^\/+/, "");
 }
 
 function getItemSearchText(item: ClothingItem): string {
