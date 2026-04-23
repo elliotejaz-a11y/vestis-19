@@ -15,6 +15,14 @@ export function isStoragePath(value: string | null | undefined): value is string
   return Boolean(value) && !/^https?:\/\//i.test(value as string) && !value!.startsWith("blob:") && !value!.startsWith("data:");
 }
 
+export function getStoragePathFromUrl(bucket: SignedStorageBucket, value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (isStoragePath(value)) return value;
+
+  const publicMatch = value.match(new RegExp(`/storage/v1/object/(?:public|sign)/${bucket}/(.+?)(?:\?|$)`));
+  return publicMatch ? decodeURIComponent(publicMatch[1]) : null;
+}
+
 export async function getSignedStorageUrl(
   bucket: SignedStorageBucket,
   path: string | null | undefined,
@@ -33,13 +41,17 @@ export async function getSignedStorageUrl(
 }
 
 export async function resolveSignedClothingImageFields<T extends ImageFields>(item: T): Promise<T> {
+  const imagePath = item.imagePath ?? getStoragePathFromUrl("clothing-images", item.imageUrl);
+  const backImagePath = item.backImagePath ?? getStoragePathFromUrl("clothing-images", item.backImageUrl);
   const [imageUrl, backImageUrl] = await Promise.all([
-    item.imagePath ? getSignedStorageUrl("clothing-images", item.imagePath, { fallbackUrl: item.imageUrl ?? null }) : Promise.resolve(item.imageUrl ?? null),
-    item.backImagePath ? getSignedStorageUrl("clothing-images", item.backImagePath, { fallbackUrl: item.backImageUrl ?? null }) : Promise.resolve(item.backImageUrl ?? null),
+    imagePath ? getSignedStorageUrl("clothing-images", imagePath, { fallbackUrl: item.imageUrl ?? null }) : Promise.resolve(item.imageUrl ?? null),
+    backImagePath ? getSignedStorageUrl("clothing-images", backImagePath, { fallbackUrl: item.backImageUrl ?? null }) : Promise.resolve(item.backImageUrl ?? null),
   ]);
 
   return {
     ...item,
+    imagePath: imagePath ?? undefined,
+    backImagePath: backImagePath ?? undefined,
     imageUrl: imageUrl ?? "",
     backImageUrl: backImageUrl ?? undefined,
   };
