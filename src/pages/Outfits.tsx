@@ -36,6 +36,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const [popupOutfit, setPopupOutfit] = useState<Outfit | null>(null);
   const [chatOutfit, setChatOutfit] = useState<Outfit | null>(null);
   const [colourStory, setColourStory] = useState("surprise");
+  const [showColourPicker, setShowColourPicker] = useState(false);
   const [weather, setWeather] = useState<{ temp: number; description: string } | null>(null);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -174,32 +175,44 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         </div>
       </div>
 
-      {/* Colour story picker — remove this block to revert */}
+      {/* Colour story picker — optional, collapsed by default */}
       <div className="px-5 pb-4">
-        <p className="text-xs font-medium text-muted-foreground mb-2">Colour palette:</p>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { id: "surprise", label: "Surprise me" },
-            { id: "neutral-anchor", label: "Neutral anchor" },
-            { id: "tonal", label: "Tonal" },
-            { id: "monochromatic", label: "Monochromatic" },
-            { id: "analogous", label: "Analogous" },
-            { id: "complementary", label: "Complementary" },
-          ].map((opt) => (
-            <button
-              key={opt.id}
-              onClick={() => setColourStory(opt.id)}
-              className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all",
-                colourStory === opt.id
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-card text-muted-foreground border border-border hover:border-accent/50"
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={() => {
+            setShowColourPicker(v => !v);
+            if (showColourPicker) setColourStory("surprise");
+          }}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {showColourPicker
+            ? "Hide colour palette"
+            : `Colour palette${colourStory !== "surprise" ? `: ${colourStory.replace(/-/g, " ")}` : ""} ›`}
+        </button>
+        {showColourPicker && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            {[
+              { id: "surprise", label: "Surprise me" },
+              { id: "neutral-anchor", label: "Neutral anchor" },
+              { id: "tonal", label: "Tonal" },
+              { id: "monochromatic", label: "Monochromatic" },
+              { id: "analogous", label: "Analogous" },
+              { id: "complementary", label: "Complementary" },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                onClick={() => setColourStory(opt.id)}
+                className={cn(
+                  "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all",
+                  colourStory === opt.id
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-card text-muted-foreground border border-border hover:border-accent/50"
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Generate button */}
