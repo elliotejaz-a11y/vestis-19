@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { User, Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X } from "lucide-react";
+import { Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
 import { convertPrice, formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -178,13 +179,15 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       </div>
       <header className="px-5 pt-12 pb-6">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-20 h-20 rounded-full bg-card border border-border flex items-center justify-center overflow-hidden">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
-            ) : (
-              <User className="w-8 h-8 text-muted-foreground" />
-            )}
-          </div>
+          <UserAvatar
+            avatarUrl={profile?.avatar_url}
+            avatarPreset={profile?.avatar_preset}
+            displayName={profile?.display_name}
+            email={user?.email}
+            userId={user?.id}
+            avatarPosition={profile?.avatar_position}
+            className="w-20 h-20 bg-card border border-border"
+          />
           <div className="text-center">
             <h1 className="text-xl font-bold tracking-tight text-foreground">
               {displayNameForTitle}

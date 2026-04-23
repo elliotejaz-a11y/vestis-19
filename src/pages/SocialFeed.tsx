@@ -10,7 +10,8 @@ import { useSocial, SocialStory } from "@/hooks/useSocial";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { User, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
 
 type Tab = "feed" | "discover";
 
@@ -53,15 +54,15 @@ export default function SocialFeed() {
     const q = query.trim();
     const { data } = await supabase
       .from("profiles")
-      .select("id, display_name, username, avatar_url")
+      .select("id, display_name, username, avatar_url, avatar_preset")
       .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
       .limit(10);
-    setSearchResults((data || []).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
+    setSearchResults((data || []).filter(u => u.username && !/^user\d*$/i.test(u.username)));
     setSearching(false);
   }, []);
 
   const feedPosts = posts;
-  const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.avatar_url && p.user?.username && !/^user\d*$/i.test(p.user.username));
+  const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.username && !/^user\d*$/i.test(p.user.username));
   const displayPosts = tab === "feed" ? feedPosts : discoverPosts;
 
   return (
@@ -111,15 +112,13 @@ export default function SocialFeed() {
                   onClick={() => navigate(`/user/${u.id}`)}
                   className="w-full flex items-center gap-3 p-3 hover:bg-muted transition-transform duration-150 text-left"
                 >
-                  <div className="w-9 h-9 rounded-full overflow-hidden bg-muted flex-shrink-0">
-                    {u.avatar_url ? (
-                      <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
+                  <UserAvatar
+                    avatarUrl={u.avatar_url}
+                    avatarPreset={u.avatar_preset}
+                    displayName={u.display_name}
+                    userId={u.id}
+                    className="w-9 h-9 flex-shrink-0 bg-muted"
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-foreground truncate">{u.display_name || u.username}</p>
                     {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
@@ -168,15 +167,12 @@ export default function SocialFeed() {
       {viewingStory && (
         <div className="fixed inset-0 z-50 bg-background flex flex-col" onClick={() => setViewingStory(null)}>
           <div className="flex items-center gap-3 px-4 py-3">
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-muted">
-              {viewingStory.user?.avatar_url ? (
-                <img src={viewingStory.user.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                </div>
-              )}
-            </div>
+            <UserAvatar
+              avatarUrl={viewingStory.user?.avatar_url}
+              displayName={viewingStory.user?.display_name}
+              userId={viewingStory.user_id}
+              className="w-8 h-8 bg-muted"
+            />
             <span className="text-xs font-semibold text-foreground">
               {viewingStory.user?.username || viewingStory.user?.display_name}
             </span>

@@ -1,5 +1,6 @@
 import { SocialPost } from "@/hooks/useSocial";
-import { Heart, MessageCircle, Trash2, User, MoreVertical, Flag } from "lucide-react";
+import { Heart, MessageCircle, Trash2, MoreVertical, Flag } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
 import { cn } from "@/lib/utils";
 import { useState, memo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -29,17 +30,13 @@ export const PostCard = memo(function PostCard({ post, onLike, onDelete, isOwn }
       <div className="bg-card border-y border-border/40">
         {/* Header */}
         <div className="flex items-center gap-2.5 px-4 py-3">
-          <button
-            onClick={() => navigate(`/user/${post.user_id}`)}
-            className="w-8 h-8 rounded-full overflow-hidden bg-muted flex-shrink-0"
-          >
-            {post.user?.avatar_url ? (
-              <img src={post.user.avatar_url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <User className="w-4 h-4 text-muted-foreground" />
-              </div>
-            )}
+          <button onClick={() => navigate(`/user/${post.user_id}`)}>
+            <UserAvatar
+              avatarUrl={post.user?.avatar_url}
+              displayName={post.user?.display_name}
+              userId={post.user_id}
+              className="w-8 h-8"
+            />
           </button>
           <button
             onClick={() => navigate(`/user/${post.user_id}`)}

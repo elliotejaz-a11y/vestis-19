@@ -7,6 +7,7 @@ interface Profile {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  avatar_preset: string | null;
   avatar_position: string;
   bio: string | null;
   is_public: boolean;
@@ -28,7 +29,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  updateProfile: (data: Partial<Profile>) => Promise<void>;
+  updateProfile: (data: Partial<Profile>) => Promise<{ error: any } | void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -107,7 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (data: Partial<Profile>) => {
     if (!user) return;
-    await supabase.from("profiles").update(data).eq("id", user.id);
+    const { error } = await supabase.from("profiles").update(data).eq("id", user.id);
+    if (error) { console.error("updateProfile failed:", error); return { error }; }
     await fetchProfile(user.id);
   };
 

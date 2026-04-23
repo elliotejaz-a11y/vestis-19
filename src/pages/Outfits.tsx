@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
-  onGenerate: (occasion: string, weather?: { temp: number; description: string }) => Promise<Outfit | null>;
+  onGenerate: (occasion: string, weather?: { temp: number; description: string }, colourStory?: string) => Promise<Outfit | null>;
   onSave?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onDelete?: (id: string) => void;
 }
@@ -29,6 +29,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const [latestOutfit, setLatestOutfit] = useState<Outfit | null>(null);
   const [popupOutfit, setPopupOutfit] = useState<Outfit | null>(null);
   const [chatOutfit, setChatOutfit] = useState<Outfit | null>(null);
+  const [colourStory, setColourStory] = useState("surprise");
   const [weather, setWeather] = useState<{ temp: number; description: string } | null>(null);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
@@ -86,7 +87,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
     if (!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms || !hasTopHalf) return;
     setGenerating(true);
     try {
-      const outfit = await onGenerate(activeOccasion, weather || undefined);
+      const outfit = await onGenerate(activeOccasion, weather || undefined, colourStory !== "surprise" ? colourStory : undefined);
       setLatestOutfit(outfit);
       if (outfit) {
         setPopupOutfit(outfit);
@@ -169,6 +170,34 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
               )}
             >
               {occ}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Colour story picker — remove this block to revert */}
+      <div className="px-5 pb-4">
+        <p className="text-xs font-medium text-muted-foreground mb-2">Colour palette:</p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { id: "surprise", label: "Surprise me" },
+            { id: "neutral-anchor", label: "Neutral anchor" },
+            { id: "tonal", label: "Tonal" },
+            { id: "monochromatic", label: "Monochromatic" },
+            { id: "analogous", label: "Analogous" },
+            { id: "complementary", label: "Complementary" },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              onClick={() => setColourStory(opt.id)}
+              className={cn(
+                "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all",
+                colourStory === opt.id
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-card text-muted-foreground border border-border hover:border-accent/50"
+              )}
+            >
+              {opt.label}
             </button>
           ))}
         </div>

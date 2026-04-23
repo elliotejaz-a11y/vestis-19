@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, UserPlus, UserCheck, Users, ArrowLeft, Shirt, Lock, Loader2, X, Bell, MessageCircle } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/currency";
@@ -17,6 +18,7 @@ interface FriendProfile {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  avatar_preset: string | null;
   is_public: boolean;
 }
 
@@ -66,7 +68,7 @@ export default function Friends() {
     if (mutualIds.length > 0) {
       const { data: profiles } = await supabase
         .from("profiles")
-        .select("id, display_name, username, avatar_url, is_public")
+        .select("id, display_name, username, avatar_url, avatar_preset, is_public")
         .in("id", mutualIds);
       setFriends((profiles || []) as FriendProfile[]);
     } else {
@@ -87,12 +89,12 @@ export default function Friends() {
 
     const { data } = await supabase
       .from("profiles")
-      .select("id, display_name, username, avatar_url, is_public")
+      .select("id, display_name, username, avatar_url, avatar_preset, is_public")
       .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
       .neq("id", user.id)
       .limit(10);
 
-    setSearchResults(((data || []) as FriendProfile[]).filter(u => u.avatar_url && u.username && !/^user\d*$/i.test(u.username)));
+    setSearchResults(((data || []) as FriendProfile[]).filter(u => u.username && !/^user\d*$/i.test(u.username)));
     setSearching(false);
   };
 
@@ -135,17 +137,6 @@ export default function Friends() {
     setLoadingWardrobe(false);
   };
 
-  const renderAvatar = (profile: FriendProfile, size = "w-12 h-12") => (
-    <div className={cn(size, "rounded-full overflow-hidden bg-card border border-border flex-shrink-0")}>
-      {profile.avatar_url ? (
-        <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center">
-          <Users className="w-5 h-5 text-muted-foreground" />
-        </div>
-      )}
-    </div>
-  );
 
   // Friend's wardrobe view
   if (view === "wardrobe" && selectedFriend) {
@@ -156,7 +147,13 @@ export default function Friends() {
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
           </Button>
           <div className="flex items-center gap-3">
-            {renderAvatar(selectedFriend, "w-10 h-10")}
+            <UserAvatar
+              avatarUrl={selectedFriend.avatar_url}
+              avatarPreset={selectedFriend.avatar_preset}
+              displayName={selectedFriend.display_name}
+              userId={selectedFriend.id}
+              className="w-10 h-10 flex-shrink-0 bg-card border border-border"
+            />
             <div>
               <h1 className="text-lg font-bold text-foreground">{selectedFriend.display_name || selectedFriend.username || "User"}</h1>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -234,7 +231,13 @@ export default function Friends() {
                 onClick={() => navigate(`/user/${p.id}`)}
                 className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40 text-left hover:bg-muted/50 transition-colors"
               >
-                {renderAvatar(p)}
+                <UserAvatar
+                  avatarUrl={p.avatar_url}
+                  avatarPreset={p.avatar_preset}
+                  displayName={p.display_name}
+                  userId={p.id}
+                  className="w-12 h-12 flex-shrink-0 bg-card border border-border"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{p.display_name || p.username || "User"}</p>
                   {p.username && <p className="text-xs text-muted-foreground">@{p.username}</p>}
@@ -311,7 +314,13 @@ export default function Friends() {
               onClick={() => viewFriendWardrobe(friend)}
               className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40 text-left hover:bg-muted/50 transition-colors"
             >
-              {renderAvatar(friend)}
+              <UserAvatar
+                avatarUrl={friend.avatar_url}
+                avatarPreset={friend.avatar_preset}
+                displayName={friend.display_name}
+                userId={friend.id}
+                className="w-12 h-12 flex-shrink-0 bg-card border border-border"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{friend.display_name || friend.username || "User"}</p>
                 {friend.username && <p className="text-xs text-muted-foreground">@{friend.username}</p>}

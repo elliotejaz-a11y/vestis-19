@@ -200,7 +200,7 @@ serve(async (req) => {
       });
     }
 
-    const { occasion, items, userProfile, weather } = await req.json();
+    const { occasion, items, userProfile, weather, recentOutfitItemIds, colourStory } = await req.json();
     const normalizedSkinTone = normalizeSkinTone(userProfile?.skinTone);
 
     if (!occasion || typeof occasion !== 'string' || occasion.length > 200) {
@@ -265,6 +265,25 @@ serve(async (req) => {
       return `${i + 1}. [${String(item.category || '').toLowerCase()}] "${String(item.name || '').slice(0, 80)}" — colour: ${String(item.color || 'unspecified').slice(0, 30)}, fabric: ${String(item.fabric || 'unspecified').slice(0, 30)}${tags ? `, tags: [${tags}]` : ''}${notes}`;
     }).join('\n');
 
+    const recentOutfitIndices = Array.isArray(recentOutfitItemIds)
+      ? recentOutfitItemIds
+          .slice(0, 5)
+          .map((idSet: string[]) =>
+            (Array.isArray(idSet) ? idSet : [])
+              .map((id: string) => candidateItems.findIndex((item: any) => String(item.id) === String(id)) + 1)
+              .filter((idx: number) => idx > 0)
+          )
+          .filter((indices: number[]) => indices.length >= 2)
+      : [];
+
+    const avoidanceSection = recentOutfitIndices.length > 0
+      ? `RECENT OUTFITS — do NOT recreate these exact item combinations. Look beyond them to explore the full wardrobe:\n${recentOutfitIndices.map((indices: number[], i: number) => `- Recent outfit ${i + 1}: wardrobe positions [${indices.join(', ')}]`).join('\n')}\n`
+      : '';
+
+    const colourStoryDirective = (colourStory && colourStory !== 'surprise')
+      ? `COLOUR STORY (required for this outfit): ${String(colourStory).replace(/-/g, ' ').toUpperCase()}. Only select items whose colours fit this palette. Name this choice in your reasoning.\n`
+      : `COLOUR STORY: Your choice — pick whichever palette approach fits best (tonal, neutral-anchor, analogous, complementary, or monochromatic). Name your choice in the reasoning.\n`;
+
     const systemPrompt = `You are a senior personal fashion stylist with 30 years of experience dressing real people for real occasions. Your job is to build a sensible, flattering, occasion-appropriate outfit from the user's actual wardrobe. You think like a stylist, not a robot.
 
 ## OCCASION TIER (locked in for this request)
@@ -275,7 +294,13 @@ serve(async (req) => {
 2. The outfit MUST include exactly: 1 top (or jumper), 1 bottom, 1 pair of shoes — at minimum. Add outerwear/hat/accessory ONLY if it enhances the look and fits the occasion.
 3. For ACTIVE/GYM: return EXACTLY 3 items (top + bottom + shoes) — no exceptions.
 4. Pick items that genuinely make sense together. If the user has 10 pairs of pants, choose the ONE that best fits the occasion (e.g. track pants for gym, suit trousers for wedding, dark jeans for date night).
-5. Colour harmony matters: build a deliberate palette (2–3 colours max), avoid clashing.
+5. COLOUR COORDINATION — before selecting any item, decide on a colour story, then only choose pieces whose colours fit it:
+   - TONAL: shades of the same colour family (e.g. all navy/blue tones, all camel/tan/brown).
+   - NEUTRAL ANCHOR: 2+ neutrals (black/white/grey/navy/beige/camel) as base, one accent colour max.
+   - ANALOGOUS: colours adjacent on the wheel (e.g. blue + green + teal, orange + red + rust).
+   - COMPLEMENTARY: colours opposite on the wheel (e.g. navy + tan, burgundy + olive, cobalt + rust).
+   - MONOCHROMATIC: one colour across all pieces in different shades (e.g. all black, all white, all grey).
+   Always name the colour story in your reasoning. Never randomly pick items hoping the colours work.
 6. Fabric/weather: heavier fabrics for cold weather, lightweight breathable for warm. Match formality of fabric to occasion.
 
 ## SKIN TONE FLATTERY
@@ -293,8 +318,7 @@ Write 4–6 specific sentences. Reference the actual items chosen, the actual co
 
     const userPrompt = `Build the best outfit for: "${occasion}"
 Occasion tier: ${occasionTier.tier}
-${weather ? `Weather: ${weather.temp}°C, ${weather.description} — factor this in.\n` : ''}
-${userProfile ? `User profile:
+${weather ? `Weather: ${weather.temp}°C, ${weather.description} — factor this in.\n` : ''}${colourStoryDirective}${avoidanceSection}${userProfile ? `User profile:
 - Skin tone: ${normalizedSkinTone} (USE for colour flattery)
 - Style preference: ${userProfile.stylePreference || 'not specified'} (CRITICAL: match closely)
 - Body type: ${userProfile.bodyType || 'not specified'}

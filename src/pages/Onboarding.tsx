@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, HelpCircle, Pencil, Loader2, X } from "lucide-react";
+import { UserAvatar, AVATAR_PRESET_LIST } from "@/components/UserAvatar";
 import { StyleQuizSheet } from "@/components/StyleQuizSheet";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ interface OnboardingProps {
 export default function Onboarding({ editMode = false, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarPreset, setAvatarPreset] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [editingUsername, setEditingUsername] = useState(false);
@@ -80,6 +82,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   useEffect(() => {
     if (editMode && profile) {
       setAvatarUrl(profile.avatar_url || "");
+      setAvatarPreset(profile.avatar_preset || null);
       setDisplayName(profile.display_name || "");
       setUsername(profile.username || "");
       setBio(profile.bio || "");
@@ -145,15 +148,33 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+    const ALLOWED_EXTS  = ["jpg", "jpeg", "png", "webp", "heic", "heif"];
+    if (!ALLOWED_TYPES.includes(file.type.toLowerCase()) && !ALLOWED_EXTS.includes(ext)) {
+      toast({ title: "Unsupported file type", description: "Please use a JPEG, PNG, or WebP image.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please choose an image under 8 MB.", variant: "destructive" });
+      return;
+    }
+
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `${user.id}/avatar.${ext}`;
-      await supabase.storage.from("clothing-images").upload(path, file, { upsert: true, contentType: file.type });
-      const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-      setAvatarUrl(urlData.publicUrl + "?t=" + Date.now());
-    } catch {
-      toast({ title: "Upload failed", variant: "destructive" });
+      const safeExt = ALLOWED_EXTS.includes(ext) ? ext : "jpg";
+      const path = `${user.id}/avatar-${Date.now()}.${safeExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from("social-media")
+        .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" });
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
+      setAvatarUrl(urlData.publicUrl + "?v=" + Date.now());
+      setAvatarPreset(null);
+    } catch (err: any) {
+      console.error("Avatar upload failed:", err);
+      toast({ title: "Couldn't upload photo", description: "Please try a different image.", variant: "destructive" });
     }
     setUploading(false);
   };
@@ -234,18 +255,66 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       content: (
         <div className="space-y-5">
           <div className="flex flex-col items-center gap-3">
+            {/* Avatar preview */}
+            <div className="relative">
+              <UserAvatar
+                avatarUrl={avatarUrl}
+                avatarPreset={avatarPreset}
+                displayName={displayName || undefined}
+                email={user?.email}
+                userId={user?.id}
+                className="w-24 h-24 border-2 border-border"
+              />
+              {uploading && (
+                <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 text-white animate-spin" />
+                </div>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+            {/* Upload button */}
             <button
               onClick={() => fileRef.current?.click()}
-              className="w-24 h-24 rounded-full border-2 border-dashed border-border flex items-center justify-center overflow-hidden hover:border-accent transition-colors"
+              disabled={uploading}
+              className="flex items-center gap-1.5 text-xs text-accent font-medium hover:underline disabled:opacity-50"
             >
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
-              ) : (
-                <Camera className="w-8 h-8 text-muted-foreground" />
-              )}
+              <Camera className="w-3.5 h-3.5" />
+              {uploading ? "Uploading..." : avatarUrl ? "Change photo" : "Upload photo"}
             </button>
-            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
-            <p className="text-xs text-muted-foreground">{uploading ? "Uploading..." : "Tap to add a profile picture"}</p>
+            {/* Preset picker */}
+            <div className="w-full space-y-1.5">
+              <p className="text-[10px] text-muted-foreground text-center">Or pick a default</p>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => { setAvatarUrl(""); setAvatarPreset(null); }}
+                  className={cn(
+                    "w-10 h-10 rounded-full overflow-hidden border-2 transition-all",
+                    !avatarUrl && !avatarPreset ? "border-accent" : "border-transparent"
+                  )}
+                  title="Initials"
+                >
+                  <UserAvatar
+                    displayName={displayName || undefined}
+                    email={user?.email}
+                    userId={user?.id}
+                    className="w-full h-full rounded-none"
+                  />
+                </button>
+                {AVATAR_PRESET_LIST.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => { setAvatarUrl(""); setAvatarPreset(p.id); }}
+                    className={cn(
+                      "w-10 h-10 rounded-full overflow-hidden border-2 transition-all",
+                      !avatarUrl && avatarPreset === p.id ? "border-accent" : "border-transparent"
+                    )}
+                    title={p.label}
+                  >
+                    <UserAvatar avatarPreset={p.id} className="w-full h-full rounded-none" />
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
           {/* Display Name */}
           <div>
@@ -311,7 +380,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           </div>
         </div>
       ),
-      valid: !!avatarUrl && !!username.trim() && username.trim().length >= 3 && usernameAvailable !== false && !checkingUsername && !!displayName.trim(),
+      valid: !!username.trim() && username.trim().length >= 3 && usernameAvailable !== false && !checkingUsername && !!displayName.trim(),
     },
     {
       title: "Account Privacy",
@@ -460,7 +529,6 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
 
   const handleNext = () => {
     if (step === 0) {
-      if (!avatarUrl) { setProfileError("Please add a profile picture"); return; }
       if (!displayName.trim()) { setProfileError("Please enter your display name"); return; }
       if (!username.trim()) { setProfileError("Please choose a username"); return; }
       if (username.trim().length < 3) { setProfileError("Username must be at least 3 characters"); return; }
@@ -504,6 +572,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         onboarding_completed: true,
         display_name: displayName.trim() || null,
         avatar_url: avatarUrl || null,
+        avatar_preset: avatarPreset || null,
         bio: bio || null,
         username: username.trim() || null,
         is_public: isPublic,

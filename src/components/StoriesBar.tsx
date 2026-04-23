@@ -1,5 +1,5 @@
 import { SocialStory } from "@/hooks/useSocial";
-import { User } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
 
 interface Props {
   stories: SocialStory[];
@@ -39,15 +39,12 @@ export function StoriesBar({ stories, onAdd, onView }: Props) {
           className="flex flex-col items-center gap-1 flex-shrink-0"
         >
           <div className="w-16 h-16 rounded-full border-2 border-accent p-0.5">
-            <div className="w-full h-full rounded-full overflow-hidden bg-card">
-              {user?.avatar_url ? (
-                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-muted-foreground" />
-                </div>
-              )}
-            </div>
+            <UserAvatar
+              avatarUrl={user?.avatar_url}
+              displayName={user?.display_name}
+              userId={userId}
+              className="w-full h-full bg-card"
+            />
           </div>
           <span className="text-[10px] text-foreground truncate w-16 text-center">
             {user?.username || user?.display_name || "User"}

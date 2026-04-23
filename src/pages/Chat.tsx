@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   ArrowLeft, MessageCircle, Send, Loader2, AlertTriangle,
-  Search, UserPlus, UserCheck, Users, Bell, Check, CheckCheck, Shirt, Compass, Sparkles, Image, MoreVertical, Flag, X, User
+  Search, UserPlus, UserCheck, Users, Bell, Check, CheckCheck, Shirt, Compass, Sparkles, Image, MoreVertical, Flag, X
 } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
 
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -42,6 +43,7 @@ interface FriendProfile {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  avatar_preset: string | null;
   is_public: boolean;
   style_preference?: string | null;
   bio?: string | null;
@@ -190,7 +192,7 @@ function MessagesTab({
     const myFollowers = (followers || []).map((f: any) => f.follower_id);
     const mutualIds = myFollowing.filter((id: string) => myFollowers.includes(id));
     if (mutualIds.length > 0) {
-      const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url, is_public").in("id", mutualIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url, avatar_preset, is_public").in("id", mutualIds);
       setFriends((profiles || []) as FriendProfile[]);
     } else {
       setFriends([]);
@@ -220,7 +222,7 @@ function MessagesTab({
           <div className="space-y-1">
             {newFriends.map(f => (
               <button key={f.id} onClick={() => onNewChat(f)} className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40 text-left hover:bg-muted/50 transition-colors">
-                <Avatar url={f.avatar_url} name={f.display_name || f.username || "U"} />
+                <UserAvatar avatarUrl={f.avatar_url} avatarPreset={f.avatar_preset} displayName={f.display_name} userId={f.id} className="w-11 h-11 flex-shrink-0 bg-muted border border-border" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{f.display_name || f.username || "User"}</p>
                   {f.username && <p className="text-xs text-muted-foreground">@{f.username}</p>}
@@ -261,7 +263,7 @@ function MessagesTab({
               onClick={() => onSelectFriend(conv)}
               className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40 text-left hover:bg-muted/50 transition-colors"
             >
-              <Avatar url={conv.friendAvatar} name={conv.friendName} size="w-11 h-11" />
+              <UserAvatar avatarUrl={conv.friendAvatar} displayName={conv.friendName} userId={conv.friendId} className="w-11 h-11 flex-shrink-0 bg-muted border border-border" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <p className={cn("text-sm font-semibold text-foreground truncate", conv.unreadCount > 0 && "font-bold")}>
@@ -318,7 +320,7 @@ function FriendsTab() {
     setFollowerIds(myFollowers);
     const mutualIds = myFollowing.filter((id: string) => myFollowers.includes(id));
     if (mutualIds.length > 0) {
-      const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url, is_public").in("id", mutualIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url, avatar_preset, is_public").in("id", mutualIds);
       setFriends((profiles || []) as FriendProfile[]);
     } else {
       setFriends([]);
@@ -334,7 +336,7 @@ function FriendsTab() {
     if (!searchQuery.trim() || searchQuery.trim().length < 3 || !user) return;
     setSearching(true);
     const q = searchQuery.trim().toLowerCase();
-    const { data } = await supabase.from("profiles").select("id, display_name, username, avatar_url, is_public").or(`username.ilike.%${q}%,display_name.ilike.%${q}%`).neq("id", user.id).limit(10);
+    const { data } = await supabase.from("profiles").select("id, display_name, username, avatar_url, avatar_preset, is_public").or(`username.ilike.%${q}%,display_name.ilike.%${q}%`).neq("id", user.id).limit(10);
     setSearchResults((data || []) as FriendProfile[]);
     setSearching(false);
   };
@@ -371,7 +373,7 @@ function FriendsTab() {
           <ArrowLeft className="w-4 h-4 mr-1" /> Back
         </Button>
         <div className="flex items-center gap-3 mb-4">
-          <Avatar url={selectedFriend.avatar_url} name={selectedFriend.display_name || selectedFriend.username || "U"} size="w-10 h-10" />
+          <UserAvatar avatarUrl={selectedFriend.avatar_url} avatarPreset={selectedFriend.avatar_preset} displayName={selectedFriend.display_name} userId={selectedFriend.id} className="w-10 h-10 flex-shrink-0 bg-muted border border-border" />
           <div>
             <p className="text-sm font-bold text-foreground">{selectedFriend.display_name || selectedFriend.username || "User"}</p>
             <p className="text-xs text-muted-foreground flex items-center gap-1"><Shirt className="w-3 h-3" /> {friendWardrobe.length} items</p>
@@ -422,7 +424,7 @@ function FriendsTab() {
             const isFriend = isMutualFriend(p.id);
             return (
               <div key={p.id} className="flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40">
-                <Avatar url={p.avatar_url} name={p.display_name || p.username || "U"} />
+                <UserAvatar avatarUrl={p.avatar_url} avatarPreset={p.avatar_preset} displayName={p.display_name} userId={p.id} className="w-11 h-11 flex-shrink-0 bg-muted border border-border" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{p.display_name || p.username || "User"}</p>
                   {p.username && <p className="text-xs text-muted-foreground">@{p.username}</p>}
@@ -465,7 +467,7 @@ function FriendsTab() {
         <div className="space-y-1">
           {friends.map((friend) => (
             <button key={friend.id} onClick={() => navigate(`/user/${friend.id}`, { state: { from: "friends" } })} className="w-full flex items-center gap-3 p-3 rounded-2xl bg-card border border-border/40 text-left hover:bg-muted/50 transition-colors">
-              <Avatar url={friend.avatar_url} name={friend.display_name || friend.username || "U"} />
+              <UserAvatar avatarUrl={friend.avatar_url} avatarPreset={friend.avatar_preset} displayName={friend.display_name} userId={friend.id} className="w-11 h-11 flex-shrink-0 bg-muted border border-border" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{friend.display_name || friend.username || "User"}</p>
                 {friend.username && <p className="text-xs text-muted-foreground">@{friend.username}</p>}
@@ -511,36 +513,14 @@ function DiscoverTab() {
     // Fetch public profiles (excluding self)
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("id, display_name, username, avatar_url, is_public, style_preference, bio")
+      .select("id, display_name, username, avatar_url, avatar_preset, is_public, style_preference, bio")
       .eq("is_public", true)
       .neq("id", user.id)
       .limit(50);
 
     if (profiles) {
-      // Filter out incomplete profiles (no avatar / placeholder usernames)
-      const filtered = profiles.filter((p: any) => p.avatar_url && p.username && !/^user\d*$/i.test(p.username));
-
-      // Validate that each avatar URL actually loads — drop ones that 404 or error
-      const validated = await Promise.all(
-        filtered.map(
-          (p: any) =>
-            new Promise<any | null>((resolve) => {
-              const img = new window.Image();
-              const timeout = setTimeout(() => resolve(null), 5000);
-              img.onload = () => {
-                clearTimeout(timeout);
-                resolve(img.naturalWidth > 0 ? p : null);
-              };
-              img.onerror = () => {
-                clearTimeout(timeout);
-                resolve(null);
-              };
-              img.src = p.avatar_url;
-            })
-        )
-      );
-      const usable = validated.filter(Boolean);
-      const shuffled = [...usable].sort(() => Math.random() - 0.5);
+      const filtered = profiles.filter((p: any) => p.username && !/^user\d*$/i.test(p.username));
+      const shuffled = [...filtered].sort(() => Math.random() - 0.5);
       setPeople(shuffled as FriendProfile[]);
     }
     setLoading(false);
@@ -599,7 +579,7 @@ function DiscoverTab() {
                 }}
                 className="flex cursor-pointer items-center gap-3 rounded-2xl border border-border/40 bg-card p-3 transition-colors hover:bg-muted/50"
               >
-                <Avatar url={p.avatar_url} name={p.display_name || p.username || "U"} size="w-12 h-12" />
+                <UserAvatar avatarUrl={p.avatar_url} avatarPreset={p.avatar_preset} displayName={p.display_name} userId={p.id} className="w-12 h-12 flex-shrink-0 bg-muted border border-border" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground truncate">{p.display_name || p.username || "User"}</p>
                   {p.username && <p className="text-xs text-muted-foreground">@{p.username}</p>}
@@ -757,13 +737,18 @@ function NotificationsTab() {
                 key={n.id}
                 className="w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-colors bg-card"
               >
-                <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {n.from_profile?.avatar_url ? (
-                    <img src={n.from_profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    getIcon(n.type)
-                  )}
-                </div>
+                {n.from_user_id ? (
+                  <UserAvatar
+                    avatarUrl={n.from_profile?.avatar_url}
+                    displayName={n.from_profile?.display_name}
+                    userId={n.from_user_id}
+                    className="w-10 h-10 flex-shrink-0 bg-card border border-border"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0">
+                    {getIcon(n.type)}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-foreground">{n.message}</p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -944,7 +929,7 @@ function ChatView({
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <button onClick={() => navigate(`/user/${friendId}`)} className="flex items-center gap-3">
-          <Avatar url={friendAvatar} name={friendName} size="w-9 h-9" />
+          <UserAvatar avatarUrl={friendAvatar} displayName={friendName} userId={friendId} className="w-9 h-9 bg-muted border border-border" />
           <p className="text-sm font-semibold text-foreground">{friendName}</p>
         </button>
       </header>
@@ -1045,22 +1030,3 @@ function ChatView({
   );
 }
 
-// ─── Shared Avatar Component ───
-function Avatar({ url, name: _name, size = "w-11 h-11" }: { url: string | null; name: string; size?: string }) {
-  const [errored, setErrored] = useState(false);
-  const showImage = !!url && !errored;
-  return (
-    <div className={cn(size, "rounded-full overflow-hidden bg-muted border border-border flex-shrink-0 flex items-center justify-center")}>
-      {showImage ? (
-        <img
-          src={url!}
-          alt=""
-          className="w-full h-full object-cover"
-          onError={() => setErrored(true)}
-        />
-      ) : (
-        <User className="w-1/2 h-1/2 text-muted-foreground" />
-      )}
-    </div>
-  );
-}

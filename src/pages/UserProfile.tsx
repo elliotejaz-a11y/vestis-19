@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, User, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
+import { ArrowLeft, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
+import { UserAvatar } from "@/components/UserAvatar";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
@@ -21,6 +22,7 @@ interface UserProfileData {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  avatar_preset: string | null;
   avatar_position: string;
   bio: string | null;
   is_public: boolean;
@@ -72,7 +74,7 @@ export default function UserProfilePage() {
 
       const { data: profileData } = await supabase
         .from("profiles")
-        .select("id, display_name, username, avatar_url, avatar_position, bio, is_public, style_preference")
+        .select("id, display_name, username, avatar_url, avatar_preset, avatar_position, bio, is_public, style_preference")
         .eq("id", userId)
         .single();
       setProfile(profileData as UserProfileData | null);
@@ -248,15 +250,14 @@ export default function UserProfilePage() {
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-20 h-20 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
-            {profile.avatar_url ? (
-              <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: profile.avatar_position || 'center' }} />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <User className="w-8 h-8 text-muted-foreground" />
-              </div>
-            )}
-          </div>
+          <UserAvatar
+            avatarUrl={profile.avatar_url}
+            avatarPreset={profile.avatar_preset}
+            displayName={profile.display_name}
+            userId={profile.id}
+            avatarPosition={profile.avatar_position}
+            className="w-20 h-20 bg-card border border-border"
+          />
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground">{profile.display_name || profile.username}</h2>
             {profile.username && (

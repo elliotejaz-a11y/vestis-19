@@ -8,6 +8,7 @@ import { formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { UserAvatar } from "@/components/UserAvatar";
 
 interface Props {
   open: boolean;
@@ -220,13 +221,18 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
                   n.read && !acceptedIds.has(n.id) ? "bg-card" : "bg-accent/10 border border-accent/20"
                 )}
               >
-                <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0 overflow-hidden">
-                  {n.from_profile?.avatar_url ? (
-                    <img src={n.from_profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    getIcon(n.type)
-                  )}
-                </div>
+                {n.from_user_id ? (
+                  <UserAvatar
+                    avatarUrl={n.from_profile?.avatar_url}
+                    displayName={n.from_profile?.display_name}
+                    userId={n.from_user_id}
+                    className="w-10 h-10 flex-shrink-0 bg-card border border-border"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-card border border-border flex items-center justify-center flex-shrink-0">
+                    {getIcon(n.type)}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-foreground">{n.message}</p>
                   <p className="text-[10px] text-muted-foreground mt-0.5">

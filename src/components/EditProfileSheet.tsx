@@ -5,10 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { User, Camera, Loader2, Move, Lock } from "lucide-react";
+import { Camera, Loader2, Move, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { UserAvatar, AVATAR_PRESET_LIST } from "@/components/UserAvatar";
+import { cn } from "@/lib/utils";
 import { differenceInDays } from "date-fns";
 import { ImageCropEditor } from "@/components/ImageCropEditor";
 
@@ -36,6 +38,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [username, setUsername] = useState(profile?.username || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
+  const [avatarPreset, setAvatarPreset] = useState<string | null>(profile?.avatar_preset || null);
   const [avatarPosition, setAvatarPosition] = useState(profile?.avatar_position || "50% 50%");
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
   const [uploading, setUploading] = useState(false);
@@ -86,9 +89,21 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+    const ALLOWED_EXTS  = ["jpg", "jpeg", "png", "webp", "heic", "heif"];
+    if (!ALLOWED_TYPES.includes(file.type.toLowerCase()) && !ALLOWED_EXTS.includes(ext)) {
+      toast({ title: "Unsupported file type", description: "Please use a JPEG, PNG, or WebP image.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Please choose an image under 8 MB.", variant: "destructive" });
+      e.target.value = "";
+      return;
+    }
     const url = URL.createObjectURL(file);
     setCropPreview(url);
-    // Reset the input so the same file can be re-selected
     e.target.value = "";
   };
 
@@ -101,10 +116,12 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       contentType: "image/jpeg",
     });
     if (error) {
-      toast({ title: "Upload failed", variant: "destructive" });
+      console.error("Avatar upload failed:", error);
+      toast({ title: "Couldn't upload photo", description: "Please try a different image.", variant: "destructive" });
     } else {
       const { data } = supabase.storage.from("social-media").getPublicUrl(path);
-      setAvatarUrl(data.publicUrl);
+      setAvatarUrl(data.publicUrl + "?v=" + Date.now());
+      setAvatarPreset(null);
       setAvatarPosition("50% 50%");
     }
     setUploading(false);
@@ -117,15 +134,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
 
   const handleSave = async () => {
     if (!user) return;
-
-    if (!avatarUrl) {
-      toast({
-        title: "Profile picture required",
-        description: "Please add a profile picture to continue.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setSaving(true);
 
@@ -150,6 +158,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       username: username || null,
       bio: bio || null,
       avatar_url: avatarUrl || null,
+      avatar_preset: avatarPreset || null,
       avatar_position: avatarPosition,
       currency_preference: currencyPref,
     };
@@ -171,6 +180,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setUsername(profile.username || "");
       setBio(profile.bio || "");
       setAvatarUrl(profile.avatar_url || "");
+      setAvatarPreset(profile.avatar_preset || null);
       setAvatarPosition(profile.avatar_position || "50% 50%");
       setCurrencyPref(profile.currency_preference || "NZD");
       setCropPreview(null);
@@ -214,12 +224,13 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                       draggable={false}
                     />
                   ) : (
-                    <button
-                      onClick={() => fileRef.current?.click()}
-                      className="w-full h-full flex items-center justify-center"
-                    >
-                      <User className="w-10 h-10 text-muted-foreground" />
-                    </button>
+                    <UserAvatar
+                      avatarPreset={avatarPreset}
+                      displayName={profile?.display_name}
+                      email={user?.email}
+                      userId={user?.id}
+                      className="w-full h-full rounded-none"
+                    />
                   )}
                   {avatarUrl && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -228,34 +239,63 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                   )}
                 </div>
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
-                {avatarUrl ? (
-                  <div className="text-center space-y-1">
+                <div className="text-center space-y-1">
+                  {avatarUrl && (
                     <p className="text-[10px] text-muted-foreground">Drag to reposition photo</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => fileRef.current?.click()}
-                        className="text-[10px] text-accent font-medium hover:underline"
-                        disabled={uploading}
-                      >
-                        {uploading ? "Uploading..." : "Change photo"}
-                      </button>
+                  )}
+                  <div className="flex gap-2 justify-center">
+                    <button
+                      onClick={() => fileRef.current?.click()}
+                      className="text-[10px] text-accent font-medium hover:underline"
+                      disabled={uploading}
+                    >
+                      {uploading ? "Uploading..." : avatarUrl ? "Change photo" : "Upload photo"}
+                    </button>
+                    {avatarUrl && (
                       <button
                         onClick={() => setAvatarPosition("50% 50%")}
                         className="text-[10px] text-muted-foreground hover:underline"
                       >
-                        Reset
+                        Reset position
                       </button>
-                    </div>
+                    )}
                   </div>
-                ) : (
-                  <button
-                    onClick={() => fileRef.current?.click()}
-                    className="text-[10px] text-destructive font-medium"
-                    disabled={uploading}
-                  >
-                    {uploading ? "Uploading..." : "Tap to add photo (required)"}
-                  </button>
-                )}
+                </div>
+
+                {/* Preset picker */}
+                <div className="space-y-1.5 w-full">
+                  <p className="text-[10px] text-muted-foreground text-center">Or pick a default</p>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => { setAvatarUrl(""); setAvatarPreset(null); }}
+                      className={cn(
+                        "w-10 h-10 rounded-full overflow-hidden border-2 transition-all",
+                        !avatarUrl && !avatarPreset ? "border-accent" : "border-transparent"
+                      )}
+                      title="Initials"
+                    >
+                      <UserAvatar
+                        displayName={profile?.display_name}
+                        email={user?.email}
+                        userId={user?.id}
+                        className="w-full h-full rounded-none"
+                      />
+                    </button>
+                    {AVATAR_PRESET_LIST.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => { setAvatarUrl(""); setAvatarPreset(p.id); }}
+                        className={cn(
+                          "w-10 h-10 rounded-full overflow-hidden border-2 transition-all",
+                          !avatarUrl && avatarPreset === p.id ? "border-accent" : "border-transparent"
+                        )}
+                        title={p.label}
+                      >
+                        <UserAvatar avatarPreset={p.id} className="w-full h-full rounded-none" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {/* Display Name */}

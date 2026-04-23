@@ -101,6 +101,24 @@ function ensureGymOutfitHasOnlyAllowedPieces(selectedItems: ClothingItem[], allI
   return [top, bottom, shoes].filter(Boolean) as ClothingItem[];
 }
 
+function buildMonochromeFallback(allItems: ClothingItem[]): ClothingItem[] {
+  const isBlack = (item: ClothingItem) => /\b(black|charcoal|onyx|jet)\b/i.test(item.color || '');
+  const isNeutral = (item: ClothingItem) => /\b(black|charcoal|onyx|jet|white|off[-\s]?white|cream|ivory|grey|gray|silver)\b/i.test(item.color || '');
+  const isTop = (item: ClothingItem) => ['tops', 'jumpers'].includes((item.category || '').toLowerCase());
+
+  const allBlack = allItems.filter(isBlack);
+  const bTop = allBlack.find(isTop);
+  const bBottom = allBlack.find(i => isBottomsCategory(i.category));
+  const bShoe = allBlack.find(i => isShoesCategory(i.category));
+  if (bTop && bBottom && bShoe) return [bTop, bBottom, bShoe];
+
+  const neutrals = allItems.filter(isNeutral);
+  const nTop = neutrals.find(isTop);
+  const nBottom = neutrals.find(i => isBottomsCategory(i.category));
+  const nShoe = neutrals.find(i => isShoesCategory(i.category));
+  return [nTop, nBottom, nShoe].filter(Boolean) as ClothingItem[];
+}
+
 function isDetailedReasoning(reasoning?: string | null): boolean {
   const text = reasoning?.trim() ?? "";
   if (text.length < 120) return false;
@@ -512,7 +530,7 @@ export function useWardrobe() {
   );
 
   const generateOutfit = useCallback(
-    async (occasion: string, weather?: { temp: number; description: string }): Promise<Outfit | null> => {
+    async (occasion: string, weather?: { temp: number; description: string }, colourStory?: string): Promise<Outfit | null> => {
       if (!user || items.length < 2) return null;
 
       const missingCore: string[] = [];
@@ -530,6 +548,7 @@ export function useWardrobe() {
 
       try {
         const gymRequest = isGymOccasion(occasion);
+        const recentOutfitItemIds = outfits.slice(0, 5).map(o => (o.items || []).map(i => i.id));
         const { data, error } = await supabase.functions.invoke("generate-outfit", {
           body: {
             occasion,
@@ -542,6 +561,8 @@ export function useWardrobe() {
               preferredColors: profile.preferred_colors,
               fashionGoals: profile.fashion_goals,
             } : undefined,
+            recentOutfitItemIds,
+            colourStory,
           },
         });
 
@@ -604,23 +625,8 @@ export function useWardrobe() {
           }
         }
 
-        const nonCoreCategories = [...new Set(
-          items
-            .filter((i) => !isShoesCategory(i.category) && !isBottomsCategory(i.category))
-            .map((i) => i.category)
-        )];
-        const selected: ClothingItem[] = [];
-        for (const cat of nonCoreCategories) {
-          const catItems = items.filter((i) => i.category === cat);
-          if (catItems.length > 0) selected.push(catItems[Math.floor(Math.random() * catItems.length)]);
-          if (selected.length >= 3) break;
-        }
-        const baseFallback = selected.length >= 1
-          ? selected
-          : [...items.filter((i) => !isShoesCategory(i.category) && !isBottomsCategory(i.category))]
-              .sort(() => Math.random() - 0.5)
-              .slice(0, 2);
-        const fallbackItems = ensureOutfitHasCorePieces(baseFallback, items);
+        const monochromeBase = buildMonochromeFallback(items);
+        const fallbackItems = ensureOutfitHasCorePieces(monochromeBase, items);
         const fallbackReasoning = buildOutfitReasoningFallback({ occasion, selectedItems: fallbackItems, profile, weather });
 
         const { data: outfitRow } = await supabase
@@ -642,7 +648,7 @@ export function useWardrobe() {
         return outfit;
       }
     },
-    [user, items, profile, toast]
+    [user, items, outfits, profile, toast]
   );
 
   const addOutfitToState = useCallback((outfit: Outfit) => {

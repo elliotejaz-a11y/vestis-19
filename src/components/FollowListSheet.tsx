@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
-import { User, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { UserAvatar } from "@/components/UserAvatar";
 
 interface FollowListSheetProps {
   open: boolean;
@@ -19,6 +20,7 @@ interface FollowUser {
   display_name: string | null;
   username: string | null;
   avatar_url: string | null;
+  avatar_preset: string | null;
   avatar_position: string;
 }
 
@@ -46,7 +48,7 @@ export default function FollowListSheet({ open, onOpenChange, userId, type }: Fo
         const ids = followData.map((f: any) => f[column]);
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, display_name, username, avatar_url, avatar_position")
+          .select("id, display_name, username, avatar_url, avatar_preset, avatar_position")
           .in("id", ids);
         setUsers((profiles || []) as FollowUser[]);
       } else {
@@ -95,15 +97,14 @@ export default function FollowListSheet({ open, onOpenChange, userId, type }: Fo
             {users.map((u) => (
               <div key={u.id} className="flex items-center gap-3 p-2 rounded-xl">
                 <button onClick={() => handleNavigate(u.id)} className="flex items-center gap-3 flex-1 min-w-0 text-left">
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-card border border-border flex-shrink-0">
-                    {u.avatar_url ? (
-                      <img src={u.avatar_url} alt="" className="w-full h-full object-cover" style={{ objectPosition: u.avatar_position || "center" }} />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <User className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
+                  <UserAvatar
+                    avatarUrl={u.avatar_url}
+                    avatarPreset={u.avatar_preset}
+                    displayName={u.display_name}
+                    userId={u.id}
+                    avatarPosition={u.avatar_position}
+                    className="w-10 h-10 flex-shrink-0 bg-card border border-border"
+                  />
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{u.display_name || u.username || "User"}</p>
                     {u.username && <p className="text-[10px] text-muted-foreground">@{u.username}</p>}
