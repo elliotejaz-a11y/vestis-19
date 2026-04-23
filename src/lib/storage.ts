@@ -1,5 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 
+type ImageFields = {
+  imageUrl?: string | null;
+  imagePath?: string | null;
+  backImageUrl?: string | null;
+  backImagePath?: string | null;
+};
+
 type SignedStorageBucket = "clothing-images" | "wishlist-images";
 
 const SIGNED_URL_EXPIRES_IN_SECONDS = 60 * 60;
@@ -23,4 +30,17 @@ export async function getSignedStorageUrl(
   }
 
   return data.signedUrl;
+}
+
+export async function resolveSignedClothingImageFields<T extends ImageFields>(item: T): Promise<T> {
+  const [imageUrl, backImageUrl] = await Promise.all([
+    item.imagePath ? getSignedStorageUrl("clothing-images", item.imagePath, { fallbackUrl: item.imageUrl ?? null }) : Promise.resolve(item.imageUrl ?? null),
+    item.backImagePath ? getSignedStorageUrl("clothing-images", item.backImagePath, { fallbackUrl: item.backImageUrl ?? null }) : Promise.resolve(item.backImageUrl ?? null),
+  ]);
+
+  return {
+    ...item,
+    imageUrl: imageUrl ?? "",
+    backImageUrl: backImageUrl ?? undefined,
+  };
 }
