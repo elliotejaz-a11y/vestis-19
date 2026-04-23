@@ -80,19 +80,30 @@ export default function UserProfilePage() {
         .single();
       setProfile(profileData as UserProfileData | null);
 
-      // Counts
-      const [{ count: fc }, { count: fgc }] = await Promise.all([
+      // All secondary queries are independent of each other — run in parallel
+      // to avoid waterfall latency (previously wardrobe waited for counts, etc.)
+      const [
+        { count: fc },
+        { count: fgc },
+        { data: wardrobeData },
+        { data: pics },
+        blockResult,
+        reqResult,
+      ] = await Promise.all([
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
+        supabase.from("clothing_items").select("category, color").eq("user_id", userId),
+        supabase.from("fit_pics").select("id, image_url, description, pic_date, created_at").eq("user_id", userId).order("pic_date", { ascending: false }),
+        !isOwnProfile && user
+          ? supabase.from("blocked_users").select("id").eq("blocker_id", user.id).eq("blocked_id", userId).maybeSingle()
+          : Promise.resolve({ data: null }),
+        !isOwnProfile && user
+          ? supabase.from("follow_requests").select("id").eq("requester_id", user.id).eq("target_id", userId).eq("status", "pending").maybeSingle()
+          : Promise.resolve({ data: null }),
       ]);
+
       setFollowersCount(fc || 0);
       setFollowingCount(fgc || 0);
-
-      // Wardrobe stats
-      const { data: wardrobeData } = await supabase
-        .from("clothing_items")
-        .select("category, color")
-        .eq("user_id", userId);
 
       if (wardrobeData) {
         setWardrobeCount(wardrobeData.length);
@@ -104,39 +115,14 @@ export default function UserProfilePage() {
         setCategoryBreakdown(catCounts);
         const uniqueColors = new Set(wardrobeData.map(i => i.color).filter(Boolean));
         setColorCount(uniqueColors.size);
-        // Build color breakdown
         const colorMap: Record<string, number> = {};
         wardrobeData.forEach(i => { if (i.color) colorMap[i.color] = (colorMap[i.color] || 0) + 1; });
         setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
       }
 
-      // Fit pics (non-private for other users)
-      const { data: pics } = await supabase
-        .from("fit_pics")
-        .select("id, image_url, description, pic_date, created_at")
-        .eq("user_id", userId)
-        .order("pic_date", { ascending: false });
       setFitPics((pics || []) as FitPic[]);
-
-      // Check block status & pending follow request
-      if (!isOwnProfile && user) {
-        const { data: blockData } = await supabase
-          .from("blocked_users")
-          .select("id")
-          .eq("blocker_id", user.id)
-          .eq("blocked_id", userId)
-          .maybeSingle();
-        setIsBlocked(!!blockData);
-
-        const { data: reqData } = await supabase
-          .from("follow_requests")
-          .select("id")
-          .eq("requester_id", user.id)
-          .eq("target_id", userId)
-          .eq("status", "pending")
-          .maybeSingle();
-        setPendingRequest(!!reqData);
-      }
+      setIsBlocked(!!(blockResult as any)?.data);
+      setPendingRequest(!!(reqResult as any)?.data);
 
       setLoading(false);
     };

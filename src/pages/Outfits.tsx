@@ -133,14 +133,25 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         </div>
       </header>
 
-      {/* Weather badge */}
-      {weather && (
+      {/* Weather badge — shows current weather and lets user reset the location permission if needed */}
+      {weather ? (
         <div className="px-5 pb-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border/40 text-xs text-muted-foreground">
             <WeatherIcon className="w-3.5 h-3.5" />
             <span>{weather.temp}°C · {weather.description}</span>
             <span className="text-[10px]">— AI will factor this in</span>
           </div>
+        </div>
+      ) : (
+        <div className="px-5 pb-1">
+          {localStorage.getItem('weather_permission') === 'denied' && (
+            <button
+              className="text-[11px] text-muted-foreground underline underline-offset-2"
+              onClick={() => { localStorage.removeItem('weather_permission'); window.location.reload(); }}
+            >
+              Enable weather suggestions
+            </button>
+          )}
         </div>
       )}
 

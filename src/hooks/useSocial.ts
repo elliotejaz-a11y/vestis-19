@@ -212,9 +212,10 @@ export function useSocial() {
     return error;
   };
 
-  // Optimistic delete
+  // Optimistic delete with rollback — if the delete fails, restore the post
   const deletePost = useCallback(async (postId: string) => {
     if (!user) return;
+    const snapshot = queryClient.getQueryData(["social-posts", user.id]);
     queryClient.setQueryData(["social-posts", user.id], (old: any) => {
       if (!old) return old;
       return {
@@ -225,7 +226,11 @@ export function useSocial() {
         })),
       };
     });
-    await supabase.from("social_posts").delete().eq("id", postId);
+    const { error } = await supabase.from("social_posts").delete().eq("id", postId);
+    if (error) {
+      // Restore the previous state so the post reappears
+      queryClient.setQueryData(["social-posts", user.id], snapshot);
+    }
   }, [user, queryClient]);
 
   const followUser = async (targetId: string) => {

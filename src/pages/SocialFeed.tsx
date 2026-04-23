@@ -148,9 +148,17 @@ export default function SocialFeed() {
               <p className="text-xs text-muted-foreground mt-1">
                 {tab === "feed" ? "Follow people or share your first outfit!" : "Be the first to post!"}
               </p>
-              <Button onClick={() => setShowCreatePost(true)} className="mt-4 rounded-2xl bg-accent text-accent-foreground" size="sm">
-                <Plus className="w-4 h-4 mr-1" /> Create Post
-              </Button>
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <Button onClick={() => setShowCreatePost(true)} className="rounded-2xl bg-accent text-accent-foreground" size="sm">
+                  <Plus className="w-4 h-4 mr-1" /> Create Post
+                </Button>
+                {/* Guide users to find people to follow when feed is empty */}
+                {tab === "feed" && (
+                  <Button variant="outline" size="sm" className="rounded-2xl" onClick={() => navigate("/friends")}>
+                    <Compass className="w-4 h-4 mr-1" /> Find people
+                  </Button>
+                )}
+              </div>
             </div>
           ) : (
             <>
