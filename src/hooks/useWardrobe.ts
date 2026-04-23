@@ -220,8 +220,10 @@ export function useWardrobe() {
         category: r.category,
         color: r.color,
         fabric: r.fabric,
-        imageUrl: r.image_url,
-        backImageUrl: r.back_image_url || undefined,
+        imageUrl: isStoragePath(r.image_url) ? "" : r.image_url,
+        imagePath: isStoragePath(r.image_url) ? r.image_url : undefined,
+        backImageUrl: r.back_image_url && !isStoragePath(r.back_image_url) ? r.back_image_url : undefined,
+        backImagePath: isStoragePath(r.back_image_url) ? r.back_image_url : undefined,
         tags: r.tags || [],
         notes: r.notes || "",
         addedAt: new Date(r.created_at),
@@ -279,7 +281,7 @@ export function useWardrobe() {
             .upload(path, blob, { contentType: blob.type });
           if (!uploadError) {
             const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-            imageUrl = urlData.publicUrl;
+            imageUrl = normalizeStorageObjectPath(path);
           }
         } catch (err) {
           console.error("Image upload failed:", err);
@@ -294,7 +296,7 @@ export function useWardrobe() {
             .upload(path, blob, { contentType: "image/svg+xml" });
           if (!uploadError) {
             const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-            imageUrl = urlData.publicUrl;
+            imageUrl = normalizeStorageObjectPath(path);
           }
         } catch (err) {
           console.error("SVG upload failed:", err);
@@ -315,7 +317,7 @@ export function useWardrobe() {
             .upload(path, blob, { contentType: mime });
           if (!uploadError) {
             const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-            imageUrl = urlData.publicUrl;
+            imageUrl = normalizeStorageObjectPath(path);
           }
         } catch (err) {
           console.error("Base64 upload failed:", err);
@@ -332,7 +334,7 @@ export function useWardrobe() {
             .upload(path, blob, { contentType: blob.type });
           if (!uploadError) {
             const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-            imageUrl = urlData.publicUrl;
+            imageUrl = normalizeStorageObjectPath(path);
           }
         } catch (err) {
           console.error("Asset upload failed:", err);
@@ -356,7 +358,7 @@ export function useWardrobe() {
             .upload(path, blob, { contentType: mime });
           if (!uploadError) {
             const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-            backImageUrl = urlData.publicUrl;
+            backImageUrl = normalizeStorageObjectPath(path);
           }
         } catch (err) {
           console.error("Back image upload failed:", err);
@@ -389,8 +391,10 @@ export function useWardrobe() {
           category: data.category,
           color: data.color,
           fabric: data.fabric,
-          imageUrl: data.image_url,
-          backImageUrl: data.back_image_url || undefined,
+          imageUrl: isStoragePath(data.image_url) ? "" : data.image_url,
+          imagePath: isStoragePath(data.image_url) ? data.image_url : undefined,
+          backImageUrl: data.back_image_url && !isStoragePath(data.back_image_url) ? data.back_image_url : undefined,
+          backImagePath: isStoragePath(data.back_image_url) ? data.back_image_url : undefined,
           tags: data.tags || [],
           notes: data.notes || "",
           addedAt: new Date(data.created_at),
