@@ -12,6 +12,7 @@ import { ColorPicker, parseColors, joinColors } from "@/components/ColorPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { getSignedStorageUrl } from "@/lib/storage";
 
 const FABRICS = ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"];
 
@@ -34,6 +35,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const [priceEnabled, setPriceEnabled] = useState(item?.estimatedPrice != null);
   const [isPrivate, setIsPrivate] = useState(item?.isPrivate || false);
   const [newImageUrl, setNewImageUrl] = useState<string | null>(null);
+  const [newImagePath, setNewImagePath] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
@@ -52,6 +54,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
     setPriceEnabled(item.estimatedPrice != null);
     setIsPrivate(item.isPrivate || false);
     setNewImageUrl(null);
+    setNewImagePath(null);
   }
 
   const handleRetakePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,11 +66,12 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
       const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from("clothing-images").upload(path, file, { contentType: file.type });
       if (error) throw error;
-      const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-      const url = urlData.publicUrl;
+      const url = await getSignedStorageUrl("clothing-images", path);
+      if (!url) throw new Error("Could not create image link");
       setNewImageUrl(url);
+      setNewImagePath(path);
       // Update in DB immediately
-      await supabase.from("clothing_items").update({ image_url: url } as any).eq("id", item.id);
+      await supabase.from("clothing_items").update({ image_url: path } as any).eq("id", item.id);
       toast({ title: "Photo updated" });
     } catch {
       toast({ title: "Upload failed", variant: "destructive" });
@@ -88,6 +92,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
       estimatedPrice: priceNum,
       isPrivate,
       imageUrl: newImageUrl || item.imageUrl,
+      imagePath: newImagePath || item.imagePath,
       ...(size !== undefined ? { size } : {}),
       ...(privacy !== undefined ? { privacy } : {}),
     } as ClothingItem);
@@ -96,7 +101,7 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
 
   return (
     <Sheet open={open} onOpenChange={(o) => {
-      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setSize(""); setPrivacy("public"); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); setNewImageUrl(null); }
+      if (!o) { setName(""); setCategory(""); setColors([]); setFabric(""); setNotes(""); setSize(""); setPrivacy("public"); setEstimatedPrice(""); setPriceEnabled(false); setIsPrivate(false); setNewImageUrl(null); setNewImagePath(null); }
       onOpenChange(o);
     }}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background" style={{ paddingBottom: '6rem', zIndex: 10000 }}>

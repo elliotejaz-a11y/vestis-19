@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
+import { isStoragePath, resolveSignedClothingImageFields, getSignedStorageUrl } from "@/lib/storage";
 import { getSkinToneDisplay } from "@/lib/skinTone";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
@@ -63,6 +64,10 @@ function formatList(values: string[]): string {
   if (unique.length === 1) return unique[0];
   if (unique.length === 2) return `${unique[0]} and ${unique[1]}`;
   return `${unique.slice(0, -1).join(", ")}, and ${unique[unique.length - 1]}`;
+}
+
+function normalizeStorageObjectPath(value: string): string {
+  return value.replace(/^\/+/, "");
 }
 
 function getItemSearchText(item: ClothingItem): string {
@@ -209,20 +214,23 @@ export function useWardrobe() {
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
-      const dbItems: ClothingItem[] = (clothingData || []).map((r: any) => ({
+      const rawItems: ClothingItem[] = (clothingData || []).map((r: any) => ({
         id: r.id,
         name: r.name,
         category: r.category,
         color: r.color,
         fabric: r.fabric,
-        imageUrl: r.image_url,
-        backImageUrl: r.back_image_url || undefined,
+        imageUrl: isStoragePath(r.image_url) ? "" : r.image_url,
+        imagePath: isStoragePath(r.image_url) ? r.image_url : undefined,
+        backImageUrl: r.back_image_url && !isStoragePath(r.back_image_url) ? r.back_image_url : undefined,
+        backImagePath: isStoragePath(r.back_image_url) ? r.back_image_url : undefined,
         tags: r.tags || [],
         notes: r.notes || "",
         addedAt: new Date(r.created_at),
         estimatedPrice: r.estimated_price ? Number(r.estimated_price) : undefined,
         isPrivate: r.is_private || false,
       }));
+      const dbItems = await Promise.all(rawItems.map((item) => resolveSignedClothingImageFields(item)));
       setItems(dbItems);
 
       const { data: outfitData } = await supabase
@@ -272,10 +280,7 @@ export function useWardrobe() {
           const { error: uploadError } = await supabase.storage
             .from("clothing-images")
             .upload(path, blob, { contentType: blob.type });
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-            imageUrl = urlData.publicUrl;
-          }
+          if (!uploadError) imageUrl = normalizeStorageObjectPath(path);
         } catch (err) {
           console.error("Image upload failed:", err);
         }
@@ -287,10 +292,7 @@ export function useWardrobe() {
           const { error: uploadError } = await supabase.storage
             .from("clothing-images")
             .upload(path, blob, { contentType: "image/svg+xml" });
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-            imageUrl = urlData.publicUrl;
-          }
+          if (!uploadError) imageUrl = normalizeStorageObjectPath(path);
         } catch (err) {
           console.error("SVG upload failed:", err);
         }
@@ -308,10 +310,7 @@ export function useWardrobe() {
           const { error: uploadError } = await supabase.storage
             .from("clothing-images")
             .upload(path, blob, { contentType: mime });
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-            imageUrl = urlData.publicUrl;
-          }
+          if (!uploadError) imageUrl = normalizeStorageObjectPath(path);
         } catch (err) {
           console.error("Base64 upload failed:", err);
         }
@@ -325,10 +324,7 @@ export function useWardrobe() {
           const { error: uploadError } = await supabase.storage
             .from("clothing-images")
             .upload(path, blob, { contentType: blob.type });
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-            imageUrl = urlData.publicUrl;
-          }
+          if (!uploadError) imageUrl = normalizeStorageObjectPath(path);
         } catch (err) {
           console.error("Asset upload failed:", err);
         }
@@ -349,10 +345,7 @@ export function useWardrobe() {
           const { error: uploadError } = await supabase.storage
             .from("clothing-images")
             .upload(path, blob, { contentType: mime });
-          if (!uploadError) {
-            const { data: urlData } = supabase.storage.from("clothing-images").getPublicUrl(path);
-            backImageUrl = urlData.publicUrl;
-          }
+          if (!uploadError) backImageUrl = normalizeStorageObjectPath(path);
         } catch (err) {
           console.error("Back image upload failed:", err);
         }
@@ -378,20 +371,22 @@ export function useWardrobe() {
         .single();
 
       if (!error && data) {
-        const newItem: ClothingItem = {
+        const newItem = await resolveSignedClothingImageFields({
           id: data.id,
           name: data.name,
           category: data.category,
           color: data.color,
           fabric: data.fabric,
-          imageUrl: data.image_url,
-          backImageUrl: data.back_image_url || undefined,
+          imageUrl: isStoragePath(data.image_url) ? "" : data.image_url,
+          imagePath: isStoragePath(data.image_url) ? data.image_url : undefined,
+          backImageUrl: data.back_image_url && !isStoragePath(data.back_image_url) ? data.back_image_url : undefined,
+          backImagePath: isStoragePath(data.back_image_url) ? data.back_image_url : undefined,
           tags: data.tags || [],
           notes: data.notes || "",
           addedAt: new Date(data.created_at),
           estimatedPrice: data.estimated_price ? Number(data.estimated_price) : undefined,
           isPrivate: data.is_private ?? false,
-        };
+        });
         setItems((prev) => [newItem, ...prev]);
 
         if (runBgRemoval && data.id) {
@@ -406,7 +401,7 @@ export function useWardrobe() {
                   i.id === data.id
                     ? {
                         ...i,
-                        imageUrl: payload.imageUrl ?? i.imageUrl,
+                        imageUrl: payload.imageUrl ? payload.imageUrl : i.imageUrl,
                         imageStatus: payload.imageStatus,
                         imageError: payload.imageError ?? i.imageError,
                       }
@@ -433,7 +428,7 @@ export function useWardrobe() {
       if (!user) return;
       const item = items.find((i) => i.id === itemId);
       if (!item) return;
-      const sourceUrl = item.imageOriginalUrl || item.imageUrl;
+      const sourceUrl = item.imageOriginalUrl || item.imagePath || item.imageUrl;
       await supabase
         .from("clothing_items")
         .update({ image_status: "processing", image_error: null } as any)
@@ -485,7 +480,7 @@ export function useWardrobe() {
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
           is_private: item.isPrivate || false,
-          image_url: item.imageUrl,
+          image_url: item.imagePath || item.imageUrl,
           size: (item as any).size || "",
           privacy: (item as any).privacy || "public",
         } as any)
