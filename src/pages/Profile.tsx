@@ -712,7 +712,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           >
             <X className="w-5 h-5" />
           </button>
-          <img
+          <SignedSocialImage
             src={fullscreenFitPic.image_url}
             alt={fullscreenFitPic.description || ""}
             className="max-w-full max-h-full object-contain"
