@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
+import { SignedSocialImage } from "@/components/SignedSocialImage";
 
 type Tab = "feed" | "discover";
 
@@ -179,7 +180,7 @@ export default function SocialFeed() {
             <button className="ml-auto text-xs text-muted-foreground" onClick={() => setViewingStory(null)}>✕</button>
           </div>
           <div className="flex-1 relative">
-            <img src={viewingStory.image_url} alt="" className="w-full h-full object-contain" />
+            <SignedSocialImage src={viewingStory.image_url} alt="" className="w-full h-full object-contain" />
             {viewingStory.caption && (
               <div className="absolute bottom-8 left-4 right-4 bg-background/70 backdrop-blur rounded-xl p-3">
                 <p className="text-sm text-foreground">{viewingStory.caption}</p>

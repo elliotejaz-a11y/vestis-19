@@ -20,6 +20,7 @@ import { formatPrice } from "@/lib/currency";
 import { ClothingItem } from "@/types/wardrobe";
 import { resolveSignedClothingImageFields } from "@/lib/storage";
 import { ReportSheet } from "@/components/ReportSheet";
+import { SignedSocialImage } from "@/components/SignedSocialImage";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -993,7 +994,7 @@ function ChatView({
             <div className="grid grid-cols-4 gap-1">
               {fitPics.map((pic: any) => (
                 <button key={pic.id} onClick={() => sendFitPic(pic.image_url)} className="aspect-square rounded-lg overflow-hidden">
-                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                  <SignedSocialImage src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
