@@ -46,11 +46,16 @@ async function enrichPostsWithProfiles(postData: any[], userId: string) {
   ]);
   const likedPostIds = new Set((myLikes || []).map((l: any) => l.post_id));
   const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-  return postData.map((p: any) => ({
-    ...p,
-    user: profileMap.get(p.user_id),
-    liked_by_me: likedPostIds.has(p.id),
-  }));
+  // Resolve signed URLs for any social-content images in parallel
+  const enriched = await Promise.all(
+    postData.map(async (p: any) => ({
+      ...p,
+      image_urls: await getSignedSocialUrls(p.image_urls || []),
+      user: profileMap.get(p.user_id),
+      liked_by_me: likedPostIds.has(p.id),
+    }))
+  );
+  return enriched;
 }
 
 export function useSocial() {
