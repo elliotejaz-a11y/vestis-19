@@ -894,10 +894,10 @@ function ChatView({
     try {
       const path = `${user.id}/chat-images/${Date.now()}-${file.name}`;
       const { error: uploadErr } = await supabase.storage
-        .from("social-media")
+        .from("social-content")
         .upload(path, file, { contentType: file.type, cacheControl: "3600" });
       if (uploadErr) throw uploadErr;
-      const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
+      const { data: urlData } = supabase.storage.from("social-content").getPublicUrl(path);
       const { error } = await sendMessage(`[IMG]${urlData.publicUrl}[/IMG]`);
       if (error) {
         toast({ title: "Failed to send image", description: error, variant: "destructive" });
