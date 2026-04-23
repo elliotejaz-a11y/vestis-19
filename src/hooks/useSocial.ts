@@ -125,7 +125,14 @@ export function useSocial() {
       const userIds = [...new Set(storyData.map((s: any) => s.user_id))];
       const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url").in("id", userIds);
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-      return storyData.map((s: any) => ({ ...s, user: profileMap.get(s.user_id) })) as SocialStory[];
+      const enriched = await Promise.all(
+        storyData.map(async (s: any) => ({
+          ...s,
+          image_url: (await getSignedSocialUrl(s.image_url)) || s.image_url,
+          user: profileMap.get(s.user_id),
+        }))
+      );
+      return enriched as SocialStory[];
     },
     enabled: !!user,
     staleTime: 30_000,
