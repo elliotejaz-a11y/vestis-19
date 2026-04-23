@@ -1,3 +1,7 @@
+// DEPRECATED: This function used gpt-image-1 (generative editing) which is the wrong model for
+// background removal. All removal now happens client-side via @imgly/background-removal.
+// This function is no longer called by any client code and can be deleted in a future cleanup.
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 

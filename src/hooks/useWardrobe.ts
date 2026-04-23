@@ -467,6 +467,7 @@ export function useWardrobe() {
           itemId,
           imageUrl: sourceUrl,
           userId: user.id,
+          isRetry: true,
           onStatusUpdate: (payload) => {
             setItems((prev) =>
               prev.map((i) =>

@@ -4,6 +4,7 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import { processClothingImage } from "@/lib/image-processing";
 
 const MAX_LONG_EDGE = 2000;
 const REQUEST_TIMEOUT_MS = 60000;
@@ -129,6 +130,8 @@ export interface ProcessBackgroundRemovalOptions {
   userId: string;
   /** When provided, skip fetching image from URL (avoids CORS). Use for initial add flow. */
   imageBase64ForProcessing?: string;
+  /** Set to true on retry calls to run actual background removal. Initial add flow leaves this unset (image already processed). */
+  isRetry?: boolean;
   onStatusUpdate?: (payload: { imageUrl?: string; imageStatus: "ready" | "failed"; imageError?: string | null }) => void;
 }
 
@@ -145,18 +148,95 @@ function getStoragePathFromPublicUrl(publicUrl: string): string | null {
   }
 }
 
+/** Extract storage path from a Supabase signed URL. */
+function getStoragePathFromSignedUrl(signedUrl: string): string | null {
+  try {
+    const match = signedUrl.match(/\/object\/sign\/clothing-images\/([^?]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Run background removal for an existing wardrobe item (original already in storage).
- * 1) Get image blob: use imageBase64ForProcessing if provided (avoids CORS); else fetch(imageUrl) or storage.download(path).
- * 2) Hash, check cache (same user + same hash + ready) and reuse if found.
- * 3) Else downscale, call remove-background with retries, upload PNG to storage, update row.
- * On failure: update row with status failed and error; onStatusUpdate(..., 'failed', error).
+ * Run background removal for a wardrobe item.
+ * - Initial add flow (isRetry unset): image already processed client-side before addItem was called,
+ *   so just mark as ready immediately.
+ * - Retry flow (isRetry: true): download from storage, run @imgly bg removal (with 1024px downscale),
+ *   overwrite file in storage, update DB row, return fresh signed URL.
  */
 export async function processBackgroundRemoval(options: ProcessBackgroundRemovalOptions): Promise<void> {
-  const { onStatusUpdate } = options;
+  const { itemId, imageUrl, userId, isRetry, onStatusUpdate } = options;
 
-  // Client-side background removal (@imgly/background-removal) already handled.
-  // Skip the server-side OpenAI gpt-image-1 call and mark as ready immediately.
-  console.log("[BG removal] Skipping server-side AI processing – using client-side result as-is");
-  onStatusUpdate?.({ imageStatus: "ready" });
+  if (!isRetry) {
+    console.log("[BG removal] Initial add – client-side result already in storage, marking ready");
+    onStatusUpdate?.({ imageStatus: "ready" });
+    return;
+  }
+
+  try {
+    // 1. Fetch image blob from storage
+    let blob: Blob | null = null;
+    let storagePath: string | null = null;
+
+    if (imageUrl && !imageUrl.startsWith("http")) {
+      // Raw storage path passed directly
+      storagePath = imageUrl;
+      const { data, error } = await supabase.storage.from("clothing-images").download(storagePath);
+      if (!error && data) blob = data;
+    }
+
+    if (!blob && imageUrl) {
+      storagePath = getStoragePathFromSignedUrl(imageUrl) || getStoragePathFromPublicUrl(imageUrl);
+      if (storagePath) {
+        const { data, error } = await supabase.storage.from("clothing-images").download(storagePath);
+        if (!error && data) blob = data;
+      }
+    }
+
+    if (!blob && imageUrl?.startsWith("http")) {
+      try {
+        const resp = await fetch(imageUrl);
+        if (resp.ok) blob = await resp.blob();
+      } catch { /* ignore CORS errors, fall through to failure */ }
+    }
+
+    if (!blob) throw new Error("Could not fetch image for processing");
+
+    // 2. Run background removal (processClothingImage includes 1024px downscale)
+    const file = new File([blob], "clothing.png", { type: blob.type || "image/png" });
+    const processedBlob = await processClothingImage(file);
+
+    // 3. Overwrite original file in storage with processed PNG
+    const uploadPath = storagePath || `${userId}/${crypto.randomUUID()}.png`;
+    const { error: uploadError } = await supabase.storage
+      .from("clothing-images")
+      .upload(uploadPath, processedBlob, { contentType: "image/png", upsert: true });
+    if (uploadError) throw uploadError;
+
+    // 4. Update DB row
+    await supabase
+      .from("clothing_items")
+      .update({ image_url: uploadPath, image_status: "ready", image_error: null } as any)
+      .eq("id", itemId)
+      .eq("user_id", userId);
+
+    // 5. Fresh signed URL so the UI shows the updated image immediately
+    const { data: signedData } = await supabase.storage
+      .from("clothing-images")
+      .createSignedUrl(uploadPath, 3600);
+
+    onStatusUpdate?.({ imageUrl: signedData?.signedUrl ?? undefined, imageStatus: "ready" });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Processing failed";
+    console.error("[BG removal retry] Failed:", err);
+    try {
+      await supabase
+        .from("clothing_items")
+        .update({ image_status: "failed", image_error: msg } as any)
+        .eq("id", itemId)
+        .eq("user_id", userId);
+    } catch { /* ignore — we still need to notify the UI */ }
+    onStatusUpdate?.({ imageStatus: "failed", imageError: msg });
+  }
 }

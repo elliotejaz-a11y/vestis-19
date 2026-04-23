@@ -16,6 +16,7 @@ export const ClothingCard = memo(function ClothingCard({ item, onRemove, onDetai
   const [showDelete, setShowDelete] = useState(false);
   const isProcessing = item.imageStatus === "processing";
   const isFailed = item.imageStatus === "failed";
+  const isReady = item.imageStatus === "ready";
 
   return (
     <>
@@ -57,6 +58,15 @@ export const ClothingCard = memo(function ClothingCard({ item, onRemove, onDetai
           <p className="text-[10px] text-muted-foreground capitalize">{item.category} · {item.color}</p>
         </div>
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          {isReady && onRetryBackgroundRemoval && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRetryBackgroundRemoval(item.id); }}
+              className="w-6 h-6 rounded-full bg-background/80 backdrop-blur flex items-center justify-center"
+              title="Retry background removal"
+            >
+              <RefreshCw className="w-3 h-3 text-foreground" />
+            </button>
+          )}
           {onDetail && (
             <button
               onClick={() => onDetail(item)}
