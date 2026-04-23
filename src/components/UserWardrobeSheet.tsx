@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { resolveSignedClothingImageFields } from "@/lib/storage";
 
 interface UserWardrobeSheetProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface ClothingItem {
   id: string;
   name: string;
   image_url: string;
+  image_path?: string;
   category: string;
   color: string;
 }
@@ -32,7 +34,20 @@ export default function UserWardrobeSheet({ open, onOpenChange, userId, displayN
         .eq("user_id", userId)
         .eq("is_private", false)
         .order("created_at", { ascending: false });
-      setItems((data || []) as ClothingItem[]);
+      const resolvedItems = await Promise.all(
+        ((data || []) as ClothingItem[]).map((item) =>
+          resolveSignedClothingImageFields({
+            ...item,
+            imageUrl: item.image_url,
+            imagePath: item.image_url,
+          }).then((resolved) => ({
+            ...item,
+            image_url: resolved.imageUrl,
+            image_path: resolved.imagePath,
+          }))
+        )
+      );
+      setItems(resolvedItems);
       setLoading(false);
     };
     load();
