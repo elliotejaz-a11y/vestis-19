@@ -62,7 +62,11 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const scrollRef = useRef<HTMLDivElement>(null);
   const [weatherPerm, setWeatherPerm] = useState(() => localStorage.getItem('weather_permission') || 'denied');
 
-  const fetchFollowCounts = async () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
+
+  const fetchFollowCounts = useCallback(async () => {
     if (!user) return;
     const [{ count: followers }, { count: following }] = await Promise.all([
       supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", user.id),
@@ -70,16 +74,34 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     ]);
     setFollowerCount(followers || 0);
     setFollowingCount(following || 0);
-  };
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
+  }, [user]);
+
+  const fetchFitPics = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("fit_pics")
+      .select("id, image_url, description, pic_date, is_private, created_at")
+      .eq("user_id", user.id)
+      .order("pic_date", { ascending: false });
+    setFitPics(data || []);
+  }, [user]);
+
+  const fetchWishlist = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("wishlist_items")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(3);
+    setWishlistItems(data || []);
+  }, [user]);
 
   const handleRefresh = useCallback(() => {
     setRefreshing(true);
     Promise.all([fetchFollowCounts(), fetchFitPics(), refreshProfile(), fetchWishlist()])
       .finally(() => setRefreshing(false));
-  }, [user]);
+  }, [fetchFollowCounts, fetchFitPics, fetchWishlist, refreshProfile]);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     if (scrollRef.current && scrollRef.current.scrollTop === 0) {
@@ -104,33 +126,11 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     touchStartY.current = 0;
   }, [pullDistance, handleRefresh]);
 
-  const fetchFitPics = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("fit_pics")
-      .select("id, image_url, description, pic_date, is_private, created_at")
-      .eq("user_id", user.id)
-      .order("pic_date", { ascending: false });
-    setFitPics(data || []);
-  };
-
-  const fetchWishlist = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("wishlist_items")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(3);
-    setWishlistItems(data || []);
-  };
-
   useEffect(() => {
-    if (!user) return;
     fetchFollowCounts();
     fetchFitPics();
     fetchWishlist();
-  }, [user]);
+  }, [fetchFollowCounts, fetchFitPics, fetchWishlist]);
 
   const savedOutfits = outfits.filter((o) => o.saved);
 

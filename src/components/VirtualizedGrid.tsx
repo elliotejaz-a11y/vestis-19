@@ -1,7 +1,7 @@
 import { useRef, memo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-interface VirtualizedGridProps<T> {
+interface VirtualizedGridProps<T extends { id: string }> {
   items: T[];
   columns?: number;
   gap?: number;
@@ -11,7 +11,7 @@ interface VirtualizedGridProps<T> {
   overscan?: number;
 }
 
-function VirtualizedGridInner<T>({
+function VirtualizedGridInner<T extends { id: string }>({
   items,
   columns = 2,
   gap = 12,
@@ -36,7 +36,7 @@ function VirtualizedGridInner<T>({
       <div className={className}>
         <div className="grid grid-cols-2 gap-3">
           {items.map((item, i) => (
-            <div key={i}>{renderItem(item, i)}</div>
+            <div key={item.id}>{renderItem(item, i)}</div>
           ))}
         </div>
       </div>
@@ -76,7 +76,7 @@ function VirtualizedGridInner<T>({
                 }}
               >
                 {rowItems.map((item, colIndex) => (
-                  <div key={rowStart + colIndex}>
+                  <div key={item.id}>
                     {renderItem(item, rowStart + colIndex)}
                   </div>
                 ))}

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -40,14 +40,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const profileFetchingRef = useRef<string | null>(null);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, force = false) => {
+    if (!force && profileFetchingRef.current === userId) return;
+    profileFetchingRef.current = userId;
     const { data } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .single();
     setProfile(data);
+    profileFetchingRef.current = null;
   };
 
   useEffect(() => {
@@ -110,11 +114,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     const { error } = await supabase.from("profiles").update(data).eq("id", user.id);
     if (error) { console.error("updateProfile failed:", error); return { error }; }
-    await fetchProfile(user.id);
+    await fetchProfile(user.id, true);
   };
 
   const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
+    if (user) await fetchProfile(user.id, true);
   };
 
   return (

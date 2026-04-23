@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useChat, useChatMessages, Conversation } from "@/hooks/useChat";
+import { useFollowData } from "@/hooks/useFollowData";
 import { useNotifications } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,7 @@ export default function Chat() {
   const [selectedFriend, setSelectedFriend] = useState<{ id: string; name: string; avatar: string | null } | null>(null);
 
   const { conversations, loading: convsLoading, refetch: refetchConversations, clearUnread } = useChat();
+  const { followingIds, followerIds, loading: followDataLoading, refresh: refreshFollowData } = useFollowData();
 
   // Auto-mark all notifications as read when notifications tab is opened
   useEffect(() => {
@@ -148,19 +150,34 @@ export default function Chat() {
             onNewChat={(friend) =>
               setSelectedFriend({ id: friend.id, name: friend.display_name || friend.username || "User", avatar: friend.avatar_url })
             }
+            followingIds={followingIds}
+            followerIds={followerIds}
           />
         </TabsContent>
 
         <TabsContent value="friends">
-          <FriendsTab />
+          <FriendsTab
+            followingIds={followingIds}
+            followerIds={followerIds}
+            followDataLoading={followDataLoading}
+            refreshFollowData={refreshFollowData}
+          />
         </TabsContent>
 
         <TabsContent value="discover">
-          <DiscoverTab />
+          <DiscoverTab
+            followingIds={followingIds}
+            followerIds={followerIds}
+            refreshFollowData={refreshFollowData}
+          />
         </TabsContent>
 
         <TabsContent value="notifications">
-          <NotificationsTab />
+          <NotificationsTab
+            followingIds={followingIds}
+            followerIds={followerIds}
+            refreshFollowData={refreshFollowData}
+          />
         </TabsContent>
       </Tabs>
     </div>
@@ -173,11 +190,15 @@ function MessagesTab({
   loading,
   onSelectFriend,
   onNewChat,
+  followingIds,
+  followerIds,
 }: {
   conversations: Conversation[];
   loading: boolean;
   onSelectFriend: (conv: Conversation) => void;
   onNewChat: (friend: FriendProfile) => void;
+  followingIds: string[];
+  followerIds: string[];
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -188,11 +209,7 @@ function MessagesTab({
   const fetchFriends = useCallback(async () => {
     if (!user) return;
     setLoadingFriends(true);
-    const { data: following } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
-    const { data: followers } = await supabase.from("follows").select("follower_id").eq("following_id", user.id);
-    const myFollowing = (following || []).map((f: any) => f.following_id);
-    const myFollowers = (followers || []).map((f: any) => f.follower_id);
-    const mutualIds = myFollowing.filter((id: string) => myFollowers.includes(id));
+    const mutualIds = followingIds.filter(id => followerIds.includes(id));
     if (mutualIds.length > 0) {
       const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url, avatar_preset, is_public").in("id", mutualIds);
       setFriends((profiles || []) as FriendProfile[]);
@@ -200,7 +217,7 @@ function MessagesTab({
       setFriends([]);
     }
     setLoadingFriends(false);
-  }, [user]);
+  }, [user, followingIds, followerIds]);
 
   useEffect(() => {
     if (showNewChat) fetchFriends();
@@ -295,12 +312,20 @@ function MessagesTab({
 }
 
 // ─── Friends Tab ───
-function FriendsTab() {
+function FriendsTab({
+  followingIds,
+  followerIds,
+  followDataLoading,
+  refreshFollowData,
+}: {
+  followingIds: string[];
+  followerIds: string[];
+  followDataLoading: boolean;
+  refreshFollowData: () => Promise<void>;
+}) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
   const [friends, setFriends] = useState<FriendProfile[]>([]);
-  const [followingIds, setFollowingIds] = useState<string[]>([]);
-  const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchMode, setSearchMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -312,15 +337,9 @@ function FriendsTab() {
   const [loadingWardrobe, setLoadingWardrobe] = useState(false);
 
   const fetchFriends = useCallback(async () => {
-    if (!user) return;
+    if (!user || followDataLoading) return;
     setLoading(true);
-    const { data: following } = await supabase.from("follows").select("following_id").eq("follower_id", user.id);
-    const { data: followers } = await supabase.from("follows").select("follower_id").eq("following_id", user.id);
-    const myFollowing = (following || []).map((f: any) => f.following_id);
-    const myFollowers = (followers || []).map((f: any) => f.follower_id);
-    setFollowingIds(myFollowing);
-    setFollowerIds(myFollowers);
-    const mutualIds = myFollowing.filter((id: string) => myFollowers.includes(id));
+    const mutualIds = followingIds.filter(id => followerIds.includes(id));
     if (mutualIds.length > 0) {
       const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url, avatar_preset, is_public").in("id", mutualIds);
       setFriends((profiles || []) as FriendProfile[]);
@@ -328,7 +347,7 @@ function FriendsTab() {
       setFriends([]);
     }
     setLoading(false);
-  }, [user]);
+  }, [user, followingIds, followerIds, followDataLoading]);
 
   useEffect(() => { fetchFriends(); }, [fetchFriends]);
 
@@ -350,7 +369,7 @@ function FriendsTab() {
     } else {
       await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
     }
-    await fetchFriends();
+    await refreshFollowData();
   };
 
   const viewFriendWardrobe = async (friend: FriendProfile) => {
@@ -489,28 +508,24 @@ function FriendsTab() {
 }
 
 // ─── Discover Tab ───
-function DiscoverTab() {
+function DiscoverTab({
+  followingIds,
+  followerIds,
+  refreshFollowData,
+}: {
+  followingIds: string[];
+  followerIds: string[];
+  refreshFollowData: () => Promise<void>;
+}) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [people, setPeople] = useState<FriendProfile[]>([]);
-  const [followingIds, setFollowingIds] = useState<string[]>([]);
-  const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
 
   const fetchDiscover = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-
-    // Get current following/follower data
-    const [{ data: following }, { data: followers }] = await Promise.all([
-      supabase.from("follows").select("following_id").eq("follower_id", user.id),
-      supabase.from("follows").select("follower_id").eq("following_id", user.id),
-    ]);
-    const myFollowing = (following || []).map((f: any) => f.following_id);
-    const myFollowers = (followers || []).map((f: any) => f.follower_id);
-    setFollowingIds(myFollowing);
-    setFollowerIds(myFollowers);
 
     // Fetch public profiles (excluding self)
     const { data: profiles } = await supabase
@@ -537,11 +552,10 @@ function DiscoverTab() {
     setFollowingLoading(targetId);
     if (followingIds.includes(targetId)) {
       await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
-      setFollowingIds(prev => prev.filter(id => id !== targetId));
     } else {
       await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
-      setFollowingIds(prev => [...prev, targetId]);
     }
+    await refreshFollowData();
     setFollowingLoading(null);
   };
 
@@ -623,27 +637,21 @@ function DiscoverTab() {
 }
 
 // ─── Notifications Tab ───
-function NotificationsTab() {
+function NotificationsTab({
+  followingIds,
+  followerIds,
+  refreshFollowData,
+}: {
+  followingIds: string[];
+  followerIds: string[];
+  refreshFollowData: () => Promise<void>;
+}) {
   const { user } = useAuth();
   const { notifications, markAsRead, loading, refresh, clearAll } = useNotifications();
-  const [followingIds, setFollowingIds] = useState<string[]>([]);
-  const [followerIds, setFollowerIds] = useState<string[]>([]);
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
   const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
   const [acceptedRequestIds, setAcceptedRequestIds] = useState<string[]>([]);
   const [declinedRequestIds, setDeclinedRequestIds] = useState<string[]>([]);
-
-  const fetchFollowData = useCallback(async () => {
-    if (!user) return;
-    const [{ data: following }, { data: followers }] = await Promise.all([
-      supabase.from("follows").select("following_id").eq("follower_id", user.id),
-      supabase.from("follows").select("follower_id").eq("following_id", user.id),
-    ]);
-    setFollowingIds((following || []).map((f: any) => f.following_id));
-    setFollowerIds((followers || []).map((f: any) => f.follower_id));
-  }, [user]);
-
-  useEffect(() => { fetchFollowData(); }, [fetchFollowData]);
 
   const handleAcceptFollowRequest = async (notificationId: string, requesterId: string) => {
     if (!user) return;
@@ -690,7 +698,7 @@ function NotificationsTab() {
       await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
     }
 
-    setFollowingIds(prev => [...prev, targetId]);
+    await refreshFollowData();
     setFollowingLoading(null);
   };
 

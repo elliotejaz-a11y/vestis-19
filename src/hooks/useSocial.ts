@@ -40,20 +40,30 @@ const PAGE_SIZE = 15;
 
 async function enrichPostsWithProfiles(postData: any[], userId: string) {
   const userIds = [...new Set(postData.map((p: any) => p.user_id))];
-  const [{ data: profiles }, { data: myLikes }] = await Promise.all([
+  const [profilesResult, myLikesResult] = await Promise.allSettled([
     supabase.from("profiles").select("id, display_name, username, avatar_url").in("id", userIds),
     supabase.from("social_likes").select("post_id").eq("user_id", userId),
   ]);
+  const profiles = profilesResult.status === "fulfilled" ? profilesResult.value.data : null;
+  const myLikes = myLikesResult.status === "fulfilled" ? myLikesResult.value.data : null;
   const likedPostIds = new Set((myLikes || []).map((l: any) => l.post_id));
   const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
   // Resolve signed URLs for any social-content images in parallel
-  const enriched = await Promise.all(
+  const urlResults = await Promise.allSettled(
     postData.map(async (p: any) => ({
       ...p,
       image_urls: await getSignedSocialUrls(p.image_urls || []),
       user: profileMap.get(p.user_id),
       liked_by_me: likedPostIds.has(p.id),
     }))
+  );
+  const enriched = urlResults.map((r, i) =>
+    r.status === "fulfilled" ? r.value : {
+      ...postData[i],
+      user: profileMap.get(postData[i].user_id),
+      liked_by_me: likedPostIds.has(postData[i].id),
+      image_urls: postData[i].image_urls || [],
+    }
   );
   return enriched;
 }
@@ -125,12 +135,15 @@ export function useSocial() {
       const userIds = [...new Set(storyData.map((s: any) => s.user_id))];
       const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url").in("id", userIds);
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
-      const enriched = await Promise.all(
+      const storyResults = await Promise.allSettled(
         storyData.map(async (s: any) => ({
           ...s,
           image_url: (await getSignedSocialUrl(s.image_url)) || s.image_url,
           user: profileMap.get(s.user_id),
         }))
+      );
+      const enriched = storyResults.map((r, i) =>
+        r.status === "fulfilled" ? r.value : { ...storyData[i], user: profileMap.get(storyData[i].user_id) }
       );
       return enriched as SocialStory[];
     },
