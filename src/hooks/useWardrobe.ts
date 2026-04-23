@@ -16,6 +16,10 @@ const GYM_TOP_NEGATIVE_PATTERN = /\b(jacket|coat|hoodie|jumper|sweater|cardigan|
 const GYM_BOTTOM_POSITIVE_PATTERN = /\b(shorts?|track ?pants?|trackpants?|joggers?|training pants?|workout pants?|athletic|performance|training|workout|gym|sport|sports|lightweight|polyester|spandex|elastane|nylon)\b/i;
 const GYM_BOTTOM_NEGATIVE_PATTERN = /\b(jeans?|denim|chinos?|slacks?|trousers?|dress pants?|formal|corduroy|cargo|skirt|wool)\b/i;
 const GYM_SHOE_NEGATIVE_PATTERN = /\b(sandals?|slides?|flip[-\s]?flops?|heels?|boots?|loafers?|oxfords?|derbies?|brogues?|mules?|slippers?)\b/i;
+const ATHLETIC_SHOE_PATTERN = /\b(TN|TNs|air ?max|air ?force|running shoe|trail shoe|training shoe|gym shoe|sports shoe|basketball shoe|trainer|trainers|jogger shoe|tech runner|boost|ultra ?boost|foam ?runner)\b/i;
+const GYM_WEAR_ITEM_PATTERN = /\b(compression|activewear|athletic wear|performance top|training top|workout top|gym top|sports top|spandex|elastane|dry[-\s]?fit|moisture[-\s]?wicking)\b/i;
+const FORMAL_OCCASION_PATTERN = /\b(wedding|gala|black[-\s]?tie|formal|cocktail|funeral|opera)\b/i;
+const BUSINESS_OCCASION_PATTERN = /\b(business|interview|meeting|office|work|corporate|conference|presentation)\b/i;
 const DETAILLESS_REASONING_PATTERNS = [
   /^a curated look/i,
   /curated look/i,
@@ -79,6 +83,29 @@ function getItemSearchText(item: ClothingItem): string {
 
 function isGymOccasion(occasion: string): boolean {
   return GYM_OCCASION_PATTERN.test(occasion);
+}
+
+function isHatCategory(item: ClothingItem): boolean {
+  const cat = (item.category || "").trim().toLowerCase();
+  return cat === "hats" || cat === "hat";
+}
+
+function isAthleticShoe(item: ClothingItem): boolean {
+  if (!isShoesCategory(item.category)) return false;
+  return ATHLETIC_SHOE_PATTERN.test(getItemSearchText(item));
+}
+
+function isGymWearItem(item: ClothingItem): boolean {
+  const cat = (item.category || "").trim().toLowerCase();
+  if (cat !== "tops" && cat !== "bottoms") return false;
+  return GYM_WEAR_ITEM_PATTERN.test(getItemSearchText(item));
+}
+
+function filterItemsForOccasion(items: ClothingItem[], occasion: string): ClothingItem[] {
+  if (FORMAL_OCCASION_PATTERN.test(occasion) || BUSINESS_OCCASION_PATTERN.test(occasion)) {
+    return items.filter(item => !isHatCategory(item) && !isAthleticShoe(item) && !isGymWearItem(item));
+  }
+  return items.filter(item => !isGymWearItem(item));
 }
 
 function isGymTop(item: ClothingItem): boolean {
@@ -667,8 +694,9 @@ export function useWardrobe() {
           }
         }
 
-        const monochromeBase = buildMonochromeFallback(items);
-        const fallbackItems = ensureOutfitHasCorePieces(monochromeBase, items);
+        const occasionFilteredItems = filterItemsForOccasion(items, occasion);
+        const monochromeBase = buildMonochromeFallback(occasionFilteredItems);
+        const fallbackItems = ensureOutfitHasCorePieces(monochromeBase, occasionFilteredItems);
         const fallbackReasoning = buildOutfitReasoningFallback({ occasion, selectedItems: fallbackItems, profile, weather });
 
         const { data: outfitRow } = await supabase

@@ -20,6 +20,8 @@ const GYM_TOP_NEGATIVE_PATTERN = /\b(jacket|coat|hoodie|jumper|sweater|cardigan|
 const GYM_BOTTOM_POSITIVE_PATTERN = /\b(shorts?|track ?pants?|trackpants?|joggers?|training pants?|workout pants?|athletic|performance|training|workout|gym|sport|sports|lightweight|polyester|spandex|elastane|nylon)\b/i;
 const GYM_BOTTOM_NEGATIVE_PATTERN = /\b(jeans?|denim|chinos?|slacks?|trousers?|dress pants?|formal|corduroy|cargo|skirt|wool)\b/i;
 const GYM_SHOE_NEGATIVE_PATTERN = /\b(sandals?|slides?|flip[-\s]?flops?|heels?|boots?|loafers?|oxfords?|derbies?|brogues?|mules?|slippers?)\b/i;
+const ATHLETIC_SHOE_PATTERN = /\b(TN|TNs|air ?max|air ?force|running shoe|trail shoe|training shoe|gym shoe|sports shoe|basketball shoe|trainer|trainers|jogger shoe|tech runner|boost|ultra ?boost|foam ?runner)\b/i;
+const GYM_WEAR_ITEM_PATTERN = /\b(compression|activewear|athletic wear|performance top|training top|workout top|gym top|sports top|spandex|elastane|dry[-\s]?fit|moisture[-\s]?wicking)\b/i;
 
 const SKIN_TONE_LABELS = [
   { value: 0, label: 'Porcelain' },
@@ -92,15 +94,39 @@ function isGymShoe(item: any): boolean {
   return !GYM_SHOE_NEGATIVE_PATTERN.test(text);
 }
 
+function isHatCategory(item: any): boolean {
+  const cat = normalizeCategory(item?.category);
+  return cat === 'hats' || cat === 'hat';
+}
+
+function isAthleticShoe(item: any): boolean {
+  if (normalizeCategory(item?.category) !== 'shoes') return false;
+  return ATHLETIC_SHOE_PATTERN.test(getItemSearchText(item));
+}
+
+function isGymWearItem(item: any): boolean {
+  const cat = normalizeCategory(item?.category);
+  if (cat !== 'tops' && cat !== 'bottoms') return false;
+  return GYM_WEAR_ITEM_PATTERN.test(getItemSearchText(item));
+}
+
+function filterItemsForOccasion(items: any[], occasion: string): any[] {
+  if (isFormalOccasion(occasion) || isBusinessOccasion(occasion)) {
+    return items.filter(item => !isHatCategory(item) && !isAthleticShoe(item) && !isGymWearItem(item));
+  }
+  // Smart casual and casual: allow hats and non-gym shoes but strip gym-specific clothing
+  return items.filter(item => !isGymWearItem(item));
+}
+
 function getOccasionTier(occasion: string): { tier: string; guidance: string } {
   if (isGymOccasion(occasion)) {
     return { tier: 'ACTIVE/GYM', guidance: 'Athletic wear ONLY. EXACTLY 3 items: (1) one gym top — t-shirt, tight-fit tee, compression top, performance polyester/spandex/nylon top; (2) one gym bottom — shorts, track pants, joggers, lightweight athletic pants; (3) one closed trainer/sneaker. NO jackets, hoodies, jumpers, sweaters, blazers, outerwear, hats, jewellery, bags, sandals, boots, formal shoes.' };
   }
   if (isFormalOccasion(occasion)) {
-    return { tier: 'FORMAL', guidance: 'Formal pieces ONLY. Pick suit trousers / dress pants / smart trousers (NEVER jeans, joggers, shorts, athletic). Pair with a dress shirt or smart top, polished dress shoes (Oxfords/derbies/loafers — NEVER trainers/sandals/boots), and a blazer/suit jacket if available. NO hoodies, t-shirts with graphics, hats, trainers, athletic items.' };
+    return { tier: 'FORMAL', guidance: 'Formal pieces ONLY. Pick suit trousers / dress pants / smart trousers (NEVER jeans, joggers, shorts, athletic). Pair with a dress shirt or smart top, polished dress shoes (Oxfords/derbies/loafers — NEVER trainers/sandals/boots/athletic footwear), and a blazer/suit jacket if available. NO hoodies, t-shirts with graphics, hats, caps, headwear, trainers, sneakers, or any athletic items.' };
   }
   if (isBusinessOccasion(occasion)) {
-    return { tier: 'BUSINESS', guidance: 'Smart workwear. Pick chinos, smart trousers, or dark/clean jeans (NEVER joggers, athletic, ripped). Pair with a collared shirt, polo, or fine-knit top, smart shoes or clean leather sneakers. Optional blazer. NO graphic tees, hoodies, athletic wear, sandals.' };
+    return { tier: 'BUSINESS', guidance: 'Smart professional workwear ONLY. Pick chinos, smart trousers, or dark/clean jeans (NEVER joggers, athletic bottoms, ripped). Pair with a collared shirt, polo, or fine-knit top. Shoes must be smart leather shoes, loafers, derbies, or clean minimal dress sneakers — NEVER trainers, running shoes, TNs, Air Max, Jordans, or any athletic or sport-branded footwear. NO hats, caps, beanies, or any headwear. NO graphic tees, hoodies, athletic wear, sandals, or streetwear.' };
   }
   if (SMART_CASUAL_PATTERN.test(occasion)) {
     return { tier: 'SMART CASUAL', guidance: 'Polished but relaxed. Smart jeans/chinos/trousers, knitwear or smart top, clean sneakers or loafers. Avoid athletic wear and sloppy casual.' };
@@ -217,7 +243,7 @@ serve(async (req) => {
     const isGymRequest = isGymOccasion(occasion);
     const candidateItems = isGymRequest
       ? items.filter((item: any) => isGymTop(item) || isGymBottom(item) || isGymShoe(item))
-      : items;
+      : filterItemsForOccasion(items, occasion);
 
     if (isGymRequest) {
       if (!candidateItems.some(isGymTop)) {
