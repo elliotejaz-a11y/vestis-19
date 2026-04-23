@@ -393,7 +393,7 @@ export default function UserProfilePage() {
                     onClick={() => setFullscreenFitPic(pic)}
                     className="aspect-square relative"
                   >
-                    <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
+                    <SignedSocialImage src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover rounded-sm" />
                   </button>
                 ))}
               </div>

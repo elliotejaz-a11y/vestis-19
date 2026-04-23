@@ -194,7 +194,7 @@ export function CalendarPage({ outfits }: Props) {
                 <div className="grid grid-cols-3 gap-1.5">
                   {dateFitPics.map((pic: any) => (
                     <button key={pic.id} onClick={() => setSelectedFitPic(pic)} className="aspect-square rounded-xl overflow-hidden relative">
-                      <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                      <SignedSocialImage src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>

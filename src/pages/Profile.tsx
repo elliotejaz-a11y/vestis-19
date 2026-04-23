@@ -253,7 +253,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   onContextMenu={(e) => { e.preventDefault(); setSelectedFitPic(pic); }}
                   className="aspect-square rounded-xl overflow-hidden relative"
                 >
-                  <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                  <SignedSocialImage src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
                   {pic.is_private && (
                     <div className="absolute top-1 right-1 bg-foreground/60 rounded-full px-1.5 py-0.5">
                       <span className="text-[8px] text-background">Private</span>
