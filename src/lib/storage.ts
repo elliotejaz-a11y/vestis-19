@@ -19,7 +19,7 @@ export function getStoragePathFromUrl(bucket: SignedStorageBucket, value: string
   if (!value) return null;
   if (isStoragePath(value)) return value;
 
-  const publicMatch = value.match(new RegExp(`/storage/v1/object/(?:public|sign)/${bucket}/(.+?)(?:\?|$)`));
+  const publicMatch = value.match(new RegExp(`/storage/v1/object/(?:public|sign)/${bucket}/(.+?)(?:\\?|$)`));
   return publicMatch ? decodeURIComponent(publicMatch[1]) : null;
 }
 
