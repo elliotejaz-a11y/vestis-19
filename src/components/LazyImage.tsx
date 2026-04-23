@@ -1,6 +1,19 @@
 import { useState, useRef, useEffect, memo } from "react";
 import { cn } from "@/lib/utils";
 
+function getThumbnailUrl(src: string | undefined): string | undefined {
+  if (!src || !src.includes("/storage/v1/object/")) return undefined;
+  try {
+    const url = new URL(src);
+    url.pathname = url.pathname.replace("/storage/v1/object/", "/storage/v1/render/image/");
+    url.searchParams.set("width", "20");
+    url.searchParams.set("quality", "20");
+    return url.toString();
+  } catch {
+    return undefined;
+  }
+}
+
 interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   fallbackClassName?: string;
 }
@@ -8,6 +21,7 @@ interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
 export const LazyImage = memo(function LazyImage({ src, alt, className, fallbackClassName, ...props }: LazyImageProps) {
   const [loaded, setLoaded] = useState(false);
   const [inView, setInView] = useState(false);
+  const thumbnailSrc = getThumbnailUrl(src);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,7 +53,7 @@ export const LazyImage = memo(function LazyImage({ src, alt, className, fallback
             fallbackClassName
           )}
           style={{
-            backgroundImage: src ? `url(${src})` : undefined,
+            backgroundImage: thumbnailSrc ? `url(${thumbnailSrc})` : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center",
             filter: "blur(20px)",

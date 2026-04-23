@@ -58,7 +58,7 @@ export default function Chat() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
-  const { notifications, unreadCount, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead, markAsRead, loading: notifLoading, refresh: refreshNotifications, clearAll: clearAllNotifications } = useNotifications();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(() => {
     const state = location.state as { tab?: string } | null;
@@ -174,6 +174,11 @@ export default function Chat() {
 
         <TabsContent value="notifications">
           <NotificationsTab
+            notifications={notifications}
+            notifLoading={notifLoading}
+            markAsRead={markAsRead}
+            refresh={refreshNotifications}
+            clearAll={clearAllNotifications}
             followingIds={followingIds}
             followerIds={followerIds}
             refreshFollowData={refreshFollowData}
@@ -638,16 +643,25 @@ function DiscoverTab({
 
 // ─── Notifications Tab ───
 function NotificationsTab({
+  notifications,
+  notifLoading: loading,
+  markAsRead,
+  refresh,
+  clearAll,
   followingIds,
   followerIds,
   refreshFollowData,
 }: {
+  notifications: ReturnType<typeof useNotifications>["notifications"];
+  notifLoading: boolean;
+  markAsRead: ReturnType<typeof useNotifications>["markAsRead"];
+  refresh: ReturnType<typeof useNotifications>["refresh"];
+  clearAll: ReturnType<typeof useNotifications>["clearAll"];
   followingIds: string[];
   followerIds: string[];
   refreshFollowData: () => Promise<void>;
 }) {
   const { user } = useAuth();
-  const { notifications, markAsRead, loading, refresh, clearAll } = useNotifications();
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
   const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
   const [acceptedRequestIds, setAcceptedRequestIds] = useState<string[]>([]);

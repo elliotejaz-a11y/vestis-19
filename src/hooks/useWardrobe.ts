@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -203,6 +203,14 @@ export function useWardrobe() {
   const [outfits, setOutfits] = useState<Outfit[]>([]);
   const [loading, setLoading] = useState(false);
   const [dataReady, setDataReady] = useState(false);
+
+  // Refs so generateOutfit stays stable even as wardrobe changes
+  const itemsRef = useRef(items);
+  const outfitsRef = useRef(outfits);
+  const profileRef = useRef(profile);
+  itemsRef.current = items;
+  outfitsRef.current = outfits;
+  profileRef.current = profile;
 
   useEffect(() => {
     if (!user) { setItems([]); setOutfits([]); setLoading(false); return; }
@@ -526,6 +534,9 @@ export function useWardrobe() {
 
   const generateOutfit = useCallback(
     async (occasion: string, weather?: { temp: number; description: string }, colourStory?: string): Promise<Outfit | null> => {
+      const items = itemsRef.current;
+      const outfits = outfitsRef.current;
+      const profile = profileRef.current;
       if (!user || items.length < 2) return null;
 
       const missingCore: string[] = [];
@@ -665,7 +676,7 @@ export function useWardrobe() {
         return outfit;
       }
     },
-    [user, items, outfits, profile, toast]
+    [user, toast]
   );
 
   const addOutfitToState = useCallback((outfit: Outfit) => {
