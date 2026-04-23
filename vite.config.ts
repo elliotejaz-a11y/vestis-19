@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    exclude: ["@imgly/background-removal"],
+    exclude: ["@imgly/background-removal", "onnxruntime-web", "onnxruntime-web/webgpu"],
   },
   build: {
     rollupOptions: {
