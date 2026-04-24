@@ -33,6 +33,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onDelete, isOwn }
           <button onClick={() => navigate(`/user/${post.user_id}`)}>
             <UserAvatar
               avatarUrl={post.user?.avatar_url}
+              avatarPreset={post.user?.avatar_preset}
               displayName={post.user?.display_name}
               userId={post.user_id}
               className="w-8 h-8"

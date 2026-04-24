@@ -41,6 +41,7 @@ export function StoriesBar({ stories, onAdd, onView }: Props) {
           <div className="w-16 h-16 rounded-full border-2 border-accent p-0.5">
             <UserAvatar
               avatarUrl={user?.avatar_url}
+              avatarPreset={user?.avatar_preset}
               displayName={user?.display_name}
               userId={userId}
               className="w-full h-full bg-card"

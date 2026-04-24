@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { base64ToDataUrl, fileToDataUrl, isAllowedMassUploadImage, optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
+import { fileToDataUrl, isAllowedMassUploadImage, optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
 import { CATEGORIES, ClothingCategory, ClothingItem } from "@/types/wardrobe";
 import { MassUploadCandidate, WARDROBE_FABRICS } from "@/types/massUpload";
 import { Check, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
@@ -40,6 +40,34 @@ interface AnalyseResponse {
 }
 
 const EMPTY_PROGRESS = { analysed: false, extracted: 0, total: 0 };
+
+async function cropItemPreview(
+  sourceBase64: string,
+  bbox: { x: number; y: number; width: number; height: number },
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const { naturalWidth: imgW, naturalHeight: imgH } = img;
+      const pad = 0.06;
+      const x = Math.max(0, bbox.x - pad) * imgW;
+      const y = Math.max(0, bbox.y - pad) * imgH;
+      const right = Math.min(1, bbox.x + bbox.width + pad) * imgW;
+      const bottom = Math.min(1, bbox.y + bbox.height + pad) * imgH;
+      const cw = right - x;
+      const ch = bottom - y;
+      const canvas = document.createElement("canvas");
+      canvas.width = cw;
+      canvas.height = ch;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { reject(new Error("Canvas unavailable")); return; }
+      ctx.drawImage(img, x, y, cw, ch, 0, 0, cw, ch);
+      resolve(canvas.toDataURL("image/jpeg", 0.88));
+    };
+    img.onerror = reject;
+    img.src = `data:image/jpeg;base64,${sourceBase64}`;
+  });
+}
 
 export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange, mode = "pile" }: Props) {
   const isOutfit = mode === "outfit";
@@ -80,30 +108,23 @@ export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange,
     setExtracting(true);
     setProgress({ analysed: true, extracted: 0, total: detectedItems.length });
 
-    for (const item of detectedItems) {
-      try {
-        const { data, error } = await supabase.functions.invoke("extract-pile-item", {
-          body: {
-            sourceImageBase64: imageBase64,
-            item,
-          },
-        });
-
-        if (error) throw error;
-
-        updateCandidate(item.id, {
-          previewStatus: "ready",
-          previewUrl: base64ToDataUrl(data.imageBase64),
-        });
-      } catch (error) {
-        updateCandidate(item.id, {
-          previewStatus: "failed",
-          error: error instanceof Error ? error.message : "Preview extraction failed",
-        });
-      } finally {
-        setProgress((prev) => ({ ...prev, extracted: Math.min(prev.total, prev.extracted + 1) }));
-      }
-    }
+    await Promise.all(
+      detectedItems.map(async (item) => {
+        try {
+          const previewUrl = item.bbox
+            ? await cropItemPreview(imageBase64, item.bbox)
+            : `data:image/jpeg;base64,${imageBase64}`;
+          updateCandidate(item.id, { previewStatus: "ready", previewUrl });
+        } catch {
+          updateCandidate(item.id, {
+            previewStatus: "failed",
+            error: "Preview extraction failed",
+          });
+        } finally {
+          setProgress((prev) => ({ ...prev, extracted: Math.min(prev.total, prev.extracted + 1) }));
+        }
+      }),
+    );
 
     setExtracting(false);
   };

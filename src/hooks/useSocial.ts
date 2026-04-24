@@ -13,7 +13,7 @@ export interface SocialPost {
   likes_count: number;
   comments_count: number;
   created_at: string;
-  user?: { display_name: string | null; username: string | null; avatar_url: string | null };
+  user?: { display_name: string | null; username: string | null; avatar_url: string | null; avatar_preset: string | null };
   liked_by_me?: boolean;
 }
 
@@ -24,7 +24,7 @@ export interface SocialStory {
   caption: string;
   expires_at: string;
   created_at: string;
-  user?: { display_name: string | null; username: string | null; avatar_url: string | null };
+  user?: { display_name: string | null; username: string | null; avatar_url: string | null; avatar_preset: string | null };
 }
 
 export interface SocialComment {
@@ -33,7 +33,7 @@ export interface SocialComment {
   post_id: string;
   content: string;
   created_at: string;
-  user?: { display_name: string | null; username: string | null; avatar_url: string | null };
+  user?: { display_name: string | null; username: string | null; avatar_url: string | null; avatar_preset: string | null };
 }
 
 const PAGE_SIZE = 15;
@@ -41,7 +41,7 @@ const PAGE_SIZE = 15;
 async function enrichPostsWithProfiles(postData: any[], userId: string) {
   const userIds = [...new Set(postData.map((p: any) => p.user_id))];
   const [profilesResult, myLikesResult] = await Promise.allSettled([
-    supabase.from("profiles").select("id, display_name, username, avatar_url").in("id", userIds),
+    supabase.from("profiles").select("id, display_name, username, avatar_url, avatar_preset").in("id", userIds),
     supabase.from("social_likes").select("post_id").eq("user_id", userId),
   ]);
   const profiles = profilesResult.status === "fulfilled" ? profilesResult.value.data : null;
@@ -132,7 +132,7 @@ export function useSocial() {
         .order("created_at", { ascending: false });
       if (!storyData) return [];
       const userIds = [...new Set(storyData.map((s: any) => s.user_id))];
-      const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url").in("id", userIds);
+      const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url, avatar_preset").in("id", userIds);
       const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
       const signedStoryUrls = await batchGetSignedSocialUrls(storyData.map((s: any) => s.image_url));
       const enriched = storyData.map((s: any, i: number) => ({
