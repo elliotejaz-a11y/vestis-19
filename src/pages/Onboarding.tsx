@@ -160,10 +160,10 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       const safeExt = ALLOWED_EXTS.includes(ext) ? ext : "jpg";
       const path = `${user.id}/avatar-${Date.now()}.${safeExt}`;
       const { error: uploadError } = await supabase.storage
-        .from("social-media")
+        .from("social-content")
         .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" });
       if (uploadError) throw uploadError;
-      const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
+      const { data: urlData } = supabase.storage.from("social-content").getPublicUrl(path);
       setAvatarUrl(urlData.publicUrl);
       setAvatarPreset(null);
     } catch (err: any) {

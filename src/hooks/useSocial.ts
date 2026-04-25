@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { getSignedSocialUrl, batchGetSignedSocialUrls } from "@/lib/storage";
+import { getSignedSocialUrl, batchGetSignedSocialUrls, batchResolveAvatarUrls } from "@/lib/storage";
 
 export interface SocialPost {
   id: string;
@@ -44,10 +44,11 @@ async function enrichPostsWithProfiles(postData: any[], userId: string) {
     supabase.from("profiles").select("id, display_name, username, avatar_url, avatar_preset").in("id", userIds),
     supabase.from("social_likes").select("post_id").eq("user_id", userId),
   ]);
-  const profiles = profilesResult.status === "fulfilled" ? profilesResult.value.data : null;
+  const rawProfiles = profilesResult.status === "fulfilled" ? profilesResult.value.data || [] : [];
   const myLikes = myLikesResult.status === "fulfilled" ? myLikesResult.value.data : null;
   const likedPostIds = new Set((myLikes || []).map((l: any) => l.post_id));
-  const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+  const signedAvatars = await batchResolveAvatarUrls(rawProfiles.map((p: any) => p.avatar_url));
+  const profileMap = new Map(rawProfiles.map((p: any, i: number) => [p.id, { ...p, avatar_url: signedAvatars[i] ?? p.avatar_url }]));
   // Batch-sign all image URLs across all posts in a single storage request
   const allImageUrls = postData.flatMap((p: any) => p.image_urls || []);
   const signedFlat = await batchGetSignedSocialUrls(allImageUrls);
@@ -133,7 +134,9 @@ export function useSocial() {
       if (!storyData) return [];
       const userIds = [...new Set(storyData.map((s: any) => s.user_id))];
       const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url, avatar_preset").in("id", userIds);
-      const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+      const rawProfilesForStories = profiles || [];
+      const signedStoryAvatars = await batchResolveAvatarUrls(rawProfilesForStories.map((p: any) => p.avatar_url));
+      const profileMap = new Map(rawProfilesForStories.map((p: any, i: number) => [p.id, { ...p, avatar_url: signedStoryAvatars[i] ?? p.avatar_url }]));
       const signedStoryUrls = await batchGetSignedSocialUrls(storyData.map((s: any) => s.image_url));
       const enriched = storyData.map((s: any, i: number) => ({
         ...s,

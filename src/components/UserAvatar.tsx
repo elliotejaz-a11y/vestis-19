@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { batchResolveAvatarUrls } from "@/lib/storage";
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 2000;
@@ -78,17 +79,27 @@ export function UserAvatar({
   className,
   avatarPosition,
 }: UserAvatarProps) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(avatarUrl ?? null);
   const [imgError, setImgError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const retryCount = useRef(0);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!avatarUrl) { setResolvedUrl(null); return; }
+    let cancelled = false;
+    batchResolveAvatarUrls([avatarUrl]).then(([signed]) => {
+      if (!cancelled) setResolvedUrl(signed ?? avatarUrl);
+    });
+    return () => { cancelled = true; };
+  }, [avatarUrl]);
+
+  useEffect(() => {
     setImgError(false);
     setRetryKey(0);
     retryCount.current = 0;
     if (retryTimer.current) clearTimeout(retryTimer.current);
-  }, [avatarUrl]);
+  }, [resolvedUrl]);
 
   useEffect(() => () => { if (retryTimer.current) clearTimeout(retryTimer.current); }, []);
 
@@ -105,7 +116,7 @@ export function UserAvatar({
   const seed     = userId || displayName || email || "";
   const bg       = INITIALS_COLOURS[hashStr(seed) % INITIALS_COLOURS.length];
 
-  const showPhoto    = !!avatarUrl && !imgError;
+  const showPhoto    = !!resolvedUrl && !imgError;
   const presetCfg    = !showPhoto && avatarPreset ? (PRESET_CONFIGS[avatarPreset] ?? null) : null;
   const showInitials = !showPhoto && !presetCfg && !!initial;
 
@@ -117,7 +128,7 @@ export function UserAvatar({
       {showPhoto ? (
         <img
           key={retryKey}
-          src={avatarUrl!}
+          src={resolvedUrl!}
           alt=""
           className="w-full h-full object-cover"
           style={{ objectPosition: avatarPosition || "center" }}

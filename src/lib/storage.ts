@@ -7,7 +7,7 @@ type ImageFields = {
   backImagePath?: string | null;
 };
 
-type SignedStorageBucket = "clothing-images" | "wishlist-images" | "social-content";
+type SignedStorageBucket = "clothing-images" | "wishlist-images" | "social-content" | "social-media";
 
 const SIGNED_URL_EXPIRES_IN_SECONDS = 60 * 60;
 
@@ -139,5 +139,55 @@ export async function batchGetSignedSocialUrls(values: (string | null | undefine
   return entries.map((entry) => {
     if ("passthrough" in entry) return entry.passthrough || null;
     return signedMap.get(entry.path) ?? values[entry.index] ?? null;
+  });
+}
+
+// Signs avatar URLs from either social-content (new uploads) or social-media (legacy) buckets.
+// Falls back to the original URL if signing fails so there's never a regression.
+export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefined)[]): Promise<(string | null)[]> {
+  if (avatarUrls.length === 0) return [];
+
+  type Entry = { index: number; passthrough: string } | { index: number; path: string; bucket: SignedStorageBucket };
+  const entries: Entry[] = [];
+  const contentPaths: string[] = [];
+  const mediaPaths: string[] = [];
+
+  avatarUrls.forEach((url, index) => {
+    if (!url) { entries.push({ index, passthrough: "" }); return; }
+    if (isStoragePath(url)) {
+      contentPaths.push(url);
+      entries.push({ index, path: url, bucket: "social-content" });
+      return;
+    }
+    if (url.includes("/social-content/")) {
+      const path = getStoragePathFromUrl("social-content", url);
+      if (path) { contentPaths.push(path); entries.push({ index, path, bucket: "social-content" }); return; }
+    }
+    if (url.includes("/social-media/")) {
+      const path = getStoragePathFromUrl("social-media", url);
+      if (path) { mediaPaths.push(path); entries.push({ index, path, bucket: "social-media" }); return; }
+    }
+    entries.push({ index, passthrough: url });
+  });
+
+  const signedMap = new Map<string, string>();
+
+  if (contentPaths.length > 0) {
+    const { data } = await supabase.storage.from("social-content")
+      .createSignedUrls([...new Set(contentPaths)], SIGNED_URL_EXPIRES_IN_SECONDS);
+    (data || []).filter((d) => d.signedUrl).forEach((d) => signedMap.set(`c:${d.path}`, d.signedUrl!));
+  }
+  if (mediaPaths.length > 0) {
+    const { data } = await supabase.storage.from("social-media")
+      .createSignedUrls([...new Set(mediaPaths)], SIGNED_URL_EXPIRES_IN_SECONDS);
+    (data || []).filter((d) => d.signedUrl).forEach((d) => signedMap.set(`m:${d.path}`, d.signedUrl!));
+  }
+
+  return avatarUrls.map((url, i) => {
+    if (!url) return null;
+    const entry = entries[i];
+    if (!entry || "passthrough" in entry) return url;
+    const key = entry.bucket === "social-content" ? `c:${entry.path}` : `m:${entry.path}`;
+    return signedMap.get(key) ?? url;
   });
 }

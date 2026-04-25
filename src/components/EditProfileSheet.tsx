@@ -112,14 +112,14 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
     setCropPreview(null);
     setUploading(true);
     const path = `${user.id}/avatar-${Date.now()}.jpg`;
-    const { error } = await supabase.storage.from("social-media").upload(path, blob, {
+    const { error } = await supabase.storage.from("social-content").upload(path, blob, {
       contentType: "image/jpeg",
     });
     if (error) {
       console.error("Avatar upload failed:", error);
       toast({ title: "Couldn't upload photo", description: "Please try a different image.", variant: "destructive" });
     } else {
-      const { data } = supabase.storage.from("social-media").getPublicUrl(path);
+      const { data } = supabase.storage.from("social-content").getPublicUrl(path);
       setAvatarUrl(data.publicUrl);
       setAvatarPreset(null);
       setAvatarPosition("50% 50%");
