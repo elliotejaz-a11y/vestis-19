@@ -190,6 +190,7 @@ export default function SocialFeed() {
           <div className="flex items-center gap-3 px-4 py-3">
             <UserAvatar
               avatarUrl={viewingStory.user?.avatar_url}
+              avatarPreset={viewingStory.user?.avatar_preset}
               displayName={viewingStory.user?.display_name}
               userId={viewingStory.user_id}
               className="w-8 h-8 bg-muted"
