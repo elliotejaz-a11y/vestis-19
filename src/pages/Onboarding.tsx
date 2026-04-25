@@ -164,7 +164,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         .upload(path, file, { upsert: true, contentType: file.type || "image/jpeg" });
       if (uploadError) throw uploadError;
       const { data: urlData } = supabase.storage.from("social-media").getPublicUrl(path);
-      setAvatarUrl(urlData.publicUrl + "?v=" + Date.now());
+      setAvatarUrl(urlData.publicUrl);
       setAvatarPreset(null);
     } catch (err: any) {
       console.error("Avatar upload failed:", err);

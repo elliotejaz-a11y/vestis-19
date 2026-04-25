@@ -120,7 +120,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       toast({ title: "Couldn't upload photo", description: "Please try a different image.", variant: "destructive" });
     } else {
       const { data } = supabase.storage.from("social-media").getPublicUrl(path);
-      setAvatarUrl(data.publicUrl + "?v=" + Date.now());
+      setAvatarUrl(data.publicUrl);
       setAvatarPreset(null);
       setAvatarPosition("50% 50%");
     }
