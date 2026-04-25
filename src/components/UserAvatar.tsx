@@ -1,4 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 2000;
 import { cn } from "@/lib/utils";
 
 // Palette sourced from Vestis theme tokens (src/index.css):
@@ -76,7 +79,27 @@ export function UserAvatar({
   avatarPosition,
 }: UserAvatarProps) {
   const [imgError, setImgError] = useState(false);
-  useEffect(() => { setImgError(false); }, [avatarUrl]);
+  const [retryKey, setRetryKey] = useState(0);
+  const retryCount = useRef(0);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setImgError(false);
+    setRetryKey(0);
+    retryCount.current = 0;
+    if (retryTimer.current) clearTimeout(retryTimer.current);
+  }, [avatarUrl]);
+
+  useEffect(() => () => { if (retryTimer.current) clearTimeout(retryTimer.current); }, []);
+
+  const handleImgError = () => {
+    if (retryCount.current < MAX_RETRIES) {
+      retryCount.current += 1;
+      retryTimer.current = setTimeout(() => setRetryKey((k) => k + 1), RETRY_DELAY_MS);
+    } else {
+      setImgError(true);
+    }
+  };
 
   const initial  = getInitial(displayName, email);
   const seed     = userId || displayName || email || "";
@@ -93,11 +116,12 @@ export function UserAvatar({
     >
       {showPhoto ? (
         <img
+          key={retryKey}
           src={avatarUrl!}
           alt=""
           className="w-full h-full object-cover"
           style={{ objectPosition: avatarPosition || "center" }}
-          onError={() => setImgError(true)}
+          onError={handleImgError}
         />
       ) : presetCfg ? (
         <Silhouette bg={presetCfg.bg} figure={presetCfg.figure} />
