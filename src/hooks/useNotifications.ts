@@ -13,6 +13,7 @@ export interface Notification {
     display_name: string | null;
     username: string | null;
     avatar_url: string | null;
+    avatar_preset: string | null;
   };
 }
 
@@ -38,7 +39,7 @@ export function useNotifications() {
       if (fromIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
-          .select("id, display_name, username, avatar_url")
+          .select("id, display_name, username, avatar_url, avatar_preset")
           .in("id", fromIds);
         if (profiles) {
           profiles.forEach(p => { profileMap[p.id] = p; });

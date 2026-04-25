@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 // Palette sourced from Vestis theme tokens (src/index.css):
@@ -76,6 +76,7 @@ export function UserAvatar({
   avatarPosition,
 }: UserAvatarProps) {
   const [imgError, setImgError] = useState(false);
+  useEffect(() => { setImgError(false); }, [avatarUrl]);
 
   const initial  = getInitial(displayName, email);
   const seed     = userId || displayName || email || "";

@@ -224,6 +224,7 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
                 {n.from_user_id ? (
                   <UserAvatar
                     avatarUrl={n.from_profile?.avatar_url}
+                    avatarPreset={n.from_profile?.avatar_preset}
                     displayName={n.from_profile?.display_name}
                     userId={n.from_user_id}
                     className="w-10 h-10 flex-shrink-0 bg-card border border-border"
