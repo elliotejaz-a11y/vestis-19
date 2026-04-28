@@ -33,6 +33,7 @@ const Privacy = lazy(() => import("./pages/policies/Privacy"));
 const Community = lazy(() => import("./pages/policies/Community"));
 const Cookies = lazy(() => import("./pages/policies/Cookies"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const LaunchVideo = lazy(() => import("./components/VestisLaunchVideo"));
 
 // Eagerly preload ALL route chunks so every tab is instant on first tap.
 // This runs in the background after initial paint — users see the current page
@@ -85,6 +86,16 @@ function AppRoutes() {
       }
     }
   }, [loading, user]);
+
+  // Public routes accessible without auth
+  const location = window.location.pathname;
+  if (location === "/launch-video") {
+    return (
+      <Suspense fallback={<Noop />}>
+        <LaunchVideo />
+      </Suspense>
+    );
+  }
 
   if (loading) return <div />;
 
