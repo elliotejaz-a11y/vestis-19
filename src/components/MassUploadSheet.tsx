@@ -10,6 +10,7 @@ import { ColorPicker, joinColors } from "@/components/ColorPicker";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { fileToDataUrl, isAllowedMassUploadImage, optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
+import { processClothingImage } from "@/lib/image-processing";
 import { CATEGORIES, ClothingCategory, ClothingItem } from "@/types/wardrobe";
 import { MassUploadCandidate, WARDROBE_FABRICS } from "@/types/massUpload";
 import { Check, ImagePlus, Loader2, Sparkles, X } from "lucide-react";
@@ -111,9 +112,21 @@ export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange,
     await Promise.all(
       detectedItems.map(async (item) => {
         try {
-          const previewUrl = item.bbox
+          const croppedUrl = item.bbox
             ? await cropItemPreview(imageBase64, item.bbox)
             : `data:image/jpeg;base64,${imageBase64}`;
+
+          let previewUrl = croppedUrl;
+          try {
+            const res = await fetch(croppedUrl);
+            const blob = await res.blob();
+            const file = new File([blob], `item-${item.id}.jpg`, { type: "image/jpeg" });
+            const cleanedBlob = await processClothingImage(file);
+            previewUrl = URL.createObjectURL(cleanedBlob);
+          } catch {
+            // Background removal failed — fall back to the cropped image
+          }
+
           updateCandidate(item.id, { previewStatus: "ready", previewUrl });
         } catch {
           updateCandidate(item.id, {
@@ -286,7 +299,7 @@ export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange,
                       {analysing
                         ? "Finding distinct pieces and attributes..."
                         : extracting
-                          ? `Creating clean cut-outs for ${progress.total} detected item${progress.total === 1 ? "" : "s"}.`
+                          ? `Cutting out and removing backgrounds for ${progress.total} item${progress.total === 1 ? "" : "s"}...`
                           : `${candidates.length} candidate item${candidates.length === 1 ? "" : "s"} ready to review.`}
                     </p>
                   </div>
@@ -308,7 +321,7 @@ export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange,
           {(analysing || extracting) && (
             <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-4 py-3 text-sm text-foreground">
               <Loader2 className="h-4 w-4 animate-spin text-accent" />
-              <span>{analysing ? "Analysing the full image..." : "Generating clean item previews..."}</span>
+              <span>{analysing ? "Analysing the full image..." : "Cutting out items and removing backgrounds..."}</span>
             </div>
           )}
 
