@@ -112,27 +112,50 @@ export function MassUploadSheet({ onAdd, children, open: openProp, onOpenChange,
     await Promise.all(
       detectedItems.map(async (item) => {
         try {
-          const croppedUrl = item.bbox
-            ? await cropItemPreview(imageBase64, item.bbox)
-            : `data:image/jpeg;base64,${imageBase64}`;
+          // Ask the AI to generate a fresh clean product image of this item
+          const { data, error } = await supabase.functions.invoke("extract-pile-item", {
+            body: { sourceImageBase64: imageBase64, item },
+          });
 
-          let previewUrl = croppedUrl;
+          if (error || !data?.imageBase64) throw new Error(error?.message ?? "No image returned");
+
+          const binaryStr = atob(data.imageBase64);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+          const generatedBlob = new Blob([bytes], { type: "image/png" });
+
+          let previewUrl = URL.createObjectURL(generatedBlob);
           try {
-            const res = await fetch(croppedUrl);
-            const blob = await res.blob();
-            const file = new File([blob], `item-${item.id}.jpg`, { type: "image/jpeg" });
+            const file = new File([generatedBlob], `item-${item.id}.png`, { type: "image/png" });
             const cleanedBlob = await processClothingImage(file);
             previewUrl = URL.createObjectURL(cleanedBlob);
           } catch {
-            // Background removal failed — fall back to the cropped image
+            // Background removal failed — use the AI-generated image as-is
           }
 
           updateCandidate(item.id, { previewStatus: "ready", previewUrl });
         } catch {
-          updateCandidate(item.id, {
-            previewStatus: "failed",
-            error: "Preview extraction failed",
-          });
+          // AI generation failed — fall back to cropping the source image
+          try {
+            const croppedUrl = item.bbox
+              ? await cropItemPreview(imageBase64, item.bbox)
+              : `data:image/jpeg;base64,${imageBase64}`;
+
+            let previewUrl = croppedUrl;
+            try {
+              const res = await fetch(croppedUrl);
+              const blob = await res.blob();
+              const file = new File([blob], `item-${item.id}.jpg`, { type: "image/jpeg" });
+              const cleanedBlob = await processClothingImage(file);
+              previewUrl = URL.createObjectURL(cleanedBlob);
+            } catch {
+              // Background removal also failed — use crop as-is
+            }
+
+            updateCandidate(item.id, { previewStatus: "ready", previewUrl });
+          } catch {
+            updateCandidate(item.id, { previewStatus: "failed", error: "Preview extraction failed" });
+          }
         } finally {
           setProgress((prev) => ({ ...prev, extracted: Math.min(prev.total, prev.extracted + 1) }));
         }
