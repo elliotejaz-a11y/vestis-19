@@ -134,7 +134,6 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
       if (n === 0) {
         setPhase("ready");
-        setReviewOpen(true);
         return;
       }
 
@@ -214,7 +213,6 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       // Deliver all candidates at once — no partial loading
       setCandidates(results);
       setPhase("ready");
-      setReviewOpen(true);
     } catch (err) {
       console.error("Mass upload failed", err);
       if (sessionRef.current === mySession) setPhase("idle");

@@ -47,9 +47,9 @@ export function MassUploadReviewSheet() {
           </SheetHeader>
         </div>
 
-        {/* Scrollable candidate list */}
+        {/* Scrollable list */}
         <div
-          className="flex-1 overflow-y-auto overscroll-contain px-5 py-4 pb-32 space-y-4"
+          className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-10 space-y-4"
           style={{ touchAction: "pan-y" }}
         >
           {candidates.length === 0 ? (
@@ -88,197 +88,208 @@ function CandidateCard({
   onSkip: (id: string) => void;
 }) {
   const [colors, setColors] = useState<string[]>(candidate.color ? [candidate.color] : []);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const update = (patch: Partial<MassUploadCandidate>) => onChange(candidate.id, patch);
   const disabled = candidate.addState === "saved" || candidate.addState === "skipped";
 
+  // Find the category label + icon for display
+  const catMeta = CATEGORIES.find((c) => c.value === candidate.category);
+
   return (
-    <div className="rounded-3xl border border-border bg-card p-4 shadow-sm">
-      <div className="grid grid-cols-[104px_minmax(0,1fr)] gap-4">
-        {/* Preview image */}
-        <div className="overflow-hidden rounded-2xl border border-border bg-muted">
-          {candidate.previewUrl ? (
-            <img
-              src={candidate.previewUrl}
-              alt={candidate.name}
-              className="h-32 w-full object-contain bg-white dark:bg-muted"
-            />
-          ) : (
-            <div className="flex h-32 items-center justify-center text-muted-foreground">
-              <X className="h-5 w-5" />
-            </div>
-          )}
+    <div className="rounded-3xl border border-border bg-card overflow-hidden shadow-sm">
+      {/* ── Large image ── */}
+      <div className="relative bg-white dark:bg-muted w-full h-60">
+        {candidate.previewUrl ? (
+          <img
+            src={candidate.previewUrl}
+            alt={candidate.name}
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            <X className="h-6 w-6" />
+          </div>
+        )}
+        {/* Status badge */}
+        {candidate.addState === "saved" && (
+          <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-[10px] font-semibold text-accent-foreground shadow">
+            <Check className="h-3 w-3" /> Added
+          </span>
+        )}
+        {candidate.addState === "skipped" && (
+          <span className="absolute top-3 right-3 inline-flex items-center rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-secondary-foreground shadow">
+            Skipped
+          </span>
+        )}
+      </div>
+
+      {/* ── Core info ── */}
+      <div className="px-4 pt-3 pb-4 space-y-3">
+        <div>
+          <p className="text-base font-semibold text-foreground leading-tight">{candidate.name}</p>
+          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+            {catMeta && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground">
+                {catMeta.icon} {catMeta.label}
+              </span>
+            )}
+            {candidate.color && (
+              <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-foreground capitalize">
+                {candidate.color}
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Fields */}
-        <div className="space-y-3 min-w-0">
-          {/* Name + status badge */}
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate">{candidate.name}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {candidate.confidence ? `${Math.round(candidate.confidence * 100)}% confidence` : "AI detected item"}
-              </p>
-            </div>
-            {candidate.addState === "saved" && (
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-accent/15 px-2.5 py-1 text-[10px] font-medium text-accent">
-                <Check className="h-3 w-3" /> Added
-              </span>
-            )}
-            {candidate.addState === "skipped" && (
-              <span className="inline-flex shrink-0 items-center rounded-full bg-secondary px-2.5 py-1 text-[10px] font-medium text-secondary-foreground">
-                Skipped
-              </span>
-            )}
-          </div>
+        {candidate.error && (
+          <p className="text-[11px] text-destructive">{candidate.error}</p>
+        )}
 
-          {/* Name + Category */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-[11px] text-muted-foreground">Name</Label>
-              <Input
-                value={candidate.name}
-                disabled={disabled}
-                onChange={(e) => update({ name: e.target.value })}
-                className="mt-1 rounded-xl bg-background"
-              />
-            </div>
-            <div>
-              <Label className="text-[11px] text-muted-foreground">Category</Label>
-              <Select
-                value={candidate.category}
-                disabled={disabled}
-                onValueChange={(value) => update({ category: value as ClothingCategory })}
-              >
-                <SelectTrigger className="mt-1 rounded-xl bg-background text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.icon} {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+        {/* ── More details collapsible ── */}
+        <button
+          type="button"
+          className="flex w-full items-center justify-between rounded-xl bg-muted/60 px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
+          onClick={() => setMoreOpen((v) => !v)}
+        >
+          <span>More details</span>
+          {moreOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+        </button>
 
-          {/* Fabric + Price */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label className="text-[11px] text-muted-foreground">Fabric</Label>
-              <Select
-                value={candidate.fabric}
-                disabled={disabled}
-                onValueChange={(value) => update({ fabric: value })}
-              >
-                <SelectTrigger className="mt-1 rounded-xl bg-background text-xs">
-                  <SelectValue placeholder="Fabric" />
-                </SelectTrigger>
-                <SelectContent>
-                  {WARDROBE_FABRICS.map((fabric) => (
-                    <SelectItem key={fabric} value={fabric}>
-                      {fabric}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-[11px] text-muted-foreground">Price (NZD)</Label>
-              <Input
-                type="number"
-                value={candidate.estimatedPrice ?? ""}
-                disabled={disabled}
-                onChange={(e) =>
-                  update({ estimatedPrice: e.target.value ? Number(e.target.value) : undefined })
-                }
-                className="mt-1 rounded-xl bg-background"
-              />
-            </div>
-          </div>
-
-          {/* Colours */}
-          <div>
-            <Label className="text-[11px] text-muted-foreground">Colours</Label>
-            <div className="mt-2">
-              <ColorPicker
-                selected={colors}
-                onChange={(nextColors) => {
-                  setColors(nextColors);
-                  update({ color: joinColors(nextColors) });
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Collapsible description & tags */}
-          <button
-            type="button"
-            className="flex w-full items-center justify-between rounded-xl bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors"
-            onClick={() => setDetailsOpen((v) => !v)}
-          >
-            <span>Description &amp; tags</span>
-            {detailsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-          </button>
-
-          {detailsOpen && (
-            <div className="space-y-3">
+        {moreOpen && (
+          <div className="space-y-3 pt-0.5">
+            {/* Name + Category */}
+            <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-[11px] text-muted-foreground">Notes</Label>
-                <Textarea
-                  value={candidate.notes}
+                <Label className="text-[11px] text-muted-foreground">Name</Label>
+                <Input
+                  value={candidate.name}
                   disabled={disabled}
-                  onChange={(e) => update({ notes: e.target.value })}
-                  className="mt-1 min-h-[72px] rounded-xl bg-background text-sm"
+                  onChange={(e) => update({ name: e.target.value })}
+                  className="mt-1 rounded-xl bg-background text-sm"
                 />
               </div>
-              {candidate.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {candidate.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-accent/10 px-2 py-1 text-[10px] font-medium text-accent"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <div>
+                <Label className="text-[11px] text-muted-foreground">Category</Label>
+                <Select
+                  value={candidate.category}
+                  disabled={disabled}
+                  onValueChange={(value) => update({ category: value as ClothingCategory })}
+                >
+                  <SelectTrigger className="mt-1 rounded-xl bg-background text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.icon} {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          )}
 
-          {candidate.error && (
-            <p className="text-[11px] text-destructive">{candidate.error}</p>
-          )}
+            {/* Fabric + Price */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-[11px] text-muted-foreground">Fabric</Label>
+                <Select
+                  value={candidate.fabric}
+                  disabled={disabled}
+                  onValueChange={(value) => update({ fabric: value })}
+                >
+                  <SelectTrigger className="mt-1 rounded-xl bg-background text-xs">
+                    <SelectValue placeholder="Fabric" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {WARDROBE_FABRICS.map((fabric) => (
+                      <SelectItem key={fabric} value={fabric}>
+                        {fabric}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[11px] text-muted-foreground">Price (NZD)</Label>
+                <Input
+                  type="number"
+                  value={candidate.estimatedPrice ?? ""}
+                  disabled={disabled}
+                  onChange={(e) =>
+                    update({ estimatedPrice: e.target.value ? Number(e.target.value) : undefined })
+                  }
+                  className="mt-1 rounded-xl bg-background text-sm"
+                />
+              </div>
+            </div>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-1">
-            <Button
-              type="button"
-              variant="outline"
-              className="flex-1 rounded-xl"
-              disabled={disabled}
-              onClick={() => onSkip(candidate.id)}
-            >
-              Skip
-            </Button>
-            <Button
-              type="button"
-              className="flex-1 rounded-xl bg-accent text-accent-foreground hover:bg-accent/90"
-              disabled={disabled || candidate.previewStatus !== "ready" || !candidate.name || !candidate.category}
-              onClick={() => onAdd({ ...candidate, color: joinColors(colors) || candidate.color })}
-            >
-              {candidate.addState === "saving" ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
-              Add to wardrobe
-            </Button>
+            {/* Colours */}
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Colours</Label>
+              <div className="mt-2">
+                <ColorPicker
+                  selected={colors}
+                  onChange={(nextColors) => {
+                    setColors(nextColors);
+                    update({ color: joinColors(nextColors) });
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <Label className="text-[11px] text-muted-foreground">Notes</Label>
+              <Textarea
+                value={candidate.notes}
+                disabled={disabled}
+                onChange={(e) => update({ notes: e.target.value })}
+                className="mt-1 min-h-[64px] rounded-xl bg-background text-sm"
+              />
+            </div>
+
+            {/* Tags */}
+            {candidate.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {candidate.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-accent/10 px-2 py-1 text-[10px] font-medium text-accent"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
+        )}
+
+        {/* ── Action buttons — always visible ── */}
+        <div className="flex gap-2 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 rounded-xl"
+            disabled={disabled}
+            onClick={() => onSkip(candidate.id)}
+          >
+            Skip
+          </Button>
+          <Button
+            type="button"
+            className="flex-1 rounded-xl bg-accent text-accent-foreground hover:bg-accent/90"
+            disabled={disabled || candidate.previewStatus !== "ready" || !candidate.name || !candidate.category}
+            onClick={() => onAdd({ ...candidate, color: joinColors(colors) || candidate.color })}
+          >
+            {candidate.addState === "saving" ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-2 h-4 w-4" />
+            )}
+            Add to wardrobe
+          </Button>
         </div>
       </div>
     </div>

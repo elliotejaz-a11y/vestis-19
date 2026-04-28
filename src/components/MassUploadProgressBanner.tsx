@@ -1,6 +1,61 @@
+import { useEffect, useRef, useState } from "react";
 import { useMassUpload } from "@/contexts/MassUploadContext";
 import { Progress } from "@/components/ui/progress";
 import { CheckCircle2, Loader2, X } from "lucide-react";
+
+const ANALYSING_MESSAGES = [
+  "Analysing image…",
+  "Detecting clothing items…",
+  "Identifying categories…",
+  "Reading colours & fabrics…",
+];
+
+const EXTRACTING_MESSAGES = [
+  "Generating clean images…",
+  "Removing backgrounds…",
+  "Adding descriptions…",
+  "Processing item details…",
+  "Polishing cut-outs…",
+];
+
+/** Smoothly animates toward a target value, drifting slightly between real updates. */
+function useAnimatedProgress(target: number, active: boolean) {
+  const [display, setDisplay] = useState(0);
+  const displayRef = useRef(display);
+  displayRef.current = display;
+
+  useEffect(() => {
+    if (!active) { setDisplay(target); return; }
+    const id = setInterval(() => {
+      const current = displayRef.current;
+      if (current < target) {
+        setDisplay(Math.min(target, current + 2));
+      } else if (current < 96) {
+        // drift forward slightly so bar never looks frozen
+        setDisplay(current + 0.4);
+      }
+    }, 500);
+    return () => clearInterval(id);
+  }, [target, active]);
+
+  return Math.min(99, display);
+}
+
+/** Cycles through messages on a fixed interval, resetting when the list changes. */
+function useCyclingMessage(messages: string[], active: boolean) {
+  const [idx, setIdx] = useState(0);
+  const listKey = messages.join("|");
+
+  useEffect(() => {
+    setIdx(0);
+    if (!active) return;
+    const id = setInterval(() => setIdx((i) => (i + 1) % messages.length), 2200);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listKey, active]);
+
+  return messages[idx % messages.length];
+}
 
 export function MassUploadProgressBanner() {
   const { phase, extracted, total, candidates, openReview, reset } = useMassUpload();
@@ -8,21 +63,30 @@ export function MassUploadProgressBanner() {
   if (phase === "idle") return null;
 
   const isReady = phase === "ready";
+  const isAnalysing = phase === "analysing";
+  const isExtracting = phase === "extracting";
+  const isProcessing = isAnalysing || isExtracting;
+
   const readyCount = candidates.filter((c) => c.previewStatus === "ready").length;
 
-  const completion =
-    phase === "analysing"
-      ? 10
-      : phase === "extracting"
-      ? Math.max(15, Math.min(95, 10 + Math.round((extracted / Math.max(1, total)) * 85)))
-      : 100;
+  const realCompletion = isAnalysing
+    ? 12
+    : isExtracting
+    ? Math.max(18, Math.min(94, 12 + Math.round((extracted / Math.max(1, total)) * 82)))
+    : 100;
 
-  const label =
-    phase === "analysing"
-      ? "Analysing your photo…"
-      : phase === "extracting"
-      ? `Processing ${extracted}/${total} item${total === 1 ? "" : "s"}…`
-      : `${readyCount} item${readyCount === 1 ? "" : "s"} ready to review — tap to view`;
+  const animatedCompletion = useAnimatedProgress(realCompletion, isProcessing);
+
+  const analysingMsg = useCyclingMessage(ANALYSING_MESSAGES, isAnalysing);
+  const extractingMsg = useCyclingMessage(EXTRACTING_MESSAGES, isExtracting);
+
+  const label = isAnalysing
+    ? analysingMsg
+    : isExtracting
+    ? extractingMsg
+    : readyCount > 0
+    ? `${readyCount} item${readyCount === 1 ? "" : "s"} ready — tap to sort through them`
+    : "No items detected — tap to dismiss";
 
   return (
     <div className="fixed inset-x-0 top-0 z-50 flex justify-center pointer-events-none">
@@ -40,11 +104,11 @@ export function MassUploadProgressBanner() {
             <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{label}</p>
+            <p className="text-sm font-semibold truncate transition-all duration-300">{label}</p>
             {!isReady && (
               <Progress
-                value={completion}
-                className="mt-1 h-1 rounded-full bg-accent-foreground/20 [&>div]:bg-accent-foreground"
+                value={animatedCompletion}
+                className="mt-1 h-1 rounded-full bg-accent-foreground/20 [&>div]:bg-accent-foreground [&>div]:transition-all [&>div]:duration-500"
               />
             )}
           </div>
