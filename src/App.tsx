@@ -8,6 +8,9 @@ import { useWardrobe } from "@/hooks/useWardrobe";
 import { useRecentlyDeleted } from "@/hooks/useRecentlyDeleted";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { AppTutorial } from "@/components/AppTutorial";
+import { MassUploadProvider } from "@/contexts/MassUploadContext";
+import { MassUploadProgressBanner } from "@/components/MassUploadProgressBanner";
+import { MassUploadReviewSheet } from "@/components/MassUploadReviewSheet";
 
 import { lazy, Suspense, useCallback, useEffect } from "react";
 import { ClothingItem } from "@/types/wardrobe";
@@ -135,7 +138,9 @@ function AuthenticatedApp() {
   }, [removeFromDeleted]);
 
   return (
+    <MassUploadProvider onAdd={addItem}>
     <div className="max-w-lg mx-auto min-h-screen relative">
+      <MassUploadProgressBanner />
       <div style={{ minHeight: "100%" }}>
       <Suspense fallback={<Noop />}>
       <Routes>
@@ -189,7 +194,9 @@ function AuthenticatedApp() {
       </div>
       <BottomNav />
       <AppTutorial />
+      <MassUploadReviewSheet />
     </div>
+    </MassUploadProvider>
   );
 }
 

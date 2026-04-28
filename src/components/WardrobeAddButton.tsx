@@ -42,8 +42,8 @@ export function WardrobeAddButton({ onAdd, children }: Props) {
       </AddChoiceSheet>
 
       <AddClothingSheet onAdd={onAdd} open={singleOpen} onOpenChange={setSingleOpen} />
-      <MassUploadSheet onAdd={onAdd} open={massOpen} onOpenChange={setMassOpen} mode="pile" />
-      <MassUploadSheet onAdd={onAdd} open={outfitOpen} onOpenChange={setOutfitOpen} mode="outfit" />
+      <MassUploadSheet open={massOpen} onOpenChange={setMassOpen} mode="pile" />
+      <MassUploadSheet open={outfitOpen} onOpenChange={setOutfitOpen} mode="outfit" />
     </>
   );
 }
