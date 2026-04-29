@@ -8,7 +8,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/currency";
-import { resolveSignedClothingImageFields } from "@/lib/storage";
+import { resolveSignedClothingImageFields, isStoragePath } from "@/lib/storage";
 import { useState as useStateImport } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -125,10 +125,10 @@ export default function Friends() {
       category: r.category,
       color: r.color,
       fabric: r.fabric,
-      imageUrl: r.image_url,
-      imagePath: r.image_url,
-      backImageUrl: r.back_image_url || undefined,
-      backImagePath: r.back_image_url || undefined,
+      imageUrl: isStoragePath(r.image_url) ? "" : r.image_url,
+      imagePath: isStoragePath(r.image_url) ? r.image_url : undefined,
+      backImageUrl: r.back_image_url && !isStoragePath(r.back_image_url) ? r.back_image_url : undefined,
+      backImagePath: isStoragePath(r.back_image_url) ? r.back_image_url : undefined,
       tags: r.tags || [],
       notes: r.notes || "",
       addedAt: new Date(r.created_at),

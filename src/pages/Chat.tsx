@@ -19,7 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { formatPrice } from "@/lib/currency";
 import { ClothingItem } from "@/types/wardrobe";
-import { resolveSignedClothingImageFields } from "@/lib/storage";
+import { resolveSignedClothingImageFields, isStoragePath } from "@/lib/storage";
 import { ReportSheet } from "@/components/ReportSheet";
 import { SignedSocialImage } from "@/components/SignedSocialImage";
 import {
@@ -383,7 +383,8 @@ function FriendsTab({
     const { data } = await supabase.from("clothing_items").select("*").eq("user_id", friend.id).eq("is_private", false);
     const items = await Promise.all((data || []).map((r: any) => resolveSignedClothingImageFields({
       id: r.id, name: r.name, category: r.category, color: r.color, fabric: r.fabric,
-      imageUrl: r.image_url, imagePath: r.image_url, backImageUrl: r.back_image_url || undefined, backImagePath: r.back_image_url || undefined,
+      imageUrl: isStoragePath(r.image_url) ? "" : r.image_url, imagePath: isStoragePath(r.image_url) ? r.image_url : undefined,
+      backImageUrl: r.back_image_url && !isStoragePath(r.back_image_url) ? r.back_image_url : undefined, backImagePath: isStoragePath(r.back_image_url) ? r.back_image_url : undefined,
       tags: r.tags || [], notes: r.notes || "", addedAt: new Date(r.created_at),
       estimatedPrice: r.estimated_price ? Number(r.estimated_price) : undefined,
       isPrivate: r.is_private || false,
