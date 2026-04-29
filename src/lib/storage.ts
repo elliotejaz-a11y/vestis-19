@@ -151,6 +151,7 @@ export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefi
   const entries: Entry[] = [];
   const contentPaths: string[] = [];
   const mediaPaths: string[] = [];
+  const clothingPaths: string[] = [];
 
   avatarUrls.forEach((url, index) => {
     if (!url) { entries.push({ index, passthrough: "" }); return; }
@@ -167,6 +168,10 @@ export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefi
       const path = getStoragePathFromUrl("social-media", url);
       if (path) { mediaPaths.push(path); entries.push({ index, path, bucket: "social-media" }); return; }
     }
+    if (url.includes("/clothing-images/")) {
+      const path = getStoragePathFromUrl("clothing-images", url);
+      if (path) { clothingPaths.push(path); entries.push({ index, path, bucket: "clothing-images" }); return; }
+    }
     entries.push({ index, passthrough: url });
   });
 
@@ -182,12 +187,19 @@ export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefi
       .createSignedUrls([...new Set(mediaPaths)], SIGNED_URL_EXPIRES_IN_SECONDS);
     (data || []).filter((d) => d.signedUrl).forEach((d) => signedMap.set(`m:${d.path}`, d.signedUrl!));
   }
+  if (clothingPaths.length > 0) {
+    const { data } = await supabase.storage.from("clothing-images")
+      .createSignedUrls([...new Set(clothingPaths)], SIGNED_URL_EXPIRES_IN_SECONDS);
+    (data || []).filter((d) => d.signedUrl).forEach((d) => signedMap.set(`cl:${d.path}`, d.signedUrl!));
+  }
 
   return avatarUrls.map((url, i) => {
     if (!url) return null;
     const entry = entries[i];
     if (!entry || "passthrough" in entry) return url;
-    const key = entry.bucket === "social-content" ? `c:${entry.path}` : `m:${entry.path}`;
+    const key = entry.bucket === "social-content" ? `c:${entry.path}`
+      : entry.bucket === "social-media" ? `m:${entry.path}`
+      : `cl:${entry.path}`;
     return signedMap.get(key) ?? url;
   });
 }
