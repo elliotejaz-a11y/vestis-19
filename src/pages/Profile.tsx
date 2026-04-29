@@ -137,6 +137,9 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     fetchFollowCounts();
     fetchFitPics();
     fetchWishlist();
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
   }, [fetchFollowCounts, fetchFitPics, fetchWishlist]);
 
   const savedOutfits = outfits.filter((o) => o.saved);

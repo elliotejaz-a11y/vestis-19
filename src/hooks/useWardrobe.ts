@@ -604,7 +604,7 @@ export function useWardrobe() {
   const updateItem = useCallback(
     async (item: ClothingItem) => {
       if (!user) return;
-      await supabase
+      const { error } = await supabase
         .from("clothing_items")
         .update({
           name: item.name,
@@ -620,9 +620,13 @@ export function useWardrobe() {
         } as any)
         .eq("id", item.id)
         .eq("user_id", user.id);
+      if (error) {
+        toast({ title: "Couldn't save changes", description: "Please try again.", variant: "destructive" });
+        return;
+      }
       setItems((prev) => prev.map((i) => i.id === item.id ? item : i));
     },
-    [user]
+    [user, toast]
   );
 
   const removeItem = useCallback(
@@ -649,13 +653,19 @@ export function useWardrobe() {
   const deleteOutfit = useCallback(
     async (id: string) => {
       if (!user) return;
-      // Optimistic: remove from UI immediately
+      const snapshot = outfitsRef.current;
       setOutfits((prev) => prev.filter((o) => o.id !== id));
-      // Then delete from DB in background
-      supabase.from("outfit_items").delete().match({ outfit_id: id })
-        .then(() => supabase.from("outfits").delete().eq("id", id).eq("user_id", user.id));
+      try {
+        const { error: itemsErr } = await supabase.from("outfit_items").delete().match({ outfit_id: id });
+        if (itemsErr) throw itemsErr;
+        const { error: outfitErr } = await supabase.from("outfits").delete().eq("id", id).eq("user_id", user.id);
+        if (outfitErr) throw outfitErr;
+      } catch (err) {
+        setOutfits(snapshot);
+        toast({ title: "Couldn't delete outfit", description: "Please try again.", variant: "destructive" });
+      }
     },
-    [user]
+    [user, toast]
   );
 
   const generateOutfit = useCallback(

@@ -44,22 +44,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = async (userId: string, force = false) => {
     if (!force && profileFetchingRef.current === userId) return;
     profileFetchingRef.current = userId;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("id", userId)
       .single();
-    setProfile(data);
+    if (!error) setProfile(data);
     profileFetchingRef.current = null;
   };
 
   useEffect(() => {
+    // onAuthStateChange fires INITIAL_SESSION on startup — no need for a separate getSession() call.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          // Use setTimeout to avoid Supabase auth deadlock
+          // setTimeout avoids Supabase internal deadlock on auth state reads
           setTimeout(() => fetchProfile(session.user.id), 0);
         } else {
           setProfile(null);
@@ -67,15 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-      }
-      setLoading(false);
-    });
 
     return () => subscription.unsubscribe();
   }, []);
@@ -106,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    localStorage.removeItem("pending_username");
     await supabase.auth.signOut();
   };
 

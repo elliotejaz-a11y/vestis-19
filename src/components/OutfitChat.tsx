@@ -31,6 +31,15 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!open && abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+      setIsStreaming(false);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (open && messages.length === 0) {
@@ -67,12 +76,15 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
     setIsStreaming(true);
 
     let assistantContent = "";
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("You must be signed in to chat.");
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/outfit-chat`, {
         method: "POST",
+        signal: controller.signal,
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
@@ -123,10 +135,13 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
           } catch {}
         }
       }
-    } catch (e) {
-      console.error(e);
-      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
+    } catch (e: any) {
+      if (e?.name !== "AbortError") {
+        console.error(e);
+        setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
+      }
     } finally {
+      abortRef.current = null;
       setIsStreaming(false);
     }
   };

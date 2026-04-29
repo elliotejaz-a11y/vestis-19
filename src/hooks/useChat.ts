@@ -36,7 +36,8 @@ export function useChat() {
       .from("messages")
       .select("*")
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(500);
 
     if (!messages || messages.length === 0) {
       setConversations([]);

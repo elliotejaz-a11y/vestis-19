@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -187,9 +187,11 @@ export function useSocial() {
     },
   });
 
+  const toggleLikeMutationRef = useRef(toggleLikeMutation);
+  toggleLikeMutationRef.current = toggleLikeMutation;
   const toggleLike = useCallback((postId: string, liked: boolean) => {
-    toggleLikeMutation.mutate({ postId, liked });
-  }, [toggleLikeMutation]);
+    toggleLikeMutationRef.current.mutate({ postId, liked });
+  }, []);
 
   // Create post
   const createPost = async (imageUrls: string[], caption: string, outfitId?: string) => {

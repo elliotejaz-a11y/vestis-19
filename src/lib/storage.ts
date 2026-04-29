@@ -11,6 +11,9 @@ type SignedStorageBucket = "clothing-images" | "wishlist-images" | "social-conte
 
 const SIGNED_URL_EXPIRES_IN_SECONDS = 60 * 60;
 
+// Module-level cache: raw path/URL → { signedUrl, expiresAt }
+const avatarUrlCache = new Map<string, { signedUrl: string; expiresAt: number }>();
+
 export const SOCIAL_CONTENT_BUCKET = "social-content" as const;
 
 export async function getSignedSocialUrl(value: string | null | undefined): Promise<string | null> {
@@ -147,6 +150,7 @@ export async function batchGetSignedSocialUrls(values: (string | null | undefine
 export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefined)[]): Promise<(string | null)[]> {
   if (avatarUrls.length === 0) return [];
 
+  const now = Date.now();
   type Entry = { index: number; passthrough: string } | { index: number; path: string; bucket: SignedStorageBucket };
   const entries: Entry[] = [];
   const contentPaths: string[] = [];
@@ -155,6 +159,14 @@ export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefi
 
   avatarUrls.forEach((url, index) => {
     if (!url) { entries.push({ index, passthrough: "" }); return; }
+
+    // Return cached signed URL if still valid (with 5-min buffer)
+    const cached = avatarUrlCache.get(url);
+    if (cached && cached.expiresAt - now > 5 * 60 * 1000) {
+      entries.push({ index, passthrough: cached.signedUrl });
+      return;
+    }
+
     if (isStoragePath(url)) {
       contentPaths.push(url);
       entries.push({ index, path: url, bucket: "social-content" });
@@ -176,6 +188,7 @@ export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefi
   });
 
   const signedMap = new Map<string, string>();
+  const expiresAt = now + SIGNED_URL_EXPIRES_IN_SECONDS * 1000;
 
   if (contentPaths.length > 0) {
     const { data } = await supabase.storage.from("social-content")
@@ -196,10 +209,13 @@ export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefi
   return avatarUrls.map((url, i) => {
     if (!url) return null;
     const entry = entries[i];
-    if (!entry || "passthrough" in entry) return url;
+    if (!entry) return url;
+    if ("passthrough" in entry) return entry.passthrough || url;
     const key = entry.bucket === "social-content" ? `c:${entry.path}`
       : entry.bucket === "social-media" ? `m:${entry.path}`
       : `cl:${entry.path}`;
-    return signedMap.get(key) ?? url;
+    const signed = signedMap.get(key) ?? url;
+    if (signed !== url) avatarUrlCache.set(url, { signedUrl: signed, expiresAt });
+    return signed;
   });
 }

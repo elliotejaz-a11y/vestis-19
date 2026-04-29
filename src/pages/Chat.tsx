@@ -380,7 +380,7 @@ function FriendsTab({
   const viewFriendWardrobe = async (friend: FriendProfile) => {
     setSelectedFriend(friend);
     setLoadingWardrobe(true);
-    const { data } = await supabase.from("clothing_items").select("*").eq("user_id", friend.id);
+    const { data } = await supabase.from("clothing_items").select("*").eq("user_id", friend.id).eq("is_private", false);
     const items = await Promise.all((data || []).map((r: any) => resolveSignedClothingImageFields({
       id: r.id, name: r.name, category: r.category, color: r.color, fabric: r.fabric,
       imageUrl: r.image_url, imagePath: r.image_url, backImageUrl: r.back_image_url || undefined, backImagePath: r.back_image_url || undefined,
@@ -920,8 +920,9 @@ function ChatView({
         .from("social-content")
         .upload(path, file, { contentType: file.type, cacheControl: "3600" });
       if (uploadErr) throw uploadErr;
-      const { data: urlData } = supabase.storage.from("social-content").getPublicUrl(path);
-      const { error } = await sendMessage(`[IMG]${urlData.publicUrl}[/IMG]`);
+      const { data: urlData, error: signErr } = await supabase.storage.from("social-content").createSignedUrl(path, 60 * 60 * 24 * 7);
+      if (signErr || !urlData?.signedUrl) throw signErr ?? new Error("Could not get image URL");
+      const { error } = await sendMessage(`[IMG]${urlData.signedUrl}[/IMG]`);
       if (error) {
         toast({ title: "Failed to send image", description: error, variant: "destructive" });
       }

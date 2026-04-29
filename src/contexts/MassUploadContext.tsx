@@ -94,7 +94,13 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
   const sessionRef = useRef(0);
 
   const updateCandidate = useCallback((id: string, patch: Partial<MassUploadCandidate>) => {
-    setCandidates((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+    setCandidates((prev) => prev.map((c) => {
+      if (c.id !== id) return c;
+      if (patch.previewUrl && patch.previewUrl !== c.previewUrl && c.previewUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(c.previewUrl);
+      }
+      return { ...c, ...patch };
+    }));
   }, []);
 
   const openReview = useCallback(() => setReviewOpen(true), []);
@@ -103,7 +109,10 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
   const reset = useCallback(() => {
     sessionRef.current++;
     setPhase("idle");
-    setCandidates([]);
+    setCandidates((prev) => {
+      prev.forEach((c) => { if (c.previewUrl?.startsWith("blob:")) URL.revokeObjectURL(c.previewUrl); });
+      return [];
+    });
     setExtracted(0);
     setTotal(0);
     setReviewOpen(false);
