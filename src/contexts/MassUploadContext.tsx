@@ -21,6 +21,9 @@ interface DetectedItem {
   bbox?: { x: number; y: number; width: number; height: number };
 }
 
+// Internal only — not exposed through the context
+type ItemWithSource = DetectedItem & { _sourceBase64: string };
+
 async function cropItemPreview(
   sourceBase64: string,
   bbox: { x: number; y: number; width: number; height: number },
@@ -56,7 +59,7 @@ interface ContextValue {
   extracted: number;
   total: number;
   reviewOpen: boolean;
-  startProcessing: (file: File, mode: "pile" | "outfit") => void;
+  startProcessing: (files: File[], mode: "pile" | "outfit") => void;
   openReview: () => void;
   closeReview: () => void;
   updateCandidate: (id: string, patch: Partial<MassUploadCandidate>) => void;
@@ -86,10 +89,9 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
   const [total, setTotal] = useState(0);
   const [reviewOpen, setReviewOpen] = useState(false);
 
-  // Refs for values we need inside async callbacks without stale closure issues
   const onAddRef = useRef(onAdd);
   onAddRef.current = onAdd;
-  const sessionRef = useRef(0); // incremented on each new upload; aborts stale in-flight work
+  const sessionRef = useRef(0);
 
   const updateCandidate = useCallback((id: string, patch: Partial<MassUploadCandidate>) => {
     setCandidates((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
@@ -99,7 +101,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
   const closeReview = useCallback(() => setReviewOpen(false), []);
 
   const reset = useCallback(() => {
-    sessionRef.current++; // invalidate any in-flight processing
+    sessionRef.current++;
     setPhase("idle");
     setCandidates([]);
     setExtracted(0);
@@ -107,7 +109,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
     setReviewOpen(false);
   }, []);
 
-  const startProcessing = useCallback(async (file: File, uploadMode: "pile" | "outfit") => {
+  const startProcessing = useCallback(async (files: File[], uploadMode: "pile" | "outfit") => {
     const mySession = ++sessionRef.current;
 
     setPhase("analysing");
@@ -118,18 +120,37 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
     setReviewOpen(false);
 
     try {
-      const optimisedBase64 = await optimiseMassUploadImage(file);
+      // Optimise all images in parallel
+      const optimisedImages = await Promise.all(files.map((f) => optimiseMassUploadImage(f)));
       if (sessionRef.current !== mySession) return;
 
-      const { data, error } = await supabase.functions.invoke("analyze-clothing-pile", {
-        body: { imageBase64: optimisedBase64, mode: uploadMode },
-      });
+      // Analyse all images in parallel
+      const analysisResults = await Promise.all(
+        optimisedImages.map((base64) =>
+          supabase.functions.invoke("analyze-clothing-pile", {
+            body: { imageBase64: base64, mode: uploadMode },
+          }),
+        ),
+      );
       if (sessionRef.current !== mySession) return;
-      if (error) throw error;
 
-      const detectedItems: DetectedItem[] = data?.items ?? [];
-      const n = detectedItems.length;
+      // Collect all detected items, tagging each with its source image
+      const allItems: ItemWithSource[] = [];
+      for (let imgIdx = 0; imgIdx < analysisResults.length; imgIdx++) {
+        const { data, error } = analysisResults[imgIdx];
+        if (error) continue;
+        const items: DetectedItem[] = data?.items ?? [];
+        for (const item of items) {
+          allItems.push({
+            ...item,
+            // Prefix with image index to guarantee uniqueness across images
+            id: `${imgIdx}-${item.id}`,
+            _sourceBase64: optimisedImages[imgIdx],
+          });
+        }
+      }
 
+      const n = allItems.length;
       setTotal(n);
 
       if (n === 0) {
@@ -139,8 +160,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
       setPhase("extracting");
 
-      // Build initial results array (mutated concurrently — safe since each index is unique)
-      const results: MassUploadCandidate[] = detectedItems.map((item) => ({
+      const results: MassUploadCandidate[] = allItems.map((item) => ({
         id: item.id,
         name: item.name,
         category: item.category as ClothingCategory,
@@ -157,10 +177,11 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       }));
 
       await Promise.all(
-        detectedItems.map(async (item, idx) => {
+        allItems.map(async (item, idx) => {
+          const sourceBase64 = item._sourceBase64;
           try {
             const { data: genData, error: genError } = await supabase.functions.invoke("extract-pile-item", {
-              body: { sourceImageBase64: optimisedBase64, item },
+              body: { sourceImageBase64: sourceBase64, item },
             });
 
             if (genError || !genData?.imageBase64) throw new Error(genError?.message ?? "No image returned");
@@ -184,8 +205,8 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
             // AI generation failed — fall back to crop
             try {
               const croppedUrl = item.bbox
-                ? await cropItemPreview(optimisedBase64, item.bbox)
-                : `data:image/jpeg;base64,${optimisedBase64}`;
+                ? await cropItemPreview(sourceBase64, item.bbox)
+                : `data:image/jpeg;base64,${sourceBase64}`;
 
               let previewUrl = croppedUrl;
               try {
@@ -210,7 +231,6 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
       if (sessionRef.current !== mySession) return;
 
-      // Deliver all candidates at once — no partial loading
       setCandidates(results);
       setPhase("ready");
     } catch (err) {

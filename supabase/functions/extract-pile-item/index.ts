@@ -66,7 +66,7 @@ serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: `Create a single clean product-style PNG cut-out with a transparent background for this detected wardrobe item only: ${item.name}. Category: ${item.category}. Colour: ${item.color}. Fabric: ${item.fabric}. Crop hint: ${item.crop_hint || "Use the clearest visible area"}. Ignore all other clothes and background. Return only the isolated item centred in frame.`,
+                text: `Create a flat lay product image of this single wardrobe item: ${item.name}. Category: ${item.category}. Colour: ${item.color}. Fabric: ${item.fabric}. Rules: the item must be laid completely flat on a surface, fully unfolded and spread out — never folded, never bunched, never hanging, never on a body. Show the full item from a top-down perspective with a clean white or transparent background. Centre the item in frame. Ignore all other items and background from the source photo.`,
               },
               {
                 type: "image_url",

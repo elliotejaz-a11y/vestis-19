@@ -25,13 +25,14 @@ export function MassUploadSheet({ children, open: openProp, onOpenChange, mode =
   const { startProcessing } = useMassUpload();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(event.target.files ?? []);
+    if (files.length === 0) return;
 
-    if (!isAllowedMassUploadImage(file)) {
+    const invalid = files.filter((f) => !isAllowedMassUploadImage(f));
+    if (invalid.length > 0) {
       toast({
         title: "Invalid image",
-        description: "Use a JPG, PNG, or WebP image up to 10MB.",
+        description: "All images must be JPG, PNG, or WebP and under 10 MB each.",
         variant: "destructive",
       });
       return;
@@ -39,7 +40,7 @@ export function MassUploadSheet({ children, open: openProp, onOpenChange, mode =
 
     // Close the sheet immediately — processing continues in the background
     setOpen(false);
-    startProcessing(file, mode);
+    startProcessing(files, mode);
   };
 
   return (
@@ -48,12 +49,12 @@ export function MassUploadSheet({ children, open: openProp, onOpenChange, mode =
       <SheetContent side="bottom" className="rounded-t-3xl bg-background px-5 pb-12 pt-8">
         <SheetHeader>
           <SheetTitle className="tracking-tight">
-            {isOutfit ? "Extract from Outfit Photo" : "Mass Upload"}
+            {isOutfit ? "Extract from Outfit Photos" : "Mass Upload"}
           </SheetTitle>
           <SheetDescription>
             {isOutfit
-              ? "Upload a photo of an outfit being worn — AI will detect each clothing item, shoe, watch and accessory, then create a clean cut-out for each."
-              : "Upload one photo of a pile, rail, or wardrobe section. AI processes everything in the background while you use the app normally."}
+              ? "Select one or more outfit photos — AI will detect every clothing item, shoe, watch and accessory across all photos and generate a clean cut-out for each."
+              : "Select one or more photos of your wardrobe. AI detects every item across all photos, cuts them out, and prefills the details. Processing happens in the background."}
           </SheetDescription>
         </SheetHeader>
 
@@ -68,12 +69,12 @@ export function MassUploadSheet({ children, open: openProp, onOpenChange, mode =
             </div>
             <div className="space-y-1">
               <p className="text-sm font-semibold text-foreground">
-                {isOutfit ? "Upload an outfit photo" : "Upload a pile or closet photo"}
+                {isOutfit ? "Upload outfit photos" : "Upload wardrobe photos"}
               </p>
               <p className="text-xs text-muted-foreground">
                 {isOutfit
-                  ? "AI will scan every worn item and generate a clean cut-out for each. Processing happens in the background."
-                  : "The AI will detect separate items, cut them out, and prefill wardrobe details. You'll be notified when ready."}
+                  ? "Select one or more photos. AI scans every worn item across all images."
+                  : "Select one or more photos. AI detects each item and processes everything in the background."}
               </p>
             </div>
           </button>
@@ -82,6 +83,7 @@ export function MassUploadSheet({ children, open: openProp, onOpenChange, mode =
             ref={inputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
+            multiple
             className="hidden"
             onChange={handleFileChange}
           />
