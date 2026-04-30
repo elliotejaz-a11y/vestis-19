@@ -57,8 +57,8 @@ serve(async (req) => {
           {
             role: "system",
             content: isOutfit
-              ? "You identify every distinct clothing item, footwear and accessory worn by a person in an outfit photo. Scan the full body: hats, tops, jumpers/outerwear, bottoms, dresses, shoes, watches, jewellery, bags, belts and other accessories. Return each visible item separately. Keep bounding boxes approximate, normalised from 0 to 1."
-              : "You identify distinct wardrobe items from a single photo that may contain a pile of clothes, rails, shelves, shoes, hats, and accessories. Return only clearly visible items worth reviewing individually. Keep bounding boxes approximate, normalised from 0 to 1.",
+              ? "You identify every distinct clothing item, footwear and accessory worn by a person in an outfit photo. Scan the full body: hats, tops, jumpers/outerwear, bottoms, dresses, shoes, watches, jewellery, bags, belts and other accessories. Return each visible item separately. Keep bounding boxes approximate, normalised from 0 to 1. CRITICAL: Always identify the COMPLETE garment, never a graphic, logo, patch, or print that appears ON the garment. If you see a tiger print on a shirt, detect the shirt — not the tiger. If you see a logo on a cap, detect the cap — not the logo."
+              : "You identify distinct wardrobe items from a single photo that may contain a pile of clothes, rails, shelves, shoes, hats, and accessories. Return only clearly visible items worth reviewing individually. Keep bounding boxes approximate, normalised from 0 to 1. CRITICAL: Always identify the COMPLETE garment, never a graphic, logo, patch, or print that appears ON the garment. If you see a graphic on a hoodie, detect the hoodie — not the graphic. Logos, badges, and patches are not wardrobe items.",
           },
           {
             role: "user",
@@ -66,8 +66,8 @@ serve(async (req) => {
               {
                 type: "text",
                 text: isOutfit
-                  ? "Analyse this outfit photo and return up to 8 distinct worn items (clothing, shoes, accessories like watches/bags/belts/jewellery). Skip the person and background. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1."
-                  : "Analyse this wardrobe pile image and return up to 8 distinct items. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1.",
+                  ? "Analyse this outfit photo and return up to 8 distinct worn items (clothing, shoes, accessories like watches/bags/belts/jewellery). Skip the person and background. Each item must be a complete garment or accessory — never a logo, graphic, patch, embroidery, or design element found ON a garment. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1."
+                  : "Analyse this wardrobe pile image and return up to 8 distinct items. Each item must be a complete garment or accessory — never a logo, graphic, patch, embroidery, or design element found ON a garment. If an item appears to be only a graphic or logo, identify the actual garment it belongs to instead. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1.",
               },
               {
                 type: "image_url",
