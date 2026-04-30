@@ -66,7 +66,28 @@ serve(async (req) => {
             content: [
               {
                 type: "text",
-                text: `Create a flat lay product image of this single wardrobe item: ${item.name}. Category: ${item.category}. Colour: ${item.color}. Fabric: ${item.fabric}. Rules: the item must be laid completely flat on a surface, fully unfolded and spread out — never folded, never bunched, never hanging, never on a body. Show the full item from a top-down perspective with a clean white or transparent background. Centre the item in frame. Ignore all other items and background from the source photo.`,
+                text: `Generate a professional e-commerce product photograph of a single clothing item.
+
+Item: ${item.name}
+Category: ${item.category}
+Colour: ${item.color}
+Fabric: ${item.fabric}
+
+The output image MUST look exactly like a product listing on ASOS, Zara, or H&M — a clean flat product photo against a pure white background. Follow every rule below without exception:
+
+✓ Pure solid white background — no texture, no shadow, no surface, no gradient
+✓ Item is laid completely flat and spread out to its full natural shape, showing the front face
+✓ Camera faces straight-on at the item — standard front-facing product photo angle
+✓ Entire item is visible and centred in frame with a small white margin on all sides
+✓ The item is fully unfolded — not rolled, not bunched, not crumpled
+
+✗ NO person, body, hands, or skin visible anywhere
+✗ NO model, mannequin, ghost mannequin, or display form of any kind
+✗ NO hanger, hook, or any object holding the item
+✗ NO other clothing items or accessories in the frame
+✗ NO background from the source photo
+
+Use the reference photo only to identify the item's colour, fabric, and design details. Completely discard the source photo's background, people, and context. Generate a brand-new clean product photograph of just this single ${item.category}.`,
               },
               {
                 type: "image_url",
