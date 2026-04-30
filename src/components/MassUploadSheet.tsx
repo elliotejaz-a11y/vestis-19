@@ -46,7 +46,7 @@ export function MassUploadSheet({ children, open: openProp, onOpenChange, mode =
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       {children ? <SheetTrigger asChild>{children}</SheetTrigger> : null}
-      <SheetContent side="bottom" className="rounded-t-3xl bg-background px-5 pb-12 pt-8">
+      <SheetContent side="bottom" className="rounded-t-3xl bg-background px-5 pt-8" style={{ paddingBottom: 'max(5rem, calc(4rem + env(safe-area-inset-bottom)))' }}>
         <SheetHeader>
           <SheetTitle className="tracking-tight">
             {isOutfit ? "Extract from Outfit Photos" : "Mass Upload"}

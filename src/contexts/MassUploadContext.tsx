@@ -21,35 +21,21 @@ interface DetectedItem {
   bbox?: { x: number; y: number; width: number; height: number };
 }
 
-// Internal only — not exposed through the context
 type ItemWithSource = DetectedItem & { _sourceBase64: string };
 
-async function cropItemPreview(
-  sourceBase64: string,
-  bbox: { x: number; y: number; width: number; height: number },
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const { naturalWidth: imgW, naturalHeight: imgH } = img;
-      const pad = 0.06;
-      const x = Math.max(0, bbox.x - pad) * imgW;
-      const y = Math.max(0, bbox.y - pad) * imgH;
-      const right = Math.min(1, bbox.x + bbox.width + pad) * imgW;
-      const bottom = Math.min(1, bbox.y + bbox.height + pad) * imgH;
-      const cw = right - x;
-      const ch = bottom - y;
-      const canvas = document.createElement("canvas");
-      canvas.width = cw;
-      canvas.height = ch;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) { reject(new Error("Canvas unavailable")); return; }
-      ctx.drawImage(img, x, y, cw, ch, 0, 0, cw, ch);
-      resolve(canvas.toDataURL("image/jpeg", 0.88));
-    };
-    img.onerror = reject;
-    img.src = `data:image/jpeg;base64,${sourceBase64}`;
-  });
+async function generateFlatLayWithRetry(item: ItemWithSource): Promise<string> {
+  const tryOnce = async () => {
+    const { data, error } = await supabase.functions.invoke("extract-pile-item", {
+      body: { sourceImageBase64: item._sourceBase64, item },
+    });
+    if (error || !data?.imageBase64) throw new Error(error?.message ?? "No image returned");
+    return data.imageBase64 as string;
+  };
+  try {
+    return await tryOnce();
+  } catch {
+    return await tryOnce();
+  }
 }
 
 interface ContextValue {
@@ -58,6 +44,8 @@ interface ContextValue {
   candidates: MassUploadCandidate[];
   extracted: number;
   total: number;
+  analysisDone: number;
+  analysisTotal: number;
   reviewOpen: boolean;
   startProcessing: (files: File[], mode: "pile" | "outfit") => void;
   openReview: () => void;
@@ -87,11 +75,15 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
   const [candidates, setCandidates] = useState<MassUploadCandidate[]>([]);
   const [extracted, setExtracted] = useState(0);
   const [total, setTotal] = useState(0);
+  const [analysisDone, setAnalysisDone] = useState(0);
+  const [analysisTotal, setAnalysisTotal] = useState(0);
   const [reviewOpen, setReviewOpen] = useState(false);
 
   const onAddRef = useRef(onAdd);
   onAddRef.current = onAdd;
   const sessionRef = useRef(0);
+  const itemCounterRef = useRef(0);
+  const extractionStartedRef = useRef(false);
 
   const updateCandidate = useCallback((id: string, patch: Partial<MassUploadCandidate>) => {
     setCandidates((prev) => prev.map((c) => {
@@ -115,87 +107,81 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
     });
     setExtracted(0);
     setTotal(0);
+    setAnalysisDone(0);
+    setAnalysisTotal(0);
     setReviewOpen(false);
   }, []);
 
   const startProcessing = useCallback(async (files: File[], uploadMode: "pile" | "outfit") => {
     const mySession = ++sessionRef.current;
+    itemCounterRef.current = 0;
+    extractionStartedRef.current = false;
 
     setPhase("analysing");
     setMode(uploadMode);
     setCandidates([]);
     setExtracted(0);
     setTotal(0);
+    setAnalysisDone(0);
+    setAnalysisTotal(files.length);
     setReviewOpen(false);
 
     try {
-      // Optimise all images in parallel
-      const optimisedImages = await Promise.all(files.map((f) => optimiseMassUploadImage(f)));
-      if (sessionRef.current !== mySession) return;
+      // Each image runs its full pipeline (optimise → analyse → extract) concurrently.
+      // This overlaps analysis of image N+1 with extraction of image N.
+      await Promise.all(files.map(async (file) => {
+        const base64 = await optimiseMassUploadImage(file);
+        if (sessionRef.current !== mySession) return;
 
-      // Analyse all images in parallel
-      const analysisResults = await Promise.all(
-        optimisedImages.map((base64) =>
-          supabase.functions.invoke("analyze-clothing-pile", {
-            body: { imageBase64: base64, mode: uploadMode },
-          }),
-        ),
-      );
-      if (sessionRef.current !== mySession) return;
+        const { data, error } = await supabase.functions.invoke("analyze-clothing-pile", {
+          body: { imageBase64: base64, mode: uploadMode },
+        });
+        if (sessionRef.current !== mySession) return;
 
-      // Collect all detected items, tagging each with its source image
-      const allItems: ItemWithSource[] = [];
-      for (let imgIdx = 0; imgIdx < analysisResults.length; imgIdx++) {
-        const { data, error } = analysisResults[imgIdx];
-        if (error) continue;
-        const items: DetectedItem[] = data?.items ?? [];
-        for (const item of items) {
-          allItems.push({
-            ...item,
-            // Prefix with image index to guarantee uniqueness across images
-            id: `${imgIdx}-${item.id}`,
-            _sourceBase64: optimisedImages[imgIdx],
-          });
+        setAnalysisDone((prev) => prev + 1);
+
+        const items: DetectedItem[] = (error ? [] : data?.items) ?? [];
+        if (items.length === 0) return;
+
+        // Assign stable per-item IDs — safe because JS is single-threaded between awaits
+        const idxStart = itemCounterRef.current;
+        itemCounterRef.current += items.length;
+
+        const itemsWithSrc: ItemWithSource[] = items.map((item, i) => ({
+          ...item,
+          id: `${idxStart + i}-${item.id}`,
+          _sourceBase64: base64,
+        }));
+
+        setTotal((prev) => prev + items.length);
+        if (!extractionStartedRef.current) {
+          extractionStartedRef.current = true;
+          setPhase("extracting");
         }
-      }
 
-      const n = allItems.length;
-      setTotal(n);
+        // Extract all items from this image concurrently
+        await Promise.all(itemsWithSrc.map(async (item) => {
+          const baseCandidate: MassUploadCandidate = {
+            id: item.id,
+            name: item.name,
+            category: item.category as ClothingCategory,
+            color: item.color,
+            fabric: item.fabric,
+            tags: item.tags || [],
+            notes: item.notes || "",
+            estimatedPrice: item.estimated_price_nzd,
+            confidence: item.confidence,
+            cropHint: item.crop_hint,
+            bbox: item.bbox,
+            previewStatus: "extracting",
+            addState: "idle",
+          };
 
-      if (n === 0) {
-        setPhase("ready");
-        return;
-      }
-
-      setPhase("extracting");
-
-      const results: MassUploadCandidate[] = allItems.map((item) => ({
-        id: item.id,
-        name: item.name,
-        category: item.category as ClothingCategory,
-        color: item.color,
-        fabric: item.fabric,
-        tags: item.tags || [],
-        notes: item.notes || "",
-        estimatedPrice: item.estimated_price_nzd,
-        confidence: item.confidence,
-        cropHint: item.crop_hint,
-        bbox: item.bbox,
-        previewStatus: "extracting" as const,
-        addState: "idle" as const,
-      }));
-
-      await Promise.all(
-        allItems.map(async (item, idx) => {
-          const sourceBase64 = item._sourceBase64;
+          let finalCandidate: MassUploadCandidate;
           try {
-            const { data: genData, error: genError } = await supabase.functions.invoke("extract-pile-item", {
-              body: { sourceImageBase64: sourceBase64, item },
-            });
+            const imageBase64 = await generateFlatLayWithRetry(item);
 
-            if (genError || !genData?.imageBase64) throw new Error(genError?.message ?? "No image returned");
-
-            const binaryStr = atob(genData.imageBase64);
+            const binaryStr = atob(imageBase64);
             const bytes = new Uint8Array(binaryStr.length);
             for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
             const generatedBlob = new Blob([bytes], { type: "image/png" });
@@ -209,38 +195,20 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
               // bg removal failed — use AI-generated image as-is
             }
 
-            results[idx] = { ...results[idx], previewStatus: "ready", previewUrl };
+            finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
           } catch {
-            // AI generation failed — fall back to crop
-            try {
-              const croppedUrl = item.bbox
-                ? await cropItemPreview(sourceBase64, item.bbox)
-                : `data:image/jpeg;base64,${sourceBase64}`;
-
-              let previewUrl = croppedUrl;
-              try {
-                const res = await fetch(croppedUrl);
-                const blob = await res.blob();
-                const f = new File([blob], `item-${item.id}.jpg`, { type: "image/jpeg" });
-                const cleanedBlob = await processClothingImage(f);
-                previewUrl = URL.createObjectURL(cleanedBlob);
-              } catch { /* use crop as-is */ }
-
-              results[idx] = { ...results[idx], previewStatus: "ready", previewUrl };
-            } catch {
-              results[idx] = { ...results[idx], previewStatus: "failed", error: "Preview extraction failed" };
-            }
-          } finally {
-            if (sessionRef.current === mySession) {
-              setExtracted((prev) => Math.min(n, prev + 1));
-            }
+            // Both AI attempts failed — show error, never fall back to the raw photo
+            finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not generate flat lay image" };
           }
-        }),
-      );
+
+          if (sessionRef.current === mySession) {
+            setCandidates((prev) => [...prev, finalCandidate]);
+            setExtracted((prev) => prev + 1);
+          }
+        }));
+      }));
 
       if (sessionRef.current !== mySession) return;
-
-      setCandidates(results);
       setPhase("ready");
     } catch (err) {
       console.error("Mass upload failed", err);
@@ -285,6 +253,8 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         candidates,
         extracted,
         total,
+        analysisDone,
+        analysisTotal,
         reviewOpen,
         startProcessing,
         openReview,

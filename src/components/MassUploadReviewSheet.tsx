@@ -49,8 +49,8 @@ export function MassUploadReviewSheet() {
 
         {/* Scrollable list */}
         <div
-          className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-10 space-y-4"
-          style={{ touchAction: "pan-y" }}
+          className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4"
+          style={{ touchAction: "pan-y", paddingBottom: 'max(5rem, calc(4rem + env(safe-area-inset-bottom)))' }}
         >
           {candidates.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center gap-4">

@@ -11,7 +11,7 @@ const ANALYSING_MESSAGES = [
 ];
 
 const EXTRACTING_MESSAGES = [
-  "Generating clean images…",
+  "Generating flat lay images…",
   "Removing backgrounds…",
   "Adding descriptions…",
   "Processing item details…",
@@ -56,17 +56,16 @@ function useCyclingMessage(messages: string[], active: boolean) {
   return messages[idx % messages.length];
 }
 
-/** Returns a human-readable ETA string during the extracting phase, updating every second. */
-function useExtractionEta(extracted: number, total: number, active: boolean) {
+/** Returns a human-readable ETA string, updating every second while active. */
+function useEta(done: number, total: number, active: boolean) {
   const startRef = useRef<number | null>(null);
-  const extractedRef = useRef(extracted);
+  const doneRef = useRef(done);
   const totalRef = useRef(total);
-  extractedRef.current = extracted;
+  doneRef.current = done;
   totalRef.current = total;
 
   const [eta, setEta] = useState("");
 
-  // Record start time when extraction begins; clear when it ends
   useEffect(() => {
     if (active) {
       if (startRef.current === null) startRef.current = Date.now();
@@ -76,17 +75,16 @@ function useExtractionEta(extracted: number, total: number, active: boolean) {
     }
   }, [active]);
 
-  // Recalculate every second while active
   useEffect(() => {
     if (!active) return;
     const id = setInterval(() => {
       const start = startRef.current;
-      const done = extractedRef.current;
+      const d = doneRef.current;
       const n = totalRef.current;
-      if (!start || done === 0 || n === 0 || done >= n) { setEta(""); return; }
+      if (!start || d === 0 || n === 0 || d >= n) { setEta(""); return; }
       const elapsed = (Date.now() - start) / 1000;
-      const secPerItem = elapsed / done;
-      const remaining = Math.round(secPerItem * (n - done));
+      const secPerUnit = elapsed / d;
+      const remaining = Math.round(secPerUnit * (n - d));
       if (remaining <= 0) { setEta(""); return; }
       if (remaining >= 60) {
         const mins = Math.floor(remaining / 60);
@@ -103,7 +101,7 @@ function useExtractionEta(extracted: number, total: number, active: boolean) {
 }
 
 export function MassUploadProgressBanner() {
-  const { phase, extracted, total, candidates, openReview, reset } = useMassUpload();
+  const { phase, extracted, total, analysisDone, analysisTotal, candidates, openReview, reset } = useMassUpload();
 
   if (phase === "idle") return null;
 
@@ -115,15 +113,18 @@ export function MassUploadProgressBanner() {
   const readyCount = candidates.filter((c) => c.previewStatus === "ready").length;
 
   const realCompletion = isAnalysing
-    ? 12
+    ? Math.max(5, Math.round((analysisDone / Math.max(1, analysisTotal)) * 28))
     : isExtracting
-    ? Math.max(18, Math.min(94, 12 + Math.round((extracted / Math.max(1, total)) * 82)))
+    ? Math.max(30, Math.min(94, 28 + Math.round((extracted / Math.max(1, total)) * 66)))
     : 100;
 
   const animatedCompletion = useAnimatedProgress(realCompletion, isProcessing);
   const analysingMsg = useCyclingMessage(ANALYSING_MESSAGES, isAnalysing);
   const extractingMsg = useCyclingMessage(EXTRACTING_MESSAGES, isExtracting);
-  const eta = useExtractionEta(extracted, total, isExtracting);
+
+  const analysisEta = useEta(analysisDone, analysisTotal, isAnalysing);
+  const extractionEta = useEta(extracted, total, isExtracting);
+  const eta = isAnalysing ? analysisEta : extractionEta;
 
   const primaryLabel = isAnalysing
     ? analysingMsg
@@ -150,7 +151,7 @@ export function MassUploadProgressBanner() {
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold truncate transition-all duration-300">{primaryLabel}</p>
-            {isExtracting && eta && (
+            {isProcessing && eta && (
               <p className="text-[11px] opacity-80 mt-0.5">{eta}</p>
             )}
             {!isReady && (
