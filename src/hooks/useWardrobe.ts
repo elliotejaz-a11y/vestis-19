@@ -457,8 +457,21 @@ export function useWardrobe() {
         }
       }
 
-      // Upload back image if it's a data URL
-      if (backImageUrl && backImageUrl.startsWith("data:")) {
+      // Upload back image
+      if (backImageUrl && backImageUrl.startsWith("blob:")) {
+        try {
+          const response = await fetch(backImageUrl);
+          const blob = await response.blob();
+          const ext = blob.type.split("/")[1] || "png";
+          const path = `${user.id}/${crypto.randomUUID()}_back.${ext}`;
+          const { error: uploadError } = await supabase.storage
+            .from("clothing-images")
+            .upload(path, blob, { contentType: blob.type });
+          if (!uploadError) backImageUrl = normalizeStorageObjectPath(path);
+        } catch (err) {
+          console.error("Back image upload failed:", err);
+        }
+      } else if (backImageUrl && backImageUrl.startsWith("data:")) {
         try {
           const parts = backImageUrl.split(",");
           const mime = parts[0].match(/:(.*?);/)?.[1] || "image/png";

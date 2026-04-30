@@ -43,6 +43,7 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
   const [priceInput, setPriceInput] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
+  const [removingBackBg, setRemovingBackBg] = useState(false);
   const [rotation, setRotation] = useState(0);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -171,8 +172,24 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
   const handleBackFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!isAllowedWardrobeImageType(file.type)) {
+      toast({ title: "Invalid file type", description: "Use JPG, PNG or WebP.", variant: "destructive" });
+      return;
+    }
+    if (!isAllowedWardrobeImageSize(file.size)) {
+      toast({ title: "File too large", description: "Max size 10MB.", variant: "destructive" });
+      return;
+    }
     setBackImageUrl(URL.createObjectURL(file));
-    toast({ title: "Back image added" });
+    setRemovingBackBg(true);
+    try {
+      const cleanBlob = await processClothingImage(file);
+      setBackImageUrl(URL.createObjectURL(cleanBlob));
+    } catch {
+      // keep original if removal fails
+    } finally {
+      setRemovingBackBg(false);
+    }
   };
 
   const handleSave = async () => {
@@ -299,8 +316,18 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
                 </button>
               ) : (
                 <div className="relative rounded-xl overflow-hidden bg-white dark:bg-neutral-800 h-24">
-                  <img src={backImageUrl} alt="Back" className="w-full h-full object-contain" />
-                  <button onClick={() => setBackImageUrl("")} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center text-foreground text-xs">✕</button>
+                  <img src={backImageUrl} alt="Back" className={`w-full h-full object-contain transition-all duration-300 ${removingBackBg ? 'blur-[2px] scale-[1.02]' : ''}`} />
+                  {removingBackBg ? (
+                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-1.5">
+                      <div className="relative">
+                        <div className="w-8 h-8 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
+                        <Sparkles className="w-3 h-3 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                      </div>
+                      <p className="text-[10px] font-semibold text-white">Removing Background</p>
+                    </div>
+                  ) : (
+                    <button onClick={() => setBackImageUrl("")} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center text-foreground text-xs">✕</button>
+                  )}
                 </div>
               )}
               <input ref={backFileRef} type="file" accept="image/*" className="hidden" onChange={handleBackFile} />
@@ -419,7 +446,7 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
 
           <Button
             onClick={handleSave}
-            disabled={!imageUrl || !name || !category || analyzing}
+            disabled={!imageUrl || !name || !category || analyzing || removingBg || removingBackBg}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors"
           >
             <Sparkles className="w-4 h-4 mr-2" /> Save to Wardrobe
