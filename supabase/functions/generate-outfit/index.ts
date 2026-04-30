@@ -289,6 +289,62 @@ function normalizeSelectionForGym(selected: any[], allItems: any[]): any[] {
   return dedupeById([top, bottom, shoes].filter(Boolean)).slice(0, 3);
 }
 
+// Prefer a fresh item that colour-matches the already-selected top (or first available).
+function pickFreshItem(candidates: any[], currentOutfit: any[]): any | null {
+  if (candidates.length === 0) return null;
+  const top = currentOutfit.find(isTopHalf);
+  if (!top) return candidates[0];
+  const NEUTRALS = ['black', 'white', 'grey', 'gray', 'navy', 'beige', 'cream', 'tan', 'camel', 'ivory', 'off-white'];
+  const topColor = String(top.color || '').toLowerCase();
+  const topWords = topColor.split(/[,\s\/]+/).filter(Boolean);
+  const topIsNeutral = topWords.some(c => NEUTRALS.includes(c));
+  const scored = candidates.map(item => {
+    const ic = String(item.color || '').toLowerCase();
+    const icWords = ic.split(/[,\s\/]+/).filter(Boolean);
+    const sharedWord = topWords.some(c => icWords.some(w => c === w || c.includes(w) || w.includes(c)));
+    const isNeutral = icWords.some(c => NEUTRALS.includes(c));
+    const score = sharedWord ? 3 : (topIsNeutral && isNeutral ? 2 : 1);
+    return { item, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0].item;
+}
+
+// Swap recently-worn bottoms and shoes for fresh alternatives where possible.
+function applyDiversityPass(selected: any[], allItems: any[], allRecentIds: Set<string>): any[] {
+  let result = [...selected];
+  const usedIds = new Set(result.map((i: any) => String(i.id)));
+
+  const swapSlot = (predicate: (i: any) => boolean) => {
+    const idx = result.findIndex(predicate);
+    if (idx < 0) return;
+    if (!allRecentIds.has(String(result[idx].id))) return;
+    const fresh = allItems.filter(item =>
+      predicate(item) && !allRecentIds.has(String(item.id)) && !usedIds.has(String(item.id))
+    );
+    const pick = pickFreshItem(fresh, result);
+    if (!pick) return;
+    usedIds.delete(String(result[idx].id));
+    usedIds.add(String(pick.id));
+    result = [...result];
+    result[idx] = pick;
+  };
+
+  swapSlot(isBottom);
+  swapSlot(isShoe);
+  return dedupeById(result);
+}
+
+// True if the selected item IDs (sorted) exactly match any of the recent outfit combinations.
+function isDuplicateOutfit(selected: any[], recentOutfitItemIds: any[]): boolean {
+  if (!Array.isArray(recentOutfitItemIds) || selected.length === 0) return false;
+  const key = [...selected.map((i: any) => String(i.id))].sort().join(',');
+  return recentOutfitItemIds.slice(0, 5).some((idSet: any) => {
+    if (!Array.isArray(idSet) || idSet.length === 0) return false;
+    return [...idSet.map(String)].sort().join(',') === key;
+  });
+}
+
 serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') {
@@ -375,18 +431,29 @@ serve(async (req) => {
 
     const occasionTier = getOccasionTier(occasion);
 
-    // Collect item IDs used in the most recent outfit for inline marking
-    const lastOutfitIds = new Set<string>(
-      Array.isArray(recentOutfitItemIds) && recentOutfitItemIds.length > 0
-        ? (Array.isArray(recentOutfitItemIds[0]) ? recentOutfitItemIds[0] : []).map(String)
-        : []
-    );
+    // Count how many of the last 5 outfits each item appeared in (for diversity markers).
+    const recentIdCounts = new Map<string, number>();
+    if (Array.isArray(recentOutfitItemIds)) {
+      recentOutfitItemIds.slice(0, 5).forEach((idSet: any) => {
+        if (Array.isArray(idSet)) {
+          new Set<string>(idSet.map(String)).forEach(id => {
+            recentIdCounts.set(id, (recentIdCounts.get(id) || 0) + 1);
+          });
+        }
+      });
+    }
+    const allRecentIds = new Set<string>(recentIdCounts.keys());
 
     // Build a richer wardrobe summary so the AI can intelligently pick from many options
     const wardrobeSummary = candidateItems.map((item: any, i: number) => {
       const tags = Array.isArray(item.tags) ? item.tags.slice(0, 8).join(', ') : '';
       const notes = item.notes ? ` | notes: "${String(item.notes).slice(0, 120)}"` : '';
-      const usedMarker = lastOutfitIds.has(String(item.id)) ? ' ⚠️ USED IN LAST OUTFIT — pick something else if possible' : '';
+      const count = recentIdCounts.get(String(item.id)) || 0;
+      const usedMarker = count >= 3
+        ? ' 🚫 WORN IN MULTIPLE RECENT OUTFITS — you MUST choose a different item for this slot'
+        : count > 0
+        ? ' ⚠️ WORN IN A RECENT OUTFIT — strongly prefer something else, especially for bottoms/shoes'
+        : '';
       return `${i + 1}. [${String(item.category || '').toLowerCase()}] "${String(item.name || '').slice(0, 80)}" — colour: ${String(item.color || 'unspecified').slice(0, 30)}, fabric: ${String(item.fabric || 'unspecified').slice(0, 30)}${tags ? `, tags: [${tags}]` : ''}${notes}${usedMarker}`;
     }).join('\n');
 
@@ -416,17 +483,18 @@ serve(async (req) => {
 
 ## NON-NEGOTIABLE RULES
 1. The outfit MUST match the occasion tier above. Never put gym wear at a wedding, never put a blazer at the gym, never put dress shoes at the beach.
-2. The outfit MUST include exactly: 1 top (or jumper), 1 bottom, 1 pair of shoes — at minimum. Add outerwear/hat/accessory ONLY if it enhances the look and fits the occasion.
+2. The outfit MUST include exactly: 1 top/shirt/jumper, 1 bottom, 1 pair of shoes — at minimum. A top is MANDATORY in every outfit without exception. Add outerwear/hat/accessory ONLY if it enhances the look and fits the occasion.
 3. For ACTIVE/GYM: return EXACTLY 3 items (top + bottom + shoes) — no exceptions.
-4. Pick items that genuinely make sense together. If the user has 10 pairs of pants, choose the ONE that best fits the occasion (e.g. track pants for gym, suit trousers for wedding, dark jeans for date night).
-5. COLOUR COORDINATION — before selecting any item, decide on a colour story, then only choose pieces whose colours fit it:
+4. WARDROBE ROTATION (mandatory): Items marked ⚠️ or 🚫 have been worn recently. For bottoms and shoes specifically, you MUST pick a different option if one exists — the whole point of a digital wardrobe is to rotate through it. If every bottom or shoe is marked, pick the least-recently-worn one. Never produce the same bottom + shoe combination as a recent outfit.
+5. Pick items that genuinely make sense together. If the user has 10 pairs of pants, choose the ONE that best fits the occasion AND has not been worn recently (e.g. rotate between jeans, chinos, cargo, etc.).
+6. COLOUR COORDINATION — before selecting any item, decide on a colour story, then only choose pieces whose colours fit it:
    - TONAL: shades of the same colour family (e.g. all navy/blue tones, all camel/tan/brown).
    - NEUTRAL ANCHOR: 2+ neutrals (black/white/grey/navy/beige/camel) as base, one accent colour max.
    - ANALOGOUS: colours adjacent on the wheel (e.g. blue + green + teal, orange + red + rust).
    - COMPLEMENTARY: colours opposite on the wheel (e.g. navy + tan, burgundy + olive, cobalt + rust).
    - MONOCHROMATIC: one colour across all pieces in different shades (e.g. all black, all white, all grey).
    Always name the colour story in your reasoning. Never randomly pick items hoping the colours work.
-6. Fabric/weather: heavier fabrics for cold weather, lightweight breathable for warm. Match formality of fabric to occasion.
+7. Fabric/weather: heavier fabrics for cold weather, lightweight breathable for warm. Match formality of fabric to occasion.
 
 ## STYLE PREFERENCE
 Strongly favour items matching the user's stated style. A minimalist user gets clean lines and neutral palettes; a streetwear user gets relaxed fits and statement pieces; a classic user gets timeless silhouettes.
@@ -524,7 +592,29 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
     const coreNormalized = isGymRequest
       ? normalizeSelectionForGym(parsedSelectedItems, candidateItems)
       : normalizeSelectionWithRequiredCore(parsedSelectedItems, candidateItems);
-    const selectedItems = normalizeSelectionForWeather(coreNormalized, candidateItems, weather, isGymRequest);
+    let selectedItems = normalizeSelectionForWeather(coreNormalized, candidateItems, weather, isGymRequest);
+
+    if (!isGymRequest) {
+      // Enforce rotation: swap recently-worn bottoms/shoes for fresh alternatives.
+      selectedItems = applyDiversityPass(selectedItems, candidateItems, allRecentIds);
+
+      // If the outfit is still an exact duplicate of any recent outfit, also rotate the top.
+      if (isDuplicateOutfit(selectedItems, Array.isArray(recentOutfitItemIds) ? recentOutfitItemIds : [])) {
+        const usedIds = new Set(selectedItems.map((i: any) => String(i.id)));
+        const topIdx = selectedItems.findIndex(isTopHalf);
+        if (topIdx >= 0 && allRecentIds.has(String(selectedItems[topIdx].id))) {
+          const freshTops = candidateItems.filter((item: any) =>
+            isTopHalf(item) && !allRecentIds.has(String(item.id)) && !usedIds.has(String(item.id))
+          );
+          const pick = pickFreshItem(freshTops, selectedItems);
+          if (pick) {
+            selectedItems = [...selectedItems];
+            selectedItems[topIdx] = pick;
+            selectedItems = dedupeById(selectedItems);
+          }
+        }
+      }
+    }
 
     return new Response(JSON.stringify({
       items: selectedItems,

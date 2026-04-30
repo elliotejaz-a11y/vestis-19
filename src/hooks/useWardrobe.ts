@@ -9,6 +9,10 @@ import { isStoragePath, resolveSignedClothingImageFields, batchResolveSignedClot
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
 const isBottomsCategory = (category?: string) => (category || "").trim().toLowerCase() === "bottoms";
 const isTopsCategory = (category?: string) => (category || "").trim().toLowerCase() === "tops";
+const isTopOrJumperCategory = (category?: string) => {
+  const cat = (category || "").trim().toLowerCase();
+  return cat === "tops" || cat === "jumpers";
+};
 const GYM_OCCASION_PATTERN = /\b(gym|workout|training|exercise|fitness|run|running|jog|jogging|cardio|lift|lifting|weights?|pilates|yoga|sport|sports)\b/i;
 const GYM_TOP_POSITIVE_PATTERN = /\b(t-?shirt|tee|compression|activewear|athletic|performance|training|workout|gym|sport|sports|polyester|spandex|elastane|nylon|dry[-\s]?fit|moisture[-\s]?wicking|tight(?:-?fitting)?|fitted|muscle|jersey)\b/i;
 const GYM_TOP_NEGATIVE_PATTERN = /\b(jacket|coat|hoodie|jumper|sweater|cardigan|blazer|outerwear|parka|puffer|fleece|windbreaker|flannel|dress shirt|button[-\s]?up|oxford|knit|wool|zip[-\s]?up|anorak|shell)\b/i;
@@ -61,7 +65,8 @@ function ensureCategoryRequirement(
 
 function ensureOutfitHasCorePieces(selectedItems: ClothingItem[], allItems: ClothingItem[]): ClothingItem[] {
   const deduped = selectedItems.filter((item, index, arr) => arr.findIndex((x) => x.id === item.id) === index);
-  const withBottoms = ensureCategoryRequirement(deduped, allItems, (item) => isBottomsCategory(item.category));
+  const withTops = ensureCategoryRequirement(deduped, allItems, (item) => isTopOrJumperCategory(item.category));
+  const withBottoms = ensureCategoryRequirement(withTops, allItems, (item) => isBottomsCategory(item.category));
   const withShoes = ensureCategoryRequirement(withBottoms, allItems, (item) => isShoesCategory(item.category));
   return withShoes.slice(0, 5);
 }
@@ -689,6 +694,7 @@ export function useWardrobe() {
       if (!user || items.length < 2) return null;
 
       const missingCore: string[] = [];
+      if (!items.some((item) => isTopOrJumperCategory(item.category))) missingCore.push("top or jumper");
       if (!items.some((item) => isBottomsCategory(item.category))) missingCore.push("bottoms");
       if (!items.some((item) => isShoesCategory(item.category))) missingCore.push("shoes");
 
@@ -728,17 +734,44 @@ export function useWardrobe() {
           ? ensureGymOutfitHasOnlyAllowedPieces((data.items || []) as ClothingItem[], items)
           : ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
 
-        // For each item repeated from the last outfit, swap it for an alternative of the same category
+        // Collect IDs from the last 5 outfits to enforce wardrobe rotation.
+        const allRecentItemIds = new Set(
+          outfits.slice(0, 5).flatMap(o => (o.items || []).map(i => i.id))
+        );
         const lastOutfitIds = new Set((outfits[0]?.items || []).map(i => i.id));
-        selectedItems = selectedItems.map(item => {
-          if (!lastOutfitIds.has(item.id)) return item;
-          const alternative = items.find(i =>
-            i.category?.toLowerCase() === item.category?.toLowerCase() &&
-            !lastOutfitIds.has(i.id) &&
-            !selectedItems.some(s => s.id === i.id)
-          );
-          return alternative ?? item;
+
+        // Detect full duplicate (sorted IDs match any recent outfit).
+        const selectedIdKey = [...selectedItems.map(i => i.id)].sort().join(',');
+        const isDuplicateOfRecent = selectedIdKey !== '' && outfits.slice(0, 5).some(o => {
+          const recentKey = [...(o.items || []).map(i => i.id)].sort().join(',');
+          return recentKey === selectedIdKey;
         });
+
+        if (isDuplicateOfRecent || selectedItems.some(i => allRecentItemIds.has(i.id))) {
+          const currentIds = new Set(selectedItems.map(s => s.id));
+          selectedItems = selectedItems.map(item => {
+            const isCritical = isBottomsCategory(item.category) || isShoesCategory(item.category);
+            // Bottoms and shoes: swap if worn in ANY of the last 5 outfits
+            if (isCritical && allRecentItemIds.has(item.id)) {
+              const alt = items.find(i =>
+                i.category?.toLowerCase() === item.category?.toLowerCase() &&
+                !allRecentItemIds.has(i.id) &&
+                !currentIds.has(i.id)
+              );
+              if (alt) { currentIds.delete(item.id); currentIds.add(alt.id); return alt; }
+            }
+            // Other slots: swap if from the most recent outfit only
+            if (!isCritical && lastOutfitIds.has(item.id)) {
+              const alt = items.find(i =>
+                i.category?.toLowerCase() === item.category?.toLowerCase() &&
+                !lastOutfitIds.has(i.id) &&
+                !currentIds.has(i.id)
+              );
+              if (alt) { currentIds.delete(item.id); currentIds.add(alt.id); return alt; }
+            }
+            return item;
+          });
+        }
         const resolvedReasoning = isDetailedReasoning(data.reasoning)
           ? data.reasoning.trim()
           : buildOutfitReasoningFallback({ occasion, selectedItems, profile, weather });
