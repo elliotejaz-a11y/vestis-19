@@ -160,7 +160,8 @@ export default function Auth() {
         setLoading(false);
         return;
       }
-      const { error } = await signUp(email, password, displayName);
+      const trimmedEmail = email.trim().toLowerCase();
+      const { error } = await signUp(trimmedEmail, password, displayName);
       if (error) {
         if (error.message?.toLowerCase().includes("already registered") || error.message?.toLowerCase().includes("already been registered")) {
           toast({ title: "Email already in use", description: "An account with this email already exists. Please sign in instead.", variant: "destructive" });
@@ -169,8 +170,7 @@ export default function Auth() {
         }
       } else {
         localStorage.setItem("pending_username", username);
-        
-        setSignUpEmail(email);
+        setSignUpEmail(trimmedEmail);
         setSignUpSuccess(true);
       }
     } else {
@@ -211,12 +211,19 @@ export default function Auth() {
     setVerifyingOtp(true);
     const { error } = await supabase.auth.verifyOtp({
       email: signUpEmail,
-      token: otpCode,
+      token: otpCode.trim(),
       type: "signup",
     });
     setVerifyingOtp(false);
     if (error) {
-      toast({ title: "Invalid code", description: error.message, variant: "destructive" });
+      const isExpired = error.message?.toLowerCase().includes("expired") || error.message?.toLowerCase().includes("invalid");
+      toast({
+        title: "Code not accepted",
+        description: isExpired
+          ? "This code has expired or is incorrect. Use Resend Code to get a fresh one."
+          : error.message,
+        variant: "destructive",
+      });
     } else {
       toast({ title: "Email verified! ✨", description: "Welcome to Vestis!" });
     }
@@ -251,7 +258,8 @@ export default function Auth() {
           </Button>
           <div className="rounded-2xl bg-card border border-border/40 p-4 text-left space-y-2">
             <p className="text-xs text-muted-foreground">• Check your <span className="font-medium text-foreground">spam/junk</span> folder if you don't see it</p>
-            <p className="text-xs text-muted-foreground">• The code expires in 24 hours</p>
+            <p className="text-xs text-muted-foreground">• The code expires in <span className="font-medium text-foreground">1 hour</span> — verify promptly</p>
+            <p className="text-xs text-muted-foreground">• Email may take a few minutes to arrive</p>
           </div>
           <Button
             onClick={handleResendVerification}

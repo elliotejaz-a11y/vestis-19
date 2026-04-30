@@ -50,7 +50,7 @@ export const SignupEmail = ({
         </Text>
         <Text style={codeStyle}>{token}</Text>
         <Text style={footer}>
-          This code will expire shortly. If you didn't create an account, you can
+          This code expires in 1 hour. If you didn't create an account, you can
           safely ignore this email.
         </Text>
       </Container>

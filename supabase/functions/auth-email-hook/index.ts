@@ -230,11 +230,12 @@ async function handleWebhook(req: Request): Promise<Response> {
     newEmail: payload.data.new_email,
   }
 
-  // Render React Email to HTML and plain text
-  const html = await renderAsync(React.createElement(EmailTemplate, templateProps))
-  const text = await renderAsync(React.createElement(EmailTemplate, templateProps), {
-    plainText: true,
-  })
+  // Render React Email to HTML and plain text (render once each to avoid double cold-start cost)
+  const element = React.createElement(EmailTemplate, templateProps)
+  const [html, text] = await Promise.all([
+    renderAsync(element),
+    renderAsync(React.createElement(EmailTemplate, templateProps), { plainText: true }),
+  ])
 
   // Enqueue email for async processing by the dispatcher (process-email-queue).
   const supabase = createClient(
@@ -252,31 +253,44 @@ async function handleWebhook(req: Request): Promise<Response> {
     status: 'pending',
   })
 
-  const { error: enqueueError } = await supabase.rpc('enqueue_email', {
+  const emailQueuePayload = {
+    run_id,
+    message_id: messageId,
+    to: payload.data.email,
+    from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+    sender_domain: SENDER_DOMAIN,
+    subject: EMAIL_SUBJECTS[emailType] || 'Notification',
+    html,
+    text,
+    purpose: 'transactional',
+    label: emailType,
+    queued_at: new Date().toISOString(),
+  }
+
+  let { error: enqueueError } = await supabase.rpc('enqueue_email', {
     queue_name: 'auth_emails',
-    payload: {
-      run_id,
-      message_id: messageId,
-      to: payload.data.email,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-      sender_domain: SENDER_DOMAIN,
-      subject: EMAIL_SUBJECTS[emailType] || 'Notification',
-      html,
-      text,
-      purpose: 'transactional',
-      label: emailType,
-      queued_at: new Date().toISOString(),
-    },
+    payload: emailQueuePayload,
   })
 
+  // Retry once on transient failure before giving up
   if (enqueueError) {
-    console.error('Failed to enqueue auth email', { error: enqueueError, run_id, emailType })
+    console.warn('enqueue_email failed on first attempt, retrying', { error: enqueueError.message, run_id })
+    await new Promise((r) => setTimeout(r, 500))
+    const { error: retryError } = await supabase.rpc('enqueue_email', {
+      queue_name: 'auth_emails',
+      payload: emailQueuePayload,
+    })
+    enqueueError = retryError
+  }
+
+  if (enqueueError) {
+    console.error('Failed to enqueue auth email after retry', { error: enqueueError, run_id, emailType })
     await supabase.from('email_send_log').insert({
       message_id: messageId,
       template_name: emailType,
       recipient_email: payload.data.email,
       status: 'failed',
-      error_message: 'Failed to enqueue email',
+      error_message: `Failed to enqueue email: ${enqueueError.message}`,
     })
     return new Response(JSON.stringify({ error: 'Failed to enqueue email' }), {
       status: 500,
