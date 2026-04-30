@@ -56,8 +56,12 @@ function useCyclingMessage(messages: string[], active: boolean) {
   return messages[idx % messages.length];
 }
 
-/** Returns a human-readable ETA string, updating every second while active. */
-function useEta(done: number, total: number, active: boolean) {
+/**
+ * Returns a live ETA string, updating every second while active.
+ * Shows an estimate immediately on start using defaultSecPerUnit as a prior,
+ * then switches to the observed rate once items complete.
+ */
+function useEta(done: number, total: number, active: boolean, defaultSecPerUnit: number) {
   const startRef = useRef<number | null>(null);
   const doneRef = useRef(done);
   const totalRef = useRef(total);
@@ -77,14 +81,16 @@ function useEta(done: number, total: number, active: boolean) {
 
   useEffect(() => {
     if (!active) return;
-    const id = setInterval(() => {
+    const update = () => {
       const start = startRef.current;
       const d = doneRef.current;
       const n = totalRef.current;
-      if (!start || d === 0 || n === 0 || d >= n) { setEta(""); return; }
+      if (!start || n === 0 || d >= n) { setEta(""); return; }
       const elapsed = (Date.now() - start) / 1000;
-      const secPerUnit = elapsed / d;
-      const remaining = Math.round(secPerUnit * (n - d));
+      // Before any unit completes use the default rate estimate, counting down from start
+      const remaining = d === 0
+        ? Math.max(1, Math.round(n * defaultSecPerUnit - elapsed))
+        : Math.round((elapsed / d) * (n - d));
       if (remaining <= 0) { setEta(""); return; }
       if (remaining >= 60) {
         const mins = Math.floor(remaining / 60);
@@ -93,9 +99,11 @@ function useEta(done: number, total: number, active: boolean) {
       } else {
         setEta(`~${remaining}s remaining`);
       }
-    }, 1000);
+    };
+    update();
+    const id = setInterval(update, 1000);
     return () => clearInterval(id);
-  }, [active]);
+  }, [active, defaultSecPerUnit]);
 
   return eta;
 }
@@ -122,8 +130,8 @@ export function MassUploadProgressBanner() {
   const analysingMsg = useCyclingMessage(ANALYSING_MESSAGES, isAnalysing);
   const extractingMsg = useCyclingMessage(EXTRACTING_MESSAGES, isExtracting);
 
-  const analysisEta = useEta(analysisDone, analysisTotal, isAnalysing);
-  const extractionEta = useEta(extracted, total, isExtracting);
+  const analysisEta = useEta(analysisDone, analysisTotal, isAnalysing, 8);
+  const extractionEta = useEta(extracted, total, isExtracting, 14);
   const eta = isAnalysing ? analysisEta : extractionEta;
 
   const primaryLabel = isAnalysing
