@@ -984,7 +984,7 @@ function ChatView({
             const imageUrl = isImage ? msg.content.slice(5, -6) : null;
             return (
               <div key={msg.id} className={cn("flex group", isMine ? "justify-end" : "justify-start")}>
-                <div className="flex flex-col items-end gap-0.5">
+                <div className={cn("flex flex-col gap-0.5 max-w-[75%]", isMine ? "items-end" : "items-start")}>
                   <div className="flex items-center gap-1">
                     {!isMine && !msg.is_flagged && (
                       <button
@@ -994,7 +994,7 @@ function ChatView({
                         <Flag className="w-3 h-3 text-muted-foreground" />
                       </button>
                     )}
-                    <div className={cn("max-w-[78%] rounded-2xl px-3.5 py-2 text-sm break-words whitespace-pre-wrap", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
+                    <div className={cn("rounded-2xl px-3.5 py-2 text-sm break-words whitespace-pre-wrap", isMine ? "bg-accent text-accent-foreground" : "bg-card border border-border/40 text-foreground")}>
                       {isImage && imageUrl ? (
                         <SignedSocialImage src={imageUrl} alt="Fit pic" className="rounded-xl max-w-[200px] max-h-[200px] object-cover" />
                       ) : renderBoldText(msg.content)}
