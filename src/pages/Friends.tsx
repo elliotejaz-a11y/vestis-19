@@ -9,7 +9,6 @@ import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/currency";
 import { resolveSignedClothingImageFields, isStoragePath } from "@/lib/storage";
-import { useState as useStateImport } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationsSheet } from "@/components/NotificationsSheet";
@@ -119,7 +118,8 @@ export default function Friends() {
     const { data } = await supabase
       .from("clothing_items")
       .select("*")
-      .eq("user_id", friend.id);
+      .eq("user_id", friend.id)
+      .eq("is_private", false);
 
     const items = await Promise.all((data || []).map((r: any) => resolveSignedClothingImageFields({
       id: r.id,

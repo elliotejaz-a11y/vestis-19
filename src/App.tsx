@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { BottomNav } from "@/components/BottomNav";
 import { useWardrobe } from "@/hooks/useWardrobe";
 import { useRecentlyDeleted } from "@/hooks/useRecentlyDeleted";
@@ -91,8 +91,8 @@ function AppRoutes() {
   }, [loading, user]);
 
   // Public routes accessible without auth
-  const location = window.location.pathname;
-  if (location === "/launch-video") {
+  const location = useLocation();
+  if (location.pathname === "/launch-video") {
     return (
       <Suspense fallback={<Noop />}>
         <LaunchVideo />

@@ -48,7 +48,9 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
         content: `I styled this ${outfit.occasion} look for you! ${outfit.reasoning}\n\nFeel free to ask me about color changes, swaps, or styling tips.`,
       }]);
     }
-  }, [open]);
+  // messages.length intentionally omitted — we only want to seed once when open becomes true
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, outfit]);
 
   const scrollToBottom = useCallback(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });

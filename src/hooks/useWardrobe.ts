@@ -511,6 +511,7 @@ export function useWardrobe() {
           estimated_price: item.estimatedPrice || null,
           size: (item as any).size || "",
           privacy: (item as any).privacy || "public",
+          is_private: (item as any).privacy === "private" || item.isPrivate || false,
         })
         .select()
         .single();

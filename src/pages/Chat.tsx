@@ -934,9 +934,7 @@ function ChatView({
         .from("social-content")
         .upload(path, file, { contentType: file.type, cacheControl: "3600" });
       if (uploadErr) throw uploadErr;
-      const { data: urlData, error: signErr } = await supabase.storage.from("social-content").createSignedUrl(path, 60 * 60 * 24 * 7);
-      if (signErr || !urlData?.signedUrl) throw signErr ?? new Error("Could not get image URL");
-      const { error } = await sendMessage(`[IMG]${urlData.signedUrl}[/IMG]`);
+      const { error } = await sendMessage(`[IMG]${path}[/IMG]`);
       if (error) {
         toast({ title: "Failed to send image", description: error, variant: "destructive" });
       }

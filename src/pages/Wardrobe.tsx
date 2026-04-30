@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
@@ -25,12 +25,10 @@ interface Props {
 }
 
 export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval, dataReady }: Props) {
-  const setDetailItem = useCallback((item: ClothingItem | null) => _setDetailItem(item), []);
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
-  const [_detailItem, _setDetailItem] = useState<ClothingItem | null>(null);
-  const detailItem = _detailItem;
+  const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
   const navigate = useNavigate();
 
 
@@ -178,10 +176,10 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
       <ClothingDetailSheet
         item={detailItem}
         open={!!detailItem}
-        onOpenChange={(o) => { if (!o) _setDetailItem(null); }}
+        onOpenChange={(o) => { if (!o) setDetailItem(null); }}
         onSave={onUpdate}
         onRemove={onRemove}
-        onDuplicated={(newItem) => { _setDetailItem(null); onAddDuplicated?.(newItem); }}
+        onDuplicated={(newItem) => { setDetailItem(null); onAddDuplicated?.(newItem); }}
       />
     </div>
   );

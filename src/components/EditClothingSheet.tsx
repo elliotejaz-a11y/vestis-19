@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,21 +41,23 @@ export function EditClothingSheet({ item, open, onOpenChange, onSave }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Sync state when item changes
-  if (item && name === "" && item.name !== "") {
-    setName(item.name);
-    setCategory(item.category);
-    setColors(parseColors(item.color));
-    setFabric(item.fabric);
-    setNotes(item.notes);
-    setSize((item as any).size || "");
-    setPrivacy((item as any).privacy || "public");
-    setEstimatedPrice(item.estimatedPrice?.toString() || "");
-    setPriceEnabled(item.estimatedPrice != null);
-    setIsPrivate(item.isPrivate || false);
-    setNewImageUrl(null);
-    setNewImagePath(null);
-  }
+  useEffect(() => {
+    if (item && open) {
+      setName(item.name);
+      setCategory(item.category);
+      setColors(parseColors(item.color));
+      setFabric(item.fabric);
+      setNotes(item.notes);
+      setSize((item as any).size || "");
+      setPrivacy((item as any).privacy || "public");
+      setEstimatedPrice(item.estimatedPrice?.toString() || "");
+      setPriceEnabled(item.estimatedPrice != null);
+      setIsPrivate(item.isPrivate || false);
+      setNewImageUrl(null);
+      setNewImagePath(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item?.id, open]);
 
   const handleRetakePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

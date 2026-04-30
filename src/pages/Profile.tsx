@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
-import { convertPrice, formatPrice } from "@/lib/currency";
+import { formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
@@ -158,7 +158,6 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
   const totalWardrobeValueNzd = items.reduce((sum, i) => sum + (i.estimatedPrice || 0), 0);
   const currency = profile?.currency_preference || "NZD";
-  const totalWardrobeValue = convertPrice(totalWardrobeValueNzd, currency);
 
   const displayNameForTitle = profile?.display_name
     ? `${profile.display_name}'s Profile`

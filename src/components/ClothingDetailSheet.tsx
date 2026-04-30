@@ -3,10 +3,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { ClothingItem } from "@/types/wardrobe";
 import { EditClothingSheet } from "@/components/EditClothingSheet";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 import { Pencil, DollarSign, Tag, Palette, Shirt, StickyNote, ImageIcon, Copy, Ruler } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { formatPrice } from "@/lib/currency";
 import { isStoragePath, resolveSignedClothingImageFields } from "@/lib/storage";
 
@@ -24,7 +26,9 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
   const [editing, setEditing] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const { profile, user } = useAuth();
+  const { toast } = useToast();
   const currency = profile?.currency_preference || "NZD";
 
   const handleDuplicate = async () => {
@@ -202,16 +206,7 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
                 {onRemove && (
                   <Button
                     variant="outline"
-                    onClick={async () => {
-                      if (!window.confirm("Are you sure you want to remove this item?")) return;
-                      const { error } = await supabase.from("clothing_items").delete().eq("id", item.id);
-                      if (error) {
-                        alert("Failed to remove item please try again");
-                        return;
-                      }
-                      onRemove(item.id);
-                      onOpenChange(false);
-                    }}
+                    onClick={() => setConfirmDelete(true)}
                     className="h-11 rounded-2xl text-destructive border-destructive/30 hover:bg-destructive/10"
                   >
                     Remove
@@ -222,6 +217,23 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
           </div>
         </SheetContent>
       </Sheet>
+      {onRemove && (
+        <DeleteConfirmDialog
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          title="Remove item?"
+          description="This item will be moved to your recently deleted folder. You can restore it from your profile."
+          onConfirm={async () => {
+            const { error } = await supabase.from("clothing_items").delete().eq("id", item.id);
+            if (error) {
+              toast({ title: "Failed to remove item", description: "Please try again.", variant: "destructive" });
+              return;
+            }
+            onRemove(item.id);
+            onOpenChange(false);
+          }}
+        />
+      )}
     </>
   );
 }
