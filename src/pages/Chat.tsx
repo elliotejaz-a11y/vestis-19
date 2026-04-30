@@ -676,10 +676,14 @@ function NotificationsTab({
   refreshFollowData: () => Promise<void>;
 }) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
   const [requestActionLoading, setRequestActionLoading] = useState<string | null>(null);
   const [acceptedRequestIds, setAcceptedRequestIds] = useState<string[]>([]);
   const [declinedRequestIds, setDeclinedRequestIds] = useState<string[]>([]);
+  // Tracks users we've sent a follow-request to (private accounts). refreshFollowData only
+  // reads the follows table so it won't reflect pending requests — we track them locally.
+  const [requestedUserIds, setRequestedUserIds] = useState<string[]>([]);
 
   const handleAcceptFollowRequest = async (notificationId: string, requesterId: string) => {
     if (!user) return;
@@ -713,21 +717,42 @@ function NotificationsTab({
   const handleFollowBack = async (targetId: string) => {
     if (!user) return;
     setFollowingLoading(targetId);
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_public")
-      .eq("id", targetId)
-      .single();
+    try {
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("is_public")
+        .eq("id", targetId)
+        .single();
 
-    if (profile?.is_public === false) {
-      await supabase.from("follow_requests").insert({ requester_id: user.id, target_id: targetId, status: "pending" });
-      await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: targetId });
-    } else {
-      await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+      if (profileData?.is_public === false) {
+        // Private account — send a follow request. Ignore duplicate (23505) silently.
+        const { error: reqError } = await supabase
+          .from("follow_requests")
+          .insert({ requester_id: user.id, target_id: targetId, status: "pending" });
+        if (reqError && reqError.code !== "23505") throw reqError;
+        await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: targetId });
+        // refreshFollowData won't reflect a pending request, so track locally.
+        setRequestedUserIds((prev) => [...new Set([...prev, targetId])]);
+      } else {
+        // Public account — upsert so a double-tap never throws a unique constraint error.
+        const { error: followError } = await supabase
+          .from("follows")
+          .upsert(
+            { follower_id: user.id, following_id: targetId },
+            { onConflict: "follower_id,following_id", ignoreDuplicates: true }
+          );
+        if (followError) throw followError;
+        await refreshFollowData();
+      }
+    } catch (err: any) {
+      toast({
+        title: "Couldn't follow",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setFollowingLoading(null);
     }
-
-    await refreshFollowData();
-    setFollowingLoading(null);
   };
 
   const getIcon = (type: string) => {
@@ -764,6 +789,7 @@ function NotificationsTab({
             const isFollowerNotif = n.type === "new_follower" && n.from_user_id;
             const isFollowRequestNotif = n.type === "follow_request" && n.from_user_id;
             const alreadyFollowing = n.from_user_id ? followingIds.includes(n.from_user_id) : false;
+            const hasRequested = n.from_user_id ? requestedUserIds.includes(n.from_user_id) : false;
             const requestAccepted = acceptedRequestIds.includes(n.id);
             const requestDeclined = declinedRequestIds.includes(n.id);
             // Also treat read follow_request as accepted if requester is already a follower
@@ -826,7 +852,7 @@ function NotificationsTab({
                   {isFollowRequestNotif && showAccepted && (
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <p className="text-[10px] text-accent font-medium">Accepted ✓</p>
-                      {!alreadyFollowing && (
+                      {!alreadyFollowing && !hasRequested && (
                         <Button
                           size="sm"
                           onClick={(e) => {
@@ -844,10 +870,13 @@ function NotificationsTab({
                           Follow Back
                         </Button>
                       )}
+                      {!alreadyFollowing && hasRequested && (
+                        <p className="text-[10px] text-muted-foreground font-medium">Requested</p>
+                      )}
                     </div>
                   )}
 
-                  {isFollowerNotif && !alreadyFollowing && (
+                  {isFollowerNotif && !alreadyFollowing && !hasRequested && (
                     <Button
                       size="sm"
                       onClick={(e) => {
@@ -864,6 +893,9 @@ function NotificationsTab({
                       )}
                       Follow Back
                     </Button>
+                  )}
+                  {isFollowerNotif && !alreadyFollowing && hasRequested && (
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1">Requested</p>
                   )}
                   {isFollowerNotif && alreadyFollowing && (
                     <p className="text-[10px] text-accent font-medium mt-1">Friends ✓</p>
