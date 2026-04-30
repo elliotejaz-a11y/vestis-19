@@ -217,7 +217,10 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
         notes,
         addedAt: new Date(),
         estimatedPrice,
-      },
+        size,
+        privacy,
+        isPrivate: privacy === "private",
+      } as ClothingItem,
       { runBackgroundRemoval: isFileSourced, imageBase64ForProcessing }
     );
     resetForm();

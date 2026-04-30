@@ -24,7 +24,7 @@ const OutfitBuilder = lazy(() => import("./pages/OutfitBuilder"));
 const Profile = lazy(() => import("./pages/Profile"));
 const CalendarPage = lazy(() => import("./pages/Calendar"));
 const FeedbackPage = lazy(() => import("./pages/Feedback"));
-const SocialFeed = lazy(() => import("./pages/SocialFeed"));
+
 const UserProfilePage = lazy(() => import("./pages/UserProfile"));
 const Friends = lazy(() => import("./pages/Friends"));
 const Chat = lazy(() => import("./pages/Chat"));
@@ -50,8 +50,7 @@ function preloadAllRoutes() {
     () => import("./pages/Profile"),
     () => import("./pages/Calendar"),
     () => import("./pages/Feedback"),
-    () => import("./pages/SocialFeed"),
-    () => import("./pages/UserProfile"),
+() => import("./pages/UserProfile"),
     () => import("./pages/Friends"),
     () => import("./pages/Chat"),
   ];
@@ -181,8 +180,7 @@ function AuthenticatedApp() {
             onPermanentDelete={handlePermanentDelete}
           />
         } />
-        <Route path="/social" element={<SocialFeed />} />
-        <Route path="/user/:userId" element={<UserProfilePage />} />
+<Route path="/user/:userId" element={<UserProfilePage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/policies/terms" element={<Terms />} />
         <Route path="/policies/privacy" element={<Privacy />} />

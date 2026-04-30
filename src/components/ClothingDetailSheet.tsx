@@ -223,12 +223,7 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
           onOpenChange={setConfirmDelete}
           title="Remove item?"
           description="This item will be moved to your recently deleted folder. You can restore it from your profile."
-          onConfirm={async () => {
-            const { error } = await supabase.from("clothing_items").delete().eq("id", item.id);
-            if (error) {
-              toast({ title: "Failed to remove item", description: "Please try again.", variant: "destructive" });
-              return;
-            }
+          onConfirm={() => {
             onRemove(item.id);
             onOpenChange(false);
           }}

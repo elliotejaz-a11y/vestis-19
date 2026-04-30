@@ -169,7 +169,6 @@ export async function processBackgroundRemoval(options: ProcessBackgroundRemoval
   const { itemId, imageUrl, userId, isRetry, onStatusUpdate } = options;
 
   if (!isRetry) {
-    console.log("[BG removal] Initial add – client-side result already in storage, marking ready");
     onStatusUpdate?.({ imageStatus: "ready" });
     return;
   }

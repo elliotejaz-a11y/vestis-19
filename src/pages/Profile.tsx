@@ -443,17 +443,18 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           </div>
         )}
 
-        {/* Recently Deleted button - always visible */}
-        <Button
-          variant="outline"
-          onClick={() => {
-            const el = document.getElementById("recently-deleted-section");
-            if (el) el.scrollIntoView({ behavior: "smooth" });
-          }}
-          className="w-full h-12 rounded-2xl text-sm"
-        >
-          <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
-        </Button>
+        {deletedItems.length > 0 && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              const el = document.getElementById("recently-deleted-section");
+              if (el) el.scrollIntoView({ behavior: "smooth" });
+            }}
+            className="w-full h-12 rounded-2xl text-sm"
+          >
+            <Trash2 className="w-4 h-4 mr-2" /> Recently Deleted ({deletedItems.length})
+          </Button>
+        )}
 
         {/* Account Privacy */}
         <div className="rounded-2xl bg-card border border-border/40 p-4">
