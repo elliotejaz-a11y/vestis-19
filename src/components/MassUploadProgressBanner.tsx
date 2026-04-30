@@ -56,54 +56,29 @@ function useCyclingMessage(messages: string[], active: boolean) {
   return messages[idx % messages.length];
 }
 
-/**
- * Returns a live ETA string, updating every second while active.
- * Shows an estimate immediately on start using defaultSecPerUnit as a prior,
- * then switches to the observed rate once items complete.
- */
-function useEta(done: number, total: number, active: boolean, defaultSecPerUnit: number) {
-  const startRef = useRef<number | null>(null);
-  const doneRef = useRef(done);
-  const totalRef = useRef(total);
-  doneRef.current = done;
-  totalRef.current = total;
-
+/** Returns a static ETA string computed once when active becomes true with a known count. Never counts down. */
+function useStaticEta(count: number, secPerUnit: number, active: boolean) {
   const [eta, setEta] = useState("");
+  const setRef = useRef(false);
 
   useEffect(() => {
-    if (active) {
-      if (startRef.current === null) startRef.current = Date.now();
-    } else {
-      startRef.current = null;
+    if (!active) {
+      setRef.current = false;
       setEta("");
+      return;
     }
-  }, [active]);
-
-  useEffect(() => {
-    if (!active) return;
-    const update = () => {
-      const start = startRef.current;
-      const d = doneRef.current;
-      const n = totalRef.current;
-      if (!start || n === 0 || d >= n) { setEta(""); return; }
-      const elapsed = (Date.now() - start) / 1000;
-      // Before any unit completes use the default rate estimate, counting down from start
-      const remaining = d === 0
-        ? Math.max(1, Math.round(n * defaultSecPerUnit - elapsed))
-        : Math.round((elapsed / d) * (n - d));
-      if (remaining <= 0) { setEta(""); return; }
-      if (remaining >= 60) {
-        const mins = Math.floor(remaining / 60);
-        const secs = remaining % 60;
-        setEta(`~${mins}m${secs > 0 ? ` ${secs}s` : ""} remaining`);
-      } else {
-        setEta(`~${remaining}s remaining`);
-      }
-    };
-    update();
-    const id = setInterval(update, 1000);
-    return () => clearInterval(id);
-  }, [active, defaultSecPerUnit]);
+    if (setRef.current || count === 0) return;
+    setRef.current = true;
+    const totalSec = Math.round(count * secPerUnit);
+    if (totalSec <= 0) return;
+    if (totalSec >= 60) {
+      const mins = Math.floor(totalSec / 60);
+      const secs = totalSec % 60;
+      setEta(`~${mins}m${secs > 0 ? ` ${secs}s` : ""}`);
+    } else {
+      setEta(`~${totalSec}s`);
+    }
+  }, [active, count, secPerUnit]);
 
   return eta;
 }
@@ -130,8 +105,8 @@ export function MassUploadProgressBanner() {
   const analysingMsg = useCyclingMessage(ANALYSING_MESSAGES, isAnalysing);
   const extractingMsg = useCyclingMessage(EXTRACTING_MESSAGES, isExtracting);
 
-  const analysisEta = useEta(analysisDone, analysisTotal, isAnalysing, 8);
-  const extractionEta = useEta(extracted, total, isExtracting, 14);
+  const analysisEta = useStaticEta(analysisTotal, 8, isAnalysing);
+  const extractionEta = useStaticEta(total, 24, isExtracting);
   const eta = isAnalysing ? analysisEta : extractionEta;
 
   const primaryLabel = isAnalysing
@@ -159,14 +134,16 @@ export function MassUploadProgressBanner() {
           )}
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold truncate transition-all duration-300">{primaryLabel}</p>
-            {isProcessing && eta && (
-              <p className="text-[11px] opacity-80 mt-0.5">{eta}</p>
-            )}
             {!isReady && (
-              <Progress
-                value={animatedCompletion}
-                className="mt-1 h-1 rounded-full bg-accent-foreground/20 [&>div]:bg-accent-foreground [&>div]:transition-all [&>div]:duration-500"
-              />
+              <div className="flex items-center gap-2 mt-1">
+                <Progress
+                  value={animatedCompletion}
+                  className="flex-1 h-1 rounded-full bg-accent-foreground/20 [&>div]:bg-accent-foreground [&>div]:transition-all [&>div]:duration-500"
+                />
+                {isProcessing && eta && (
+                  <span className="text-[11px] opacity-80 shrink-0">{eta}</span>
+                )}
+              </div>
             )}
           </div>
           <button

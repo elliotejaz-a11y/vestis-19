@@ -52,6 +52,31 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    const category = (item.category ?? "").toLowerCase();
+    const isBottomWear = category === "bottoms";
+    const isShoes = category === "shoes";
+
+    const categoryRules = isBottomWear
+      ? `
+
+BOTTOM-WEAR RULES — MANDATORY, NO EXCEPTIONS:
+✓ Show exactly ONE single pair of ${item.name} laid completely flat, front side up, on a pure white surface
+✓ The garment must be fully spread out and unfolded, showing both legs in their natural shape
+✓ Camera angle: straight-on or very slightly overhead — as used on ASOS product pages
+✗ NEVER show two pairs, stacked items, or any form of duplication — ONE garment only
+✗ NEVER fold, bunch, crumple, or roll the item — it must be completely flat
+✗ NEVER show only one leg or a partial view — the full garment must be visible`
+      : isShoes
+      ? `
+
+SHOES RULES — MANDATORY, NO EXCEPTIONS:
+✓ Carefully examine the source image to identify: exact shoe silhouette, colourway, design details, logo/branding placement, sole style, and upper material/texture
+✓ Generate a clean product photograph that matches those specific shoes — not a generic or stock shoe image
+✓ Camera angle: three-quarter front view or clean side profile, matching standard shoe product photography
+✓ The generated image must faithfully reproduce the actual shoe detected in the source photo
+✗ Do NOT substitute a generic shoe — the output must reflect the specific model, colourway, and design seen in the source image`
+      : "";
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -86,8 +111,8 @@ The output image MUST look exactly like a product listing on ASOS, Zara, or H&M 
 ✗ NO hanger, hook, or any object holding the item
 ✗ NO other clothing items or accessories in the frame
 ✗ NO background from the source photo
-
-Use the reference photo only to identify the item's colour, fabric, and design details. Completely discard the source photo's background, people, and context. Generate a brand-new clean product photograph of just this single ${item.category}.`,
+${categoryRules}
+Use the reference photo to identify the item's exact colour, fabric, design details, and any visible branding. Completely discard the source photo's background, people, and context. Generate a brand-new clean product photograph of just this single ${item.category}.`,
               },
               {
                 type: "image_url",
