@@ -14,12 +14,13 @@ interface Props {
   item: ClothingItem | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (item: ClothingItem) => void;
+  onSave?: (item: ClothingItem) => void;
   onRemove?: (id: string) => void;
   onDuplicated?: (item: ClothingItem) => void;
+  readOnly?: boolean;
 }
 
-export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove, onDuplicated }: Props) {
+export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove, onDuplicated, readOnly }: Props) {
   const [editing, setEditing] = useState(false);
   const [showBack, setShowBack] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
@@ -67,13 +68,13 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
 
   if (!item) return null;
 
-  if (editing) {
+  if (editing && !readOnly) {
     return (
       <EditClothingSheet
         item={item}
         open={true}
         onOpenChange={(o) => { if (!o) setEditing(false); }}
-        onSave={(updated) => { onSave(updated); setEditing(false); }}
+        onSave={(updated) => { onSave?.(updated); setEditing(false); }}
       />
     );
   }
@@ -182,40 +183,42 @@ export function ClothingDetailSheet({ item, open, onOpenChange, onSave, onRemove
               </div>
             )}
 
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setEditing(true)}
-                className="flex-1 h-11 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
-              >
-                <Pencil className="w-4 h-4 mr-2" /> Edit Item
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleDuplicate}
-                disabled={duplicating}
-                className="h-11 rounded-2xl text-sm"
-              >
-                <Copy className="w-4 h-4" />
-              </Button>
-              {onRemove && (
+            {!readOnly && (
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setEditing(true)}
+                  className="flex-1 h-11 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
+                >
+                  <Pencil className="w-4 h-4 mr-2" /> Edit Item
+                </Button>
                 <Button
                   variant="outline"
-                  onClick={async () => {
-                    if (!window.confirm("Are you sure you want to remove this item?")) return;
-                    const { error } = await supabase.from("clothing_items").delete().eq("id", item.id);
-                    if (error) {
-                      alert("Failed to remove item please try again");
-                      return;
-                    }
-                    onRemove(item.id);
-                    onOpenChange(false);
-                  }}
-                  className="h-11 rounded-2xl text-destructive border-destructive/30 hover:bg-destructive/10"
+                  onClick={handleDuplicate}
+                  disabled={duplicating}
+                  className="h-11 rounded-2xl text-sm"
                 >
-                  Remove
+                  <Copy className="w-4 h-4" />
                 </Button>
-              )}
-            </div>
+                {onRemove && (
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      if (!window.confirm("Are you sure you want to remove this item?")) return;
+                      const { error } = await supabase.from("clothing_items").delete().eq("id", item.id);
+                      if (error) {
+                        alert("Failed to remove item please try again");
+                        return;
+                      }
+                      onRemove(item.id);
+                      onOpenChange(false);
+                    }}
+                    className="h-11 rounded-2xl text-destructive border-destructive/30 hover:bg-destructive/10"
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </SheetContent>
       </Sheet>

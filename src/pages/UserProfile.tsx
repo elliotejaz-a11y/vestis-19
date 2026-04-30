@@ -6,6 +6,7 @@ import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
+import { batchResolveAvatarUrls } from "@/lib/storage";
 import { CATEGORIES } from "@/types/wardrobe";
 import FollowListSheet from "@/components/FollowListSheet";
 import UserWardrobeSheet from "@/components/UserWardrobeSheet";
@@ -63,6 +64,8 @@ export default function UserProfilePage() {
   const [isBlocked, setIsBlocked] = useState(false);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<FitPic | null>(null);
   const [pendingRequest, setPendingRequest] = useState(false);
+  const [avatarLightboxOpen, setAvatarLightboxOpen] = useState(false);
+  const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | null>(null);
 
   const isOwnProfile = userId === user?.id;
   const isFollowing = followingIds.includes(userId || "");
@@ -79,6 +82,12 @@ export default function UserProfilePage() {
         .eq("id", userId)
         .single();
       setProfile(profileData as UserProfileData | null);
+
+      if (profileData?.avatar_url) {
+        batchResolveAvatarUrls([profileData.avatar_url]).then(([signed]) => {
+          setResolvedAvatarUrl(signed ?? profileData.avatar_url);
+        });
+      }
 
       // All secondary queries are independent of each other — run in parallel
       // to avoid waterfall latency (previously wardrobe waited for counts, etc.)
@@ -237,14 +246,31 @@ export default function UserProfilePage() {
       {/* Profile header */}
       <div className="px-5 pb-4">
         <div className="flex flex-col items-center gap-3">
-          <UserAvatar
-            avatarUrl={profile.avatar_url}
-            avatarPreset={profile.avatar_preset}
-            displayName={profile.display_name}
-            userId={profile.id}
-            avatarPosition={profile.avatar_position}
-            className="w-20 h-20 bg-card border border-border"
-          />
+          {profile.avatar_url ? (
+            <button
+              onClick={() => setAvatarLightboxOpen(true)}
+              className="rounded-full focus:outline-none active:opacity-80 transition-opacity"
+              aria-label="View profile picture"
+            >
+              <UserAvatar
+                avatarUrl={profile.avatar_url}
+                avatarPreset={profile.avatar_preset}
+                displayName={profile.display_name}
+                userId={profile.id}
+                avatarPosition={profile.avatar_position}
+                className="w-20 h-20 bg-card border border-border"
+              />
+            </button>
+          ) : (
+            <UserAvatar
+              avatarUrl={profile.avatar_url}
+              avatarPreset={profile.avatar_preset}
+              displayName={profile.display_name}
+              userId={profile.id}
+              avatarPosition={profile.avatar_position}
+              className="w-20 h-20 bg-card border border-border"
+            />
+          )}
           <div className="text-center">
             <h2 className="text-lg font-bold text-foreground">{profile.display_name || profile.username}</h2>
             {profile.username && (
@@ -431,6 +457,28 @@ export default function UserProfilePage() {
           />
         </div>
       )}
+
+      {/* Avatar Lightbox */}
+      <div
+        className={`fixed inset-0 z-[10002] flex items-center justify-center transition-opacity duration-200 ${avatarLightboxOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        style={{ background: "rgba(0,0,0,0.92)" }}
+        onClick={() => setAvatarLightboxOpen(false)}
+      >
+        <button
+          onClick={() => setAvatarLightboxOpen(false)}
+          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
+        >
+          <X className="w-5 h-5" />
+        </button>
+        {resolvedAvatarUrl && (
+          <img
+            src={resolvedAvatarUrl}
+            alt={profile?.display_name || "Profile picture"}
+            className="max-w-[90vw] max-h-[90vh] rounded-2xl object-cover"
+            onClick={(e) => e.stopPropagation()}
+          />
+        )}
+      </div>
     </div>
   );
 }

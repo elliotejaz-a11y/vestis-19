@@ -28,6 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 
 // ─── Bold text helper ───
 function renderBoldText(text: string) {
@@ -340,6 +341,7 @@ function FriendsTab({
   const [selectedFriend, setSelectedFriend] = useState<FriendProfile | null>(null);
   const [friendWardrobe, setFriendWardrobe] = useState<ClothingItem[]>([]);
   const [loadingWardrobe, setLoadingWardrobe] = useState(false);
+  const [selectedFriendItem, setSelectedFriendItem] = useState<ClothingItem | null>(null);
 
   const fetchFriends = useCallback(async () => {
     if (!user || followDataLoading) return;
@@ -413,7 +415,11 @@ function FriendsTab({
         ) : (
           <div className="grid grid-cols-3 gap-1">
             {friendWardrobe.map((item) => (
-              <div key={item.id} className="aspect-square rounded-xl overflow-hidden bg-card border border-border/40 relative">
+              <button
+                key={item.id}
+                onClick={() => setSelectedFriendItem(item)}
+                className="aspect-square rounded-xl overflow-hidden bg-card border border-border/40 relative active:scale-95 transition-transform"
+              >
                 <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
                   <p className="text-[10px] text-white font-medium truncate">{item.name}</p>
@@ -422,10 +428,17 @@ function FriendsTab({
                     <p className="text-[9px] text-white/80 font-semibold">{formatPrice(item.estimatedPrice, profile?.currency_preference || "NZD")}</p>
                   )}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
+
+        <ClothingDetailSheet
+          item={selectedFriendItem}
+          open={!!selectedFriendItem}
+          onOpenChange={(o) => { if (!o) setSelectedFriendItem(null); }}
+          readOnly
+        />
       </div>
     );
   }

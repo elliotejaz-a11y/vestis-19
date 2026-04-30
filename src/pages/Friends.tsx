@@ -13,6 +13,7 @@ import { useState as useStateImport } from "react";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationsSheet } from "@/components/NotificationsSheet";
+import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 
 interface FriendProfile {
   id: string;
@@ -38,6 +39,7 @@ export default function Friends() {
   const [selectedFriend, setSelectedFriend] = useState<FriendProfile | null>(null);
   const [friendWardrobe, setFriendWardrobe] = useState<ClothingItem[]>([]);
   const [loadingWardrobe, setLoadingWardrobe] = useState(false);
+  const [selectedFriendItem, setSelectedFriendItem] = useState<ClothingItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
   const { unreadCount } = useNotifications();
@@ -178,7 +180,11 @@ export default function Friends() {
         ) : (
           <div className="grid grid-cols-3 gap-1 px-1">
             {friendWardrobe.map((item) => (
-              <div key={item.id} className="aspect-square rounded-xl overflow-hidden bg-card border border-border/40 relative group">
+              <button
+                key={item.id}
+                onClick={() => setSelectedFriendItem(item)}
+                className="aspect-square rounded-xl overflow-hidden bg-card border border-border/40 relative group active:scale-95 transition-transform"
+              >
                 <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
                   <p className="text-[10px] text-white font-medium truncate">{item.name}</p>
@@ -187,10 +193,17 @@ export default function Friends() {
                     <p className="text-[9px] text-white/80 font-semibold">{formatPrice(item.estimatedPrice, profile?.currency_preference || "NZD")}</p>
                   )}
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         )}
+
+        <ClothingDetailSheet
+          item={selectedFriendItem}
+          open={!!selectedFriendItem}
+          onOpenChange={(o) => { if (!o) setSelectedFriendItem(null); }}
+          readOnly
+        />
       </div>
     );
   }
