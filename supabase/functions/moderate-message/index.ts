@@ -50,20 +50,20 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Message too long (max 2000 characters)" }), { status: 400, headers: corsHeaders });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     let isFlagged = false;
     let flagReason: string | null = null;
 
-    if (LOVABLE_API_KEY) {
+    if (GEMINI_API_KEY) {
       try {
-        const moderationResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const moderationResp = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            Authorization: `Bearer ${GEMINI_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-lite",
+            model: "gemini-2.0-flash-lite",
             messages: [
               {
                 role: "system",
