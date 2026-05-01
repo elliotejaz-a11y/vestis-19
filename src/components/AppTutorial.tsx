@@ -3,12 +3,19 @@ import { X, ArrowRight, ArrowLeft, Shirt, Sparkles, Users, User, Camera, Washing
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import welcomeImg from "@/assets/tutorial/welcome.jpg";
+import photographImg from "@/assets/tutorial/photograph.jpg";
+import whenToUploadImg from "@/assets/tutorial/when-to-upload.jpg";
+import wardrobeImg from "@/assets/tutorial/wardrobe.jpg";
+import aiOutfitsImg from "@/assets/tutorial/ai-outfits.jpg";
+import socialImg from "@/assets/tutorial/social.jpg";
+import profileImg from "@/assets/tutorial/profile.jpg";
 
 type TutorialStep = {
   title: string;
   description: string;
   icon: typeof Sparkles;
-  accent?: string;
+  image: string;
   bullets?: { icon: typeof Sparkles; text: string }[];
 };
 
@@ -18,18 +25,21 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     description:
       "Your wardrobe, reimagined. Let's take a quick tour so you can get the most out of every piece you own.",
     icon: Sparkles,
+    image: welcomeImg,
   },
   {
     title: "Photograph Your Clothes",
     description:
       "Snap a clear photo of each item against a plain background. Make sure the piece fills the frame — our AI handles the rest, detecting colour, fabric and category automatically.",
     icon: Camera,
+    image: photographImg,
   },
   {
     title: "When To Upload",
     description:
       "Building your wardrobe is easiest when you make it part of your routine. Try these moments:",
     icon: WashingMachine,
+    image: whenToUploadImg,
     bullets: [
       { icon: WashingMachine, text: "Straight out of the washing machine — clothes are clean, flat and easy to photograph." },
       { icon: Shirt, text: "After every wear, before tossing it in the wash basket." },
@@ -43,24 +53,28 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     description:
       "This is your digital closet. Every piece you upload lives here — tap any item to view details, edit, or remove it.",
     icon: Shirt,
+    image: wardrobeImg,
   },
   {
     title: "AI Outfit Generator",
     description:
       "Tell Vestis the occasion, weather or mood, and our AI builds outfits using only the clothes you own. No more 'nothing to wear' moments.",
     icon: Sparkles,
+    image: aiOutfitsImg,
   },
   {
     title: "Social Feed",
     description:
       "Share your fits, follow friends, and get inspired by what others are styling. Fashion is more fun together.",
     icon: Users,
+    image: socialImg,
   },
   {
     title: "Your Profile",
     description:
       "Your stats, saved outfits, style preferences and account settings — all in one place. You can replay this tour anytime from the help menu.",
     icon: User,
+    image: profileImg,
   },
 ];
 
