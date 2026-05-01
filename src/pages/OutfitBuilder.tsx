@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { Shuffle, Check, X, RotateCcw, Bookmark } from "lucide-react";
+import { Shuffle, Check, X, RotateCcw, Bookmark, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitBuilderErrorBoundary } from "@/components/OutfitBuilderErrorBoundary";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
 
@@ -43,9 +44,11 @@ interface Props {
   items: ClothingItem[];
   onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onOutfitCreated?: (outfit: Outfit) => void;
+  /** Same delete path as the main Wardrobe page — soft-deletes with recent-deleted recovery */
+  onRemove?: (id: string) => void;
 }
 
-function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
+function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated, onRemove }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selected, setSelected] = useState<Record<string, ClothingItem | null>>({});
@@ -55,11 +58,27 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
   const [zOrder, setZOrder] = useState<Record<string, number>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Task 1: item pending wardrobe deletion (shows confirmation dialog)
+  const [deleteTarget, setDeleteTarget] = useState<ClothingItem | null>(null);
+
+  // Task 2: visual state for trash-zone highlight while dragging a canvas item over it
+  const [isOverTrash, setIsOverTrash] = useState(false);
+
   const dragRef = useRef<{ startX: number; startY: number; startPosX: number; startPosY: number } | null>(null);
   const pinchRef = useRef<{ itemId: string; startDist: number; startScale: number } | null>(null);
   const lastTapRef = useRef<{ id: string; time: number } | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
-  const zCounterRef = useRef(1);
+
+  // Task 2: stable ref to the trash-zone element so handlePointerMove can hit-test it
+  const trashZoneRef = useRef<HTMLDivElement>(null);
+
+  // Task 2: ref mirrors for values needed in pointer callbacks without causing dep-churn.
+  // Follows the same pattern as positionsRef/scalesRef already used in this file.
+  const isOverTrashRef = useRef(false);
+  const draggingIdRef = useRef<string | null>(null);
+  draggingIdRef.current = draggingId;
+
   // Use a ref for positions so gesture callbacks always read the latest value
   const positionsRef = useRef(positions);
   positionsRef.current = positions;
@@ -124,6 +143,8 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
     return az - bz;
   });
 
+  const zCounterRef = useRef(1);
+
   const bringToFront = useCallback((id: string) => {
     zCounterRef.current += 1;
     setZOrder((prev) => ({ ...prev, [id]: zCounterRef.current + 10 }));
@@ -185,12 +206,47 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
         }
         return { ...prev, [currentDraggingId]: { x: newX, y: newY } };
       });
+
+      // Task 2: check if the pointer is currently hovering over the trash drop zone.
+      // Uses getBoundingClientRect() on the always-present (but possibly opacity-0) ref element.
+      if (trashZoneRef.current) {
+        const trashRect = trashZoneRef.current.getBoundingClientRect();
+        const over =
+          e.clientX >= trashRect.left &&
+          e.clientX <= trashRect.right &&
+          e.clientY >= trashRect.top &&
+          e.clientY <= trashRect.bottom;
+        if (over !== isOverTrashRef.current) {
+          isOverTrashRef.current = over;
+          setIsOverTrash(over);
+        }
+      }
     } catch (err) {
       console.warn("[OutfitBuilder] pointerMove error:", err);
     }
   }, [draggingId]);
 
   const handlePointerUp = useCallback(() => {
+    // Task 2: if the user released over the trash zone, remove that item from the canvas.
+    // This is a canvas-only action — it does NOT delete from the wardrobe.
+    const currentDraggingId = draggingIdRef.current;
+    if (currentDraggingId && isOverTrashRef.current) {
+      const itemId = currentDraggingId;
+      setSelected((prev) => {
+        const next = { ...prev };
+        for (const cat of Object.keys(next)) {
+          if (next[cat]?.id === itemId) next[cat] = null;
+        }
+        return next;
+      });
+      setPositions((prev) => { const n = { ...prev }; delete n[itemId]; return n; });
+      setScales((prev) => { const n = { ...prev }; delete n[itemId]; return n; });
+      setZOrder((prev) => { const n = { ...prev }; delete n[itemId]; return n; });
+    }
+
+    // Reset trash-zone state regardless of whether a drop occurred
+    isOverTrashRef.current = false;
+    setIsOverTrash(false);
     dragRef.current = null;
     setDraggingId(null);
   }, []);
@@ -325,6 +381,29 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
     }
   };
 
+  // Task 1: called when the user confirms deletion in the dialog.
+  // Removes the item from the canvas (if placed) then delegates to the
+  // parent's onRemove, which is the same soft-delete path used on the Wardrobe page.
+  const handleDeleteConfirm = useCallback(() => {
+    if (!deleteTarget || !onRemove) return;
+    const id = deleteTarget.id;
+
+    // Strip from canvas selected state if the item is currently placed
+    setSelected((prev) => {
+      if (prev[deleteTarget.category]?.id === id) {
+        return { ...prev, [deleteTarget.category]: null };
+      }
+      return prev;
+    });
+    // Clean up any stored position/scale/z data for this item
+    setPositions((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    setScales((prev) => { const n = { ...prev }; delete n[id]; return n; });
+    setZOrder((prev) => { const n = { ...prev }; delete n[id]; return n; });
+
+    onRemove(id);
+    setDeleteTarget(null);
+  }, [deleteTarget, onRemove]);
+
   return (
     <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-4">
@@ -389,6 +468,30 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
                   </div>
                 );
               })}
+
+              {/*
+               * Task 2: Trash drop zone — always in the DOM so getBoundingClientRect()
+               * returns stable bounds during drag. Opacity + scale controlled by CSS
+               * transitions so the appear/disappear animates smoothly.
+               * Shown only while dragging a canvas item; highlights red when hovered.
+               * pointer-events: none so the canvas receives all pointer events.
+               */}
+              <div
+                ref={trashZoneRef}
+                aria-hidden="true"
+                className={cn(
+                  "absolute bottom-3 left-1/2 -translate-x-1/2 z-50",
+                  "w-14 h-14 rounded-full flex items-center justify-center",
+                  "pointer-events-none transition-all duration-200",
+                  draggingId
+                    ? isOverTrash
+                      ? "opacity-100 scale-110 bg-destructive"
+                      : "opacity-100 scale-100 bg-black/60"
+                    : "opacity-0 scale-75 bg-black/60"
+                )}
+              >
+                <Trash2 className="w-6 h-6 text-white" />
+              </div>
             </div>
           </div>
         </div>
@@ -433,29 +536,57 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
         ))}
       </div>
 
-      {/* Items grid */}
+      {/*
+       * Items grid — each card is wrapped in a relative div so the trash button
+       * can be absolutely positioned as a sibling of the card button (avoiding
+       * button-inside-button which is invalid HTML and breaks on iOS).
+       *
+       * Trash button visibility rules (Task 1):
+       *  - Hidden when the item is already selected (checkmark shown instead)
+       *  - Hidden while a canvas drag is in progress (draggingId set) to prevent
+       *    accidental taps during drag interactions
+       *  - Hidden when no onRemove handler is wired up
+       */}
       <div className="px-4 grid grid-cols-3 gap-2">
         {(categorizedItems[activeCategory] || []).map((item) => {
           const isSelected = selected[item.category]?.id === item.id;
           return (
-            <button
-              key={item.id}
-              onClick={() => toggleItem(item)}
-              className={cn(
-                "relative rounded-xl overflow-hidden border-2 transition-all",
-                isSelected ? "border-accent ring-2 ring-accent/30" : "border-border/40"
-              )}
-            >
-              <div className="aspect-square bg-white dark:bg-neutral-800">
-                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
-              </div>
-              <p className="text-[9px] text-muted-foreground p-1.5 truncate text-center">{item.name}</p>
+            <div key={item.id} className="relative">
+              {/* Full-card tap target for toggling item on/off the canvas */}
+              <button
+                onClick={() => toggleItem(item)}
+                className={cn(
+                  "w-full rounded-xl overflow-hidden border-2 transition-all block",
+                  isSelected ? "border-accent ring-2 ring-accent/30" : "border-border/40"
+                )}
+              >
+                <div className="aspect-square bg-white dark:bg-neutral-800">
+                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-contain" />
+                </div>
+                <p className="text-[9px] text-muted-foreground p-1.5 truncate text-center">{item.name}</p>
+              </button>
+
+              {/* Checkmark overlay — shown when this item is on the canvas */}
               {isSelected && (
-                <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center">
+                <div className="absolute top-1 right-1 w-5 h-5 rounded-full bg-accent flex items-center justify-center pointer-events-none z-10">
                   <Check className="w-3 h-3 text-accent-foreground" />
                 </div>
               )}
-            </button>
+
+              {/* Trash button — shown when item is not selected and no canvas drag is active */}
+              {!isSelected && !draggingId && onRemove && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteTarget(item);
+                  }}
+                  className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/90 border border-border/40 flex items-center justify-center shadow-sm z-10 active:bg-destructive/10"
+                  aria-label={`Delete ${item.name} from wardrobe`}
+                >
+                  <Trash2 className="w-2.5 h-2.5 text-muted-foreground" />
+                </button>
+              )}
+            </div>
           );
         })}
         {(categorizedItems[activeCategory] || []).length === 0 && (
@@ -464,6 +595,16 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated }: Props) {
           </div>
         )}
       </div>
+
+      {/* Task 1: confirmation dialog before permanently deleting from wardrobe */}
+      <DeleteConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        onConfirm={handleDeleteConfirm}
+        title={`Remove "${deleteTarget?.name}" from your wardrobe?`}
+        description="This item will be moved to your recently deleted folder. You can restore it from your profile."
+      />
+
       <SaveOutfitDialog
         open={saveDialogOpen}
         onOpenChange={setSaveDialogOpen}
