@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
-import { extractGarmentImage } from "@/lib/garment-extractor";
+import { generateClothingImage } from "@/services/imageGenerationService";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
 
@@ -22,7 +22,6 @@ interface DetectedItem {
 }
 
 type ItemWithSource = DetectedItem & { _sourceBase64: string };
-
 
 interface ContextValue {
   phase: MassUploadPhase;
@@ -69,7 +68,6 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
   onAddRef.current = onAdd;
   const sessionRef = useRef(0);
   const itemCounterRef = useRef(0);
-  const extractionStartedRef = useRef(false);
 
   const updateCandidate = useCallback((id: string, patch: Partial<MassUploadCandidate>) => {
     setCandidates((prev) => prev.map((c) => {
@@ -101,7 +99,6 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
   const startProcessing = useCallback(async (files: File[], uploadMode: "pile" | "outfit") => {
     const mySession = ++sessionRef.current;
     itemCounterRef.current = 0;
-    extractionStartedRef.current = false;
 
     setPhase("analysing");
     setMode(uploadMode);
@@ -113,8 +110,11 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
     setReviewOpen(false);
 
     try {
-      // Each image runs its full pipeline (optimise → analyse → extract) concurrently.
-      // This overlaps analysis of image N+1 with extraction of image N.
+      // ── Phase 1: Analyse all uploaded images concurrently ──────────────────
+      // Detection is cheap (text inference) so we parallelise it to keep the
+      // analysing phase fast even with many files.
+      const allItemsWithSrc: ItemWithSource[] = [];
+
       await Promise.all(files.map(async (file) => {
         const base64 = await optimiseMassUploadImage(file);
         if (sessionRef.current !== mySession) return;
@@ -129,7 +129,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         const items: DetectedItem[] = (error ? [] : data?.items) ?? [];
         if (items.length === 0) return;
 
-        // Assign stable per-item IDs — safe because JS is single-threaded between awaits
+        // Assign stable IDs — safe between awaits in single-threaded JS
         const idxStart = itemCounterRef.current;
         itemCounterRef.current += items.length;
 
@@ -139,55 +139,69 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           _sourceBase64: base64,
         }));
 
+        allItemsWithSrc.push(...itemsWithSrc);
         setTotal((prev) => prev + items.length);
-        if (!extractionStartedRef.current) {
-          extractionStartedRef.current = true;
-          setPhase("extracting");
-        }
+      }));
 
-        // Extract all items from this image concurrently
-        await Promise.all(itemsWithSrc.map(async (item) => {
-          const baseCandidate: MassUploadCandidate = {
-            id: item.id,
-            name: item.name,
-            category: item.category as ClothingCategory,
-            color: item.color,
-            fabric: item.fabric,
-            tags: item.tags || [],
-            notes: item.notes || "",
-            estimatedPrice: item.estimated_price_nzd,
-            confidence: item.confidence,
-            cropHint: item.crop_hint,
-            bbox: item.bbox,
-            previewStatus: "extracting",
-            addState: "idle",
-          };
+      if (sessionRef.current !== mySession) return;
+      if (allItemsWithSrc.length === 0) { setPhase("ready"); return; }
 
-          let finalCandidate: MassUploadCandidate;
+      // ── Phase 2: Generate AI images sequentially ────────────────────────────
+      // HuggingFace free tier has strict rate limits, so we process one item at
+      // a time with a short delay between calls to avoid 429 errors.
+      setPhase("extracting");
+
+      for (const item of allItemsWithSrc) {
+        if (sessionRef.current !== mySession) return;
+
+        const baseCandidate: MassUploadCandidate = {
+          id: item.id,
+          name: item.name,
+          category: item.category as ClothingCategory,
+          color: item.color,
+          fabric: item.fabric,
+          tags: item.tags || [],
+          notes: item.notes || "",
+          estimatedPrice: item.estimated_price_nzd,
+          confidence: item.confidence,
+          cropHint: item.crop_hint,
+          bbox: item.bbox,
+          previewStatus: "extracting",
+          addState: "idle",
+        };
+
+        let finalCandidate: MassUploadCandidate;
+
+        // Try FLUX.1-schnell generation via edge function
+        const imageBase64 = await generateClothingImage(item, item._sourceBase64);
+
+        if (imageBase64) {
+          const binaryStr = atob(imageBase64);
+          const bytes = new Uint8Array(binaryStr.length);
+          for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+          const blob = new Blob([bytes], { type: "image/png" });
+          const previewUrl = URL.createObjectURL(blob);
+          finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
+        } else {
+          // Fallback: show the original source image so the item is never lost
           try {
-            // Crop garment from the source photo using bbox, remove background,
-            // composite on white — all client-side with no paid API call.
-            const processedBlob = await extractGarmentImage(item._sourceBase64, item.bbox);
-            const previewUrl = URL.createObjectURL(processedBlob);
+            const srcBytes = Uint8Array.from(atob(item._sourceBase64), (c) => c.charCodeAt(0));
+            const srcBlob = new Blob([srcBytes], { type: "image/jpeg" });
+            const previewUrl = URL.createObjectURL(srcBlob);
             finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
           } catch {
-            // Fallback: show the original source image so the item is never lost
-            try {
-              const srcBytes = Uint8Array.from(atob(item._sourceBase64), (c) => c.charCodeAt(0));
-              const srcBlob = new Blob([srcBytes], { type: "image/jpeg" });
-              const previewUrl = URL.createObjectURL(srcBlob);
-              finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
-            } catch {
-              finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not process image" };
-            }
+            finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not generate image" };
           }
+        }
 
-          if (sessionRef.current === mySession) {
-            setCandidates((prev) => [...prev, finalCandidate]);
-            setExtracted((prev) => prev + 1);
-          }
-        }));
-      }));
+        if (sessionRef.current === mySession) {
+          setCandidates((prev) => [...prev, finalCandidate]);
+          setExtracted((prev) => prev + 1);
+        }
+
+        // Brief pause between HF calls to stay within free-tier rate limits
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
 
       if (sessionRef.current !== mySession) return;
       setPhase("ready");
