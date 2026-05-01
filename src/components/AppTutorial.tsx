@@ -166,11 +166,21 @@ export function AppTutorial() {
 
   return (
     <div
-      className="fixed inset-0 z-[10000] bg-background flex flex-col animate-in fade-in duration-300"
+      className="fixed inset-0 z-[10000] bg-background flex flex-col animate-in fade-in duration-300 overflow-hidden"
       role="dialog"
       aria-modal="true"
       aria-label="App tutorial"
     >
+      {/* Brand gradient backdrop */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-0"
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 60% at 50% 0%, hsl(var(--accent) / 0.28), transparent 60%), radial-gradient(ellipse 90% 60% at 50% 100%, hsl(var(--accent) / 0.18), transparent 65%), linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 100%)",
+        }}
+      />
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-0 bg-[radial-gradient(circle_at_20%_30%,hsl(var(--accent)/0.15),transparent_45%)]" />
       {/* Top bar */}
       <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top),1rem)] pb-3">
         <span className="text-xs font-medium text-muted-foreground tabular-nums">
