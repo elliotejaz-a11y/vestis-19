@@ -203,6 +203,13 @@ export function AppTutorial() {
         </div>
       </div>
 
+      {/* Preload all images so they're ready instantly */}
+      <div aria-hidden className="hidden">
+        {TUTORIAL_STEPS.map((s) => (
+          <img key={s.image} src={s.image} alt="" />
+        ))}
+      </div>
+
       {/* Content */}
       <div
         key={step}
@@ -211,22 +218,20 @@ export function AppTutorial() {
         <div className="max-w-md mx-auto flex flex-col items-center text-center pt-2">
           <div
             className={cn(
-              "relative w-full rounded-3xl overflow-hidden mb-6 ring-1 ring-border shadow-sm bg-muted/40 flex items-center justify-center",
+              "relative w-full mb-6 flex items-center justify-center",
               current.imageType === "screenshot" ? "aspect-[3/4] max-w-[280px]" : "aspect-[4/3]",
             )}
           >
             <img
               src={current.image}
               alt={current.title}
-              loading={step === 0 ? "eager" : "lazy"}
+              loading="eager"
+              decoding="sync"
               className={cn(
                 "w-full h-full",
                 current.imageType === "screenshot" ? "object-contain" : "object-cover",
               )}
             />
-            <div className="absolute bottom-3 right-3 w-11 h-11 rounded-2xl bg-background/95 backdrop-blur-sm flex items-center justify-center ring-1 ring-border shadow-sm">
-              <Icon className="w-5 h-5 text-accent" />
-            </div>
           </div>
           <h2 className="text-2xl font-bold text-foreground mb-3 leading-tight">
             {current.title}
