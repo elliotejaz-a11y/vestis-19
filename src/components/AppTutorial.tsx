@@ -209,16 +209,22 @@ export function AppTutorial() {
         className="flex-1 overflow-y-auto px-6 pb-6 pt-4 animate-in fade-in slide-in-from-right-4 duration-300"
       >
         <div className="max-w-md mx-auto flex flex-col items-center text-center pt-2">
-          <div className="relative w-full aspect-[4/3] rounded-3xl overflow-hidden mb-6 bg-muted ring-1 ring-border shadow-sm">
+          <div
+            className={cn(
+              "relative w-full rounded-3xl overflow-hidden mb-6 ring-1 ring-border shadow-sm bg-muted/40 flex items-center justify-center",
+              current.imageType === "screenshot" ? "aspect-[3/4] max-w-[280px]" : "aspect-[4/3]",
+            )}
+          >
             <img
               src={current.image}
               alt={current.title}
               loading={step === 0 ? "eager" : "lazy"}
-              width={1024}
-              height={768}
-              className="w-full h-full object-cover"
+              className={cn(
+                "w-full h-full",
+                current.imageType === "screenshot" ? "object-contain" : "object-cover",
+              )}
             />
-            <div className="absolute bottom-3 right-3 w-11 h-11 rounded-2xl bg-background/90 backdrop-blur-sm flex items-center justify-center ring-1 ring-border shadow-sm">
+            <div className="absolute bottom-3 right-3 w-11 h-11 rounded-2xl bg-background/95 backdrop-blur-sm flex items-center justify-center ring-1 ring-border shadow-sm">
               <Icon className="w-5 h-5 text-accent" />
             </div>
           </div>
