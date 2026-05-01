@@ -228,6 +228,19 @@ export default function UserProfilePage() {
     );
   }
 
+  if (isBlockedByThem) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-5">
+        <Ban className="w-10 h-10 text-muted-foreground mb-3" />
+        <p className="text-sm font-medium text-foreground">Profile unavailable</p>
+        <p className="text-xs text-muted-foreground mt-1 text-center">This account is not available to you.</p>
+        <Button variant="ghost" onClick={() => navigate(-1)} className="mt-3">
+          <ArrowLeft className="w-4 h-4 mr-1" /> Go Back
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pb-24">
       <header className="px-5 pt-12 pb-4 flex items-center justify-between">
