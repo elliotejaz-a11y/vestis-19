@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { X, ArrowRight, ArrowLeft, Shirt, Sparkles, Users, User, Camera, WashingMachine, Sun, Calendar as CalendarIcon, ShoppingBag, Check } from "lucide-react";
+import { X, ArrowRight, ArrowLeft, Shirt, Sparkles, Users, User, Camera, Layers, UserSquare2, Zap, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -38,18 +38,15 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     imageType: "screenshot",
   },
   {
-    title: "When To Upload",
+    title: "Fastest Way To Build Your Wardrobe",
     description:
-      "Building your wardrobe is easiest as part of your routine. Try these moments:",
-    icon: WashingMachine,
+      "Skip uploading items one-by-one. Vestis has two AI-powered shortcuts that build your wardrobe in minutes:",
+    icon: Zap,
     image: whenToUploadImg,
     imageType: "illustration",
     bullets: [
-      { icon: WashingMachine, text: "Straight out of the washing machine — clothes are clean, flat and easy to photograph." },
-      { icon: Shirt, text: "After every wear, before tossing it in the wash basket." },
-      { icon: Sun, text: "While putting away laundry — capture each item as you fold." },
-      { icon: ShoppingBag, text: "As soon as you buy something new — never forget what you own." },
-      { icon: CalendarIcon, text: "Set aside 20 minutes on a Sunday for a wardrobe sweep." },
+      { icon: Layers, text: "Mass Upload — snap a photo of a pile of clothes or your open closet. AI detects every individual item, cuts each one out on a clean background, and prefills category, colour, fabric and value." },
+      { icon: UserSquare2, text: "Extract from Fit Pics — upload a photo of yourself wearing an outfit. AI identifies every piece you're wearing — tops, bottoms, shoes, watches, accessories — and adds each as a separate item to your wardrobe." },
     ],
   },
   {
