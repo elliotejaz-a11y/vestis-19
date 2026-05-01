@@ -182,7 +182,7 @@ export function AppTutorial() {
       />
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-0 bg-[radial-gradient(circle_at_20%_30%,hsl(var(--accent)/0.15),transparent_45%)]" />
       {/* Top bar */}
-      <div className="flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top),1rem)] pb-3">
+      <div className="relative z-10 flex items-center justify-between px-5 pt-[max(env(safe-area-inset-top),1rem)] pb-3">
         <span className="text-xs font-medium text-muted-foreground tabular-nums">
           {step + 1} / {TUTORIAL_STEPS.length}
         </span>
@@ -196,7 +196,7 @@ export function AppTutorial() {
       </div>
 
       {/* Progress bars */}
-      <div className="px-5 pb-2">
+      <div className="relative z-10 px-5 pb-2">
         <div className="flex gap-1.5">
           {TUTORIAL_STEPS.map((_, i) => (
             <div
@@ -220,7 +220,7 @@ export function AppTutorial() {
       {/* Content */}
       <div
         key={step}
-        className="flex-1 overflow-y-auto px-6 pb-6 pt-4 animate-in fade-in slide-in-from-right-4 duration-300"
+        className="relative z-10 flex-1 overflow-y-auto px-6 pb-6 pt-4 animate-in fade-in slide-in-from-right-4 duration-300"
       >
         <div className="max-w-md mx-auto flex flex-col items-center text-center pt-2">
           <div
@@ -269,7 +269,7 @@ export function AppTutorial() {
       </div>
 
       {/* Bottom actions */}
-      <div className="px-6 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-3 border-t border-border bg-background">
+      <div className="relative z-10 px-6 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-3 border-t border-border/60 bg-background/70 backdrop-blur-md">
         <div className="max-w-md mx-auto flex gap-3">
           {!isFirst ? (
             <Button
