@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { X, ArrowRight, ArrowLeft, Shirt, Sparkles, Users, User, Camera, Layers, UserSquare2, Zap, Check } from "lucide-react";
+import { X, ArrowRight, ArrowLeft, Shirt, Sparkles, Users, User, Camera, Layers, UserSquare2, Zap, Calendar as CalendarIcon, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
