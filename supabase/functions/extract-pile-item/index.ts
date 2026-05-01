@@ -1,3 +1,6 @@
+// DEPRECATED — no longer called by any client code. Image extraction is now
+// handled client-side via src/lib/garment-extractor.ts (bbox crop + @imgly/background-removal).
+// This function can be safely deleted from Supabase.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 

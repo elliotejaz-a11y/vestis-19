@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
-import { processClothingImage } from "@/lib/image-processing";
+import { extractGarmentImage } from "@/lib/garment-extractor";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
 
@@ -23,20 +23,6 @@ interface DetectedItem {
 
 type ItemWithSource = DetectedItem & { _sourceBase64: string };
 
-async function generateFlatLayWithRetry(item: ItemWithSource): Promise<string> {
-  const tryOnce = async () => {
-    const { data, error } = await supabase.functions.invoke("extract-pile-item", {
-      body: { sourceImageBase64: item._sourceBase64, item },
-    });
-    if (error || !data?.imageBase64) throw new Error(error?.message ?? "No image returned");
-    return data.imageBase64 as string;
-  };
-  try {
-    return await tryOnce();
-  } catch {
-    return await tryOnce();
-  }
-}
 
 interface ContextValue {
   phase: MassUploadPhase;
@@ -179,26 +165,21 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
           let finalCandidate: MassUploadCandidate;
           try {
-            const imageBase64 = await generateFlatLayWithRetry(item);
-
-            const binaryStr = atob(imageBase64);
-            const bytes = new Uint8Array(binaryStr.length);
-            for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-            const generatedBlob = new Blob([bytes], { type: "image/png" });
-
-            let previewUrl = URL.createObjectURL(generatedBlob);
-            try {
-              const f = new File([generatedBlob], `item-${item.id}.png`, { type: "image/png" });
-              const cleanedBlob = await processClothingImage(f);
-              previewUrl = URL.createObjectURL(cleanedBlob);
-            } catch {
-              // bg removal failed — use AI-generated image as-is
-            }
-
+            // Crop garment from the source photo using bbox, remove background,
+            // composite on white — all client-side with no paid API call.
+            const processedBlob = await extractGarmentImage(item._sourceBase64, item.bbox);
+            const previewUrl = URL.createObjectURL(processedBlob);
             finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
           } catch {
-            // Both AI attempts failed — show error, never fall back to the raw photo
-            finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not generate flat lay image" };
+            // Fallback: show the original source image so the item is never lost
+            try {
+              const srcBytes = Uint8Array.from(atob(item._sourceBase64), (c) => c.charCodeAt(0));
+              const srcBlob = new Blob([srcBytes], { type: "image/jpeg" });
+              const previewUrl = URL.createObjectURL(srcBlob);
+              finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
+            } catch {
+              finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not process image" };
+            }
           }
 
           if (sessionRef.current === mySession) {
