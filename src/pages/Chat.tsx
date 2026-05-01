@@ -546,16 +546,27 @@ function DiscoverTab({
     if (!user) return;
     setLoading(true);
 
-    // Fetch public profiles (excluding self)
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, display_name, username, avatar_url, avatar_preset, is_public, style_preference, bio")
-      .eq("is_public", true)
-      .neq("id", user.id)
-      .limit(50);
+    // Fetch public profiles + blocked users (both directions) in parallel
+    const [{ data: profiles }, { data: blockedByMe }, { data: blockedMe }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, display_name, username, avatar_url, avatar_preset, is_public, style_preference, bio")
+        .eq("is_public", true)
+        .neq("id", user.id)
+        .limit(50),
+      supabase.from("blocked_users").select("blocked_id").eq("blocker_id", user.id),
+      supabase.from("blocked_users").select("blocker_id").eq("blocked_id", user.id),
+    ]);
+
+    const blockedIds = new Set([
+      ...(blockedByMe || []).map((r: any) => r.blocked_id),
+      ...(blockedMe || []).map((r: any) => r.blocker_id),
+    ]);
 
     if (profiles) {
-      const filtered = profiles.filter((p: any) => p.username && !/^user\d*$/i.test(p.username));
+      const filtered = profiles.filter(
+        (p: any) => p.username && !/^user\d*$/i.test(p.username) && !blockedIds.has(p.id)
+      );
       const shuffled = [...filtered].sort(() => Math.random() - 0.5);
       setPeople(shuffled as FriendProfile[]);
     }

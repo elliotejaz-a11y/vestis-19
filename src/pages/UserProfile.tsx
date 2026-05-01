@@ -62,6 +62,7 @@ export default function UserProfilePage() {
   const [userColors, setUserColors] = useState<[string, number][]>([]);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [isBlockedByThem, setIsBlockedByThem] = useState(false);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<FitPic | null>(null);
   const [pendingRequest, setPendingRequest] = useState(false);
   const [avatarLightboxOpen, setAvatarLightboxOpen] = useState(false);
@@ -97,6 +98,7 @@ export default function UserProfilePage() {
         { data: wardrobeData },
         { data: pics },
         blockResult,
+        reversedBlockResult,
         reqResult,
       ] = await Promise.all([
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
@@ -105,6 +107,9 @@ export default function UserProfilePage() {
         supabase.from("fit_pics").select("id, image_url, description, pic_date, created_at").eq("user_id", userId).order("pic_date", { ascending: false }),
         !isOwnProfile && user
           ? supabase.from("blocked_users").select("id").eq("blocker_id", user.id).eq("blocked_id", userId).maybeSingle()
+          : Promise.resolve({ data: null }),
+        !isOwnProfile && user
+          ? supabase.from("blocked_users").select("id").eq("blocker_id", userId).eq("blocked_id", user.id).maybeSingle()
           : Promise.resolve({ data: null }),
         !isOwnProfile && user
           ? supabase.from("follow_requests").select("id").eq("requester_id", user.id).eq("target_id", userId).eq("status", "pending").maybeSingle()
@@ -131,6 +136,7 @@ export default function UserProfilePage() {
 
       setFitPics((pics || []) as FitPic[]);
       setIsBlocked(!!(blockResult as any)?.data);
+      setIsBlockedByThem(!!(reversedBlockResult as any)?.data);
       setPendingRequest(!!(reqResult as any)?.data);
 
       setLoading(false);
@@ -203,6 +209,19 @@ export default function UserProfilePage() {
              navigate(-1);
            }
         }} className="mt-3">
+          <ArrowLeft className="w-4 h-4 mr-1" /> Go Back
+        </Button>
+      </div>
+    );
+  }
+
+  if (isBlockedByThem) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-5">
+        <Ban className="w-10 h-10 text-muted-foreground mb-3" />
+        <p className="text-sm font-medium text-foreground">Profile unavailable</p>
+        <p className="text-xs text-muted-foreground mt-1 text-center">This account is not available to you.</p>
+        <Button variant="ghost" onClick={() => navigate(-1)} className="mt-3">
           <ArrowLeft className="w-4 h-4 mr-1" /> Go Back
         </Button>
       </div>

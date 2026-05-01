@@ -62,16 +62,22 @@ export function useChat() {
       }
     }
 
-    // Fetch profiles for all partners
+    // Fetch profiles + blocked users for all partners
     const partnerIds = Array.from(convMap.keys());
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, display_name, username, avatar_url")
-      .in("id", partnerIds);
+    const [{ data: profiles }, { data: blockedByMe }, { data: blockedMe }] = await Promise.all([
+      supabase.from("profiles").select("id, display_name, username, avatar_url").in("id", partnerIds),
+      supabase.from("blocked_users").select("blocked_id").eq("blocker_id", user.id),
+      supabase.from("blocked_users").select("blocker_id").eq("blocked_id", user.id),
+    ]);
+
+    const blockedIds = new Set([
+      ...(blockedByMe || []).map((r: any) => r.blocked_id),
+      ...(blockedMe || []).map((r: any) => r.blocker_id),
+    ]);
 
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
-    const convs: Conversation[] = partnerIds.map((pid) => {
+    const convs: Conversation[] = partnerIds.filter((pid) => !blockedIds.has(pid)).map((pid) => {
       const { lastMsg, unread } = convMap.get(pid)!;
       const profile = profileMap.get(pid);
       return {
