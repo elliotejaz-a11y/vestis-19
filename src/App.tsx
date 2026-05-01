@@ -162,7 +162,7 @@ function AuthenticatedApp() {
           <Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />
         } />
         <Route path="/builder" element={
-          <OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} onRemove={handleSoftRemove} />
+          <OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />
         } />
         <Route path="/friends" element={<Friends />} />
         <Route path="/chat" element={<Chat />} />
