@@ -294,7 +294,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                   <input
                     type="range"
                     min={1}
-                    max={30}
+                    max={60}
                     value={minutesPerDay}
                     onChange={(e) => setMinutesPerDay(Number(e.target.value))}
                     className="flex-1 h-2 rounded-full appearance-none cursor-pointer bg-border accent-accent"
@@ -303,7 +303,7 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
                 </div>
                 <div className="flex justify-between text-xs text-muted-foreground px-9">
                   <span>Instantly</span>
-                  <span>30+ min</span>
+                  <span>60+ min</span>
                 </div>
               </div>
               <p className="text-sm text-muted-foreground text-center max-w-xs pt-4">
