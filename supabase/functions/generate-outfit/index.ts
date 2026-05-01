@@ -513,7 +513,9 @@ ${weather ? `${getWeatherDirective(weather, occasion)}\n` : ''}${colourStoryDire
 WARDROBE (${candidateItems.length} items):
 ${wardrobeSummary}
 
-Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items (gym top + gym bottom + closed trainer).' : 'Return 3–5 items that genuinely work together.'}`;
+Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items (gym top + gym bottom + closed trainer).' : 'Return 3–5 items that genuinely work together.'}
+
+Return selected_indices in strict top-to-bottom worn order: hats (1) → outerwear (2) → jumpers/hoodies (3) → tops (4) → bottoms (5) → shoes (6) → accessories (7). Skip absent layers. Never reorder this sequence.`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

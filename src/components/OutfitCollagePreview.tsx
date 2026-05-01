@@ -1,23 +1,7 @@
 import { useMemo } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
-
-type Layout = { x: number; y: number; w: number; h: number; z: number };
-
-const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
-
-const BASE_LAYOUT: Record<string, Layout> = {
-  hats: { x: 56, y: 16, w: 64, h: 64, z: 50 },
-  accessories: { x: 78, y: 42, w: 58, h: 58, z: 45 },
-  outerwear: { x: 36, y: 34, w: 130, h: 130, z: 30 },
-  jumpers: { x: 36, y: 34, w: 130, h: 130, z: 29 },
-  tops: { x: 52, y: 36, w: 112, h: 112, z: 35 },
-  dresses: { x: 50, y: 52, w: 118, h: 146, z: 26 },
-  bottoms: { x: 50, y: 70, w: 122, h: 148, z: 24 },
-  shoes: { x: 72, y: 88, w: 80, h: 80, z: 25 },
-};
-
-const SPREAD = [-8, 0, 8, -14, 14];
+import { sortByLayerOrder, LEFT_CATEGORIES, RIGHT_CATEGORIES, CENTRE_CATEGORIES } from "@/lib/outfitLayerOrder";
 
 interface Props {
   items: ClothingItem[];
@@ -26,17 +10,31 @@ interface Props {
   canvasClassName?: string;
 }
 
-function sortItems(items: ClothingItem[]) {
-  return [...items].sort((a, b) => {
-    const aIdx = CATEGORY_ORDER.indexOf((a.category || "").toLowerCase());
-    const bIdx = CATEGORY_ORDER.indexOf((b.category || "").toLowerCase());
-    return (aIdx === -1 ? 99 : aIdx) - (bIdx === -1 ? 99 : bIdx);
-  });
+function CollageItem({ item }: { item: ClothingItem }) {
+  return (
+    <div className="flex-1 flex items-center justify-center w-full min-h-0">
+      <img
+        src={item.imageUrl}
+        alt={item.name}
+        className="max-h-full max-w-full object-contain drop-shadow-sm"
+        loading="lazy"
+      />
+    </div>
+  );
 }
 
 export function OutfitCollagePreview({ items, showHeader = false, className, canvasClassName }: Props) {
-  const sorted = useMemo(() => sortItems(items), [items]);
-  const countByCategory: Record<string, number> = {};
+  const sorted = useMemo(() => sortByLayerOrder(items), [items]);
+
+  const leftItems = sorted.filter(item => LEFT_CATEGORIES.has((item.category || "").toLowerCase()));
+  const centreItems = sorted.filter(item => CENTRE_CATEGORIES.has((item.category || "").toLowerCase()));
+  const rightItems = sorted.filter(item => RIGHT_CATEGORIES.has((item.category || "").toLowerCase()));
+  // Uncategorised items fall into centre so nothing is lost
+  const uncategorised = sorted.filter(item => {
+    const cat = (item.category || "").toLowerCase();
+    return !LEFT_CATEGORIES.has(cat) && !RIGHT_CATEGORIES.has(cat) && !CENTRE_CATEGORIES.has(cat);
+  });
+  const allCentreItems = [...centreItems, ...uncategorised];
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -44,35 +42,31 @@ export function OutfitCollagePreview({ items, showHeader = false, className, can
         <p className="text-xs font-semibold text-foreground">Your Outfit ({items.length} pieces)</p>
       )}
 
-      <div className={cn("relative overflow-hidden rounded-xl bg-muted/20", canvasClassName || "h-[300px]")}>
-        {sorted.map((item, idx) => {
-          const category = (item.category || "").toLowerCase();
-          const base = BASE_LAYOUT[category] || { x: 20 + (idx % 4) * 18, y: 20 + Math.floor(idx / 4) * 22, w: 80, h: 80, z: 10 };
-          const catIndex = countByCategory[category] || 0;
-          countByCategory[category] = catIndex + 1;
+      <div className={cn("rounded-xl bg-muted/20 overflow-hidden", canvasClassName || "h-[300px]")}>
+        <div className="grid grid-cols-[1fr_2fr_1fr] h-full p-3 gap-2">
 
-          const spread = SPREAD[catIndex % SPREAD.length];
-          const x = base.x + spread;
-          const y = base.y + (catIndex > 0 ? 4 : 0);
-          const scale = catIndex > 0 ? 0.9 : 1;
+          {/* Left column: outerwear + top layer, centred beside the torso */}
+          <div className="flex flex-col items-center justify-center gap-2 h-full">
+            {leftItems.map(item => (
+              <CollageItem key={item.id} item={item} />
+            ))}
+          </div>
 
-          return (
-            <div
-              key={item.id}
-              className="absolute"
-              style={{
-                left: `${x}%`,
-                top: `${y}%`,
-                width: base.w * scale,
-                height: base.h * scale,
-                zIndex: base.z + catIndex,
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              <img src={item.imageUrl} alt={item.name} className="h-full w-full object-contain drop-shadow-sm" loading="lazy" />
-            </div>
-          );
-        })}
+          {/* Centre column: core items in strict top-to-bottom worn order */}
+          <div className="flex flex-col items-center justify-evenly gap-1 h-full">
+            {allCentreItems.map(item => (
+              <CollageItem key={item.id} item={item} />
+            ))}
+          </div>
+
+          {/* Right column: accessories, centred beside the torso */}
+          <div className="flex flex-col items-center justify-center gap-2 h-full">
+            {rightItems.map(item => (
+              <CollageItem key={item.id} item={item} />
+            ))}
+          </div>
+
+        </div>
       </div>
     </div>
   );
