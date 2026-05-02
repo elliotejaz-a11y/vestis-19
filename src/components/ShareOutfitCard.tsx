@@ -6,31 +6,32 @@ interface Props {
   items: ClothingItem[];
   username?: string | null;
   occasion?: string;
-  /** Optional override (eg. "vestisapp.online"). Defaults to "vestis.app". */
+  /** Optional override (eg. "vestisapp.online"). Defaults to "vestisapp.online". */
   tagline?: string;
 }
 
 const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
 
-const BASE_LAYOUT: Record<string, { x: number; y: number; w: number; h: number; z: number }> = {
-  hats: { x: 56, y: 14, w: 110, h: 110, z: 50 },
-  accessories: { x: 78, y: 38, w: 96, h: 96, z: 45 },
-  outerwear: { x: 36, y: 36, w: 220, h: 220, z: 30 },
-  jumpers: { x: 36, y: 36, w: 220, h: 220, z: 29 },
-  tops: { x: 52, y: 38, w: 190, h: 190, z: 35 },
-  dresses: { x: 50, y: 52, w: 200, h: 250, z: 26 },
-  bottoms: { x: 50, y: 70, w: 210, h: 250, z: 24 },
-  shoes: { x: 72, y: 88, w: 130, h: 130, z: 25 },
+// Layout as % of canvas: cx/cy = center, w/h = size (% of canvas), z = stack order
+const BASE_LAYOUT: Record<string, { cx: number; cy: number; w: number; h: number; z: number }> = {
+  hats:        { cx: 50, cy: 8,  w: 28, h: 18, z: 50 },
+  accessories: { cx: 50, cy: 22, w: 22, h: 14, z: 45 },
+  outerwear:   { cx: 50, cy: 38, w: 70, h: 36, z: 30 },
+  jumpers:     { cx: 50, cy: 38, w: 60, h: 34, z: 31 },
+  tops:        { cx: 50, cy: 38, w: 52, h: 32, z: 35 },
+  dresses:     { cx: 50, cy: 50, w: 56, h: 60, z: 26 },
+  bottoms:     { cx: 50, cy: 70, w: 54, h: 40, z: 24 },
+  shoes:       { cx: 50, cy: 93, w: 36, h: 14, z: 25 },
 };
 
-const SPREAD = [-8, 0, 8, -14, 14];
+const SPREAD_X = [0, -14, 14, -26, 26];
 
 /**
  * Branded portrait share card. Designed to be rendered off-screen and captured
  * with html-to-image. Fixed pixel dimensions (1080x1350 ~ Instagram portrait).
  */
 export const ShareOutfitCard = forwardRef<HTMLDivElement, Props>(
-  ({ items, username, occasion, tagline = "vestis.app" }, ref) => {
+  ({ items, username, occasion, tagline = "vestisapp.online" }, ref) => {
     const sorted = [...items].sort((a, b) => {
       const ai = CATEGORY_ORDER.indexOf((a.category || "").toLowerCase());
       const bi = CATEGORY_ORDER.indexOf((b.category || "").toLowerCase());
@@ -51,7 +52,7 @@ export const ShareOutfitCard = forwardRef<HTMLDivElement, Props>(
           color: "#2A1418",
           position: "relative",
           overflow: "hidden",
-          padding: "80px 60px",
+          padding: "70px 50px",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -59,12 +60,12 @@ export const ShareOutfitCard = forwardRef<HTMLDivElement, Props>(
         }}
       >
         {/* Header — logo + username */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
           <img
             src={logo}
             alt="Vestis"
             crossOrigin="anonymous"
-            style={{ height: 90, width: "auto", objectFit: "contain" }}
+            style={{ height: 80, width: "auto", objectFit: "contain" }}
           />
           {username && (
             <div
@@ -80,26 +81,28 @@ export const ShareOutfitCard = forwardRef<HTMLDivElement, Props>(
           )}
         </div>
 
-        {/* Outfit canvas */}
+        {/* Outfit canvas — large, fills available space */}
         <div
           style={{
             position: "relative",
-            width: 880,
-            height: 880,
-            marginTop: 30,
-            marginBottom: 20,
+            width: 980,
+            height: 980,
+            marginTop: 20,
+            marginBottom: 10,
           }}
         >
           {sorted.map((item, idx) => {
             const cat = (item.category || "").toLowerCase();
             const base =
-              BASE_LAYOUT[cat] || { x: 30 + (idx % 4) * 16, y: 25 + Math.floor(idx / 4) * 22, w: 160, h: 160, z: 10 };
+              BASE_LAYOUT[cat] ||
+              { cx: 50, cy: 30 + (idx % 4) * 18, w: 40, h: 28, z: 10 };
             const ci = counts[cat] || 0;
             counts[cat] = ci + 1;
-            const spread = SPREAD[ci % SPREAD.length];
-            const x = base.x + spread;
-            const y = base.y + (ci > 0 ? 4 : 0);
-            const scale = ci > 0 ? 0.9 : 1;
+            const offsetX = ci > 0 ? SPREAD_X[ci % SPREAD_X.length] : 0;
+            const offsetY = ci > 0 ? 3 : 0;
+            const scale = ci > 0 ? 0.88 : 1;
+            const widthPx = (base.w / 100) * 980 * scale;
+            const heightPx = (base.h / 100) * 980 * scale;
             return (
               <img
                 key={item.id}
@@ -108,14 +111,14 @@ export const ShareOutfitCard = forwardRef<HTMLDivElement, Props>(
                 crossOrigin="anonymous"
                 style={{
                   position: "absolute",
-                  left: `${x}%`,
-                  top: `${y}%`,
-                  width: base.w * scale,
-                  height: base.h * scale,
+                  left: `${base.cx + offsetX}%`,
+                  top: `${base.cy + offsetY}%`,
+                  width: widthPx,
+                  height: heightPx,
                   objectFit: "contain",
                   transform: "translate(-50%, -50%)",
                   zIndex: base.z + ci,
-                  filter: "drop-shadow(0 4px 12px rgba(43, 20, 24, 0.12))",
+                  filter: "drop-shadow(0 6px 16px rgba(43, 20, 24, 0.14))",
                 }}
               />
             );
