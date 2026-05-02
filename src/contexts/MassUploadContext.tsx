@@ -20,7 +20,7 @@ interface DetectedItem {
   bbox?: { x: number; y: number; width: number; height: number };
 }
 
-function buildPuterPrompt(item: DetectedItem): string {
+function buildPrompt(item: DetectedItem): string {
   const category = item.category?.toLowerCase() ?? "";
   let prompt = `Professional fashion e-commerce product photograph of a ${item.color} ${item.name}`;
   if (item.fabric && item.fabric !== "Unknown") prompt += `, ${item.fabric} material`;
@@ -194,14 +194,15 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
         let finalCandidate: MassUploadCandidate;
 
-        // Step 1: Generate product image via Puter.js (gpt-image-1, client-side, no API key needed)
+        // Step 1: Generate product image via Pollinations.ai (free, no auth, FLUX model)
         let previewUrl: string | null = null;
         try {
-          const prompt = buildPuterPrompt(item);
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const imgEl: HTMLImageElement = await (window as any).puter.ai.txt2img(prompt, { model: "gpt-image-1", quality: "low" });
-          const fetchRes = await fetch(imgEl.src);
-          const generatedBlob = await fetchRes.blob();
+          const prompt = buildPrompt(item);
+          const seed = Math.floor(Math.random() * 999999);
+          const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&model=flux&nologo=true&seed=${seed}`;
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`Pollinations error ${res.status}`);
+          const generatedBlob = await res.blob();
 
           // Step 2: Apply background removal to generated image
           try {
