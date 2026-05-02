@@ -1,5 +1,6 @@
 import { toPng } from "html-to-image";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
+import { batchResolveSignedClothingImageFields } from "@/lib/storage";
 
 /** Fetch an image URL and return a data: URL so html-to-image can embed it. */
 export async function urlToDataUrl(url: string): Promise<string> {
@@ -25,6 +26,12 @@ export async function inlineItemImages<T extends { imageUrl: string }>(
 ): Promise<T[]> {
   const resolved = await Promise.all(items.map((i) => urlToDataUrl(i.imageUrl)));
   return items.map((i, idx) => ({ ...i, imageUrl: resolved[idx] }));
+}
+
+/** Resolve clothing storage paths to signed URLs, then inline them for capture. */
+export async function prepareShareItems(items: ClothingItem[]): Promise<ClothingItem[]> {
+  const resolvedItems = await batchResolveSignedClothingImageFields(items);
+  return inlineItemImages(resolvedItems);
 }
 
 /** Wait for all <img> inside a node to finish loading before snapshotting. */

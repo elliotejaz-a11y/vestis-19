@@ -6,7 +6,7 @@ import { ShareOutfitCard } from "@/components/ShareOutfitCard";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { captureNodeToPng, nativeShareOrFallback, inlineItemImages } from "@/lib/shareOutfit";
+import { captureNodeToPng, nativeShareOrFallback, prepareShareItems } from "@/lib/shareOutfit";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -21,8 +21,7 @@ interface Props {
 
 /**
  * Reusable share trigger. Renders the ShareOutfitCard off-screen via a portal,
- * captures it to a PNG, creates a public share link, then opens the native
- * share sheet (with download/clipboard fallback).
+ * captures it to a PNG, then opens the native share sheet.
  */
 export function ShareOutfitButton({
   outfit,
@@ -50,9 +49,9 @@ export function ShareOutfitButton({
     setBusy(true);
 
     try {
-      // Inline all item images to data URLs so the snapshot isn't blank
-      // when Supabase storage CORS / cross-origin caching gets in the way.
-      const items = await inlineItemImages(outfit.items);
+      // Resolve storage-backed wardrobe images, then inline them so
+      // the snapshot always contains the real clothing cutouts.
+      const items = await prepareShareItems(outfit.items);
       setInlinedItems(items);
       setRenderCard(true);
 
