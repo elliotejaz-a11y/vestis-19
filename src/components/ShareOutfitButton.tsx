@@ -6,7 +6,7 @@ import { ShareOutfitCard } from "@/components/ShareOutfitCard";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { captureNodeToPng, nativeShareOrFallback } from "@/lib/shareOutfit";
+import { captureNodeToPng, nativeShareOrFallback, inlineItemImages } from "@/lib/shareOutfit";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -36,6 +36,7 @@ export function ShareOutfitButton({
   const cardRef = useRef<HTMLDivElement>(null);
   const [busy, setBusy] = useState(false);
   const [renderCard, setRenderCard] = useState(false);
+  const [inlinedItems, setInlinedItems] = useState<ClothingItem[]>([]);
 
   const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -47,13 +48,17 @@ export function ShareOutfitButton({
     }
 
     setBusy(true);
-    setRenderCard(true);
 
     try {
-      // Wait one frame so the portal mounts before we try to capture it.
+      // Inline all item images to data URLs so the snapshot isn't blank
+      // when Supabase storage CORS / cross-origin caching gets in the way.
+      const items = await inlineItemImages(outfit.items);
+      setInlinedItems(items);
+      setRenderCard(true);
+
+      // Wait for portal mount + image decode
       await new Promise((r) => requestAnimationFrame(() => r(null)));
-      // And another tick so children render
-      await new Promise((r) => setTimeout(r, 30));
+      await new Promise((r) => setTimeout(r, 80));
 
       if (!cardRef.current) throw new Error("Share card not ready");
 
@@ -121,7 +126,7 @@ export function ShareOutfitButton({
           >
             <ShareOutfitCard
               ref={cardRef}
-              items={outfit.items}
+              items={inlinedItems}
               username={profile?.username || profile?.display_name}
               occasion={outfit.occasion}
             />
