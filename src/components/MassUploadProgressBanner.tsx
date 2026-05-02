@@ -94,6 +94,7 @@ export function MassUploadProgressBanner() {
   const isProcessing = isAnalysing || isExtracting;
 
   const readyCount = candidates.filter((c) => c.previewStatus === "ready").length;
+  const failedCount = candidates.filter((c) => c.previewStatus === "failed").length;
 
   const realCompletion = isAnalysing
     ? Math.max(5, Math.round((analysisDone / Math.max(1, analysisTotal)) * 28))
@@ -114,8 +115,10 @@ export function MassUploadProgressBanner() {
     : isExtracting
     ? extractingMsg
     : readyCount > 0
-    ? "All items ready — tap to sort through them"
-    : "No items detected";
+    ? `${readyCount} item${readyCount === 1 ? "" : "s"} ready — tap to review`
+    : failedCount > 0
+    ? `Image generation failed — tap to retry items`
+    : "No items found in photo";
 
   return (
     <div className="fixed inset-x-0 top-0 z-50 flex justify-center pointer-events-none">

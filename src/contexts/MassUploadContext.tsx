@@ -60,6 +60,29 @@ async function cropToBase64(
   });
 }
 
+function buildPrompt(item: DetectedItem): string {
+  const category = item.category?.toLowerCase() ?? "";
+  let prompt = `Professional fashion e-commerce product photograph of a ${item.color} ${item.name}`;
+  if (item.fabric && item.fabric !== "Unknown") prompt += `, ${item.fabric} material`;
+  if (item.tags?.length) prompt += `, ${item.tags.slice(0, 5).join(", ")} style`;
+  if (item.notes) prompt += `. ${item.notes}`;
+
+  if (category === "bottoms") {
+    prompt += `. Flat lay on pure white background, both legs fully extended straight downward in parallel, waistband at top, garment completely unfolded`;
+  } else if (category === "shoes") {
+    prompt += `. Three-quarter front angle view on pure white background, pair of shoes shown together`;
+  } else if (category === "dresses") {
+    prompt += `. Flat lay on pure white background, dress fully spread out showing complete front silhouette`;
+  } else if (category === "accessories") {
+    prompt += `. Clean product shot on pure white background, item centred and well-lit`;
+  } else {
+    prompt += `. Flat lay on pure white background, garment fully spread out showing complete front face, collar at top`;
+  }
+
+  prompt += `. Pure white background, high-resolution studio lighting, sharp detail, clean minimal fashion e-commerce photography, isolated item only, no person, no model, no hanger, no shadow`;
+  return prompt;
+}
+
 interface ContextValue {
   phase: MassUploadPhase;
   mode: "pile" | "outfit";
@@ -206,29 +229,26 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         let previewUrl: string | null = null;
 
         try {
-          // Step 1: Crop the actual garment from the source photo using the bbox
-          const croppedBase64 = await cropToBase64(item._sourceBase64, item.bbox);
+          // Step 1: Build prompt from detected metadata
+          const prompt = buildPrompt(item);
 
-          // Step 2: Send cropped garment image to Gemini for AI product photo generation
-          const { data: genData, error: genError } = await supabase.functions.invoke("vestis-extract-item", {
-            body: { item, croppedImageBase64: croppedBase64 },
+          // Step 2: Generate product image via Puter.js (gpt-image-1, no API key needed)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const imgEl: HTMLImageElement = await (window as any).puter.ai.txt2img(prompt, {
+            model: "gpt-image-1",
+            quality: "medium",
           });
+          const fetchRes = await fetch(imgEl.src);
+          if (!fetchRes.ok) throw new Error("Failed to fetch generated image");
+          const generatedBlob = await fetchRes.blob();
 
-          if (!genError && genData?.imageBase64) {
-            const mimeType = genData.mimeType ?? "image/jpeg";
-            const binaryStr = atob(genData.imageBase64);
-            const bytes = new Uint8Array(binaryStr.length);
-            for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-            const generatedBlob = new Blob([bytes], { type: mimeType });
-
-            // Step 3: Background removal
-            try {
-              const { removeBackground } = await import("@imgly/background-removal");
-              const bgRemovedBlob = await removeBackground(generatedBlob);
-              previewUrl = URL.createObjectURL(bgRemovedBlob);
-            } catch {
-              previewUrl = URL.createObjectURL(generatedBlob);
-            }
+          // Step 3: Background removal
+          try {
+            const { removeBackground } = await import("@imgly/background-removal");
+            const bgRemovedBlob = await removeBackground(generatedBlob);
+            previewUrl = URL.createObjectURL(bgRemovedBlob);
+          } catch {
+            previewUrl = URL.createObjectURL(generatedBlob);
           }
         } catch {
           // generation failed — show error state
