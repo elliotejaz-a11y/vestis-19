@@ -173,7 +173,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         let finalCandidate: MassUploadCandidate;
 
         // Try FLUX.1-schnell generation via edge function
-        const imageBase64 = await generateClothingImage(item, item._sourceBase64);
+        const imageBase64 = await generateClothingImage(item as unknown as Parameters<typeof generateClothingImage>[0], item._sourceBase64);
 
         if (imageBase64) {
           const binaryStr = atob(imageBase64);

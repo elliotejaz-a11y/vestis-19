@@ -1,6 +1,31 @@
 import { toPng } from "html-to-image";
-import { supabase } from "@/integrations/supabase/client";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
+
+/** Fetch an image URL and return a data: URL so html-to-image can embed it. */
+export async function urlToDataUrl(url: string): Promise<string> {
+  try {
+    const res = await fetch(url, { mode: "cors", cache: "no-cache" });
+    if (!res.ok) throw new Error(`fetch ${res.status}`);
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.warn("[shareOutfit] failed to inline image", url, err);
+    return url; // best-effort fallback
+  }
+}
+
+/** Resolve all item.imageUrl values into data: URLs in parallel. */
+export async function inlineItemImages<T extends { imageUrl: string }>(
+  items: T[],
+): Promise<T[]> {
+  const resolved = await Promise.all(items.map((i) => urlToDataUrl(i.imageUrl)));
+  return items.map((i, idx) => ({ ...i, imageUrl: resolved[idx] }));
+}
 
 /** Wait for all <img> inside a node to finish loading before snapshotting. */
 async function waitForImages(node: HTMLElement): Promise<void> {
@@ -10,58 +35,26 @@ async function waitForImages(node: HTMLElement): Promise<void> {
       if (img.complete && img.naturalWidth > 0) return Promise.resolve();
       return new Promise<void>((resolve) => {
         img.onload = () => resolve();
-        img.onerror = () => resolve(); // don't block on a broken image
+        img.onerror = () => resolve();
       });
-    })
+    }),
   );
 }
 
 /** Capture a DOM node to a PNG blob. Element should already be mounted. */
 export async function captureNodeToPng(node: HTMLElement): Promise<Blob> {
   await waitForImages(node);
-  // Tiny delay so layout settles for cross-origin images
-  await new Promise((r) => setTimeout(r, 60));
+  await new Promise((r) => setTimeout(r, 80));
+  // Render twice — first pass primes the offscreen canvas, second is clean.
+  await toPng(node, { cacheBust: true, pixelRatio: 1, skipFonts: true });
   const dataUrl = await toPng(node, {
     cacheBust: true,
-    pixelRatio: 1,
+    pixelRatio: 2,
     skipFonts: true,
+    backgroundColor: "#F5F0EB",
   });
   const res = await fetch(dataUrl);
   return await res.blob();
-}
-
-/** Insert a shared_outfits row and return the public viewer URL. */
-export async function createShareLink(params: {
-  userId: string;
-  username?: string | null;
-  displayName?: string | null;
-  outfit: Pick<Outfit, "name" | "occasion" | "items"> & { items: ClothingItem[] };
-}): Promise<{ shareId: string; url: string }> {
-  const { userId, username, displayName, outfit } = params;
-  const itemsPayload = outfit.items.map((i) => ({
-    id: i.id,
-    name: i.name,
-    category: i.category,
-    imageUrl: i.imageUrl,
-  }));
-
-  const { data, error } = await supabase
-    .from("shared_outfits")
-    .insert({
-      user_id: userId,
-      username: username ?? null,
-      display_name: displayName ?? null,
-      outfit_name: outfit.name ?? null,
-      occasion: outfit.occasion ?? null,
-      items: itemsPayload,
-    })
-    .select("id")
-    .single();
-
-  if (error || !data) throw error || new Error("Failed to create share link");
-
-  const url = `${window.location.origin}/shared-outfit/${data.id}`;
-  return { shareId: data.id, url };
 }
 
 /** Trigger native share with PNG file only. Falls back to download. */
@@ -70,7 +63,11 @@ export async function nativeShareOrFallback(opts: {
   title?: string;
   text?: string;
 }): Promise<"shared" | "downloaded"> {
-  const { pngBlob, title = "My Vestis Outfit", text = "Check out this outfit I made on Vestis" } = opts;
+  const {
+    pngBlob,
+    title = "My Vestis Outfit",
+    text = "Check out this outfit I made on Vestis",
+  } = opts;
   const file = new File([pngBlob], "vestis-outfit.png", { type: "image/png" });
 
   const nav = navigator as Navigator & {
@@ -97,3 +94,8 @@ export async function nativeShareOrFallback(opts: {
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   return "downloaded";
 }
+
+// Kept for backwards compat (not used in image-only flow)
+export type ShareableOutfit = Pick<Outfit, "name" | "occasion"> & {
+  items: ClothingItem[];
+};
