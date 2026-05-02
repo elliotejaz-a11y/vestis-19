@@ -211,7 +211,7 @@ export async function drawOutfitCardToBlob(opts: {
     ctx.shadowBlur = 20;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 10;
-    ctx.drawImage(img, dx, dy, dw, dh);
+    drawImageContain(ctx, img, dx, dy, dw, dh);
     ctx.restore();
   }
 
@@ -243,6 +243,34 @@ export async function drawOutfitCardToBlob(opts: {
   }
 
   return canvasToBlob(canvas);
+}
+
+/**
+ * Replicate CSS objectFit:"contain" — draw the image scaled to fit inside the
+ * destination box while preserving its natural aspect ratio (no stretching).
+ */
+function drawImageContain(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  dx: number,
+  dy: number,
+  dw: number,
+  dh: number,
+): void {
+  const srcAR = img.naturalWidth / img.naturalHeight;
+  const dstAR = dw / dh;
+  let drawW: number, drawH: number;
+  if (srcAR > dstAR) {
+    drawW = dw;
+    drawH = dw / srcAR;
+  } else {
+    drawH = dh;
+    drawW = dh * srcAR;
+  }
+  // Centre the scaled image within the destination box
+  const drawX = dx + (dw - drawW) / 2;
+  const drawY = dy + (dh - drawH) / 2;
+  ctx.drawImage(img, drawX, drawY, drawW, drawH);
 }
 
 function drawSpacedText(
