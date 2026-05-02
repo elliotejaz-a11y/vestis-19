@@ -69,23 +69,37 @@ serve(async (req) => {
 
     const prompt = buildPrompt(item as Record<string, unknown>);
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ["IMAGE"] },
-        }),
-      },
-    );
+    // Try Gemini image generation models in order of preference
+    const models = [
+      "gemini-2.0-flash-preview-image-generation",
+      "gemini-2.0-flash-exp",
+    ];
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Gemini image generation error:", response.status, text);
-      return new Response(JSON.stringify({ error: `Image generation failed: ${response.status}`, imageBase64: null }), {
-        status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    let response: Response | null = null;
+    for (const model of models) {
+      const attempt = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { responseModalities: ["IMAGE"] },
+          }),
+        },
+      );
+      if (attempt.status !== 404) {
+        response = attempt;
+        break;
+      }
+      console.log(`Model ${model} not found, trying next...`);
+    }
+
+    if (!response || !response.ok) {
+      const text = response ? await response.text() : "No model available";
+      console.error("Gemini image generation error:", response?.status, text);
+      return new Response(JSON.stringify({ error: "Image generation failed", imageBase64: null }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
