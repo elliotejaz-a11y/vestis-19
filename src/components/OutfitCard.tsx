@@ -7,6 +7,7 @@ import { FitPicSheet } from "@/components/FitPicSheet";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
 import { OutfitCollagePreview } from "@/components/OutfitCollagePreview";
+import { ShareOutfitButton } from "@/components/ShareOutfitButton";
 
 interface Props {
   outfit: Outfit;
@@ -72,6 +73,7 @@ export function OutfitCard({ outfit, onSave, onDelete, onChat, compact }: Props)
                   <Camera className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
               </FitPicSheet>
+              <ShareOutfitButton outfit={outfit} />
               {outfit.saved && onSave && (
                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
                   setEditName(outfit.name || outfit.occasion);

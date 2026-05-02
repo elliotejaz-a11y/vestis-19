@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitBuilderErrorBoundary } from "@/components/OutfitBuilderErrorBoundary";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
+import { ShareOutfitButton } from "@/components/ShareOutfitButton";
 
 const CATEGORY_ORDER = ["hats", "accessories", "outerwear", "jumpers", "tops", "dresses", "bottoms", "shoes"];
 
@@ -552,14 +553,20 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated, onRemove }: 
           <Shuffle className="w-4 h-4 mr-2" /> Randomize Outfit
         </Button>
         {selectedItems.length >= 2 && (
-          <Button
-            onClick={() => setSaveDialogOpen(true)}
-            disabled={saving}
-            variant="outline"
-            className="w-full h-11 rounded-2xl text-sm"
-          >
-            <Bookmark className="w-4 h-4 mr-2" /> {saving ? "Saving..." : "Save This Outfit"}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setSaveDialogOpen(true)}
+              disabled={saving}
+              variant="outline"
+              className="flex-1 h-11 rounded-2xl text-sm"
+            >
+              <Bookmark className="w-4 h-4 mr-2" /> {saving ? "Saving..." : "Save This Outfit"}
+            </Button>
+            <ShareOutfitButton
+              outfit={{ name: "Custom outfit", occasion: "Custom outfit", items: selectedItems }}
+              variant="icon-outline"
+            />
+          </div>
         )}
       </div>
 
