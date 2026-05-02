@@ -183,11 +183,37 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           const previewUrl = URL.createObjectURL(blob);
           finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
         } else {
-          // Fallback: show the original source image so the item is never lost
+          // Fallback: crop source image using bbox so user sees the actual garment
           try {
             const srcBytes = Uint8Array.from(atob(item._sourceBase64), (c) => c.charCodeAt(0));
             const srcBlob = new Blob([srcBytes], { type: "image/jpeg" });
-            const previewUrl = URL.createObjectURL(srcBlob);
+            const srcUrl = URL.createObjectURL(srcBlob);
+
+            const previewUrl = await new Promise<string>((resolve) => {
+              const img = new Image();
+              img.onload = () => {
+                const bbox = item.bbox;
+                const canvas = document.createElement("canvas");
+                if (bbox && bbox.width > 0 && bbox.height > 0) {
+                  const pad = 0.05;
+                  const x = Math.max(0, bbox.x - pad) * img.width;
+                  const y = Math.max(0, bbox.y - pad) * img.height;
+                  const w = Math.min(1, bbox.width + pad * 2) * img.width;
+                  const h = Math.min(1, bbox.height + pad * 2) * img.height;
+                  canvas.width = w;
+                  canvas.height = h;
+                  canvas.getContext("2d")!.drawImage(img, x, y, w, h, 0, 0, w, h);
+                } else {
+                  canvas.width = img.width;
+                  canvas.height = img.height;
+                  canvas.getContext("2d")!.drawImage(img, 0, 0);
+                }
+                URL.revokeObjectURL(srcUrl);
+                canvas.toBlob((b) => resolve(URL.createObjectURL(b!)), "image/jpeg", 0.9);
+              };
+              img.src = srcUrl;
+            });
+
             finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
           } catch {
             finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not generate image" };
