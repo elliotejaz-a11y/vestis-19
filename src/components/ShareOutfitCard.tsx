@@ -41,6 +41,7 @@ const SPREAD = [-8, 0, 8, -14, 14];
  */
 export const ShareOutfitCard = forwardRef<HTMLDivElement, Props>(
   ({ items, username, occasion, tagline = "vestisapp.online" }, ref) => {
+    const CANVAS_SCALE = 3.35;
     const sorted = useMemo(
       () =>
         [...items].sort((a, b) => {
@@ -131,8 +132,8 @@ export const ShareOutfitCard = forwardRef<HTMLDivElement, Props>(
                   position: "absolute",
                   left: `${x}%`,
                   top: `${y}%`,
-                  width: base.w * scale * 7,
-                  height: base.h * scale * 7,
+                  width: base.w * scale * CANVAS_SCALE,
+                  height: base.h * scale * CANVAS_SCALE,
                   zIndex: base.z + catIndex,
                   transform: "translate(-50%, -50%)",
                   display: "flex",
