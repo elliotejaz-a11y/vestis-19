@@ -20,30 +20,45 @@ interface DetectedItem {
   bbox?: { x: number; y: number; width: number; height: number };
 }
 
-function buildPrompt(item: DetectedItem): string {
-  const category = item.category?.toLowerCase() ?? "";
-  let prompt = `Professional fashion e-commerce product photograph of a ${item.color} ${item.name}`;
-  if (item.fabric && item.fabric !== "Unknown") prompt += `, ${item.fabric} material`;
-  if (item.tags?.length) prompt += `, ${item.tags.slice(0, 5).join(", ")} style`;
-  if (item.notes) prompt += `. ${item.notes}`;
-
-  if (category === "bottoms") {
-    prompt += `. Flat lay on pure white background, both legs fully extended straight downward in parallel, waistband at top, garment completely unfolded`;
-  } else if (category === "shoes") {
-    prompt += `. Three-quarter front angle view on pure white background, pair of shoes shown together`;
-  } else if (category === "dresses") {
-    prompt += `. Flat lay on pure white background, dress fully spread out showing complete front silhouette`;
-  } else if (category === "accessories") {
-    prompt += `. Clean product shot on pure white background, item centred and well-lit`;
-  } else {
-    prompt += `. Flat lay on pure white background, garment fully spread out showing complete front face, collar at top`;
-  }
-
-  prompt += `. Pure white background, high-resolution studio lighting, sharp detail, clean minimal fashion e-commerce photography, isolated item only, no person, no model, no hanger, no shadow`;
-  return prompt;
-}
-
 type ItemWithSource = DetectedItem & { _sourceBase64: string };
+
+/** Crops the garment from the source photo using the normalised bbox, returns base64 JPEG. */
+async function cropToBase64(
+  sourceBase64: string,
+  bbox: { x: number; y: number; width: number; height: number } | undefined,
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const iw = img.naturalWidth;
+      const ih = img.naturalHeight;
+      const canvas = document.createElement("canvas");
+      canvas.width = 512;
+      canvas.height = 512;
+      const ctx = canvas.getContext("2d")!;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, 512, 512);
+
+      if (bbox) {
+        const pad = 0.06;
+        const sx = Math.max(0, (bbox.x - pad) * iw);
+        const sy = Math.max(0, (bbox.y - pad) * ih);
+        const sw = Math.min(iw - sx, (bbox.width + 2 * pad) * iw);
+        const sh = Math.min(ih - sy, (bbox.height + 2 * pad) * ih);
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 512, 512);
+      } else {
+        const side = Math.min(iw, ih);
+        const ox = (iw - side) / 2;
+        const oy = (ih - side) / 2;
+        ctx.drawImage(img, ox, oy, side, side, 0, 0, 512, 512);
+      }
+
+      resolve(canvas.toDataURL("image/jpeg", 0.88).split(",")[1]);
+    };
+    img.onerror = reject;
+    img.src = `data:image/jpeg;base64,${sourceBase64}`;
+  });
+}
 
 interface ContextValue {
   phase: MassUploadPhase;
@@ -133,8 +148,6 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
     try {
       // ── Phase 1: Analyse all uploaded images concurrently ──────────────────
-      // Detection is cheap (text inference) so we parallelise it to keep the
-      // analysing phase fast even with many files.
       const allItemsWithSrc: ItemWithSource[] = [];
 
       await Promise.all(files.map(async (file) => {
@@ -151,7 +164,6 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         const items: DetectedItem[] = (error ? [] : data?.items) ?? [];
         if (items.length === 0) return;
 
-        // Assign stable IDs — safe between awaits in single-threaded JS
         const idxStart = itemCounterRef.current;
         itemCounterRef.current += items.length;
 
@@ -168,9 +180,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       if (sessionRef.current !== mySession) return;
       if (allItemsWithSrc.length === 0) { setPhase("ready"); return; }
 
-      // ── Phase 2: Generate AI images sequentially ────────────────────────────
-      // HuggingFace free tier has strict rate limits, so we process one item at
-      // a time with a short delay between calls to avoid 429 errors.
+      // ── Phase 2: Generate AI images sequentially ───────────────────────────
       setPhase("extracting");
 
       for (const item of allItemsWithSrc) {
@@ -193,24 +203,32 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         };
 
         let finalCandidate: MassUploadCandidate;
-
-        // Step 1: Generate product image via Pollinations.ai (free, no auth, FLUX model)
         let previewUrl: string | null = null;
-        try {
-          const prompt = buildPrompt(item);
-          const seed = Math.floor(Math.random() * 999999);
-          const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&model=flux&nologo=true&seed=${seed}`;
-          const res = await fetch(url);
-          if (!res.ok) throw new Error(`Pollinations error ${res.status}`);
-          const generatedBlob = await res.blob();
 
-          // Step 2: Apply background removal to generated image
-          try {
-            const { removeBackground } = await import("@imgly/background-removal");
-            const bgRemovedBlob = await removeBackground(generatedBlob);
-            previewUrl = URL.createObjectURL(bgRemovedBlob);
-          } catch {
-            previewUrl = URL.createObjectURL(generatedBlob);
+        try {
+          // Step 1: Crop the actual garment from the source photo using the bbox
+          const croppedBase64 = await cropToBase64(item._sourceBase64, item.bbox);
+
+          // Step 2: Send cropped garment image to Gemini for AI product photo generation
+          const { data: genData, error: genError } = await supabase.functions.invoke("vestis-extract-item", {
+            body: { item, croppedImageBase64: croppedBase64 },
+          });
+
+          if (!genError && genData?.imageBase64) {
+            const mimeType = genData.mimeType ?? "image/jpeg";
+            const binaryStr = atob(genData.imageBase64);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+            const generatedBlob = new Blob([bytes], { type: mimeType });
+
+            // Step 3: Background removal
+            try {
+              const { removeBackground } = await import("@imgly/background-removal");
+              const bgRemovedBlob = await removeBackground(generatedBlob);
+              previewUrl = URL.createObjectURL(bgRemovedBlob);
+            } catch {
+              previewUrl = URL.createObjectURL(generatedBlob);
+            }
           }
         } catch {
           // generation failed — show error state
@@ -226,7 +244,6 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           setCandidates((prev) => [...prev, finalCandidate]);
           setExtracted((prev) => prev + 1);
         }
-
       }
 
       if (sessionRef.current !== mySession) return;
