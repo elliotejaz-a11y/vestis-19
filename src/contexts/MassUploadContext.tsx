@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
-import { generateClothingImage } from "@/services/imageGenerationService";
+import { extractGarmentImage } from "@/lib/garment-extractor";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
 
@@ -172,52 +172,13 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
         let finalCandidate: MassUploadCandidate;
 
-        // Try FLUX.1-schnell generation via edge function
-        const imageBase64 = await generateClothingImage(item as unknown as Parameters<typeof generateClothingImage>[0], item._sourceBase64);
-
-        if (imageBase64) {
-          const binaryStr = atob(imageBase64);
-          const bytes = new Uint8Array(binaryStr.length);
-          for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-          const blob = new Blob([bytes], { type: "image/png" });
+        // Crop + background removal client-side (free, no API needed)
+        try {
+          const blob = await extractGarmentImage(item._sourceBase64, item.bbox);
           const previewUrl = URL.createObjectURL(blob);
           finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
-        } else {
-          // Fallback: crop source image using bbox so user sees the actual garment
-          try {
-            const srcBytes = Uint8Array.from(atob(item._sourceBase64), (c) => c.charCodeAt(0));
-            const srcBlob = new Blob([srcBytes], { type: "image/jpeg" });
-            const srcUrl = URL.createObjectURL(srcBlob);
-
-            const previewUrl = await new Promise<string>((resolve) => {
-              const img = new Image();
-              img.onload = () => {
-                const bbox = item.bbox;
-                const canvas = document.createElement("canvas");
-                if (bbox && bbox.width > 0 && bbox.height > 0) {
-                  const pad = 0.05;
-                  const x = Math.max(0, bbox.x - pad) * img.width;
-                  const y = Math.max(0, bbox.y - pad) * img.height;
-                  const w = Math.min(1, bbox.width + pad * 2) * img.width;
-                  const h = Math.min(1, bbox.height + pad * 2) * img.height;
-                  canvas.width = w;
-                  canvas.height = h;
-                  canvas.getContext("2d")!.drawImage(img, x, y, w, h, 0, 0, w, h);
-                } else {
-                  canvas.width = img.width;
-                  canvas.height = img.height;
-                  canvas.getContext("2d")!.drawImage(img, 0, 0);
-                }
-                URL.revokeObjectURL(srcUrl);
-                canvas.toBlob((b) => resolve(URL.createObjectURL(b!)), "image/jpeg", 0.9);
-              };
-              img.src = srcUrl;
-            });
-
-            finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
-          } catch {
-            finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not generate image" };
-          }
+        } catch {
+          finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not process image" };
         }
 
         if (sessionRef.current === mySession) {
@@ -225,8 +186,6 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           setExtracted((prev) => prev + 1);
         }
 
-        // Brief pause between HF calls to stay within free-tier rate limits
-        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
       if (sessionRef.current !== mySession) return;
