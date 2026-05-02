@@ -1,7 +1,6 @@
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
-import { extractGarmentImage } from "@/lib/garment-extractor";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
 
@@ -200,20 +199,10 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           // generation failed — fall through to bbox crop
         }
 
-        // Fallback: crop + bg removal from source photo
-        if (!previewUrl) {
-          try {
-            const blob = await extractGarmentImage(item._sourceBase64, item.bbox);
-            previewUrl = URL.createObjectURL(blob);
-          } catch {
-            // ignore
-          }
-        }
-
         if (previewUrl) {
           finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
         } else {
-          finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not generate image" };
+          finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Image generation failed — please try again" };
         }
 
         if (sessionRef.current === mySession) {
