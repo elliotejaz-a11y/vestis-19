@@ -64,14 +64,13 @@ export async function createShareLink(params: {
   return { shareId: data.id, url };
 }
 
-/** Trigger native share with PNG file + url. Falls back to download + clipboard. */
+/** Trigger native share with PNG file only. Falls back to download. */
 export async function nativeShareOrFallback(opts: {
   pngBlob: Blob;
-  url: string;
   title?: string;
   text?: string;
 }): Promise<"shared" | "downloaded"> {
-  const { pngBlob, url, title = "My Vestis Outfit", text = "Check out this outfit I made on Vestis" } = opts;
+  const { pngBlob, title = "My Vestis Outfit", text = "Check out this outfit I made on Vestis" } = opts;
   const file = new File([pngBlob], "vestis-outfit.png", { type: "image/png" });
 
   const nav = navigator as Navigator & {
@@ -80,21 +79,14 @@ export async function nativeShareOrFallback(opts: {
 
   try {
     if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
-      await nav.share({ files: [file], url, title, text });
-      return "shared";
-    }
-    if (nav.share) {
-      await nav.share({ url, title, text });
-      // Also copy link for convenience
-      try { await navigator.clipboard.writeText(url); } catch {}
+      await nav.share({ files: [file], title, text });
       return "shared";
     }
   } catch (err) {
-    // User cancelled or share failed — fall through to download fallback
     if ((err as Error)?.name === "AbortError") return "shared";
   }
 
-  // Fallback: download the PNG + copy link to clipboard
+  // Fallback: download the PNG
   const objectUrl = URL.createObjectURL(pngBlob);
   const a = document.createElement("a");
   a.href = objectUrl;
@@ -103,6 +95,5 @@ export async function nativeShareOrFallback(opts: {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-  try { await navigator.clipboard.writeText(url); } catch {}
   return "downloaded";
 }
