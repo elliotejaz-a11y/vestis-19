@@ -6,7 +6,7 @@ import { ShareOutfitCard } from "@/components/ShareOutfitCard";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { captureNodeToPng, createShareLink, nativeShareOrFallback } from "@/lib/shareOutfit";
+import { captureNodeToPng, nativeShareOrFallback } from "@/lib/shareOutfit";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -57,25 +57,16 @@ export function ShareOutfitButton({
 
       if (!cardRef.current) throw new Error("Share card not ready");
 
-      const [{ url }, pngBlob] = await Promise.all([
-        createShareLink({
-          userId: user.id,
-          username: profile?.username,
-          displayName: profile?.display_name,
-          outfit,
-        }),
-        captureNodeToPng(cardRef.current),
-      ]);
+      const pngBlob = await captureNodeToPng(cardRef.current);
 
       const result = await nativeShareOrFallback({
         pngBlob,
-        url,
         title: "My Vestis Outfit",
         text: "Check out this outfit I made on Vestis",
       });
 
       if (result === "downloaded") {
-        toast({ title: "Outfit saved", description: "Image downloaded and link copied to clipboard." });
+        toast({ title: "Outfit saved", description: "Image downloaded to your device." });
       }
     } catch (err) {
       console.error("[ShareOutfitButton] share failed:", err);
