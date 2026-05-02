@@ -6,7 +6,7 @@ import { ShareOutfitCard } from "@/components/ShareOutfitCard";
 import { ClothingItem, Outfit } from "@/types/wardrobe";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { captureNodeToPng, createShareLink, nativeShareOrFallback } from "@/lib/shareOutfit";
+import { captureNodeToPng, nativeShareOrFallback } from "@/lib/shareOutfit";
 import { cn } from "@/lib/utils";
 
 interface Props {
