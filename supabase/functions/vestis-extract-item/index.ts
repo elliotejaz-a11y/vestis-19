@@ -35,6 +35,83 @@ function buildPrompt(item: Record<string, unknown>): string {
   return prompt;
 }
 
+/** Try Gemini native image generation models (returns inlineData). */
+async function tryGeminiImageGen(prompt: string, apiKey: string): Promise<{ imageBase64: string; mimeType: string } | null> {
+  const models = [
+    "gemini-2.0-flash-preview-image-generation",
+    "gemini-2.0-flash-exp-image-generation",
+  ];
+
+  for (const model of models) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
+        }),
+      },
+    );
+
+    if (res.status === 404) {
+      console.log(`Model ${model} not found, trying next...`);
+      continue;
+    }
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`Gemini model ${model} error ${res.status}:`, text.substring(0, 300));
+      continue;
+    }
+
+    const data = await res.json();
+    const imagePart = data.candidates?.[0]?.content?.parts?.find(
+      (p: Record<string, unknown>) => p.inlineData,
+    ) as { inlineData: { data: string; mimeType: string } } | undefined;
+
+    if (imagePart?.inlineData?.data) {
+      return { imageBase64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType ?? "image/png" };
+    }
+    console.error(`No image part in ${model} response:`, JSON.stringify(data).substring(0, 300));
+  }
+  return null;
+}
+
+/** Try Imagen 3 via the predict endpoint. */
+async function tryImagen(prompt: string, apiKey: string): Promise<{ imageBase64: string; mimeType: string } | null> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        instances: [{ prompt }],
+        parameters: {
+          sampleCount: 1,
+          aspectRatio: "1:1",
+          safetyFilterLevel: "block_some",
+          personGeneration: "dont_allow",
+        },
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error("Imagen error", res.status, text.substring(0, 300));
+    return null;
+  }
+
+  const data = await res.json();
+  const prediction = data.predictions?.[0];
+  if (prediction?.bytesBase64Encoded) {
+    return { imageBase64: prediction.bytesBase64Encoded, mimeType: prediction.mimeType ?? "image/png" };
+  }
+  console.error("No prediction in Imagen response:", JSON.stringify(data).substring(0, 300));
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -69,61 +146,25 @@ serve(async (req) => {
 
     const prompt = buildPrompt(item as Record<string, unknown>);
 
-    // Try Gemini image generation models in order of preference
-    const models = [
-      "gemini-2.0-flash-preview-image-generation",
-      "gemini-2.0-flash-exp",
-    ];
+    // Try Gemini native image generation first, then fall back to Imagen 3
+    const result = (await tryGeminiImageGen(prompt, GEMINI_API_KEY)) ?? (await tryImagen(prompt, GEMINI_API_KEY));
 
-    let response: Response | null = null;
-    for (const model of models) {
-      const attempt = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { responseModalities: ["IMAGE"] },
-          }),
-        },
-      );
-      if (attempt.status !== 404) {
-        response = attempt;
-        break;
-      }
-      console.log(`Model ${model} not found, trying next...`);
-    }
-
-    if (!response || !response.ok) {
-      const text = response ? await response.text() : "No model available";
-      console.error("Gemini image generation error:", response?.status, text);
+    if (!result) {
+      console.error("All image generation methods exhausted for prompt:", prompt.substring(0, 100));
       return new Response(JSON.stringify({ error: "Image generation failed", imageBase64: null }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const data = await response.json();
-    const imagePart = data.candidates?.[0]?.content?.parts?.find(
-      (p: Record<string, unknown>) => p.inlineData,
-    ) as { inlineData: { data: string; mimeType: string } } | undefined;
-
-    if (!imagePart?.inlineData?.data) {
-      console.error("No image in Gemini response:", JSON.stringify(data).substring(0, 500));
-      return new Response(JSON.stringify({ error: "No image returned", imageBase64: null }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     return new Response(
-      JSON.stringify({ imageBase64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType }),
+      JSON.stringify({ imageBase64: result.imageBase64, mimeType: result.mimeType }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error("vestis-extract-item error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error", imageBase64: null }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
