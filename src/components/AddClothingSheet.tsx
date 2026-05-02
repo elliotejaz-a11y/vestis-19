@@ -139,7 +139,7 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
       // Resize image to max 1024px before sending to AI to stay under 10MB limit
       const resizedBlob = await resizeImageForAnalysis(cleanBlob, 1024);
       const base64 = await fileToBase64(new File([resizedBlob], file.name, { type: "image/jpeg" }));
-      const { data, error } = await supabase.functions.invoke("analyze-clothing", {
+      const { data, error } = await supabase.functions.invoke("vestis-analyze-item", {
         body: { imageBase64: base64 },
       });
 

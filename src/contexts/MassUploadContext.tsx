@@ -119,7 +119,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         const base64 = await optimiseMassUploadImage(file);
         if (sessionRef.current !== mySession) return;
 
-        const { data, error } = await supabase.functions.invoke("analyze-clothing-pile", {
+        const { data, error } = await supabase.functions.invoke("vestis-analyze-pile", {
           body: { imageBase64: base64, mode: uploadMode },
         });
         if (sessionRef.current !== mySession) return;

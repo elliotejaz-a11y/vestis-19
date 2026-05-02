@@ -36,7 +36,7 @@ export async function generateClothingImage(
   sourceBase64?: string,
 ): Promise<string | null> {
   try {
-    const { data, error } = await supabase.functions.invoke("extract-pile-item", {
+    const { data, error } = await supabase.functions.invoke("vestis-extract-item", {
       body: { item: metadata, sourceImageBase64: sourceBase64 ?? "" },
     });
     if (error || !data?.imageBase64) return null;
