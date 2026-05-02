@@ -308,27 +308,33 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated, onRemove }: 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
     try {
       e.stopPropagation();
-      if (e.touches.length === 2) {
-        const itemId = findItemUnderTouch(e.touches);
-        if (itemId) {
-          const dist = getTouchDist(e.touches);
-          if (dist < 1) return; // fingers too close together — skip
-          // Set pinchRef BEFORE the second finger's pointerdown event fires so that
-          // handlePointerDown sees pinchRef.current and returns early, preventing it
-          // from overwriting drag state with the second finger's position data.
-          pinchRef.current = { itemId, startDist: dist, startScale: getItemScale(itemId) };
-          // Cancel any active single-finger drag now that we are entering pinch mode.
-          // Without this, handlePointerMove would still try to move an item while
-          // onTouchMove is simultaneously scaling it.
-          dragRef.current = null;
-          draggingIdRef.current = null;
-          canvasRectRef.current = null;
-          isOverTrashRef.current = false;
-          if (isMountedRef.current) {
-            setDraggingId(null);
-            setIsOverTrash(false);
-          }
+      if (e.touches.length >= 2) {
+        // Cancel any active single-finger drag unconditionally whenever a second
+        // finger touches down. This must happen regardless of whether a pinch
+        // target is found — if we only cancel when an item is found, the second
+        // finger's pointerdown can still fire handlePointerDown unchecked and
+        // overwrite dragRef/draggingIdRef with the second finger's data.
+        dragRef.current = null;
+        draggingIdRef.current = null;
+        canvasRectRef.current = null;
+        isOverTrashRef.current = false;
+        if (isMountedRef.current) {
+          setDraggingId(null);
+          setIsOverTrash(false);
         }
+
+        const dist = getTouchDist(e.touches);
+        const itemId = findItemUnderTouch(e.touches) ?? "";
+
+        // Always set pinchRef — even when no item is under the midpoint (itemId "").
+        // This guarantees handlePointerDown returns early for the second finger's
+        // pointerdown, regardless of where that finger lands.
+        // onTouchMove guards against "" itemId and dist < 1 before scaling.
+        pinchRef.current = {
+          itemId,
+          startDist: dist,
+          startScale: itemId ? getItemScale(itemId) : 1,
+        };
       }
     } catch (err) {
       console.warn("[OutfitBuilder] touchStart error:", err);
