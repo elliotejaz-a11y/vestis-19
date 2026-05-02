@@ -596,6 +596,39 @@ export type Database = {
         }
         Relationships: []
       }
+      shared_outfits: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          items: Json
+          occasion: string | null
+          outfit_name: string | null
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          items?: Json
+          occasion?: string | null
+          outfit_name?: string | null
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          items?: Json
+          occasion?: string | null
+          outfit_name?: string | null
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
       social_comments: {
         Row: {
           content: string

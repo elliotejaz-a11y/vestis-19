@@ -37,6 +37,7 @@ const Community = lazy(() => import("./pages/policies/Community"));
 const Cookies = lazy(() => import("./pages/policies/Cookies"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const LaunchVideo = lazy(() => import("./components/VestisLaunchVideo"));
+const SharedOutfit = lazy(() => import("./pages/SharedOutfit"));
 
 // Eagerly preload ALL route chunks so every tab is instant on first tap.
 // This runs in the background after initial paint — users see the current page
@@ -95,6 +96,15 @@ function AppRoutes() {
     return (
       <Suspense fallback={<Noop />}>
         <LaunchVideo />
+      </Suspense>
+    );
+  }
+  if (location.pathname.startsWith("/shared-outfit/")) {
+    return (
+      <Suspense fallback={<Noop />}>
+        <Routes>
+          <Route path="/shared-outfit/:shareId" element={<SharedOutfit />} />
+        </Routes>
       </Suspense>
     );
   }
