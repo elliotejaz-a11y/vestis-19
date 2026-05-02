@@ -172,13 +172,48 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
         let finalCandidate: MassUploadCandidate;
 
-        // Crop + background removal client-side (free, no API needed)
+        // Step 1: Generate product image via Gemini
+        let previewUrl: string | null = null;
         try {
-          const blob = await extractGarmentImage(item._sourceBase64, item.bbox);
-          const previewUrl = URL.createObjectURL(blob);
-          finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
+          const { data: genData, error: genError } = await supabase.functions.invoke("vestis-extract-item", {
+            body: { item },
+          });
+
+          if (!genError && genData?.imageBase64) {
+            // Step 2: Apply background removal to generated image
+            const mimeType = genData.mimeType ?? "image/png";
+            const binaryStr = atob(genData.imageBase64);
+            const bytes = new Uint8Array(binaryStr.length);
+            for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+            const generatedBlob = new Blob([bytes], { type: mimeType });
+
+            try {
+              const { removeBackground } = await import("@imgly/background-removal");
+              const bgRemovedBlob = await removeBackground(generatedBlob);
+              previewUrl = URL.createObjectURL(bgRemovedBlob);
+            } catch {
+              // bg removal failed — use generated image as-is
+              previewUrl = URL.createObjectURL(generatedBlob);
+            }
+          }
         } catch {
-          finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not process image" };
+          // generation failed — fall through to bbox crop
+        }
+
+        // Fallback: crop + bg removal from source photo
+        if (!previewUrl) {
+          try {
+            const blob = await extractGarmentImage(item._sourceBase64, item.bbox);
+            previewUrl = URL.createObjectURL(blob);
+          } catch {
+            // ignore
+          }
+        }
+
+        if (previewUrl) {
+          finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
+        } else {
+          finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Could not generate image" };
         }
 
         if (sessionRef.current === mySession) {
