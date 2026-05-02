@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { Shuffle, Check, X, RotateCcw, Bookmark, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -83,6 +83,10 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated, onRemove }: 
   const isOverTrashRef = useRef(false);
   const draggingIdRef = useRef<string | null>(null);
   draggingIdRef.current = draggingId;
+
+  // Guard against setState calls after the component unmounts mid-gesture.
+  const isMountedRef = useRef(true);
+  useEffect(() => { return () => { isMountedRef.current = false; }; }, []);
 
   // Use a ref for positions so gesture callbacks always read the latest value
   const positionsRef = useRef(positions);
@@ -172,6 +176,9 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated, onRemove }: 
 
   const handlePointerDown = useCallback((e: React.PointerEvent, item: ClothingItem) => {
     try {
+      // A pinch gesture is in progress — the second finger's pointerdown must not
+      // overwrite dragRef/draggingIdRef, which would corrupt both the drag and pinch state.
+      if (pinchRef.current) return;
       e.preventDefault();
       e.stopPropagation();
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -211,6 +218,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated, onRemove }: 
       const dy = ((e.clientY - dragRef.current.startY) / rect.height) * 100;
       const newX = safeClamp(dragRef.current.startPosX + dx, 0, 100, 50);
       const newY = safeClamp(dragRef.current.startPosY + dy, 0, 100, 50);
+      if (!isMountedRef.current) return;
       setPositions((prev) => {
         const current = prev[currentDraggingId];
         if (current && Math.abs(current.x - newX) < 0.01 && Math.abs(current.y - newY) < 0.01) {
@@ -260,8 +268,10 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated, onRemove }: 
     draggingIdRef.current = null;
     canvasRectRef.current = null;
     dragRef.current = null;
-    setIsOverTrash(false);
-    setDraggingId(null);
+    if (isMountedRef.current) {
+      setIsOverTrash(false);
+      setDraggingId(null);
+    }
   }, []);
 
   const getTouchDist = (t: React.TouchList): number => {
@@ -302,8 +312,22 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated, onRemove }: 
         const itemId = findItemUnderTouch(e.touches);
         if (itemId) {
           const dist = getTouchDist(e.touches);
-          if (dist < 1) return; // too close, skip
+          if (dist < 1) return; // fingers too close together — skip
+          // Set pinchRef BEFORE the second finger's pointerdown event fires so that
+          // handlePointerDown sees pinchRef.current and returns early, preventing it
+          // from overwriting drag state with the second finger's position data.
           pinchRef.current = { itemId, startDist: dist, startScale: getItemScale(itemId) };
+          // Cancel any active single-finger drag now that we are entering pinch mode.
+          // Without this, handlePointerMove would still try to move an item while
+          // onTouchMove is simultaneously scaling it.
+          dragRef.current = null;
+          draggingIdRef.current = null;
+          canvasRectRef.current = null;
+          isOverTrashRef.current = false;
+          if (isMountedRef.current) {
+            setDraggingId(null);
+            setIsOverTrash(false);
+          }
         }
       }
     } catch (err) {
@@ -324,6 +348,7 @@ function OutfitBuilderInner({ items, onSaveOutfit, onOutfitCreated, onRemove }: 
       const newScale = safeClamp(pinch.startScale * ratio, 0.3, 2.5, 1);
       const itemId = pinch.itemId;
       if (!itemId || !Number.isFinite(newScale)) return;
+      if (!isMountedRef.current) return;
       setScales((prev) => {
         const current = prev[itemId] ?? pinch.startScale;
         if (Math.abs(current - newScale) < 0.001) return prev;
