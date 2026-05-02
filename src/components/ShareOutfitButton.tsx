@@ -55,9 +55,8 @@ export function ShareOutfitButton({
       setInlinedItems(items);
       setRenderCard(true);
 
-      // Wait for portal mount + image decode
-      await new Promise((r) => requestAnimationFrame(() => r(null)));
-      await new Promise((r) => setTimeout(r, 80));
+      // Wait for portal to mount and React to commit (two rAFs = paint + after-paint)
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
 
       if (!cardRef.current) throw new Error("Share card not ready");
 
