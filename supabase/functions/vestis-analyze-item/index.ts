@@ -63,7 +63,7 @@ serve(async (req) => {
           role: "user",
           parts: [
             {
-              text: "Analyze this clothing item photo. Call the classify_clothing function with the garment's name, category, color, fabric, style tags, and estimated retail price in NZD.",
+              text: "Analyze this clothing item photo. Call classify_clothing with the garment's name, category, color, fabric, style tags, and estimated retail price in NZD.",
             },
             { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
           ],
@@ -78,7 +78,7 @@ serve(async (req) => {
               parameters: {
                 type: "object",
                 properties: {
-                  name: { type: "string", description: 'Descriptive name e.g. "Navy Linen Blazer"' },
+                  name: { type: "string", description: 'e.g. "Navy Linen Blazer"' },
                   category: {
                     type: "string",
                     enum: ["hats", "tops", "bottoms", "dresses", "jumpers", "outerwear", "shoes", "accessories"],
@@ -90,7 +90,7 @@ serve(async (req) => {
                     enum: ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"],
                   },
                   style_tags: { type: "array", items: { type: "string" } },
-                  estimated_price_nzd: { type: "number", description: "Estimated retail value in NZD" },
+                  estimated_price_nzd: { type: "number" },
                 },
                 required: ["name", "category", "color", "fabric", "style_tags", "estimated_price_nzd"],
               },
@@ -101,11 +101,10 @@ serve(async (req) => {
       toolConfig: {
         functionCallingConfig: { mode: "ANY" },
       },
-      generationConfig: { temperature: 0.1 },
     };
 
     const response = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -115,26 +114,29 @@ serve(async (req) => {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("Gemini error:", response.status, text);
+      console.error("Gemini HTTP error:", response.status, text);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded after retries. Please try again shortly." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`Gemini API error ${response.status}: ${text.substring(0, 300)}`);
+      throw new Error(`Gemini API error ${response.status}: ${text.substring(0, 400)}`);
     }
 
     const aiData = await response.json();
-    console.log("Gemini finish_reason:", aiData.candidates?.[0]?.finishReason);
+    const candidate = aiData.candidates?.[0];
+    console.log("finishReason:", candidate?.finishReason, "parts:", candidate?.content?.parts?.length);
 
-    const part = aiData.candidates?.[0]?.content?.parts?.[0];
-    if (!part?.functionCall) {
-      console.error("No functionCall in response:", JSON.stringify(aiData).substring(0, 600));
-      throw new Error("No tool call in Gemini response");
+    const parts: Array<Record<string, unknown>> = candidate?.content?.parts ?? [];
+    const fnPart = parts.find((p) => p.functionCall);
+    if (!fnPart) {
+      console.error("Full Gemini response:", JSON.stringify(aiData));
+      throw new Error(`No functionCall in Gemini response. finishReason: ${candidate?.finishReason}`);
     }
 
-    const result = part.functionCall.args;
-    console.log("classify_clothing result:", result.name, result.category);
+    const result = (fnPart.functionCall as { args: unknown }).args;
+    console.log("classify_clothing:", (result as { name?: string; category?: string }).name, (result as { name?: string; category?: string }).category);
+
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

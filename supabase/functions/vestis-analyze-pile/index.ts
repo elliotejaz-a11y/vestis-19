@@ -54,8 +54,8 @@ serve(async (req) => {
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const promptText = isOutfit
-      ? "Analyze this outfit photo. Call detect_clothing_items with every garment and accessory worn — hats, tops, jumpers, outerwear, bottoms, dresses, shoes, bags, belts, watches, jewellery. Up to 8 items. Bounding boxes must be normalised 0–1. Never return a logo or graphic — always the complete garment it is printed on."
-      : "Analyze this wardrobe image (pile, rail, shelf, or mix). Call detect_clothing_items with every distinct garment and accessory visible. Up to 8 items. Bounding boxes must be normalised 0–1. Never return a logo or graphic — always the complete garment.";
+      ? "Analyze this outfit photo. Call detect_clothing_items with every garment and accessory worn — hats, tops, jumpers, outerwear, bottoms, dresses, shoes, bags, belts, watches, jewellery. Up to 8 items. Bounding boxes normalised 0–1. Never return a logo or graphic — always the complete garment it is on."
+      : "Analyze this wardrobe image (pile, rail, shelf, or mix). Call detect_clothing_items with every distinct garment and accessory visible. Up to 8 items. Bounding boxes normalised 0–1. Never return a logo or graphic — always the complete garment.";
 
     const geminiBody = {
       contents: [
@@ -121,11 +121,10 @@ serve(async (req) => {
       toolConfig: {
         functionCallingConfig: { mode: "ANY" },
       },
-      generationConfig: { temperature: 0.1 },
     };
 
     const response = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -135,26 +134,29 @@ serve(async (req) => {
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("Gemini error:", response.status, text);
+      console.error("Gemini HTTP error:", response.status, text);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded after retries. Please try again shortly." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`Gemini API error ${response.status}: ${text.substring(0, 300)}`);
+      throw new Error(`Gemini API error ${response.status}: ${text.substring(0, 400)}`);
     }
 
     const payload = await response.json();
-    console.log("Gemini finish_reason:", payload.candidates?.[0]?.finishReason);
+    const candidate = payload.candidates?.[0];
+    console.log("finishReason:", candidate?.finishReason, "parts count:", candidate?.content?.parts?.length);
 
-    const part = payload.candidates?.[0]?.content?.parts?.[0];
-    if (!part?.functionCall) {
-      console.error("No functionCall in response:", JSON.stringify(payload).substring(0, 600));
-      throw new Error("No structured AI response received");
+    // Search all parts for a functionCall (not just parts[0])
+    const parts: Array<Record<string, unknown>> = candidate?.content?.parts ?? [];
+    const fnPart = parts.find((p) => p.functionCall);
+    if (!fnPart) {
+      console.error("Full Gemini response:", JSON.stringify(payload));
+      throw new Error(`No functionCall in Gemini response. finishReason: ${candidate?.finishReason}`);
     }
 
-    const result = part.functionCall.args;
-    console.log(`detect_clothing_items: found ${result.items?.length ?? 0} items`);
+    const result = (fnPart.functionCall as { args: unknown }).args;
+    console.log(`detect_clothing_items: found ${(result as { items?: unknown[] }).items?.length ?? 0} items`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
