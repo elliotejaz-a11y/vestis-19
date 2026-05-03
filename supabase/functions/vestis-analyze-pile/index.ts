@@ -8,14 +8,14 @@ const corsHeaders = {
 
 async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
   for (let i = 0; i < maxRetries; i++) {
-    const response = await fetch(url, options);
-    if (response.status === 429 && i < maxRetries - 1) {
+    const res = await fetch(url, options);
+    if (res.status === 429 && i < maxRetries - 1) {
       const waitMs = Math.pow(2, i) * 2000;
       console.log(`Rate limited. Waiting ${waitMs}ms before retry ${i + 1}...`);
       await new Promise((r) => setTimeout(r, waitMs));
       continue;
     }
-    return response;
+    return res;
   }
   return fetch(url, options);
 }
@@ -53,77 +53,83 @@ serve(async (req) => {
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
-    const userText = isOutfit
-      ? "Analyze this outfit photo. Use the detect_clothing_items tool to report every garment and accessory worn — hats, tops, jumpers, outerwear, bottoms, dresses, shoes, bags, belts, jewellery, watches. Return up to 8 items. For each: bounding box (x/y/width/height normalised 0-1), category, color, fabric, and estimated price in NZD. Never return a logo or graphic as an item — always identify the complete garment it is on."
-      : "Analyze this wardrobe image (pile, rail, shelf, or mix). Use the detect_clothing_items tool to report every distinct garment and accessory visible. Return up to 8 items. For each: bounding box (x/y/width/height normalised 0-1), category, color, fabric, and estimated price in NZD. Never return a logo or graphic as an item — always identify the complete garment.";
+    const promptText = isOutfit
+      ? "Analyze this outfit photo. Call detect_clothing_items with every garment and accessory worn — hats, tops, jumpers, outerwear, bottoms, dresses, shoes, bags, belts, watches, jewellery. Up to 8 items. Bounding boxes must be normalised 0–1. Never return a logo or graphic — always the complete garment it is printed on."
+      : "Analyze this wardrobe image (pile, rail, shelf, or mix). Call detect_clothing_items with every distinct garment and accessory visible. Up to 8 items. Bounding boxes must be normalised 0–1. Never return a logo or graphic — always the complete garment.";
 
-    const body = JSON.stringify({
-      model: "gemini-1.5-flash",
-      messages: [
+    const geminiBody = {
+      contents: [
         {
           role: "user",
-          content: [
-            { type: "text", text: userText },
-            { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
+          parts: [
+            { text: promptText },
+            { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
           ],
         },
       ],
       tools: [
         {
-          type: "function",
-          function: {
-            name: "detect_clothing_items",
-            description: "Detect all distinct clothing and accessory items visible in the image",
-            parameters: {
-              type: "object",
-              properties: {
-                items: {
-                  type: "array",
+          functionDeclarations: [
+            {
+              name: "detect_clothing_items",
+              description: "Detect all distinct clothing and accessory items visible in the image",
+              parameters: {
+                type: "object",
+                properties: {
                   items: {
-                    type: "object",
-                    properties: {
-                      id: { type: "string" },
-                      name: { type: "string" },
-                      category: { type: "string", enum: ["hats", "tops", "bottoms", "dresses", "jumpers", "outerwear", "shoes", "accessories"] },
-                      color: { type: "string" },
-                      fabric: { type: "string", enum: ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"] },
-                      tags: { type: "array", items: { type: "string" } },
-                      notes: { type: "string" },
-                      estimated_price_nzd: { type: "number" },
-                      confidence: { type: "number" },
-                      crop_hint: { type: "string" },
-                      bbox: {
-                        type: "object",
-                        properties: {
-                          x: { type: "number" },
-                          y: { type: "number" },
-                          width: { type: "number" },
-                          height: { type: "number" },
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        id: { type: "string" },
+                        name: { type: "string" },
+                        category: {
+                          type: "string",
+                          enum: ["hats", "tops", "bottoms", "dresses", "jumpers", "outerwear", "shoes", "accessories"],
                         },
-                        required: ["x", "y", "width", "height"],
-                        additionalProperties: false,
+                        color: { type: "string" },
+                        fabric: {
+                          type: "string",
+                          enum: ["Canvas", "Cashmere", "Chiffon", "Cotton", "Denim", "Faux Leather", "Gold", "Gore-Tex", "Knit", "Leather", "Linen", "Mesh", "Metal", "Nylon", "Platinum", "Polyester", "Rubber", "Satin", "Silk", "Silver", "Spandex", "Stainless Steel", "Suede", "Titanium", "Velvet", "Wool"],
+                        },
+                        tags: { type: "array", items: { type: "string" } },
+                        notes: { type: "string" },
+                        estimated_price_nzd: { type: "number" },
+                        confidence: { type: "number" },
+                        crop_hint: { type: "string" },
+                        bbox: {
+                          type: "object",
+                          properties: {
+                            x: { type: "number" },
+                            y: { type: "number" },
+                            width: { type: "number" },
+                            height: { type: "number" },
+                          },
+                          required: ["x", "y", "width", "height"],
+                        },
                       },
+                      required: ["id", "name", "category", "color", "fabric", "tags", "notes", "estimated_price_nzd", "confidence", "crop_hint", "bbox"],
                     },
-                    required: ["id", "name", "category", "color", "fabric", "tags", "notes", "estimated_price_nzd", "confidence", "crop_hint", "bbox"],
-                    additionalProperties: false,
                   },
                 },
+                required: ["items"],
               },
-              required: ["items"],
-              additionalProperties: false,
             },
-          },
+          ],
         },
       ],
-      tool_choice: "required",
-    });
+      toolConfig: {
+        functionCallingConfig: { mode: "ANY" },
+      },
+      generationConfig: { temperature: 0.1 },
+    };
 
     const response = await fetchWithRetry(
-      "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
-        headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, "Content-Type": "application/json" },
-        body,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(geminiBody),
       },
     );
 
@@ -139,16 +145,17 @@ serve(async (req) => {
     }
 
     const payload = await response.json();
-    console.log("finish_reason:", payload.choices?.[0]?.finish_reason);
+    console.log("Gemini finish_reason:", payload.candidates?.[0]?.finishReason);
 
-    const toolCall = payload.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      console.error("No tool call:", JSON.stringify(payload).substring(0, 500));
+    const part = payload.candidates?.[0]?.content?.parts?.[0];
+    if (!part?.functionCall) {
+      console.error("No functionCall in response:", JSON.stringify(payload).substring(0, 600));
       throw new Error("No structured AI response received");
     }
 
-    const result = JSON.parse(toolCall.function.arguments);
+    const result = part.functionCall.args;
     console.log(`detect_clothing_items: found ${result.items?.length ?? 0} items`);
+
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
