@@ -210,12 +210,19 @@ export function SignUpIntro({ onComplete, onLogin }: SignUpIntroProps) {
 
   return (
     <div
-      className="h-screen flex flex-col bg-background overflow-hidden touch-pan-y"
+      className="relative h-screen flex flex-col bg-background overflow-hidden touch-pan-y"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
+      {/* Ambient gradient orbs — visible throughout all steps */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-24 -right-16 h-80 w-80 rounded-full bg-accent/12 blur-3xl" />
+        <div className="absolute top-1/2 -left-24 h-64 w-64 rounded-full bg-accent/8 blur-3xl" />
+        <div className="absolute -bottom-16 right-1/4 h-56 w-56 rounded-full bg-accent/6 blur-3xl" />
+      </div>
+
       {/* Fixed content area — no scrolling */}
-      <div className="flex-1 flex flex-col px-6 pt-6 pb-36 overflow-hidden">
+      <div className="relative flex-1 flex flex-col px-6 pt-6 pb-36 overflow-hidden">
         {/* Header: back button sits ABOVE a centered segmented progress bar */}
         <div className="mb-4 space-y-2 shrink-0">
           <div className="h-9 flex items-center">

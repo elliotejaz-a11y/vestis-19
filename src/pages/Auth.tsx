@@ -626,73 +626,88 @@ export default function Auth() {
 
   // ============ SIGN-IN FORM ============
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
-      <div className="w-full max-w-sm space-y-8">
-        <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <img src={vestisLogo} alt="Vestis" className="h-12" />
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-6 bg-background overflow-hidden">
+      {/* Ambient gradient orbs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-28 -right-20 h-96 w-96 rounded-full bg-accent/12 blur-3xl" />
+        <div className="absolute top-1/2 -left-24 h-72 w-72 rounded-full bg-accent/8 blur-3xl" />
+        <div className="absolute -bottom-20 right-1/3 h-64 w-64 rounded-full bg-accent/7 blur-3xl" />
+      </div>
+
+      <div className="relative w-full max-w-sm space-y-8">
+        {/* Logo + headline */}
+        <div className="text-center space-y-3">
+          <div className="relative inline-flex items-center justify-center mb-1">
+            <div className="absolute h-24 w-24 rounded-full bg-accent/15 blur-2xl" aria-hidden />
+            <img src={vestisLogo} alt="Vestis" className="relative h-16 drop-shadow-sm" />
           </div>
-          <p className="text-sm text-muted-foreground">Your AI-powered wardrobe stylist</p>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
+            <p className="text-sm text-muted-foreground mt-1">Your wardrobe is waiting</p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground">Email or Username</Label>
-            <Input
-              value={emailOrUsername}
-              onChange={(e) => setEmailOrUsername(e.target.value)}
-              placeholder="you@example.com or username"
-              className="mt-1 rounded-xl bg-card"
-              required
-            />
-          </div>
-
-          <div>
-            <Label className="text-xs font-medium text-muted-foreground">Password</Label>
-            <div className="relative">
+        {/* Form card */}
+        <div className="rounded-3xl bg-card/80 border border-border/50 p-6 shadow-sm backdrop-blur-sm">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Email or Username</Label>
               <Input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="mt-1 rounded-xl bg-card pr-10"
+                value={emailOrUsername}
+                onChange={(e) => setEmailOrUsername(e.target.value)}
+                placeholder="you@example.com or username"
+                className="mt-1 rounded-xl bg-background"
                 required
-                minLength={8}
               />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </div>
+
+            <div>
+              <Label className="text-xs font-medium text-muted-foreground">Password</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="mt-1 rounded-xl bg-background pr-10"
+                  required
+                  minLength={8}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberMe}
+                  onCheckedChange={(checked) => setRememberMe(checked === true)}
+                />
+                <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer">
+                  Remember me
+                </label>
+              </div>
+              <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-accent font-medium hover:underline">
+                Forgot password?
               </button>
             </div>
-          </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="remember"
-                checked={rememberMe}
-                onCheckedChange={(checked) => setRememberMe(checked === true)}
-              />
-              <label htmlFor="remember" className="text-xs text-muted-foreground cursor-pointer">
-                Remember me
-              </label>
-            </div>
-            <button type="button" onClick={() => setShowForgotPassword(true)} className="text-xs text-accent font-medium hover:underline">
-              Forgot password?
-            </button>
-          </div>
-
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
-          >
-            {loading ? "Please wait..." : "Sign In"}
-          </Button>
-        </form>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
+            >
+              {loading ? "Please wait..." : "Sign In"}
+            </Button>
+          </form>
+        </div>
 
         <p className="text-center text-xs text-muted-foreground">
           Don't have an account?{" "}
