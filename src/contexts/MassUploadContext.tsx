@@ -62,21 +62,31 @@ async function cropToBase64(
   });
 }
 
-// Composites a bg-removed transparent PNG onto a white canvas with a soft
-// drop shadow, producing a professional product-photo look at zero API cost.
+// Composites a bg-removed transparent PNG with a drop shadow and studio
+// vibrancy, outputting a transparent PNG blob (alpha preserved for Supabase).
+// Canvas is scaled by devicePixelRatio for crisp edges on Retina displays.
 async function compositeWithSoftShadow(bgRemovedBlob: Blob, size = 512): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(bgRemovedBlob);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
+
+      // Scale canvas to physical pixels so edges stay sharp on Retina / HiDPI.
+      const dpr = Math.min(window.devicePixelRatio ?? 1, 3);
+      const px = Math.round(size * dpr);
+
       const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
+      canvas.width = px;
+      canvas.height = px;
       const ctx = canvas.getContext("2d")!;
 
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, size, size);
+      // Work in logical-pixel space; dpr scaling handles physical pixels.
+      ctx.scale(dpr, dpr);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+
+      // Transparent background — alpha channel preserved in the final PNG blob.
 
       const padding = size * 0.08;
       const maxDim = size - padding * 2;
@@ -86,18 +96,20 @@ async function compositeWithSoftShadow(bgRemovedBlob: Blob, size = 512): Promise
       const x = (size - w) / 2;
       const y = (size - h) / 2;
 
-      // Draw with shadow to cast it behind the garment
-      ctx.shadowColor = "rgba(0, 0, 0, 0.18)";
+      // Shadow pass — cast soft depth shadow behind the garment.
+      ctx.shadowColor = "rgba(0, 0, 0, 0.22)";
       ctx.shadowBlur = 24;
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 10;
       ctx.drawImage(img, x, y, w, h);
 
-      // Redraw sharp on top with shadow cleared
+      // Sharp garment pass — clear shadow, apply catalog-fresh vibrancy.
       ctx.shadowColor = "transparent";
       ctx.shadowBlur = 0;
       ctx.shadowOffsetY = 0;
+      ctx.filter = "contrast(1.1) saturate(1.05)";
       ctx.drawImage(img, x, y, w, h);
+      ctx.filter = "none";
 
       canvas.toBlob(
         (blob) => blob ? resolve(blob) : reject(new Error("toBlob failed")),
