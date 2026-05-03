@@ -25,8 +25,8 @@ export function buildClothingPrompt(metadata: ClothingMetadata): string {
 }
 
 /**
- * Calls the extract-pile-item edge function which generates a product-style
- * image via HuggingFace FLUX.1-schnell (free tier).
+ * Calls the vestis-extract-item edge function which generates a product-style
+ * image via Pixazo.ai Stable Diffusion XL.
  *
  * Returns raw PNG base64 (no data-URL prefix), or null on any failure so
  * the caller can apply its own fallback without throwing.

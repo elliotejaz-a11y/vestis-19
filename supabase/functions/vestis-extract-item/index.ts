@@ -6,21 +6,43 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function buildPrompt(category: string): string {
-  const base = "Create a professional fashion e-commerce product photograph of this exact garment. Preserve its exact colours, patterns, textures and design.";
+function buildPrompts(item: Record<string, unknown>): { prompt: string; negative_prompt: string } {
+  const name = String(item.name ?? "clothing item");
+  const category = String(item.category ?? "").toLowerCase();
+  const color = String(item.color ?? "");
+  const fabric = String(item.fabric ?? "");
 
-  const pose =
-    category === "bottoms"
-      ? "Flat lay: both legs fully extended straight downward in parallel, waistband at top, completely unfolded."
-      : category === "shoes"
-      ? "Three-quarter front angle view, both shoes shown together as a pair."
-      : category === "dresses"
-      ? "Flat lay: dress fully spread out showing the complete front silhouette."
-      : category === "accessories"
-      ? "Clean centred product shot."
-      : "Flat lay: garment fully spread out, collar at top, no creases.";
+  let prompt = `Professional fashion e-commerce product photography of a ${color} ${name}`;
+  if (fabric && fabric !== "Unknown") prompt += `, ${fabric}`;
 
-  return `${base} ${pose} Pure white background, high-resolution studio lighting, sharp detail, isolated item only — no person, no model, no hanger, no shadow.`;
+  if (category === "bottoms") {
+    prompt += `, flat lay, both legs fully extended downward in parallel, waistband at top, completely unfolded`;
+  } else if (category === "shoes") {
+    prompt += `, three-quarter front angle view, both shoes shown together as a pair`;
+  } else if (category === "dresses") {
+    prompt += `, flat lay, fully spread out showing complete front silhouette`;
+  } else if (category === "accessories") {
+    prompt += `, clean centred product shot`;
+  } else {
+    prompt += `, flat lay, garment fully spread out, collar at top, no creases`;
+  }
+
+  prompt += `, pure white background, high-resolution studio lighting, sharp detail, isolated item only`;
+
+  const negative_prompt =
+    "person, model, mannequin, hanger, shadow, low quality, blurry, watermark, text, logo, duplicate, deformed, extra limbs, dark background, props";
+
+  return { prompt, negative_prompt };
+}
+
+async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const CHUNK = 8192;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
 }
 
 serve(async (req) => {
@@ -45,73 +67,55 @@ serve(async (req) => {
       });
     }
 
-    const { item, croppedImageBase64 } = await req.json();
-    if (!item || typeof item !== "object" || !croppedImageBase64) {
-      return new Response(JSON.stringify({ error: "Missing item or image" }), {
+    // croppedImageBase64 accepted for API compatibility but not used —
+    // SDXL is text-to-image; generation is driven by item metadata.
+    const { item } = await req.json();
+    if (!item || typeof item !== "object") {
+      return new Response(JSON.stringify({ error: "Missing item details" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+    const PIXAZO_API_KEY = Deno.env.get("PIXAZO_API_KEY");
+    if (!PIXAZO_API_KEY) throw new Error("PIXAZO_API_KEY is not configured");
 
-    const category = String(item.category ?? "").toLowerCase();
-    const prompt = buildPrompt(category);
+    const { prompt, negative_prompt } = buildPrompts(item as Record<string, unknown>);
 
-    // Models that support image-in → image-out, tried in order
-    const models = [
-      "gemini-2.0-flash-preview-image-generation",
-      "gemini-2.0-flash-exp",
-    ];
+    const res = await fetch("https://gateway.pixazo.ai/getImage/v1/getSDXLImage", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-cache",
+        "Ocp-Apim-Subscription-Key": PIXAZO_API_KEY,
+      },
+      body: JSON.stringify({
+        prompt,
+        negative_prompt,
+        height: 1024,
+        width: 1024,
+        num_steps: 20,
+        guidance_scale: 7,
+        seed: Math.floor(Math.random() * 1000000),
+      }),
+    });
 
-    for (const model of models) {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { inlineData: { mimeType: "image/jpeg", data: croppedImageBase64 } },
-                { text: prompt },
-              ],
-            }],
-            generationConfig: { responseModalities: ["TEXT", "IMAGE"] },
-          }),
-        },
-      );
-
-      if (res.status === 404) {
-        console.log(`Model ${model} not found, trying next...`);
-        continue;
-      }
-
-      if (!res.ok) {
-        const body = await res.text();
-        console.error(`Model ${model} error ${res.status}:`, body.substring(0, 400));
-        continue;
-      }
-
-      const data = await res.json();
-      const imagePart = data.candidates?.[0]?.content?.parts?.find(
-        (p: Record<string, unknown>) => p.inlineData,
-      ) as { inlineData: { data: string; mimeType: string } } | undefined;
-
-      if (imagePart?.inlineData?.data) {
-        return new Response(
-          JSON.stringify({ imageBase64: imagePart.inlineData.data, mimeType: imagePart.inlineData.mimeType ?? "image/jpeg" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-
-      console.error(`No image part from ${model}:`, JSON.stringify(data).substring(0, 400));
+    if (!res.ok) {
+      const body = await res.text();
+      throw new Error(`Pixazo API error ${res.status}: ${body}`);
     }
 
-    // All models exhausted
+    const pixazoData = await res.json();
+    const imageUrl = pixazoData?.imageUrl;
+    if (!imageUrl) throw new Error("No imageUrl in Pixazo response");
+
+    const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) throw new Error(`Failed to fetch generated image: ${imgRes.status}`);
+
+    const imageBase64 = await arrayBufferToBase64(await imgRes.arrayBuffer());
+
     return new Response(
-      JSON.stringify({ error: "Image generation failed", imageBase64: null }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      JSON.stringify({ imageBase64, mimeType: "image/png" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error("vestis-extract-item error:", error);
