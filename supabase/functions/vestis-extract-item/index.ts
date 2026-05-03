@@ -35,6 +35,13 @@ function buildPrompts(item: Record<string, unknown>): { prompt: string; negative
   return { prompt, negative_prompt };
 }
 
+function base64ToBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
   const bytes = new Uint8Array(buffer);
   let binary = "";
@@ -47,6 +54,8 @@ async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const tempPaths: string[] = [];
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -67,11 +76,14 @@ serve(async (req) => {
       });
     }
 
-    // croppedImageBase64 accepted for API compatibility but not used —
-    // SDXL is text-to-image; generation is driven by item metadata.
-    const { item } = await req.json();
+    const { item, croppedImageBase64, maskBase64 } = await req.json();
     if (!item || typeof item !== "object") {
       return new Response(JSON.stringify({ error: "Missing item details" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!croppedImageBase64 || !maskBase64) {
+      return new Response(JSON.stringify({ error: "Missing croppedImageBase64 or maskBase64" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -79,9 +91,36 @@ serve(async (req) => {
     const PIXAZO_API_KEY = Deno.env.get("PIXAZO_API_KEY");
     if (!PIXAZO_API_KEY) throw new Error("PIXAZO_API_KEY is not configured");
 
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    );
+
+    // Upload cropped garment image and white mask to get public URLs for Pixazo
+    const tempId = crypto.randomUUID();
+    const imagePath = `temp-ai/${tempId}/image.jpg`;
+    const maskPath = `temp-ai/${tempId}/mask.png`;
+    tempPaths.push(imagePath, maskPath);
+
+    const [imgUpload, maskUpload] = await Promise.all([
+      supabaseAdmin.storage
+        .from("clothing-images")
+        .upload(imagePath, base64ToBytes(croppedImageBase64), { contentType: "image/jpeg", upsert: true }),
+      supabaseAdmin.storage
+        .from("clothing-images")
+        .upload(maskPath, base64ToBytes(maskBase64), { contentType: "image/png", upsert: true }),
+    ]);
+
+    if (imgUpload.error) throw new Error(`Image upload failed: ${imgUpload.error.message}`);
+    if (maskUpload.error) throw new Error(`Mask upload failed: ${maskUpload.error.message}`);
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const imagePublicUrl = `${supabaseUrl}/storage/v1/object/public/clothing-images/${imagePath}`;
+    const maskPublicUrl = `${supabaseUrl}/storage/v1/object/public/clothing-images/${maskPath}`;
+
     const { prompt, negative_prompt } = buildPrompts(item as Record<string, unknown>);
 
-    const res = await fetch("https://gateway.pixazo.ai/getImage/v1/getSDXLImage", {
+    const pixazoRes = await fetch("https://gateway.pixazo.ai/inpainting/v1/getImage", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -90,25 +129,27 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         prompt,
+        imageUrl: imagePublicUrl,
+        maskUrl: maskPublicUrl,
         negative_prompt,
         height: 1024,
         width: 1024,
         num_steps: 20,
-        guidance_scale: 7,
+        guidance: 7,
         seed: Math.floor(Math.random() * 1000000),
       }),
     });
 
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`Pixazo API error ${res.status}: ${body}`);
+    if (!pixazoRes.ok) {
+      const body = await pixazoRes.text();
+      throw new Error(`Pixazo API error ${pixazoRes.status}: ${body}`);
     }
 
-    const pixazoData = await res.json();
-    const imageUrl = pixazoData?.imageUrl;
-    if (!imageUrl) throw new Error("No imageUrl in Pixazo response");
+    const pixazoData = await pixazoRes.json();
+    const resultUrl = pixazoData?.imageUrl;
+    if (!resultUrl) throw new Error("No imageUrl in Pixazo response");
 
-    const imgRes = await fetch(imageUrl);
+    const imgRes = await fetch(resultUrl);
     if (!imgRes.ok) throw new Error(`Failed to fetch generated image: ${imgRes.status}`);
 
     const imageBase64 = await arrayBufferToBase64(await imgRes.arrayBuffer());
@@ -123,5 +164,14 @@ serve(async (req) => {
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error", imageBase64: null }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+  } finally {
+    // Clean up temp storage files
+    if (tempPaths.length > 0) {
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+      );
+      await supabaseAdmin.storage.from("clothing-images").remove(tempPaths).catch(() => {});
+    }
   }
 });

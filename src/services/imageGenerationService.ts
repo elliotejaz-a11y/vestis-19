@@ -9,35 +9,20 @@ export interface ClothingMetadata {
 }
 
 /**
- * Returns the FLUX prompt that will be sent to the edge function.
- * Exported for debugging/preview purposes.
- */
-export function buildClothingPrompt(metadata: ClothingMetadata): string {
-  const { name, category, color, fabric } = metadata;
-  let prompt = `Professional product photography of a ${color} ${name}`;
-  if (fabric && fabric !== "Unknown") prompt += `, ${fabric}`;
-  if (category) prompt += `, ${category}`;
-  prompt +=
-    `, displayed as a flat lay on a pure white background, high resolution` +
-    ` studio lighting, clean minimal fashion e-commerce photography,` +
-    ` no person, no model, isolated clothing item only`;
-  return prompt;
-}
-
-/**
- * Calls the vestis-extract-item edge function which generates a product-style
- * image via Pixazo.ai Stable Diffusion XL.
+ * Calls the vestis-extract-item edge function which crops the garment and
+ * generates an AI product photo via Pixazo.ai SD Inpainting.
  *
  * Returns raw PNG base64 (no data-URL prefix), or null on any failure so
  * the caller can apply its own fallback without throwing.
  */
 export async function generateClothingImage(
   metadata: ClothingMetadata,
-  sourceBase64?: string,
+  croppedImageBase64?: string,
+  maskBase64?: string,
 ): Promise<string | null> {
   try {
     const { data, error } = await supabase.functions.invoke("vestis-extract-item", {
-      body: { item: metadata, sourceImageBase64: sourceBase64 ?? "" },
+      body: { item: metadata, croppedImageBase64: croppedImageBase64 ?? "", maskBase64: maskBase64 ?? "" },
     });
     if (error || !data?.imageBase64) return null;
     return data.imageBase64 as string;
