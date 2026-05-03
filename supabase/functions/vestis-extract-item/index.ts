@@ -6,33 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function buildPrompts(item: Record<string, unknown>): { prompt: string; negative_prompt: string } {
-  const name = String(item.name ?? "clothing item");
-  const category = String(item.category ?? "").toLowerCase();
-  const color = String(item.color ?? "");
-  const fabric = String(item.fabric ?? "");
-
-  let prompt = `Professional fashion e-commerce product photography of a ${color} ${name}`;
-  if (fabric && fabric !== "Unknown") prompt += `, ${fabric}`;
-
-  if (category === "bottoms") {
-    prompt += `, flat lay, both legs fully extended downward in parallel, waistband at top, completely unfolded`;
-  } else if (category === "shoes") {
-    prompt += `, three-quarter front angle view, both shoes shown together as a pair`;
-  } else if (category === "dresses") {
-    prompt += `, flat lay, fully spread out showing complete front silhouette`;
-  } else if (category === "accessories") {
-    prompt += `, clean centred product shot`;
-  } else {
-    prompt += `, flat lay, garment fully spread out, collar at top, no creases`;
-  }
-
-  prompt += `, pure white background, high-resolution studio lighting, sharp detail, isolated item only`;
-
-  const negative_prompt =
-    "person, model, mannequin, hanger, shadow, low quality, blurry, watermark, text, logo, duplicate, deformed, extra limbs, dark background, props";
-
-  return { prompt, negative_prompt };
+function buildPrompts(_item: Record<string, unknown>): { prompt: string; negative_prompt: string } {
+  // The mask preserves garment pixels — SD only repaints the background area.
+  // Prompt describes what the background should become.
+  return {
+    prompt: "pure white background, clean studio product photography, soft even lighting, no shadow",
+    negative_prompt: "shadow, colored background, textured background, gradient, person, model, mannequin, hanger, watermark, blurry, low quality",
+  };
 }
 
 function base64ToBytes(b64: string): Uint8Array {
