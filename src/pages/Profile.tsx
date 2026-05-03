@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
-import { Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X, Layers, Wand2 } from "lucide-react";
+import { Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X, Layers, Wand2, UserSquare2 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { formatPrice } from "@/lib/currency";
 import { useAuth } from "@/hooks/useAuth";
@@ -341,6 +341,15 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-foreground">Smart Mass Upload</p>
                 <p className="text-[10px] text-muted-foreground leading-relaxed">Photograph a pile of clothes — AI extracts and catalogues every item automatically.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl bg-muted/50 p-3">
+              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-accent/10">
+                <UserSquare2 className="h-4 w-4 text-accent" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-foreground">Extract from Outfit Photo</p>
+                <p className="text-[10px] text-muted-foreground leading-relaxed">Scan a worn outfit photo — AI pulls out every top, bottom, shoe and accessory.</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-xl bg-muted/50 p-3">
