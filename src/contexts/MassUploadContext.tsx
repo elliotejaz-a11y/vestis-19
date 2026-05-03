@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
+import { generateClothingImage } from "@/services/imageGenerationService";
 
 export type MassUploadPhase = "idle" | "analysing" | "extracting" | "ready";
 
@@ -22,65 +23,11 @@ interface DetectedItem {
 
 type ItemWithSource = DetectedItem & { _sourceBase64: string };
 
-/** Crops the garment from the source photo using the normalised bbox, returns base64 JPEG. */
-async function cropToBase64(
-  sourceBase64: string,
-  bbox: { x: number; y: number; width: number; height: number } | undefined,
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const iw = img.naturalWidth;
-      const ih = img.naturalHeight;
-      const canvas = document.createElement("canvas");
-      canvas.width = 512;
-      canvas.height = 512;
-      const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, 512, 512);
-
-      if (bbox) {
-        const pad = 0.06;
-        const sx = Math.max(0, (bbox.x - pad) * iw);
-        const sy = Math.max(0, (bbox.y - pad) * ih);
-        const sw = Math.min(iw - sx, (bbox.width + 2 * pad) * iw);
-        const sh = Math.min(ih - sy, (bbox.height + 2 * pad) * ih);
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 512, 512);
-      } else {
-        const side = Math.min(iw, ih);
-        const ox = (iw - side) / 2;
-        const oy = (ih - side) / 2;
-        ctx.drawImage(img, ox, oy, side, side, 0, 0, 512, 512);
-      }
-
-      resolve(canvas.toDataURL("image/jpeg", 0.88).split(",")[1]);
-    };
-    img.onerror = reject;
-    img.src = `data:image/jpeg;base64,${sourceBase64}`;
-  });
-}
-
-function buildPrompt(item: DetectedItem): string {
-  const category = item.category?.toLowerCase() ?? "";
-  let prompt = `Professional fashion e-commerce product photograph of a ${item.color} ${item.name}`;
-  if (item.fabric && item.fabric !== "Unknown") prompt += `, ${item.fabric} material`;
-  if (item.tags?.length) prompt += `, ${item.tags.slice(0, 5).join(", ")} style`;
-  if (item.notes) prompt += `. ${item.notes}`;
-
-  if (category === "bottoms") {
-    prompt += `. Flat lay on pure white background, both legs fully extended straight downward in parallel, waistband at top, garment completely unfolded`;
-  } else if (category === "shoes") {
-    prompt += `. Three-quarter front angle view on pure white background, pair of shoes shown together`;
-  } else if (category === "dresses") {
-    prompt += `. Flat lay on pure white background, dress fully spread out showing complete front silhouette`;
-  } else if (category === "accessories") {
-    prompt += `. Clean product shot on pure white background, item centred and well-lit`;
-  } else {
-    prompt += `. Flat lay on pure white background, garment fully spread out showing complete front face, collar at top`;
-  }
-
-  prompt += `. Pure white background, high-resolution studio lighting, sharp detail, clean minimal fashion e-commerce photography, isolated item only, no person, no model, no hanger, no shadow`;
-  return prompt;
+function base64ToBlob(base64: string, mimeType = "image/png"): Blob {
+  const bytes = atob(base64);
+  const arr = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+  return new Blob([arr], { type: mimeType });
 }
 
 interface ContextValue {
@@ -229,20 +176,17 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         let previewUrl: string | null = null;
 
         try {
-          // Step 1: Build prompt from detected metadata
-          const prompt = buildPrompt(item);
-
-          // Step 2: Generate product image via Puter.js (gpt-image-1, no API key needed)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const imgEl: HTMLImageElement = await (window as any).puter.ai.txt2img(prompt, {
-            model: "gpt-image-1",
-            quality: "medium",
+          const imageBase64 = await generateClothingImage({
+            name: item.name,
+            category: item.category,
+            color: item.color,
+            fabric: item.fabric,
           });
-          const fetchRes = await fetch(imgEl.src);
-          if (!fetchRes.ok) throw new Error("Failed to fetch generated image");
-          const generatedBlob = await fetchRes.blob();
 
-          // Step 3: Background removal
+          if (!imageBase64) throw new Error("No image returned");
+
+          const generatedBlob = base64ToBlob(imageBase64);
+
           try {
             const { removeBackground } = await import("@imgly/background-removal");
             const bgRemovedBlob = await removeBackground(generatedBlob);
