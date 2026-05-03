@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
-import { generateClothingImage } from "@/services/imageGenerationService";
 
 export type MassUploadPhase = "idle" | "analysing" | "extracting" | "ready";
 
@@ -63,43 +62,50 @@ async function cropToBase64(
   });
 }
 
-// Builds an inpainting mask from a bg-removed transparent PNG.
-// Garment pixels (alpha > 10) → black (SD preserves these).
-// Background pixels (alpha = 0)  → white (SD repaints these to a clean white bg).
-async function createGarmentMask(bgRemovedBlob: Blob): Promise<string> {
+// Composites a bg-removed transparent PNG onto a white canvas with a soft
+// drop shadow, producing a professional product-photo look at zero API cost.
+async function compositeWithSoftShadow(bgRemovedBlob: Blob, size = 512): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(bgRemovedBlob);
     const img = new Image();
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0);
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const px = imageData.data;
-      for (let i = 0; i < px.length; i += 4) {
-        const keep = px[i + 3] > 10;
-        px[i] = keep ? 0 : 255;
-        px[i + 1] = keep ? 0 : 255;
-        px[i + 2] = keep ? 0 : 255;
-        px[i + 3] = 255;
-      }
-      ctx.putImageData(imageData, 0, 0);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL("image/png").split(",")[1]);
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("mask creation failed")); };
-    img.src = url;
-  });
-}
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d")!;
 
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string).split(",")[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, size, size);
+
+      const padding = size * 0.08;
+      const maxDim = size - padding * 2;
+      const scale = Math.min(maxDim / img.naturalWidth, maxDim / img.naturalHeight);
+      const w = img.naturalWidth * scale;
+      const h = img.naturalHeight * scale;
+      const x = (size - w) / 2;
+      const y = (size - h) / 2;
+
+      // Draw with shadow to cast it behind the garment
+      ctx.shadowColor = "rgba(0, 0, 0, 0.18)";
+      ctx.shadowBlur = 24;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 10;
+      ctx.drawImage(img, x, y, w, h);
+
+      // Redraw sharp on top with shadow cleared
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.drawImage(img, x, y, w, h);
+
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error("toBlob failed")),
+        "image/png",
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load failed")); };
+    img.src = url;
   });
 }
 
@@ -252,43 +258,10 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           const croppedBase64 = await cropToBase64(item._sourceBase64, item.bbox);
           const croppedBlob = base64ToBlob(croppedBase64, "image/jpeg");
 
-          // Use bg removal to build a smart mask:
-          //   garment pixels → black (SD preserves them)
-          //   background pixels → white (SD repaints to clean white)
           const { removeBackground } = await import("@imgly/background-removal");
           const bgRemovedBlob = await removeBackground(croppedBlob);
-          const maskBase64 = await createGarmentMask(bgRemovedBlob);
-
-          const imageBase64 = await generateClothingImage(
-            { name: item.name, category: item.category, color: item.color, fabric: item.fabric },
-            croppedBase64,
-            maskBase64,
-          );
-
-          if (imageBase64) {
-            // Pixazo preserved the garment and painted white bg — use directly
-            previewUrl = URL.createObjectURL(base64ToBlob(imageBase64));
-          } else {
-            // Pixazo failed — fall back to local bg-removed crop on white
-            const canvas = document.createElement("canvas");
-            const size = 512;
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext("2d")!;
-            ctx.fillStyle = "#ffffff";
-            ctx.fillRect(0, 0, size, size);
-            const bgImg = new Image();
-            const bgUrl = URL.createObjectURL(bgRemovedBlob);
-            await new Promise<void>((res, rej) => {
-              bgImg.onload = () => { ctx.drawImage(bgImg, 0, 0, size, size); URL.revokeObjectURL(bgUrl); res(); };
-              bgImg.onerror = rej;
-              bgImg.src = bgUrl;
-            });
-            const fallbackBase64 = await blobToBase64(await new Promise<Blob>((res, rej) =>
-              canvas.toBlob(b => b ? res(b) : rej(new Error("toBlob failed")), "image/png")
-            ));
-            previewUrl = URL.createObjectURL(base64ToBlob(fallbackBase64));
-          }
+          const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
+          previewUrl = URL.createObjectURL(finalBlob);
         } catch {
           // generation failed — show error state
         }

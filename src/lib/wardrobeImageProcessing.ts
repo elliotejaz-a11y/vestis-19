@@ -1,14 +1,12 @@
 /**
- * Wardrobe image processing: background removal only for wardrobe item uploads.
- * Server-side removal via Supabase Edge Function; retries, downscale, and hash cache.
+ * Wardrobe image processing: background removal for wardrobe item uploads.
+ * Uses @imgly/background-removal client-side; no server-side edge function calls.
  */
 
 import { supabase } from "@/integrations/supabase/client";
 import { processClothingImage } from "@/lib/image-processing";
 
 const MAX_LONG_EDGE = 2000;
-const REQUEST_TIMEOUT_MS = 60000;
-const MAX_RETRIES = 2;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -91,38 +89,6 @@ function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-/**
- * Call remove-background edge function with timeout and retries (exponential backoff).
- */
-async function removeBackgroundWithRetry(imageBase64: string): Promise<{ imageBase64: string; fallback: boolean }> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    if (attempt > 0) {
-      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 8000);
-      await new Promise((r) => setTimeout(r, delay));
-    }
-    try {
-      const invokePromise = supabase.functions.invoke("remove-background", {
-        body: { imageBase64 },
-      });
-      const timeoutPromise = new Promise<never>((_, rej) =>
-        setTimeout(() => rej(new Error("Request timeout")), REQUEST_TIMEOUT_MS)
-      );
-      const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
-      if (error) throw error;
-      const base64 = data?.imageBase64;
-      const fallback = data?.fallback === true;
-      if (base64 && typeof base64 === "string") {
-        return { imageBase64: base64, fallback };
-      }
-      throw new Error("No image in response");
-    } catch (err) {
-      lastError = err;
-      if (attempt === MAX_RETRIES) break;
-    }
-  }
-  throw lastError;
-}
 
 export interface ProcessBackgroundRemovalOptions {
   itemId: string;

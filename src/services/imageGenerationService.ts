@@ -9,11 +9,10 @@ export interface ClothingMetadata {
 }
 
 /**
- * Calls the vestis-extract-item edge function which crops the garment and
- * generates an AI product photo via Pixazo.ai SD Inpainting.
- *
- * Returns raw PNG base64 (no data-URL prefix), or null on any failure so
- * the caller can apply its own fallback without throwing.
+ * Optional: calls the vestis-extract-item edge function (Pixazo SD Inpainting)
+ * to generate an AI product photo. This is NOT used in the primary mass-upload
+ * pipeline — the free client-side bg-removal + soft-shadow path is used instead.
+ * Kept here for future opt-in / power-user use.
  */
 export async function generateClothingImage(
   metadata: ClothingMetadata,
