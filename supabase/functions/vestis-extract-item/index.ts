@@ -114,9 +114,16 @@ serve(async (req) => {
     if (imgUpload.error) throw new Error(`Image upload failed: ${imgUpload.error.message}`);
     if (maskUpload.error) throw new Error(`Mask upload failed: ${maskUpload.error.message}`);
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const imagePublicUrl = `${supabaseUrl}/storage/v1/object/public/clothing-images/${imagePath}`;
-    const maskPublicUrl = `${supabaseUrl}/storage/v1/object/public/clothing-images/${maskPath}`;
+    // clothing-images is a private bucket — create short-lived signed URLs for Pixazo to fetch
+    const [{ data: imgSigned, error: imgSignErr }, { data: maskSigned, error: maskSignErr }] = await Promise.all([
+      supabaseAdmin.storage.from("clothing-images").createSignedUrl(imagePath, 600),
+      supabaseAdmin.storage.from("clothing-images").createSignedUrl(maskPath, 600),
+    ]);
+    if (imgSignErr || !imgSigned?.signedUrl) throw new Error(`Failed to sign image URL: ${imgSignErr?.message}`);
+    if (maskSignErr || !maskSigned?.signedUrl) throw new Error(`Failed to sign mask URL: ${maskSignErr?.message}`);
+
+    const imagePublicUrl = imgSigned.signedUrl;
+    const maskPublicUrl = maskSigned.signedUrl;
 
     const { prompt, negative_prompt } = buildPrompts(item as Record<string, unknown>);
 
