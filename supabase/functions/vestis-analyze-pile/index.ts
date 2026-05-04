@@ -6,6 +6,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+  for (let i = 0; i < maxRetries; i++) {
+    const res = await fetch(url, options);
+    if (res.status === 429 && i < maxRetries - 1) {
+      const waitMs = Math.pow(2, i) * 2000;
+      console.log(`Rate limited. Waiting ${waitMs}ms before retry ${i + 1}...`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+    return res;
+  }
+  return fetch(url, options);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -36,8 +50,8 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const systemPrompt = isOutfit
       ? "You identify every distinct clothing item, footwear and accessory worn by a person in an outfit photo. Scan the full body: hats, tops, jumpers/outerwear, bottoms, dresses, shoes, watches, jewellery, bags, belts and other accessories. Return each visible item separately. Bounding boxes normalised 0–1. CRITICAL: Always identify the COMPLETE garment, never a graphic, logo, patch, or print that appears ON the garment."
@@ -47,28 +61,21 @@ serve(async (req) => {
       ? "Analyse this outfit photo and return up to 8 distinct worn items. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1."
       : "Analyse this wardrobe pile image and return up to 8 distinct items. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1.";
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: userPrompt },
-              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${imageBase64}` } },
-            ],
-          },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
+    const geminiBody = {
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: userPrompt },
+            { inlineData: { mimeType: "image/jpeg", data: imageBase64 } },
+          ],
+        },
+      ],
+      tools: [
+        {
+          functionDeclarations: [
+            {
               name: "detect_clothing_items",
               description: "Detect distinct clothing and accessory items in one image",
               parameters: {
@@ -98,49 +105,54 @@ serve(async (req) => {
                             height: { type: "number" },
                           },
                           required: ["x", "y", "width", "height"],
-                          additionalProperties: false,
                         },
                       },
                       required: ["id", "name", "category", "color", "fabric", "tags", "notes", "estimated_price_nzd", "confidence", "crop_hint", "bbox"],
-                      additionalProperties: false,
                     },
                   },
                 },
                 required: ["items"],
-                additionalProperties: false,
               },
             },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "detect_clothing_items" } },
-      }),
-    });
+          ],
+        },
+      ],
+      toolConfig: {
+        functionCallingConfig: { mode: "ANY", allowedFunctionNames: ["detect_clothing_items"] },
+      },
+    };
+
+    const response = await fetchWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(geminiBody),
+      },
+    );
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("Lovable AI gateway error:", response.status, text);
+      console.error("Gemini HTTP error:", response.status, text);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again shortly." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds to your Lovable AI workspace." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI gateway error ${response.status}: ${text.substring(0, 400)}`);
+      throw new Error(`Gemini API error ${response.status}: ${text.substring(0, 400)}`);
     }
 
-    const payload = await response.json();
-    const toolCall = payload.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      console.error("No tool call in response:", JSON.stringify(payload).substring(0, 500));
-      throw new Error("No structured AI response received");
+    const aiData = await response.json();
+    const candidate = aiData.candidates?.[0];
+    const parts: Array<Record<string, unknown>> = candidate?.content?.parts ?? [];
+    const fnPart = parts.find((p) => p.functionCall);
+    if (!fnPart) {
+      console.error("Full Gemini response:", JSON.stringify(aiData).substring(0, 500));
+      throw new Error(`No functionCall in Gemini response. finishReason: ${candidate?.finishReason}`);
     }
 
-    const result = JSON.parse(toolCall.function.arguments);
-    console.log(`detect_clothing_items: found ${result.items?.length ?? 0} items`);
+    const result = (fnPart.functionCall as { args: unknown }).args;
+    console.log(`detect_clothing_items: found ${(result as { items?: unknown[] }).items?.length ?? 0} items`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -26,6 +26,20 @@ function dataUrlToBase64(dataUrl: string): string {
   return idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
 }
 
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
+  for (let i = 0; i < maxRetries; i++) {
+    const res = await fetch(url, options);
+    if (res.status === 429 && i < maxRetries - 1) {
+      const waitMs = Math.pow(2, i) * 2000;
+      console.log(`Rate limited. Waiting ${waitMs}ms before retry ${i + 1}...`);
+      await new Promise((r) => setTimeout(r, waitMs));
+      continue;
+    }
+    return res;
+  }
+  return fetch(url, options);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -60,63 +74,61 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const prompt = buildPrompt(item as Record<string, unknown>);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    const geminiBody = {
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: "image/jpeg", data: dataUrlToBase64(croppedImageBase64) } },
+          ],
+        },
+      ],
+      generationConfig: {
+        responseModalities: ["IMAGE", "TEXT"],
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${croppedImageBase64}` } },
-            ],
-          },
-        ],
-        modalities: ["image", "text"],
-      }),
-    });
+    };
+
+    const response = await fetchWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(geminiBody),
+      },
+    );
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("Lovable AI image gateway error:", response.status, text);
+      console.error("Gemini image gen error:", response.status, text);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limits exceeded.", imageBase64: null }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI credits exhausted.", imageBase64: null }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      return new Response(JSON.stringify({ error: `Image gateway error ${response.status}`, imageBase64: null }), {
+      return new Response(JSON.stringify({ error: `Image generation error ${response.status}`, imageBase64: null }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const data = await response.json();
-    const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    if (!imageUrl) {
-      console.error("No image in Lovable AI response:", JSON.stringify(data).substring(0, 400));
+    const aiData = await response.json();
+    const parts: Array<Record<string, unknown>> = aiData.candidates?.[0]?.content?.parts ?? [];
+    const imagePart = parts.find((p) => p.inlineData);
+    if (!imagePart) {
+      console.error("No image in Gemini response:", JSON.stringify(aiData).substring(0, 400));
       return new Response(JSON.stringify({ error: "No image returned", imageBase64: null }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const imageBase64 = dataUrlToBase64(imageUrl);
-
+    const inlineData = imagePart.inlineData as { mimeType: string; data: string };
     return new Response(
-      JSON.stringify({ imageBase64, mimeType: "image/png" }),
+      JSON.stringify({ imageBase64: inlineData.data, mimeType: inlineData.mimeType }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
