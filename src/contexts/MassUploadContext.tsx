@@ -62,65 +62,6 @@ async function cropToBase64(
   });
 }
 
-// Composites a bg-removed transparent PNG with a drop shadow and studio
-// vibrancy, outputting a transparent PNG blob (alpha preserved for Supabase).
-// Canvas is scaled by devicePixelRatio for crisp edges on Retina displays.
-async function compositeWithSoftShadow(bgRemovedBlob: Blob, size = 512): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(bgRemovedBlob);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-
-      // Scale canvas to physical pixels so edges stay sharp on Retina / HiDPI.
-      const dpr = Math.min(window.devicePixelRatio ?? 1, 3);
-      const px = Math.round(size * dpr);
-
-      const canvas = document.createElement("canvas");
-      canvas.width = px;
-      canvas.height = px;
-      const ctx = canvas.getContext("2d")!;
-
-      // Work in logical-pixel space; dpr scaling handles physical pixels.
-      ctx.scale(dpr, dpr);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-
-      // Transparent background — alpha channel preserved in the final PNG blob.
-
-      const padding = size * 0.08;
-      const maxDim = size - padding * 2;
-      const scale = Math.min(maxDim / img.naturalWidth, maxDim / img.naturalHeight);
-      const w = img.naturalWidth * scale;
-      const h = img.naturalHeight * scale;
-      const x = (size - w) / 2;
-      const y = (size - h) / 2;
-
-      // Shadow pass — cast soft depth shadow behind the garment.
-      ctx.shadowColor = "rgba(0, 0, 0, 0.22)";
-      ctx.shadowBlur = 24;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 10;
-      ctx.drawImage(img, x, y, w, h);
-
-      // Sharp garment pass — clear shadow, apply catalog-fresh vibrancy.
-      ctx.shadowColor = "transparent";
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
-      ctx.filter = "contrast(1.1) saturate(1.05)";
-      ctx.drawImage(img, x, y, w, h);
-      ctx.filter = "none";
-
-      canvas.toBlob(
-        (blob) => blob ? resolve(blob) : reject(new Error("toBlob failed")),
-        "image/png",
-      );
-    };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load failed")); };
-    img.src = url;
-  });
-}
-
 interface ContextValue {
   phase: MassUploadPhase;
   mode: "pile" | "outfit";
@@ -241,7 +182,8 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       if (sessionRef.current !== mySession) return;
       if (allItemsWithSrc.length === 0) { setPhase("ready"); return; }
 
-      // ── Phase 2: Generate AI images sequentially ───────────────────────────
+      // ── Phase 2: Crop items locally — instant, no AI calls ────────────────
+      // Studio image gen is deferred to when the user actually adds an item.
       setPhase("extracting");
 
       for (const item of allItemsWithSrc) {
@@ -263,58 +205,28 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           addState: "idle",
         };
 
-        let finalCandidate: MassUploadCandidate;
-        let previewUrl: string | null = null;
-
         try {
           const croppedBase64 = await cropToBase64(item._sourceBase64, item.bbox);
+          const previewUrl = URL.createObjectURL(base64ToBlob(croppedBase64, "image/jpeg"));
 
-          // Primary: ask Lovable AI (nano-banana) to render a clean studio
-          // product photo from the cropped garment. Cheap and high quality.
-          let aiImageBase64: string | null = null;
-          try {
-            const { data: aiData, error: aiError } = await supabase.functions.invoke("vestis-extract-item", {
-              body: {
-                item: {
-                  name: item.name,
-                  category: item.category,
-                  color: item.color,
-                  fabric: item.fabric,
-                },
-                croppedImageBase64: croppedBase64,
-              },
-            });
-            if (!aiError && aiData?.imageBase64) {
-              aiImageBase64 = aiData.imageBase64 as string;
-            }
-          } catch {
-            // fall through to local bg removal
-          }
-
-          if (aiImageBase64) {
-            const aiBlob = base64ToBlob(aiImageBase64, "image/png");
-            previewUrl = URL.createObjectURL(aiBlob);
-          } else {
-            // Fallback: client-side bg removal + soft shadow composite
-            const croppedBlob = base64ToBlob(croppedBase64, "image/jpeg");
-            const { removeBackground } = await import("@imgly/background-removal");
-            const bgRemovedBlob = await removeBackground(croppedBlob);
-            const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
-            previewUrl = URL.createObjectURL(finalBlob);
+          if (sessionRef.current === mySession) {
+            setCandidates((prev) => [...prev, {
+              ...baseCandidate,
+              previewStatus: "ready",
+              previewUrl,
+              croppedBase64,
+            }]);
+            setExtracted((prev) => prev + 1);
           }
         } catch {
-          // generation failed — show error state
-        }
-
-        if (previewUrl) {
-          finalCandidate = { ...baseCandidate, previewStatus: "ready", previewUrl };
-        } else {
-          finalCandidate = { ...baseCandidate, previewStatus: "failed", error: "Image generation failed — please try again" };
-        }
-
-        if (sessionRef.current === mySession) {
-          setCandidates((prev) => [...prev, finalCandidate]);
-          setExtracted((prev) => prev + 1);
+          if (sessionRef.current === mySession) {
+            setCandidates((prev) => [...prev, {
+              ...baseCandidate,
+              previewStatus: "failed",
+              error: "Could not crop image",
+            }]);
+            setExtracted((prev) => prev + 1);
+          }
         }
       }
 
@@ -329,6 +241,33 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
   const addCandidateToWardrobe = useCallback(async (candidate: MassUploadCandidate) => {
     updateCandidate(candidate.id, { addState: "saving" });
     try {
+      let finalImageUrl = candidate.previewUrl!;
+
+      // Generate studio render now that the user has confirmed this item.
+      // Only pay for AI on items actually added, not all detected items.
+      if (candidate.croppedBase64) {
+        try {
+          const { data: aiData, error: aiError } = await supabase.functions.invoke("vestis-extract-item", {
+            body: {
+              item: {
+                name: candidate.name,
+                category: candidate.category,
+                color: candidate.color,
+                fabric: candidate.fabric,
+              },
+              croppedImageBase64: candidate.croppedBase64,
+            },
+          });
+          if (!aiError && aiData?.imageBase64) {
+            const aiBlob = base64ToBlob(aiData.imageBase64 as string, "image/png");
+            finalImageUrl = URL.createObjectURL(aiBlob);
+            updateCandidate(candidate.id, { previewUrl: finalImageUrl });
+          }
+        } catch {
+          // fall through — use cropped preview as-is
+        }
+      }
+
       await onAddRef.current(
         {
           id: crypto.randomUUID(),
@@ -336,7 +275,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           category: candidate.category,
           color: candidate.color,
           fabric: candidate.fabric,
-          imageUrl: candidate.previewUrl!,
+          imageUrl: finalImageUrl,
           tags: [...candidate.tags, candidate.category, candidate.fabric.toLowerCase(), candidate.color.toLowerCase()].filter(Boolean),
           notes: candidate.notes,
           estimatedPrice: candidate.estimatedPrice,

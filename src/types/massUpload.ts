@@ -29,6 +29,7 @@ export interface MassUploadCandidate extends MassUploadDetectedItem {
   previewStatus: MassUploadPreviewStatus;
   addState: MassUploadAddState;
   error?: string | null;
+  croppedBase64?: string;
 }
 
 export const WARDROBE_FABRICS = [
