@@ -22,6 +22,51 @@ interface DetectedItem {
 
 type ItemWithSource = DetectedItem & { _sourceBase64: string };
 
+// Composites a bg-removed transparent PNG with a drop shadow and studio
+// vibrancy, outputting a transparent PNG blob (alpha preserved for Supabase).
+async function compositeWithSoftShadow(bgRemovedBlob: Blob, size = 512): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(bgRemovedBlob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const dpr = Math.min(window.devicePixelRatio ?? 1, 3);
+      const px = Math.round(size * dpr);
+      const canvas = document.createElement("canvas");
+      canvas.width = px;
+      canvas.height = px;
+      const ctx = canvas.getContext("2d")!;
+      ctx.scale(dpr, dpr);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      const padding = size * 0.08;
+      const maxDim = size - padding * 2;
+      const scale = Math.min(maxDim / img.naturalWidth, maxDim / img.naturalHeight);
+      const w = img.naturalWidth * scale;
+      const h = img.naturalHeight * scale;
+      const x = (size - w) / 2;
+      const y = (size - h) / 2;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.22)";
+      ctx.shadowBlur = 24;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 10;
+      ctx.drawImage(img, x, y, w, h);
+      ctx.shadowColor = "transparent";
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+      ctx.filter = "contrast(1.1) saturate(1.05)";
+      ctx.drawImage(img, x, y, w, h);
+      ctx.filter = "none";
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error("toBlob failed")),
+        "image/png",
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load failed")); };
+    img.src = url;
+  });
+}
+
 function base64ToBlob(base64: string, mimeType = "image/png"): Blob {
   const bytes = atob(base64);
   const arr = new Uint8Array(bytes.length);
@@ -243,26 +288,15 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
     try {
       let finalImageUrl = candidate.previewUrl!;
 
-      // Generate studio render now that the user has confirmed this item.
-      // Only pay for AI on items actually added, not all detected items.
+      // On-device background removal + shadow composite — free, no API call.
       if (candidate.croppedBase64) {
         try {
-          const { data: aiData, error: aiError } = await supabase.functions.invoke("vestis-extract-item", {
-            body: {
-              item: {
-                name: candidate.name,
-                category: candidate.category,
-                color: candidate.color,
-                fabric: candidate.fabric,
-              },
-              croppedImageBase64: candidate.croppedBase64,
-            },
-          });
-          if (!aiError && aiData?.imageBase64) {
-            const aiBlob = base64ToBlob(aiData.imageBase64 as string, "image/png");
-            finalImageUrl = URL.createObjectURL(aiBlob);
-            updateCandidate(candidate.id, { previewUrl: finalImageUrl });
-          }
+          const croppedBlob = base64ToBlob(candidate.croppedBase64, "image/jpeg");
+          const { removeBackground } = await import("@imgly/background-removal");
+          const bgRemovedBlob = await removeBackground(croppedBlob);
+          const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
+          finalImageUrl = URL.createObjectURL(finalBlob);
+          updateCandidate(candidate.id, { previewUrl: finalImageUrl });
         } catch {
           // fall through — use cropped preview as-is
         }
