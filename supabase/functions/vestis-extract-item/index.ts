@@ -6,36 +6,28 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-function buildPrompts(_item: Record<string, unknown>): { prompt: string; negative_prompt: string } {
-  // The mask preserves garment pixels — SD only repaints the background area.
-  // Prompt describes what the background should become.
-  return {
-    prompt: "pure white background, clean studio product photography, soft even lighting, no shadow",
-    negative_prompt: "shadow, colored background, textured background, gradient, person, model, mannequin, hanger, watermark, blurry, low quality",
-  };
+function buildPrompt(item: Record<string, unknown>): string {
+  const name = String(item.name ?? "clothing item");
+  const category = String(item.category ?? "").toLowerCase();
+  const color = String(item.color ?? "");
+  const fabric = String(item.fabric ?? "");
+
+  let posing = "flat lay, fully spread out showing the front of the garment";
+  if (category === "bottoms") posing = "flat lay with both legs straight and parallel, waistband at top";
+  else if (category === "shoes") posing = "three-quarter front product view";
+  else if (category === "hats") posing = "front-facing product view";
+  else if (category === "accessories") posing = "centered product view";
+
+  return `Re-render the garment shown in the input image as a professional studio product photograph. Keep the EXACT same garment — same shape, colour (${color}), fabric (${fabric}), pattern, prints, logos and details — do not invent or change anything. Remove the original background completely and replace with a pure clean white background. Pose: ${posing}. Item: ${name}. Soft even studio lighting, subtle natural shadow under the garment, sharp focus, high resolution e-commerce catalogue style. No person, no model, no mannequin, no hanger.`;
 }
 
-function base64ToBytes(b64: string): Uint8Array {
-  const binary = atob(b64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes;
-}
-
-async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const CHUNK = 8192;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
+function dataUrlToBase64(dataUrl: string): string {
+  const idx = dataUrl.indexOf(",");
+  return idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  const tempPaths: string[] = [];
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -56,90 +48,72 @@ serve(async (req) => {
       });
     }
 
-    const { item, croppedImageBase64, maskBase64 } = await req.json();
+    const { item, croppedImageBase64 } = await req.json();
     if (!item || typeof item !== "object") {
       return new Response(JSON.stringify({ error: "Missing item details" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!croppedImageBase64 || !maskBase64) {
-      return new Response(JSON.stringify({ error: "Missing croppedImageBase64 or maskBase64" }), {
+    if (!croppedImageBase64 || typeof croppedImageBase64 !== "string") {
+      return new Response(JSON.stringify({ error: "Missing croppedImageBase64" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const PIXAZO_API_KEY = Deno.env.get("PIXAZO_API_KEY");
-    if (!PIXAZO_API_KEY) throw new Error("PIXAZO_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    );
+    const prompt = buildPrompt(item as Record<string, unknown>);
 
-    // Upload cropped garment image and white mask to get public URLs for Pixazo
-    const tempId = crypto.randomUUID();
-    const imagePath = `temp-ai/${tempId}/image.jpg`;
-    const maskPath = `temp-ai/${tempId}/mask.png`;
-    tempPaths.push(imagePath, maskPath);
-
-    const [imgUpload, maskUpload] = await Promise.all([
-      supabaseAdmin.storage
-        .from("clothing-images")
-        .upload(imagePath, base64ToBytes(croppedImageBase64), { contentType: "image/jpeg", upsert: true }),
-      supabaseAdmin.storage
-        .from("clothing-images")
-        .upload(maskPath, base64ToBytes(maskBase64), { contentType: "image/png", upsert: true }),
-    ]);
-
-    if (imgUpload.error) throw new Error(`Image upload failed: ${imgUpload.error.message}`);
-    if (maskUpload.error) throw new Error(`Mask upload failed: ${maskUpload.error.message}`);
-
-    // clothing-images is a private bucket — create short-lived signed URLs for Pixazo to fetch
-    const [{ data: imgSigned, error: imgSignErr }, { data: maskSigned, error: maskSignErr }] = await Promise.all([
-      supabaseAdmin.storage.from("clothing-images").createSignedUrl(imagePath, 600),
-      supabaseAdmin.storage.from("clothing-images").createSignedUrl(maskPath, 600),
-    ]);
-    if (imgSignErr || !imgSigned?.signedUrl) throw new Error(`Failed to sign image URL: ${imgSignErr?.message}`);
-    if (maskSignErr || !maskSigned?.signedUrl) throw new Error(`Failed to sign mask URL: ${maskSignErr?.message}`);
-
-    const imagePublicUrl = imgSigned.signedUrl;
-    const maskPublicUrl = maskSigned.signedUrl;
-
-    const { prompt, negative_prompt } = buildPrompts(item as Record<string, unknown>);
-
-    const pixazoRes = await fetch("https://gateway.pixazo.ai/inpainting/v1/getImage", {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
-        "Cache-Control": "no-cache",
-        "Ocp-Apim-Subscription-Key": PIXAZO_API_KEY,
       },
       body: JSON.stringify({
-        prompt,
-        imageUrl: imagePublicUrl,
-        maskUrl: maskPublicUrl,
-        negative_prompt,
-        height: 1024,
-        width: 1024,
-        num_steps: 20,
-        guidance: 7,
-        seed: Math.floor(Math.random() * 1000000),
+        model: "google/gemini-2.5-flash-image",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: `data:image/jpeg;base64,${croppedImageBase64}` } },
+            ],
+          },
+        ],
+        modalities: ["image", "text"],
       }),
     });
 
-    if (!pixazoRes.ok) {
-      const body = await pixazoRes.text();
-      throw new Error(`Pixazo API error ${pixazoRes.status}: ${body}`);
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Lovable AI image gateway error:", response.status, text);
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limits exceeded.", imageBase64: null }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted.", imageBase64: null }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: `Image gateway error ${response.status}`, imageBase64: null }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    const pixazoData = await pixazoRes.json();
-    const resultUrl = pixazoData?.imageUrl;
-    if (!resultUrl) throw new Error("No imageUrl in Pixazo response");
+    const data = await response.json();
+    const imageUrl = data?.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    if (!imageUrl) {
+      console.error("No image in Lovable AI response:", JSON.stringify(data).substring(0, 400));
+      return new Response(JSON.stringify({ error: "No image returned", imageBase64: null }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    const imgRes = await fetch(resultUrl);
-    if (!imgRes.ok) throw new Error(`Failed to fetch generated image: ${imgRes.status}`);
-
-    const imageBase64 = await arrayBufferToBase64(await imgRes.arrayBuffer());
+    const imageBase64 = dataUrlToBase64(imageUrl);
 
     return new Response(
       JSON.stringify({ imageBase64, mimeType: "image/png" }),
@@ -151,14 +125,5 @@ serve(async (req) => {
       JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error", imageBase64: null }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
-  } finally {
-    // Clean up temp storage files
-    if (tempPaths.length > 0) {
-      const supabaseAdmin = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      );
-      await supabaseAdmin.storage.from("clothing-images").remove(tempPaths).catch(() => {});
-    }
   }
 });
