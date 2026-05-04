@@ -268,12 +268,40 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
         try {
           const croppedBase64 = await cropToBase64(item._sourceBase64, item.bbox);
-          const croppedBlob = base64ToBlob(croppedBase64, "image/jpeg");
 
-          const { removeBackground } = await import("@imgly/background-removal");
-          const bgRemovedBlob = await removeBackground(croppedBlob);
-          const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
-          previewUrl = URL.createObjectURL(finalBlob);
+          // Primary: ask Lovable AI (nano-banana) to render a clean studio
+          // product photo from the cropped garment. Cheap and high quality.
+          let aiImageBase64: string | null = null;
+          try {
+            const { data: aiData, error: aiError } = await supabase.functions.invoke("vestis-extract-item", {
+              body: {
+                item: {
+                  name: item.name,
+                  category: item.category,
+                  color: item.color,
+                  fabric: item.fabric,
+                },
+                croppedImageBase64: croppedBase64,
+              },
+            });
+            if (!aiError && aiData?.imageBase64) {
+              aiImageBase64 = aiData.imageBase64 as string;
+            }
+          } catch {
+            // fall through to local bg removal
+          }
+
+          if (aiImageBase64) {
+            const aiBlob = base64ToBlob(aiImageBase64, "image/png");
+            previewUrl = URL.createObjectURL(aiBlob);
+          } else {
+            // Fallback: client-side bg removal + soft shadow composite
+            const croppedBlob = base64ToBlob(croppedBase64, "image/jpeg");
+            const { removeBackground } = await import("@imgly/background-removal");
+            const bgRemovedBlob = await removeBackground(croppedBlob);
+            const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
+            previewUrl = URL.createObjectURL(finalBlob);
+          }
         } catch {
           // generation failed — show error state
         }
