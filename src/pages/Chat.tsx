@@ -526,6 +526,8 @@ function FriendsTab({
   );
 }
 
+const DISCOVER_PAGE_SIZE = 50;
+
 // ─── Discover Tab ───
 function DiscoverTab({
   followingIds,
@@ -540,38 +542,59 @@ function DiscoverTab({
   const navigate = useNavigate();
   const [people, setPeople] = useState<FriendProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [followingLoading, setFollowingLoading] = useState<string | null>(null);
 
   const fetchDiscover = useCallback(async () => {
     if (!user) return;
     setLoading(true);
 
-    // Fetch public profiles + blocked users (both directions) in parallel
+    // Fetch ALL profiles (public and private) + blocked users in parallel.
+    // Private-profile users still appear in discover — their content stays protected.
     const [{ data: profiles }, { data: blockedByMe }, { data: blockedMe }] = await Promise.all([
       supabase
         .from("profiles")
         .select("id, display_name, username, avatar_url, avatar_preset, is_public, style_preference, bio")
-        .eq("is_public", true)
         .neq("id", user.id)
-        .limit(50),
+        .order("created_at", { ascending: false })
+        .range(0, DISCOVER_PAGE_SIZE - 1),
       supabase.from("blocked_users").select("blocked_id").eq("blocker_id", user.id),
       supabase.from("blocked_users").select("blocker_id").eq("blocked_id", user.id),
     ]);
 
-    const blockedIds = new Set([
+    const blocked = new Set([
       ...(blockedByMe || []).map((r: any) => r.blocked_id),
       ...(blockedMe || []).map((r: any) => r.blocker_id),
     ]);
+    setBlockedIds(blocked);
 
-    if (profiles) {
-      const filtered = profiles.filter(
-        (p: any) => p.username && !/^user\d*$/i.test(p.username) && !blockedIds.has(p.id)
-      );
-      const shuffled = [...filtered].sort(() => Math.random() - 0.5);
-      setPeople(shuffled as FriendProfile[]);
-    }
+    const visible = (profiles || []).filter((p: any) => !blocked.has(p.id));
+    setPeople(visible as FriendProfile[]);
+    setHasMore((profiles || []).length === DISCOVER_PAGE_SIZE);
+    setPage(0);
     setLoading(false);
   }, [user]);
+
+  const loadMore = useCallback(async () => {
+    if (!user || loadingMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, display_name, username, avatar_url, avatar_preset, is_public, style_preference, bio")
+      .neq("id", user.id)
+      .order("created_at", { ascending: false })
+      .range(nextPage * DISCOVER_PAGE_SIZE, (nextPage + 1) * DISCOVER_PAGE_SIZE - 1);
+
+    const visible = (profiles || []).filter((p: any) => !blockedIds.has(p.id));
+    setPeople((prev) => [...prev, ...visible as FriendProfile[]]);
+    setHasMore((profiles || []).length === DISCOVER_PAGE_SIZE);
+    setPage(nextPage);
+    setLoadingMore(false);
+  }, [user, page, loadingMore, blockedIds]);
 
   useEffect(() => { fetchDiscover(); }, [fetchDiscover]);
 
@@ -660,6 +683,15 @@ function DiscoverTab({
               </div>
             );
           })}
+          {hasMore && (
+            <button
+              onClick={loadMore}
+              disabled={loadingMore}
+              className="w-full py-3 text-xs font-medium text-accent flex items-center justify-center gap-2"
+            >
+              {loadingMore ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Load more"}
+            </button>
+          )}
         </div>
       )}
     </div>
