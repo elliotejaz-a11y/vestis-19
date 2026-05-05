@@ -61,14 +61,14 @@ export default function SocialFeed() {
         .select("id, display_name, username, avatar_url, avatar_preset")
         .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
         .limit(10);
-      setSearchResults((data || []).filter(u => u.username && !/^user\d*$/i.test(u.username)));
+      setSearchResults(data || []);
       setSearching(false);
     }, 300);
   }, []);
 
   const feedPosts = posts;
   const discoverPosts = useMemo(
-    () => posts.filter(p => p.user_id !== user?.id && p.user?.username && !/^user\d*$/i.test(p.user.username)),
+    () => posts.filter(p => p.user_id !== user?.id),
     [posts, user?.id]
   );
   const displayPosts = tab === "feed" ? feedPosts : discoverPosts;
