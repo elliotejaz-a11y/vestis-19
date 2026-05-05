@@ -1,34 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { batchResolveAvatarUrls } from "@/lib/storage";
+import { cn } from "@/lib/utils";
 
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 2000;
-import { cn } from "@/lib/utils";
 
-// Palette sourced from Vestis theme tokens (src/index.css):
-// --accent hsl(350,55%,31%) deep rose  |  --secondary hsl(236,65%,34%) deep blue
-// --gold hsl(38,60%,55%) warm amber    |  terracotta, sage, plum derived from same warm aesthetic
-const INITIALS_COLOURS = [
-  "hsl(350,55%,31%)",  // deep rose  (--accent)
-  "hsl(236,65%,34%)",  // deep blue  (--secondary)
-  "hsl(38,45%,40%)",   // warm amber (derived from --gold)
-  "hsl(15,50%,35%)",   // terracotta
-  "hsl(160,35%,30%)",  // sage green
-  "hsl(280,35%,35%)",  // muted plum
-];
-
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return h;
-}
-
-function getInitial(name?: string | null, email?: string | null): string {
-  const n = name?.trim();
-  if (n) return n[0].toUpperCase();
-  const e = email?.trim();
-  if (e) return e[0].toUpperCase();
-  return "";
+function dicebearUrl(seed: string) {
+  return `https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
 }
 
 // Head circle + rounded shoulder path — scales cleanly from 24px to 200px via viewBox
@@ -112,13 +90,9 @@ export function UserAvatar({
     }
   };
 
-  const initial  = getInitial(displayName, email);
-  const seed     = userId || displayName || email || "";
-  const bg       = INITIALS_COLOURS[hashStr(seed) % INITIALS_COLOURS.length];
-
-  const showPhoto    = !!resolvedUrl && !imgError;
-  const presetCfg    = !showPhoto && avatarPreset ? (PRESET_CONFIGS[avatarPreset] ?? null) : null;
-  const showInitials = !showPhoto && !presetCfg && !!initial;
+  const seed      = userId || displayName || email || "vestis";
+  const showPhoto = !!resolvedUrl && !imgError;
+  const presetCfg = !showPhoto && avatarPreset ? (PRESET_CONFIGS[avatarPreset] ?? null) : null;
 
   return (
     <div
@@ -136,15 +110,12 @@ export function UserAvatar({
         />
       ) : presetCfg ? (
         <Silhouette bg={presetCfg.bg} figure={presetCfg.figure} />
-      ) : showInitials ? (
-        <div
-          className="w-full h-full flex items-center justify-center text-white font-bold select-none"
-          style={{ background: bg, fontSize: "42cqi" }}
-        >
-          {initial}
-        </div>
       ) : (
-        <Silhouette bg="#E8E4E0" figure="#BFBAB5" />
+        <img
+          src={dicebearUrl(seed)}
+          alt=""
+          className="w-full h-full object-cover"
+        />
       )}
     </div>
   );

@@ -1,5 +1,19 @@
 import { SocialPost } from "@/hooks/useSocial";
 import { Heart, MessageCircle, Trash2, MoreVertical, Flag } from "lucide-react";
+
+const HANDLE_FIRST = ["aria", "zara", "nova", "jade", "luna", "mia", "kai", "leo", "ivy", "eden", "rio", "sage", "alex", "mae", "fox"];
+const HANDLE_LAST  = ["fits", "looks", "style", "edit", "mode", "chic", "drip", "fit", "fit", "ootd", "sets", "wear"];
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+function fashionHandle(userId: string): string {
+  const h = hashStr(userId);
+  return HANDLE_FIRST[h % HANDLE_FIRST.length] + "." + HANDLE_LAST[(h >> 4) % HANDLE_LAST.length];
+}
 import { UserAvatar } from "@/components/UserAvatar";
 import { cn } from "@/lib/utils";
 import { useState, memo } from "react";
@@ -43,7 +57,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onDelete, isOwn }
             onClick={() => navigate(`/user/${post.user_id}`)}
             className="text-xs font-semibold text-foreground hover:underline"
           >
-            {post.user?.username || post.user?.display_name || "User"}
+            {post.user?.username || post.user?.display_name || fashionHandle(post.user_id)}
           </button>
           <div className="ml-auto flex items-center gap-1">
             {isOwn && onDelete && (
@@ -113,7 +127,7 @@ export const PostCard = memo(function PostCard({ post, onLike, onDelete, isOwn }
           )}
           {post.caption && (
             <p className="text-xs text-foreground">
-              <span className="font-semibold mr-1">{post.user?.username || "user"}</span>
+              <span className="font-semibold mr-1">{post.user?.username || post.user?.display_name || fashionHandle(post.user_id)}</span>
               {post.caption}
             </p>
           )}
