@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
@@ -32,12 +32,20 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
   const navigate = useNavigate();
 
 
-  const savedOutfits = outfits.filter((o) => o.saved);
-  const filteredBase = activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter);
-  const filtered = [...filteredBase].sort((a, b) => {
-    if (sortBy === "oldest") return a.addedAt.getTime() - b.addedAt.getTime();
-    return b.addedAt.getTime() - a.addedAt.getTime(); // newest
-  });
+  const savedOutfits = useMemo(() => outfits.filter((o) => o.saved), [outfits]);
+  const filteredBase = useMemo(
+    () => (activeFilter === "all" ? items : items.filter((i) => i.category === activeFilter)),
+    [items, activeFilter]
+  );
+  const filtered = useMemo(() => {
+    const copy = [...filteredBase];
+    copy.sort((a, b) =>
+      sortBy === "oldest"
+        ? a.addedAt.getTime() - b.addedAt.getTime()
+        : b.addedAt.getTime() - a.addedAt.getTime()
+    );
+    return copy;
+  }, [filteredBase, sortBy]);
 
   return (
     <div className="min-h-screen pb-24">

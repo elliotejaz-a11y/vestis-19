@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { Shirt, Palette, TrendingUp, LogOut, Pencil, DollarSign, MessageSquare, Bookmark, AtSign, Trash2, RotateCcw, CalendarDays, Home, Sparkles, Users, Camera, Sun, Moon, Lock, Plus, Globe, X, Layers, Wand2, UserSquare2 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -7,7 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { OutfitCard } from "@/components/OutfitCard";
-import Onboarding from "@/pages/Onboarding";
+// Lazy-load Onboarding so it doesn't add ~18 kB to the Profile chunk on first render
+const Onboarding = lazy(() => import("@/pages/Onboarding"));
 import { EditProfileSheet } from "@/components/EditProfileSheet";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -142,21 +143,30 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     };
   }, [fetchFollowCounts, fetchFitPics, fetchWishlist]);
 
-  const savedOutfits = outfits.filter((o) => o.saved);
+  const savedOutfits = useMemo(() => outfits.filter((o) => o.saved), [outfits]);
 
-  const categoryBreakdown = CATEGORIES.map((cat) => ({
-    ...cat,
-    count: items.filter((i) => i.category === cat.value).length,
-  }));
+  const categoryBreakdown = useMemo(
+    () => CATEGORIES.map((cat) => ({ ...cat, count: items.filter((i) => i.category === cat.value).length })),
+    [items]
+  );
 
-  const topColors = Object.entries(
-    items.reduce<Record<string, number>>((acc, i) => {
-      acc[i.color] = (acc[i.color] || 0) + 1;
-      return acc;
-    }, {})
-  ).sort(([, a], [, b]) => b - a).slice(0, 5);
+  const topColors = useMemo(
+    () =>
+      Object.entries(
+        items.reduce<Record<string, number>>((acc, i) => {
+          acc[i.color] = (acc[i.color] || 0) + 1;
+          return acc;
+        }, {})
+      )
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5),
+    [items]
+  );
 
-  const totalWardrobeValueNzd = items.reduce((sum, i) => sum + (i.estimatedPrice || 0), 0);
+  const totalWardrobeValueNzd = useMemo(
+    () => items.reduce((sum, i) => sum + (i.estimatedPrice || 0), 0),
+    [items]
+  );
   const currency = profile?.currency_preference || "NZD";
 
   const displayNameForTitle = profile?.display_name
@@ -165,7 +175,9 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
 
   if (editingProfile) {
     return (
-      <Onboarding editMode onComplete={async () => { await refreshProfile(); setEditingProfile(false); }} />
+      <Suspense fallback={<div />}>
+        <Onboarding editMode onComplete={async () => { await refreshProfile(); setEditingProfile(false); }} />
+      </Suspense>
     );
   }
 

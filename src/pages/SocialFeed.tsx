@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -67,7 +67,10 @@ export default function SocialFeed() {
   }, []);
 
   const feedPosts = posts;
-  const discoverPosts = posts.filter(p => p.user_id !== user?.id && p.user?.username && !/^user\d*$/i.test(p.user.username));
+  const discoverPosts = useMemo(
+    () => posts.filter(p => p.user_id !== user?.id && p.user?.username && !/^user\d*$/i.test(p.user.username)),
+    [posts, user?.id]
+  );
   const displayPosts = tab === "feed" ? feedPosts : discoverPosts;
 
   return (

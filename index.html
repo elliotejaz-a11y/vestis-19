@@ -8,7 +8,13 @@
     <meta name="author" content="Vestis" />
     <link rel="icon" type="image/png" href="/favicon.png">
     <link rel="preload" as="image" href="/src/assets/intro-outfit-generator.png" fetchpriority="high">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- Preconnect to font origins before the stylesheet fetch so DNS+TLS are already open -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Load font stylesheet async: media="print" fetches without blocking render, then swaps to "all" -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap" onload="this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800;900&display=swap"></noscript>
 
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0c36b902-fc39-47f2-8643-6e10f96c0315/id-preview-ef7b52e9--1830068e-1c44-4713-a94f-43ffd21bb2c7.lovable.app-1771144042739.png">

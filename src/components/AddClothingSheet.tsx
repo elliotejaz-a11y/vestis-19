@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,16 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Revoke blob URLs when they are replaced or when the component unmounts,
+  // preventing memory accumulation during a session with multiple uploads.
+  useEffect(() => {
+    return () => { if (imageUrl.startsWith("blob:")) URL.revokeObjectURL(imageUrl); };
+  }, [imageUrl]);
+
+  useEffect(() => {
+    return () => { if (backImageUrl.startsWith("blob:")) URL.revokeObjectURL(backImageUrl); };
+  }, [backImageUrl]);
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
