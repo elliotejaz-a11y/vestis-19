@@ -53,6 +53,14 @@ export default function Auth() {
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
+  // Keep status bar colour in sync with the auth gradient
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prev = meta?.getAttribute("content") ?? null;
+    meta?.setAttribute("content", "#7B2432");
+    return () => { if (prev) meta?.setAttribute("content", prev); };
+  }, []);
+
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
@@ -637,8 +645,8 @@ export default function Auth() {
         aria-hidden
       />
 
-      {/* Top — logo + greeting */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 pt-20 pb-8">
+      {/* Top — logo + greeting; paddingTop pushes content below the transparent status bar */}
+      <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8" style={{ paddingTop: "calc(env(safe-area-inset-top) + 5rem)" }}>
         <img
           src={vestisLogo}
           alt="Vestis"
