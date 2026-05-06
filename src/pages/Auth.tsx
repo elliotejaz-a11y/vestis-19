@@ -628,7 +628,7 @@ export default function Auth() {
   return (
     <div
       className="min-h-screen flex flex-col overflow-hidden"
-      style={{ background: "linear-gradient(155deg, hsl(350,55%,26%) 0%, hsl(300,42%,22%) 50%, hsl(236,65%,28%) 100%)" }}
+      style={{ background: "linear-gradient(175deg, #7B2432 0%, #3D1830 50%, #0D2339 100%)" }}
     >
       {/* Subtle noise texture overlay */}
       <div
@@ -723,7 +723,7 @@ export default function Auth() {
             type="submit"
             disabled={loading}
             className="w-full h-14 rounded-2xl bg-white font-bold text-base shadow-xl disabled:opacity-60 transition-opacity mt-1"
-            style={{ color: "hsl(236,65%,28%)" }}
+            style={{ color: "#7B2432" }}
           >
             {loading ? "Please wait…" : "Login"}
           </button>
@@ -772,7 +772,8 @@ export default function Auth() {
           <button
             type="button"
             onClick={() => setShowSignUpIntro(true)}
-            className="text-white font-bold"
+            style={{ color: "#F8F1E7" }}
+            className="font-bold"
           >
             Sign Up Now
           </button>
