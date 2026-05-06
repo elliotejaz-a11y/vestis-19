@@ -133,12 +133,6 @@ function AppRoutes() {
 }
 
 function AuthenticatedApp() {
-  // Reset status bar colour to match the light app background
-  useEffect(() => {
-    const meta = document.querySelector('meta[name="theme-color"]');
-    meta?.setAttribute("content", "#F8F1E7");
-  }, []);
-
   const { items, outfits, addItem, addItemToState, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, dataReady } = useWardrobe();
   const { deletedItems, addToDeleted, removeFromDeleted } = useRecentlyDeleted();
 
@@ -161,7 +155,7 @@ function AuthenticatedApp() {
 
   return (
     <MassUploadProvider onAdd={addItem}>
-    <div className="max-w-lg mx-auto min-h-screen relative" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+    <div className="max-w-lg mx-auto min-h-screen relative">
       <MassUploadProgressBanner />
       <div style={{ minHeight: "100%" }}>
       <Suspense fallback={<Noop />}>

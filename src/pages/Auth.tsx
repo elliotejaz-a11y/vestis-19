@@ -53,14 +53,6 @@ export default function Auth() {
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
-  // Keep status bar colour in sync with the auth gradient
-  useEffect(() => {
-    const meta = document.querySelector('meta[name="theme-color"]');
-    const prev = meta?.getAttribute("content") ?? null;
-    meta?.setAttribute("content", "#7B2432");
-    return () => { if (prev) meta?.setAttribute("content", prev); };
-  }, []);
-
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
@@ -636,7 +628,7 @@ export default function Auth() {
   return (
     <div
       className="min-h-screen flex flex-col overflow-hidden"
-      style={{ background: "linear-gradient(175deg, #7B2432 0%, #3D1830 50%, #0D2339 100%)" }}
+      style={{ background: "linear-gradient(155deg, hsl(350,55%,26%) 0%, hsl(300,42%,22%) 50%, hsl(236,65%,28%) 100%)" }}
     >
       {/* Subtle noise texture overlay */}
       <div
@@ -645,8 +637,8 @@ export default function Auth() {
         aria-hidden
       />
 
-      {/* Top — logo + greeting; paddingTop pushes content below the transparent status bar */}
-      <div className="flex-1 flex flex-col items-center justify-center px-8 pb-8" style={{ paddingTop: "calc(env(safe-area-inset-top) + 5rem)" }}>
+      {/* Top — logo + greeting */}
+      <div className="flex-1 flex flex-col items-center justify-center px-8 pt-20 pb-8">
         <img
           src={vestisLogo}
           alt="Vestis"
@@ -731,7 +723,7 @@ export default function Auth() {
             type="submit"
             disabled={loading}
             className="w-full h-14 rounded-2xl bg-white font-bold text-base shadow-xl disabled:opacity-60 transition-opacity mt-1"
-            style={{ color: "#7B2432" }}
+            style={{ color: "hsl(236,65%,28%)" }}
           >
             {loading ? "Please wait…" : "Login"}
           </button>
@@ -780,8 +772,7 @@ export default function Auth() {
           <button
             type="button"
             onClick={() => setShowSignUpIntro(true)}
-            style={{ color: "#F8F1E7" }}
-            className="font-bold"
+            className="text-white font-bold"
           >
             Sign Up Now
           </button>
