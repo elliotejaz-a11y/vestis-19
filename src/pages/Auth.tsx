@@ -53,6 +53,14 @@ export default function Auth() {
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
+  // Keep status bar colour in sync with the auth gradient
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const prev = meta?.getAttribute("content") ?? null;
+    meta?.setAttribute("content", "#FFFFFF");
+    return () => { if (prev) meta?.setAttribute("content", prev); };
+  }, []);
+
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
@@ -626,24 +634,17 @@ export default function Auth() {
 
   // ============ SIGN-IN FORM ============
   return (
-    <div className="relative min-h-screen flex flex-col items-center justify-center px-6 bg-background overflow-hidden">
-      {/* Ambient gradient orbs */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute -top-28 -right-20 h-96 w-96 rounded-full bg-accent/12 blur-3xl" />
-        <div className="absolute top-1/2 -left-24 h-72 w-72 rounded-full bg-accent/8 blur-3xl" />
-        <div className="absolute -bottom-20 right-1/3 h-64 w-64 rounded-full bg-accent/7 blur-3xl" />
-      </div>
-
+    <div
+      className="min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden"
+      style={{ background: "linear-gradient(180deg, #FFFFFF 0%, #F8F1E7 38%, #7B2432 80%, #4E1622 100%)" }}
+    >
       <div className="relative w-full max-w-sm space-y-8">
         {/* Logo + headline */}
         <div className="text-center space-y-3">
-          <div className="relative inline-flex items-center justify-center mb-1">
-            <div className="absolute h-24 w-24 rounded-full bg-accent/15 blur-2xl" aria-hidden />
-            <img src={vestisLogo} alt="Vestis" className="relative h-16 drop-shadow-sm" />
-          </div>
+          <img src={vestisLogo} alt="Vestis" className="h-16 drop-shadow-sm mx-auto" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
-            <p className="text-sm text-muted-foreground mt-1">Your wardrobe is waiting</p>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#7B2432" }}>Welcome back</h1>
+            <p className="text-sm mt-1" style={{ color: "rgba(123,36,50,0.6)" }}>Your wardrobe is waiting</p>
           </div>
         </div>
 
@@ -709,11 +710,12 @@ export default function Auth() {
           </form>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground">
+        <p className="text-center text-xs" style={{ color: "rgba(255,255,255,0.7)" }}>
           Don't have an account?{" "}
           <button
             onClick={() => setShowSignUpIntro(true)}
-            className="text-accent font-semibold hover:underline"
+            style={{ color: "#F8F1E7" }}
+            className="font-bold hover:underline"
           >
             Sign Up
           </button>
