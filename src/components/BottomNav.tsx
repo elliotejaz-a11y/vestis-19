@@ -57,7 +57,6 @@ export function BottomNav() {
           );
         })}
       </div>
-      <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
   );
 }
