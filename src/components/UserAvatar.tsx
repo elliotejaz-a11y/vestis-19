@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { batchResolveAvatarUrls } from "@/lib/storage";
+import { batchResolveAvatarUrls, getCachedAvatarUrl } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const MAX_RETRIES = 2;
@@ -57,7 +57,9 @@ export function UserAvatar({
   className,
   avatarPosition,
 }: UserAvatarProps) {
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(avatarUrl ?? null);
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(
+    getCachedAvatarUrl(avatarUrl) ?? avatarUrl ?? null
+  );
   const [imgError, setImgError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
   const retryCount = useRef(0);
@@ -106,6 +108,7 @@ export function UserAvatar({
           alt=""
           className="w-full h-full object-cover"
           style={{ objectPosition: avatarPosition || "center" }}
+          loading="eager"
           onError={handleImgError}
         />
       ) : presetCfg ? (

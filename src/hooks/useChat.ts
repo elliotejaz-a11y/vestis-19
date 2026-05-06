@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { batchResolveAvatarUrls } from "@/lib/storage";
 
 export interface ChatMessage {
   id: string;
@@ -75,7 +76,9 @@ export function useChat() {
       ...(blockedMe || []).map((r: any) => r.blocker_id),
     ]);
 
-    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
+    const rawProfiles = profiles || [];
+    const signedAvatars = await batchResolveAvatarUrls(rawProfiles.map((p: any) => p.avatar_url));
+    const profileMap = new Map(rawProfiles.map((p: any, i: number) => [p.id, { ...p, avatar_url: signedAvatars[i] ?? p.avatar_url }]));
 
     const convs: Conversation[] = partnerIds.filter((pid) => !blockedIds.has(pid)).map((pid) => {
       const { lastMsg, unread } = convMap.get(pid)!;

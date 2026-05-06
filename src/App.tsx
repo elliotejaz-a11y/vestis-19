@@ -16,6 +16,7 @@ import { lazy, Suspense, useCallback, useEffect } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { ThemeProvider } from "next-themes";
 import { preloadBgRemovalModel } from "@/lib/image-processing";
+import { preloadAvatarUrls } from "@/lib/storage";
 
 // Lazy-loaded page components — assigned to variables so we can preload them
 const Wardrobe = lazy(() => import("./pages/Wardrobe"));
@@ -78,6 +79,13 @@ const Noop = () => <div />;
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
+
+  // Preload the current user's avatar as soon as profile resolves — before any component mounts.
+  useEffect(() => {
+    if (profile?.avatar_url) {
+      preloadAvatarUrls([profile.avatar_url]);
+    }
+  }, [profile?.avatar_url]);
 
   // Preload all route chunks and warm up the bg-removal ONNX model once auth resolves.
   // Both are fire-and-forget: never throw, never block rendering.

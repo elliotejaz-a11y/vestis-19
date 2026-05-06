@@ -145,6 +145,28 @@ export async function batchGetSignedSocialUrls(values: (string | null | undefine
   });
 }
 
+// Returns a cached signed avatar URL synchronously, or null if not cached / expired.
+export function getCachedAvatarUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const cached = avatarUrlCache.get(url);
+  if (cached && cached.expiresAt - Date.now() > 5 * 60 * 1000) return cached.signedUrl;
+  return null;
+}
+
+// Resolves avatar URLs to signed URLs and kicks off browser image prefetch so
+// subsequent <img> renders hit the browser cache instantly.
+export async function preloadAvatarUrls(urls: (string | null | undefined)[]): Promise<void> {
+  const filtered = urls.filter(Boolean) as string[];
+  if (filtered.length === 0) return;
+  const resolved = await batchResolveAvatarUrls(filtered);
+  resolved.forEach((url) => {
+    if (url) {
+      const img = new Image();
+      img.src = url;
+    }
+  });
+}
+
 // Signs avatar URLs from either social-content (new uploads) or social-media (legacy) buckets.
 // Falls back to the original URL if signing fails so there's never a regression.
 export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefined)[]): Promise<(string | null)[]> {
