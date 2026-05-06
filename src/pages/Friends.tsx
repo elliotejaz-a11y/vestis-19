@@ -8,11 +8,12 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { ClothingItem } from "@/types/wardrobe";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/currency";
-import { resolveSignedClothingImageFields, isStoragePath } from "@/lib/storage";
+import { batchResolveSignedClothingImageFields, isStoragePath } from "@/lib/storage";
 import { useNavigate } from "react-router-dom";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationsSheet } from "@/components/NotificationsSheet";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
+import { LazyImage } from "@/components/LazyImage";
 
 interface FriendProfile {
   id: string;
@@ -48,20 +49,15 @@ export default function Friends() {
     if (!user) return;
     setLoading(true);
 
-    // Get people I follow
-    const { data: following } = await supabase
-      .from("follows")
-      .select("following_id")
-      .eq("follower_id", user.id);
-    const myFollowing = (following || []).map((f: any) => f.following_id);
-    setFollowingIds(myFollowing);
+    // Fetch following and followers in parallel — eliminates one round-trip
+    const [{ data: following }, { data: followers }] = await Promise.all([
+      supabase.from("follows").select("following_id").eq("follower_id", user.id),
+      supabase.from("follows").select("follower_id").eq("following_id", user.id),
+    ]);
 
-    // Get people who follow me
-    const { data: followers } = await supabase
-      .from("follows")
-      .select("follower_id")
-      .eq("following_id", user.id);
+    const myFollowing = (following || []).map((f: any) => f.following_id);
     const myFollowers = (followers || []).map((f: any) => f.follower_id);
+    setFollowingIds(myFollowing);
     setFollowerIds(myFollowers);
 
     // Mutual = intersection
@@ -121,7 +117,8 @@ export default function Friends() {
       .eq("user_id", friend.id)
       .eq("is_private", false);
 
-    const items = await Promise.all((data || []).map((r: any) => resolveSignedClothingImageFields({
+    // Batch-sign all image URLs in a single createSignedUrls call instead of one per item
+    const rawItems = (data || []).map((r: any) => ({
       id: r.id,
       name: r.name,
       category: r.category,
@@ -136,7 +133,8 @@ export default function Friends() {
       addedAt: new Date(r.created_at),
       estimatedPrice: r.estimated_price ? Number(r.estimated_price) : undefined,
       isPrivate: r.is_private || false,
-    })));
+    }));
+    const items = await batchResolveSignedClothingImageFields(rawItems);
 
     setFriendWardrobe(items);
     setLoadingWardrobe(false);
@@ -185,7 +183,7 @@ export default function Friends() {
                 onClick={() => setSelectedFriendItem(item)}
                 className="aspect-square rounded-xl overflow-hidden bg-card border border-border/40 relative group active:scale-95 transition-transform"
               >
-                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                <LazyImage src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" fallbackClassName="aspect-square" />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
                   <p className="text-[10px] text-white font-medium truncate">{item.name}</p>
                   <p className="text-[9px] text-white/70">{item.category} • {item.color}</p>

@@ -341,11 +341,19 @@ export function useWardrobe() {
     if (!user) { setItems([]); setOutfits([]); setLoading(false); return; }
 
     const fetchAll = async () => {
-      const { data: clothingData } = await supabase
-        .from("clothing_items")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
+      // Fetch clothing items and outfits in parallel — eliminates one full round-trip
+      const [{ data: clothingData }, { data: outfitData }] = await Promise.all([
+        supabase
+          .from("clothing_items")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("outfits")
+          .select("*, outfit_items(clothing_item_id)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
 
       const rawItems: ClothingItem[] = (clothingData || []).map((r: any) => ({
         id: r.id,
@@ -365,12 +373,6 @@ export function useWardrobe() {
       }));
       const dbItems = await batchResolveSignedClothingImageFields(rawItems);
       setItems(dbItems);
-
-      const { data: outfitData } = await supabase
-        .from("outfits")
-        .select("*, outfit_items(clothing_item_id)")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
 
       if (outfitData) {
         const dbOutfits: Outfit[] = outfitData.map((o: any) => {

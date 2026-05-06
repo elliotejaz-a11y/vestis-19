@@ -12,7 +12,7 @@ import { MassUploadProvider } from "@/contexts/MassUploadContext";
 import { MassUploadProgressBanner } from "@/components/MassUploadProgressBanner";
 import { MassUploadReviewSheet } from "@/components/MassUploadReviewSheet";
 
-import { lazy, Suspense, useCallback, useEffect } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { ThemeProvider } from "next-themes";
 import { preloadBgRemovalModel } from "@/lib/image-processing";
@@ -144,13 +144,17 @@ function AuthenticatedApp() {
   const { items, outfits, addItem, addItemToState, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, dataReady } = useWardrobe();
   const { deletedItems, addToDeleted, removeFromDeleted } = useRecentlyDeleted();
 
+  // Use a ref so handleSoftRemove is stable across renders while still seeing current items
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
   const handleSoftRemove = useCallback((id: string) => {
-    const item = items.find((i) => i.id === id);
+    const item = itemsRef.current.find((i) => i.id === id);
     if (item) {
       addToDeleted(item);
     }
     removeItem(id);
-  }, [items, addToDeleted, removeItem]);
+  }, [addToDeleted, removeItem]);
 
   const handleRestore = useCallback(async (item: ClothingItem) => {
     await addItem(item);

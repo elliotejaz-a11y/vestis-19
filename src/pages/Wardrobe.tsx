@@ -1,7 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
+import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
-import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { WardrobeAddButton } from "@/components/WardrobeAddButton";
 import { OutfitCard } from "@/components/OutfitCard";
 
@@ -24,13 +24,19 @@ interface Props {
   dataReady?: boolean;
 }
 
+const COLS = 2;
+// Estimated row height: card aspect-ratio 3/4 at ~165px wide + 52px label + 12px gap
+const ROW_HEIGHT = 290;
+// Only virtualize for larger wardrobes — small lists aren't worth the overhead
+const VIRTUALIZE_THRESHOLD = 30;
+
 export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval, dataReady }: Props) {
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
   const navigate = useNavigate();
-
+  const gridRef = useRef<HTMLDivElement>(null);
 
   const savedOutfits = useMemo(() => outfits.filter((o) => o.saved), [outfits]);
   const filteredBase = useMemo(
@@ -46,6 +52,18 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
     );
     return copy;
   }, [filteredBase, sortBy]);
+
+  const numRows = Math.ceil(filtered.length / COLS);
+  const useVirtualGrid = filtered.length >= VIRTUALIZE_THRESHOLD;
+
+  const rowVirtualizer = useWindowVirtualizer({
+    count: useVirtualGrid ? numRows : 0,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 3,
+    scrollMargin: gridRef.current?.offsetTop ?? 0,
+  });
+
+  const handleDetail = useCallback((item: ClothingItem) => setDetailItem(item), []);
 
   return (
     <div className="min-h-screen pb-24">
@@ -158,14 +176,49 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
                 </button>
               </WardrobeAddButton>
             </div>
+          ) : useVirtualGrid ? (
+            /* Virtualized grid — only rendered for wardrobes with 30+ items */
+            <div
+              ref={gridRef}
+              style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const startIdx = virtualRow.index * COLS;
+                const rowItems = filtered.slice(startIdx, startIdx + COLS);
+                return (
+                  <div
+                    key={virtualRow.key}
+                    style={{
+                      position: "absolute",
+                      top: `${virtualRow.start - (gridRef.current?.offsetTop ?? 0)}px`,
+                      left: 0,
+                      right: 0,
+                      height: `${virtualRow.size}px`,
+                    }}
+                    className="grid grid-cols-2 gap-3 px-4"
+                  >
+                    {rowItems.map((item) => (
+                      <ClothingCard
+                        key={item.id}
+                        item={item}
+                        onRemove={onRemove}
+                        onDetail={handleDetail}
+                        onRetryBackgroundRemoval={onRetryBackgroundRemoval}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
           ) : (
+            /* Small wardrobe — plain grid, no virtualizer overhead */
             <div className="px-4 grid grid-cols-2 gap-3">
               {filtered.map((item) => (
                 <ClothingCard
                   key={item.id}
                   item={item}
                   onRemove={onRemove}
-                  onDetail={setDetailItem}
+                  onDetail={handleDetail}
                   onRetryBackgroundRemoval={onRetryBackgroundRemoval}
                 />
               ))}
