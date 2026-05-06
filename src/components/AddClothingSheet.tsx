@@ -46,8 +46,14 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
   const [removingBackBg, setRemovingBackBg] = useState(false);
   const [rotation, setRotation] = useState(0);
 
+  const [saving, setSaving] = useState(false);
+
   const fileRef = useRef<HTMLInputElement>(null);
   const backFileRef = useRef<HTMLInputElement>(null);
+  // Holds the in-flight BG removal promise so handleSave can await it if needed.
+  // Null means no removal is pending (either not started or already resolved).
+  const bgRemovalRef = useRef<Promise<Blob | null>>(null);
+  const backBgRemovalRef = useRef<Promise<Blob | null>>(null);
   const { toast } = useToast();
 
   // Revoke blob URLs when they are replaced or when the component unmounts,
@@ -131,23 +137,35 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
       return;
     }
 
-    // Show original preview immediately
+    // Detach any previous in-flight removal so its .then() won't touch state.
+    bgRemovalRef.current = null;
+
+    // Show original immediately — user can see something while both operations run.
     setImageUrl(URL.createObjectURL(file));
     setRemovingBg(true);
-    let cleanBlob: Blob;
-    try {
-      cleanBlob = await processClothingImage(file);
-      setImageUrl(URL.createObjectURL(cleanBlob));
-    } catch {
-      cleanBlob = file;
-    } finally {
-      setRemovingBg(false);
-    }
 
+    // ── BG removal: fire and forget ──────────────────────────────────────────
+    // We intentionally do NOT await here. The promise is stored in a ref so
+    // handleSave can await it if the user taps Save before it resolves.
+    const bgPromise: Promise<Blob | null> = processClothingImage(file)
+      .then(cleanBlob => {
+        // Guard: skip if the user reset the form or selected a new file.
+        if (bgRemovalRef.current !== bgPromise) return cleanBlob;
+        setImageUrl(URL.createObjectURL(cleanBlob));
+        setRemovingBg(false);
+        return cleanBlob;
+      })
+      .catch(() => {
+        if (bgRemovalRef.current === bgPromise) setRemovingBg(false);
+        return null; // keep original preview on failure
+      });
+    bgRemovalRef.current = bgPromise;
+
+    // ── AI analysis: runs concurrently with BG removal ───────────────────────
+    // Uses the original file — no need to wait for the clean blob.
     setAnalyzing(true);
     try {
-      // Resize image to max 1024px before sending to AI to stay under 10MB limit
-      const resizedBlob = await resizeImageForAnalysis(cleanBlob, 1024);
+      const resizedBlob = await resizeImageForAnalysis(file, 1024);
       const base64 = await fileToBase64(new File([resizedBlob], file.name, { type: "image/jpeg" }));
       const { data, error } = await supabase.functions.invoke("vestis-analyze-item", {
         body: { imageBase64: base64 },
@@ -190,26 +208,66 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
       toast({ title: "File too large", description: "Max size 10MB.", variant: "destructive" });
       return;
     }
+
+    backBgRemovalRef.current = null;
     setBackImageUrl(URL.createObjectURL(file));
     setRemovingBackBg(true);
-    try {
-      const cleanBlob = await processClothingImage(file);
-      setBackImageUrl(URL.createObjectURL(cleanBlob));
-    } catch {
-      // keep original if removal fails
-    } finally {
-      setRemovingBackBg(false);
-    }
+
+    const backBgPromise: Promise<Blob | null> = processClothingImage(file)
+      .then(cleanBlob => {
+        if (backBgRemovalRef.current !== backBgPromise) return cleanBlob;
+        setBackImageUrl(URL.createObjectURL(cleanBlob));
+        setRemovingBackBg(false);
+        return cleanBlob;
+      })
+      .catch(() => {
+        if (backBgRemovalRef.current === backBgPromise) setRemovingBackBg(false);
+        return null;
+      });
+    backBgRemovalRef.current = backBgPromise;
   };
 
   const handleSave = async () => {
     if (!imageUrl || !name || !category) return;
+
+    // If BG removal is still running, wait for it now. The model was warm when
+    // the user selected the file, so this should resolve in a second or less.
+    // On a genuine cold start it may take a moment — we show a loading state.
+    let finalImageUrl = imageUrl;
+    let finalBackImageUrl = backImageUrl;
+
+    const pendingMain = removingBg && bgRemovalRef.current;
+    const pendingBack = removingBackBg && backBgRemovalRef.current;
+
+    if (pendingMain || pendingBack) {
+      setSaving(true);
+      const [mainBlob, backBlob] = await Promise.all([
+        pendingMain ? bgRemovalRef.current! : Promise.resolve(null),
+        pendingBack ? backBgRemovalRef.current! : Promise.resolve(null),
+      ]);
+      setSaving(false);
+
+      if (mainBlob) {
+        if (finalImageUrl.startsWith("blob:")) URL.revokeObjectURL(finalImageUrl);
+        finalImageUrl = URL.createObjectURL(mainBlob);
+        setImageUrl(finalImageUrl);
+      }
+      if (backBlob) {
+        if (finalBackImageUrl.startsWith("blob:")) URL.revokeObjectURL(finalBackImageUrl);
+        finalBackImageUrl = URL.createObjectURL(backBlob);
+        setBackImageUrl(finalBackImageUrl);
+      }
+
+      bgRemovalRef.current = null;
+      backBgRemovalRef.current = null;
+    }
+
     const color = joinColors(colors);
-    const isFileSourced = imageUrl.startsWith("blob:") || imageUrl.startsWith("data:");
+    const isFileSourced = finalImageUrl.startsWith("blob:") || finalImageUrl.startsWith("data:");
     let imageBase64ForProcessing: string | undefined;
     if (isFileSourced) {
       try {
-        imageBase64ForProcessing = await imageUrlToBase64(imageUrl);
+        imageBase64ForProcessing = await imageUrlToBase64(finalImageUrl);
       } catch (e) {
         console.warn("Could not get base64 for background removal:", e);
       }
@@ -221,8 +279,8 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
         category,
         color,
         fabric,
-        imageUrl,
-        backImageUrl: backImageUrl || undefined,
+        imageUrl: finalImageUrl,
+        backImageUrl: finalBackImageUrl || undefined,
         tags: [...tags, ...colors.map(c => c.toLowerCase()), fabric.toLowerCase(), category].filter(Boolean),
         notes,
         addedAt: new Date(),
@@ -238,6 +296,13 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
   };
 
   const resetForm = () => {
+    // Detach in-flight promises so their .then() callbacks don't touch state
+    // after the form is cleared.
+    bgRemovalRef.current = null;
+    backBgRemovalRef.current = null;
+    setRemovingBg(false);
+    setRemovingBackBg(false);
+    setSaving(false);
     setImageUrl(""); setBackImageUrl(""); setName(""); setCategory(""); setColors([]); setFabric("");
     setSize(""); setPrivacy("public"); setTags([]); setNotes(""); setEstimatedPrice(undefined); setPriceInput(""); setRotation(0);
   };
@@ -287,15 +352,9 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
                 </div>
               )}
               {removingBg && (
-                <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                  <div className="relative">
-                    <div className="w-14 h-14 rounded-full border-[3px] border-accent/30 border-t-accent animate-spin" />
-                    <Sparkles className="w-5 h-5 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-sm font-semibold text-white">Removing Background</p>
-                    <p className="text-[11px] text-white/60 mt-1">This may take a moment…</p>
-                  </div>
+                <div className="absolute bottom-2 left-2 flex items-center gap-1.5 bg-black/70 rounded-full px-2.5 py-1 pointer-events-none">
+                  <div className="w-3 h-3 rounded-full border border-accent/30 border-t-accent animate-spin shrink-0" />
+                  <span className="text-[10px] text-white font-medium">Removing background…</span>
                 </div>
               )}
               {!removingBg && analyzing && (
@@ -331,12 +390,9 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
                 <div className="relative rounded-xl overflow-hidden bg-white dark:bg-neutral-800 h-24">
                   <img src={backImageUrl} alt="Back" className={`w-full h-full object-contain transition-all duration-300 ${removingBackBg ? 'blur-[2px] scale-[1.02]' : ''}`} />
                   {removingBackBg ? (
-                    <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex flex-col items-center justify-center gap-1.5">
-                      <div className="relative">
-                        <div className="w-8 h-8 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
-                        <Sparkles className="w-3 h-3 text-accent absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
-                      </div>
-                      <p className="text-[10px] font-semibold text-white">Removing Background</p>
+                    <div className="absolute bottom-1 left-1 flex items-center gap-1 bg-black/70 rounded-full px-2 py-0.5 pointer-events-none">
+                      <div className="w-2.5 h-2.5 rounded-full border border-accent/30 border-t-accent animate-spin shrink-0" />
+                      <span className="text-[9px] text-white font-medium">Removing background…</span>
                     </div>
                   ) : (
                     <button onClick={() => setBackImageUrl("")} className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center text-foreground text-xs">✕</button>
@@ -459,10 +515,13 @@ export function AddClothingSheet({ onAdd, children, open: openProp, onOpenChange
 
           <Button
             onClick={handleSave}
-            disabled={!imageUrl || !name || !category || analyzing || removingBg || removingBackBg}
+            disabled={!imageUrl || !name || !category || analyzing || saving}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90 transition-colors"
           >
-            <Sparkles className="w-4 h-4 mr-2" /> Save to Wardrobe
+            {saving
+              ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Finalising image…</>
+              : <><Sparkles className="w-4 h-4 mr-2" /> Save to Wardrobe</>
+            }
           </Button>
         </div>
       </SheetContent>

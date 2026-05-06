@@ -15,6 +15,7 @@ import { MassUploadReviewSheet } from "@/components/MassUploadReviewSheet";
 import { lazy, Suspense, useCallback, useEffect } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { ThemeProvider } from "next-themes";
+import { preloadBgRemovalModel } from "@/lib/image-processing";
 
 // Lazy-loaded page components — assigned to variables so we can preload them
 const Wardrobe = lazy(() => import("./pages/Wardrobe"));
@@ -78,14 +79,20 @@ const Noop = () => <div />;
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
 
-  // Preload all route chunks once auth resolves
+  // Preload all route chunks and warm up the bg-removal ONNX model once auth resolves.
+  // Both are fire-and-forget: never throw, never block rendering.
   useEffect(() => {
     if (!loading && user) {
-      // Use requestIdleCallback if available, otherwise setTimeout
       if ("requestIdleCallback" in window) {
-        (window as any).requestIdleCallback(preloadAllRoutes);
+        (window as any).requestIdleCallback(() => {
+          preloadAllRoutes();
+          preloadBgRemovalModel();
+        });
       } else {
-        setTimeout(preloadAllRoutes, 200);
+        setTimeout(() => {
+          preloadAllRoutes();
+          preloadBgRemovalModel();
+        }, 200);
       }
     }
   }, [loading, user]);
