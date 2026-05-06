@@ -97,4 +97,9 @@
   .glass-card {
     @apply bg-card/80 backdrop-blur-md border border-border/50 shadow-sm;
   }
+
+  /* Auth gradient inputs — white placeholder on frosted glass */
+  .auth-input::placeholder {
+    color: rgba(255, 255, 255, 0.45);
+  }
 }
