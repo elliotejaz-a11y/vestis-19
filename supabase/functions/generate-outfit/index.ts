@@ -600,6 +600,7 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
 
       // If the outfit is still an exact duplicate of any recent outfit, also rotate the top.
       if (isDuplicateOutfit(selectedItems, Array.isArray(recentOutfitItemIds) ? recentOutfitItemIds : [])) {
+        // Phase 1: try a completely fresh top.
         const usedIds = new Set(selectedItems.map((i: any) => String(i.id)));
         const topIdx = selectedItems.findIndex(isTopHalf);
         if (topIdx >= 0 && allRecentIds.has(String(selectedItems[topIdx].id))) {
@@ -611,6 +612,27 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
             selectedItems = [...selectedItems];
             selectedItems[topIdx] = pick;
             selectedItems = dedupeById(selectedItems);
+          }
+        }
+
+        // Phase 2: if still an exact duplicate (no fresh alternatives exist in any slot),
+        // swap the first slot whose alternative has the lowest recentIdCounts value.
+        // This ensures cyclic rotation even when every item has been worn recently.
+        if (isDuplicateOutfit(selectedItems, Array.isArray(recentOutfitItemIds) ? recentOutfitItemIds : [])) {
+          const usedIds2 = new Set(selectedItems.map((i: any) => String(i.id)));
+          for (const predicate of [isBottom, isShoe, isTopHalf]) {
+            const idx = selectedItems.findIndex(predicate);
+            if (idx < 0) continue;
+            const alternatives = candidateItems
+              .filter((item: any) => predicate(item) && !usedIds2.has(String(item.id)))
+              .sort((a: any, b: any) => (recentIdCounts.get(String(a.id)) || 0) - (recentIdCounts.get(String(b.id)) || 0));
+            const pick = alternatives[0];
+            if (pick) {
+              selectedItems = [...selectedItems];
+              selectedItems[idx] = pick;
+              selectedItems = dedupeById(selectedItems);
+              break;
+            }
           }
         }
       }

@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 import { isStoragePath, resolveSignedClothingImageFields, batchResolveSignedClothingImageFields, getSignedStorageUrl } from "@/lib/storage";
+import { buildRecentIdCounts, isExactDuplicateOfRecent, breakExactDuplicate } from "@/lib/outfitRotation";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
 const isBottomsCategory = (category?: string) => (category || "").trim().toLowerCase() === "bottoms";
@@ -773,6 +774,22 @@ export function useWardrobe() {
             return item;
           });
         }
+
+        // Phase 2: if the outfit is still an exact duplicate after Phase 1 swaps,
+        // force-rotate using the least-recently-worn alternative in any slot.
+        if (isExactDuplicateOfRecent(selectedItems, outfits)) {
+          selectedItems = breakExactDuplicate(
+            selectedItems,
+            items,
+            buildRecentIdCounts(outfits),
+            [
+              (i) => isBottomsCategory(i.category),
+              (i) => isShoesCategory(i.category),
+              (i) => isTopOrJumperCategory(i.category),
+            ]
+          );
+        }
+
         const resolvedReasoning = isDetailedReasoning(data.reasoning)
           ? data.reasoning.trim()
           : buildOutfitReasoningFallback({ occasion, selectedItems, profile, weather });
