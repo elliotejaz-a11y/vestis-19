@@ -62,36 +62,5 @@ USING (
   AND auth.uid()::text = (storage.foldername(name))[1]
 );
 
+-- clothing-images select policy is created correctly in migration 20260430120000
 DROP POLICY IF EXISTS "clothing-images: owner can list" ON storage.objects;
-CREATE POLICY "clothing-images: owner can list"
-ON storage.objects
-FOR SELECT
-TO authenticated
-USING (
-  bucket_id = 'clothing-images'
-  AND (
-    auth.uid()::text = (storage.foldername(name))[1]
-    OR EXISTS (
-      SELECT 1
-      FROM public.clothing_items ci
-      WHERE ci.image_url = name
-        AND public.can_view_user(auth.uid(), ci.user_id)
-        AND (
-          ci.privacy = 'public'
-          OR ci.user_id = auth.uid()
-          OR (ci.privacy = 'friends' AND public.are_friends(auth.uid(), ci.user_id))
-        )
-    )
-    OR EXISTS (
-      SELECT 1
-      FROM public.clothing_items ci
-      WHERE ci.back_image_url = name
-        AND public.can_view_user(auth.uid(), ci.user_id)
-        AND (
-          ci.privacy = 'public'
-          OR ci.user_id = auth.uid()
-          OR (ci.privacy = 'friends' AND public.are_friends(auth.uid(), ci.user_id))
-        )
-    )
-  )
-);
