@@ -19,7 +19,7 @@ import FollowListSheet from "@/components/FollowListSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import { ChangePasswordSheet } from "@/components/ChangePasswordSheet";
-import { SignedSocialImage } from "@/components/SignedSocialImage";
+import { getStoragePathFromUrl, getSignedStorageUrl, batchGetSignedSocialUrls } from "@/lib/storage";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -84,7 +84,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       .select("id, image_url, description, pic_date, is_private, created_at")
       .eq("user_id", user.id)
       .order("pic_date", { ascending: false });
-    setFitPics(data || []);
+    if (!data) { setFitPics([]); return; }
+    const imageUrls = data.map((p: any) => p.image_url as string | null);
+    const signedUrls = await batchGetSignedSocialUrls(imageUrls);
+    setFitPics(data.map((p: any, i: number) => ({ ...p, image_url: signedUrls[i] ?? p.image_url })));
   }, [user]);
 
   const fetchWishlist = useCallback(async () => {
@@ -95,7 +98,18 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       .eq("user_id", user.id)
       .order("created_at", { ascending: true })
       .limit(3);
-    setWishlistItems(data || []);
+    if (!data) { setWishlistItems([]); return; }
+    // Sign wishlist image URLs so they work regardless of bucket visibility.
+    const signedItems = await Promise.all(
+      data.map(async (w: any) => {
+        if (!w.image_url) return w;
+        const path = getStoragePathFromUrl("wishlist-images", w.image_url);
+        if (!path) return w;
+        const signed = await getSignedStorageUrl("wishlist-images", path, { fallbackUrl: w.image_url });
+        return { ...w, image_url: signed ?? w.image_url };
+      })
+    );
+    setWishlistItems(signedItems);
   }, [user]);
 
   const handleRefresh = useCallback(() => {
@@ -275,7 +289,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                   onContextMenu={(e) => { e.preventDefault(); setSelectedFitPic(pic); }}
                   className="aspect-square rounded-xl overflow-hidden relative"
                 >
-                  <SignedSocialImage src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />
+                  {pic.image_url && <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />}
                   {pic.is_private && (
                     <div className="absolute top-1 right-1 bg-foreground/60 rounded-full px-1.5 py-0.5">
                       <span className="text-[8px] text-background">Private</span>
@@ -768,12 +782,14 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           >
             <X className="w-5 h-5" />
           </button>
-          <SignedSocialImage
-            src={fullscreenFitPic.image_url}
-            alt={fullscreenFitPic.description || ""}
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {fullscreenFitPic.image_url && (
+            <img
+              src={fullscreenFitPic.image_url}
+              alt={fullscreenFitPic.description || ""}
+              className="max-w-full max-h-full object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>
       )}
     </div>

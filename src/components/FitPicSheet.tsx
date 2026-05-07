@@ -75,12 +75,9 @@ export function FitPicSheet({ children, outfitId, defaultDate, onSaved }: FitPic
         .upload(path, croppedBlob, { contentType: "image/jpeg", cacheControl: "3600" });
       if (uploadErr) throw uploadErr;
 
-      const { data: urlData } = supabase.storage.from("social-content").getPublicUrl(path);
-      const imageUrl = urlData.publicUrl;
-
       const { error: insertErr } = await supabase.from("fit_pics").insert({
         user_id: user.id,
-        image_url: imageUrl,
+        image_url: path,
         description,
         pic_date: picDate,
         is_private: isPrivate,
