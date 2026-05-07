@@ -1,16 +1,8 @@
 /// <reference types="npm:@types/react@18.3.1" />
 
 import * as React from 'npm:react@18.3.1'
-
-import {
-  Body,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Text,
-} from 'npm:@react-email/components@0.0.22'
+import { Heading, Text } from 'npm:@react-email/components@0.0.22'
+import { EmailLayout, OTPCode } from './base.tsx'
 
 interface RecoveryEmailProps {
   siteName: string
@@ -18,51 +10,39 @@ interface RecoveryEmailProps {
   token: string
 }
 
-export const RecoveryEmail = ({
-  siteName,
-  token,
-}: RecoveryEmailProps) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>Your password reset code for {siteName}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Reset your password</Heading>
-        <Text style={text}>
-          We received a request to reset your password for {siteName}. Use
-          the code below to verify your identity:
-        </Text>
-        <Text style={codeStyle}>{token}</Text>
-        <Text style={footer}>
-          This code will expire shortly. If you didn't request a password
-          reset, you can safely ignore this email.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
+export const RecoveryEmail = ({ token }: RecoveryEmailProps) => (
+  <EmailLayout preview="Your Vestis password reset code">
+    <Heading style={heading}>Reset your password</Heading>
+    <Text style={body}>
+      We received a request to reset your Vestis password. Enter the code
+      below to continue. This code is valid for 1 hour.
+    </Text>
+    <OTPCode code={token} />
+    <Text style={note}>
+      If you didn't request a password reset, your account is still secure —
+      you can safely ignore this email.
+    </Text>
+  </EmailLayout>
 )
 
 export default RecoveryEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: 'hsl(30, 10%, 15%)',
-  margin: '0 0 20px',
+const heading = {
+  fontSize: '26px',
+  fontWeight: '700' as const,
+  color: '#1a0407',
+  margin: '0 0 16px',
+  lineHeight: '1.2',
 }
-const text = {
-  fontSize: '14px',
-  color: 'hsl(30, 8%, 50%)',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
+const body = {
+  fontSize: '15px',
+  color: '#4A3728',
+  lineHeight: '1.65',
+  margin: '0',
 }
-const codeStyle = {
-  fontFamily: 'Courier, monospace',
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: 'hsl(350, 55%, 31%)',
-  margin: '0 0 30px',
+const note = {
+  fontSize: '13px',
+  color: '#A08878',
+  lineHeight: '1.6',
+  margin: '8px 0 0',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

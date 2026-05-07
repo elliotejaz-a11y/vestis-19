@@ -1,70 +1,47 @@
 /// <reference types="npm:@types/react@18.3.1" />
 
 import * as React from 'npm:react@18.3.1'
-
-import {
-  Body,
-  Button,
-  Container,
-  Head,
-  Heading,
-  Html,
-  Preview,
-  Text,
-} from 'npm:@react-email/components@0.0.22'
+import { Heading, Text } from 'npm:@react-email/components@0.0.22'
+import { EmailLayout, CtaButton } from './base.tsx'
 
 interface MagicLinkEmailProps {
   siteName: string
   confirmationUrl: string
 }
 
-export const MagicLinkEmail = ({
-  siteName,
-  confirmationUrl,
-}: MagicLinkEmailProps) => (
-  <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>Your login link for {siteName}</Preview>
-    <Body style={main}>
-      <Container style={container}>
-        <Heading style={h1}>Your login link</Heading>
-        <Text style={text}>
-          Click the button below to log in to {siteName}. This link will expire
-          shortly.
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Log In
-        </Button>
-        <Text style={footer}>
-          If you didn't request this link, you can safely ignore this email.
-        </Text>
-      </Container>
-    </Body>
-  </Html>
+export const MagicLinkEmail = ({ confirmationUrl }: MagicLinkEmailProps) => (
+  <EmailLayout preview="Your Vestis sign-in link">
+    <Heading style={heading}>Sign in to Vestis</Heading>
+    <Text style={body}>
+      Click the button below to sign in to your account. This link is
+      single-use and expires in 1 hour.
+    </Text>
+    <CtaButton href={confirmationUrl} label="Sign In to Vestis" />
+    <Text style={note}>
+      If you didn't request this link, your account remains secure — you can
+      safely ignore this email.
+    </Text>
+  </EmailLayout>
 )
 
 export default MagicLinkEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: 'hsl(30, 10%, 15%)',
-  margin: '0 0 20px',
+const heading = {
+  fontSize: '26px',
+  fontWeight: '700' as const,
+  color: '#1a0407',
+  margin: '0 0 16px',
+  lineHeight: '1.2',
 }
-const text = {
-  fontSize: '14px',
-  color: 'hsl(30, 8%, 50%)',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
+const body = {
+  fontSize: '15px',
+  color: '#4A3728',
+  lineHeight: '1.65',
+  margin: '0',
 }
-const button = {
-  backgroundColor: 'hsl(350, 55%, 31%)',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '16px',
-  padding: '12px 20px',
-  textDecoration: 'none',
+const note = {
+  fontSize: '13px',
+  color: '#A08878',
+  lineHeight: '1.6',
+  margin: '0',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
