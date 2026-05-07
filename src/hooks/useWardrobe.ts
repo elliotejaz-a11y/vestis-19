@@ -325,9 +325,11 @@ export function useWardrobe() {
   // Dedup guard for retryBackgroundRemoval
   const retryingIdsRef = useRef(new Set<string>());
 
-  // Pre-sorted wardrobe — least-recently-used items first; only recomputes when wardrobe changes
+  // Pre-sorted wardrobe — least-recently-used items first; only recomputes when wardrobe changes.
+  // Window of 20 outfits gives a fair long-term usage picture; the edge function still only
+  // receives the last 5 for its avoidance markers, so nothing else changes.
   const sortedItemsByUsage = useMemo(() => {
-    const recentIds = outfits.slice(0, 5).map(o => (o.items || []).map(i => i.id));
+    const recentIds = outfits.slice(0, 20).map(o => (o.items || []).map(i => i.id));
     const usageCount = new Map<string, number>();
     recentIds.forEach(idSet => {
       idSet.forEach(id => usageCount.set(id, (usageCount.get(id) || 0) + 1));
@@ -738,57 +740,22 @@ export function useWardrobe() {
           ? ensureGymOutfitHasOnlyAllowedPieces((data.items || []) as ClothingItem[], items)
           : ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
 
-        // Collect IDs from the last 5 outfits to enforce wardrobe rotation.
-        const allRecentItemIds = new Set(
-          outfits.slice(0, 5).flatMap(o => (o.items || []).map(i => i.id))
-        );
-        const lastOutfitIds = new Set((outfits[0]?.items || []).map(i => i.id));
-
-        // Detect full duplicate (sorted IDs match any recent outfit).
-        const selectedIdKey = [...selectedItems.map(i => i.id)].sort().join(',');
-        const isDuplicateOfRecent = selectedIdKey !== '' && outfits.slice(0, 5).some(o => {
-          const recentKey = [...(o.items || []).map(i => i.id)].sort().join(',');
-          return recentKey === selectedIdKey;
-        });
-
-        if (isDuplicateOfRecent || selectedItems.some(i => allRecentItemIds.has(i.id))) {
-          const currentIds = new Set(selectedItems.map(s => s.id));
-          selectedItems = selectedItems.map(item => {
-            const isCritical = isBottomsCategory(item.category) || isShoesCategory(item.category);
-            // Bottoms and shoes: swap if worn in ANY of the last 5 outfits
-            if (isCritical && allRecentItemIds.has(item.id)) {
-              const alt = items.find(i =>
-                i.category?.toLowerCase() === item.category?.toLowerCase() &&
-                !allRecentItemIds.has(i.id) &&
-                !currentIds.has(i.id)
-              );
-              if (alt) { currentIds.delete(item.id); currentIds.add(alt.id); return alt; }
-            }
-            // Other slots: swap if from the most recent outfit only
-            if (!isCritical && lastOutfitIds.has(item.id)) {
-              const alt = items.find(i =>
-                i.category?.toLowerCase() === item.category?.toLowerCase() &&
-                !lastOutfitIds.has(i.id) &&
-                !currentIds.has(i.id)
-              );
-              if (alt) { currentIds.delete(item.id); currentIds.add(alt.id); return alt; }
-            }
-            return item;
-          });
-        }
-
-        // Phase 2: if the outfit is still an exact duplicate after Phase 1 swaps,
-        // force-rotate using the least-recently-worn alternative in any slot.
-        if (isExactDuplicateOfRecent(selectedItems, outfits)) {
+        // Safety net: if the edge function still returned an exact duplicate, break it using
+        // the least-recently-worn + most colour-compatible alternative. Passes outfit history
+        // so the replacement itself cannot create a duplicate of an earlier outfit.
+        // The edge function handles primary rotation (applyDiversityPass + Phase 2 inside the
+        // function); this client guard only fires in the rare case that slips through.
+        if (!gymRequest && isExactDuplicateOfRecent(selectedItems, outfits)) {
           selectedItems = breakExactDuplicate(
             selectedItems,
-            items,
+            sortedItemsByUsageRef.current,
             buildRecentIdCounts(outfits),
             [
               (i) => isBottomsCategory(i.category),
               (i) => isShoesCategory(i.category),
               (i) => isTopOrJumperCategory(i.category),
-            ]
+            ],
+            outfits
           );
         }
 
@@ -850,7 +817,20 @@ export function useWardrobe() {
         const weatherFilteredItems = weather ? filterItemsForWeather(occasionFilteredItems, weather, occasion) : occasionFilteredItems;
         const monochromeBase = buildMonochromeFallback(weatherFilteredItems);
         const coreItems = ensureOutfitHasCorePieces(monochromeBase, weatherFilteredItems);
-        const fallbackItems = normalizeSelectionForWeather(coreItems, weatherFilteredItems, weather);
+        let fallbackItems = normalizeSelectionForWeather(coreItems, weatherFilteredItems, weather);
+        if (isExactDuplicateOfRecent(fallbackItems, outfits)) {
+          fallbackItems = breakExactDuplicate(
+            fallbackItems,
+            sortedItemsByUsageRef.current,
+            buildRecentIdCounts(outfits),
+            [
+              (i) => isBottomsCategory(i.category),
+              (i) => isShoesCategory(i.category),
+              (i) => isTopOrJumperCategory(i.category),
+            ],
+            outfits
+          );
+        }
         const fallbackReasoning = buildOutfitReasoningFallback({ occasion, selectedItems: fallbackItems, profile, weather });
 
         const { data: outfitRow } = await supabase
