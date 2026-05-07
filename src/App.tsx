@@ -15,7 +15,6 @@ import { MassUploadReviewSheet } from "@/components/MassUploadReviewSheet";
 import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { ThemeProvider } from "next-themes";
-import { preloadBgRemovalModel } from "@/lib/image-processing";
 import { preloadAvatarUrls } from "@/lib/storage";
 
 // Lazy-loaded page components — assigned to variables so we can preload them
@@ -94,12 +93,10 @@ function AppRoutes() {
       if ("requestIdleCallback" in window) {
         (window as any).requestIdleCallback(() => {
           preloadAllRoutes();
-          preloadBgRemovalModel();
         });
       } else {
         setTimeout(() => {
           preloadAllRoutes();
-          preloadBgRemovalModel();
         }, 200);
       }
     }

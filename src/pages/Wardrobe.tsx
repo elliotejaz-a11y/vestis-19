@@ -229,7 +229,10 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
 
       {/* Always-visible floating add button */}
       <WardrobeAddButton onAdd={onAdd}>
-        <button className="fixed bottom-20 right-4 z-40 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center hover:bg-accent/90 transition-colors">
+        <button
+          className="fixed right-4 z-40 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center hover:bg-accent/90 transition-colors"
+          style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom))' }}
+        >
           <Plus className="w-6 h-6" />
         </button>
       </WardrobeAddButton>
