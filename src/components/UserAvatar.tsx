@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { batchResolveAvatarUrls, getCachedAvatarUrl } from "@/lib/storage";
+import { batchResolveAvatarUrls, getCachedAvatarUrl, getAvatarDisplayUrl } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const MAX_RETRIES = 2;
@@ -62,6 +62,8 @@ export function UserAvatar({
   );
   const [imgError, setImgError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  // PERF: Try the transform URL (scaled WebP) first; fall back to original on error.
+  const [useTransform, setUseTransform] = useState(true);
   const retryCount = useRef(0);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -79,11 +81,19 @@ export function UserAvatar({
     setRetryKey(0);
     retryCount.current = 0;
     if (retryTimer.current) clearTimeout(retryTimer.current);
+    // PERF: Reset transform flag when the underlying URL changes so the fast path is retried.
+    setUseTransform(true);
   }, [resolvedUrl]);
 
   useEffect(() => () => { if (retryTimer.current) clearTimeout(retryTimer.current); }, []);
 
   const handleImgError = () => {
+    // PERF: If the transform URL failed (e.g. plan doesn't have image transformations),
+    // drop back to the original URL immediately — no delay, no retry counter consumed.
+    if (useTransform && getAvatarDisplayUrl(resolvedUrl) !== resolvedUrl) {
+      setUseTransform(false);
+      return;
+    }
     if (retryCount.current < MAX_RETRIES) {
       retryCount.current += 1;
       retryTimer.current = setTimeout(() => setRetryKey((k) => k + 1), RETRY_DELAY_MS);
@@ -95,6 +105,10 @@ export function UserAvatar({
   const seed      = userId || displayName || email || "vestis";
   const showPhoto = !!resolvedUrl && !imgError;
   const presetCfg = !showPhoto && avatarPreset ? (PRESET_CONFIGS[avatarPreset] ?? null) : null;
+  // PERF: Use the transform URL (small WebP from CDN) when available; fall back to original.
+  const displaySrc = showPhoto
+    ? (useTransform ? (getAvatarDisplayUrl(resolvedUrl) ?? resolvedUrl!) : resolvedUrl!)
+    : null;
 
   return (
     <div
@@ -103,12 +117,13 @@ export function UserAvatar({
     >
       {showPhoto ? (
         <img
-          key={retryKey}
-          src={resolvedUrl!}
+          key={`${retryKey}-${useTransform ? "t" : "o"}`}
+          src={displaySrc!}
           alt=""
           className="w-full h-full object-cover"
           style={{ objectPosition: avatarPosition || "center" }}
           loading="eager"
+          fetchPriority="high"
           onError={handleImgError}
         />
       ) : presetCfg ? (

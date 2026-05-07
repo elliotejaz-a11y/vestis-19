@@ -153,8 +153,9 @@ export function getCachedAvatarUrl(url: string | null | undefined): string | nul
   return null;
 }
 
-// Resolves avatar URLs to signed URLs and kicks off browser image prefetch so
-// subsequent <img> renders hit the browser cache instantly.
+// Resolves avatar URLs and kicks off browser image prefetch so subsequent <img> renders
+// hit the browser cache. Prefetches the transform URL (not the raw URL) so the cache
+// hit lands on the same small WebP that UserAvatar renders.
 export async function preloadAvatarUrls(urls: (string | null | undefined)[]): Promise<void> {
   const filtered = urls.filter(Boolean) as string[];
   if (filtered.length === 0) return;
@@ -162,7 +163,8 @@ export async function preloadAvatarUrls(urls: (string | null | undefined)[]): Pr
   resolved.forEach((url) => {
     if (url) {
       const img = new Image();
-      img.src = url;
+      // PERF: Prefetch the transform URL so the browser cache hit matches what UserAvatar renders.
+      img.src = getAvatarDisplayUrl(url) ?? url;
     }
   });
 }
@@ -176,7 +178,6 @@ export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefi
   type Entry = { index: number; passthrough: string } | { index: number; path: string; bucket: SignedStorageBucket };
   const entries: Entry[] = [];
   const contentPaths: string[] = [];
-  const mediaPaths: string[] = [];
   const clothingPaths: string[] = [];
 
   avatarUrls.forEach((url, index) => {
@@ -198,9 +199,13 @@ export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefi
       const path = getStoragePathFromUrl("social-content", url);
       if (path) { contentPaths.push(path); entries.push({ index, path, bucket: "social-content" }); return; }
     }
+    // PERF: social-media is a permanently public bucket (public=true across all migrations).
+    // Public URLs are permanent CDN URLs that need no signing — return as passthrough to
+    // eliminate the unnecessary Supabase round-trip and prevent a mid-download URL switch
+    // that causes the browser to restart the image download after signing completes.
     if (url.includes("/social-media/")) {
-      const path = getStoragePathFromUrl("social-media", url);
-      if (path) { mediaPaths.push(path); entries.push({ index, path, bucket: "social-media" }); return; }
+      entries.push({ index, passthrough: url });
+      return;
     }
     if (url.includes("/clothing-images/")) {
       const path = getStoragePathFromUrl("clothing-images", url);
@@ -217,11 +222,7 @@ export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefi
       .createSignedUrls([...new Set(contentPaths)], SIGNED_URL_EXPIRES_IN_SECONDS);
     (data || []).filter((d) => d.signedUrl).forEach((d) => signedMap.set(`c:${d.path}`, d.signedUrl!));
   }
-  if (mediaPaths.length > 0) {
-    const { data } = await supabase.storage.from("social-media")
-      .createSignedUrls([...new Set(mediaPaths)], SIGNED_URL_EXPIRES_IN_SECONDS);
-    (data || []).filter((d) => d.signedUrl).forEach((d) => signedMap.set(`m:${d.path}`, d.signedUrl!));
-  }
+  // social-media paths are returned as passthrough above and never reach here.
   if (clothingPaths.length > 0) {
     const { data } = await supabase.storage.from("clothing-images")
       .createSignedUrls([...new Set(clothingPaths)], SIGNED_URL_EXPIRES_IN_SECONDS);
@@ -233,11 +234,24 @@ export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefi
     const entry = entries[i];
     if (!entry) return url;
     if ("passthrough" in entry) return entry.passthrough || url;
-    const key = entry.bucket === "social-content" ? `c:${entry.path}`
-      : entry.bucket === "social-media" ? `m:${entry.path}`
-      : `cl:${entry.path}`;
+    const key = entry.bucket === "social-content" ? `c:${entry.path}` : `cl:${entry.path}`;
     const signed = signedMap.get(key) ?? url;
     if (signed !== url) avatarUrlCache.set(url, { signedUrl: signed, expiresAt });
     return signed;
   });
+}
+
+// PERF: Converts a Supabase Storage public URL to an image-transformation URL that serves
+// a scaled WebP (~20–50 KB) instead of the full-resolution upload (potentially 1–3 MB).
+// Only applies to /object/public/ URLs (social-media avatars); signed URLs and other
+// formats are returned unchanged. Falls back gracefully if the transformation API is
+// unavailable (caller checks onError and retries with the original URL).
+export function getAvatarDisplayUrl(url: string | null | undefined, sizePx = 300): string | null {
+  if (!url) return null;
+  if (!url.includes("/storage/v1/object/public/")) return url;
+  const base = url.split("?")[0];
+  return (
+    base.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/") +
+    `?width=${sizePx}&height=${sizePx}&resize=contain&quality=80`
+  );
 }

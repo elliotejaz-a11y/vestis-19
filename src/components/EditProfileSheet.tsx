@@ -32,6 +32,25 @@ function parsePosition(pos: string): { x: number; y: number } {
   return map[pos] || { x: 50, y: 50 };
 }
 
+async function resizeAvatarBlob(blob: Blob, maxPx: number): Promise<Blob> {
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d")!.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    return await new Promise<Blob>((resolve, reject) =>
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/jpeg", 0.85)
+    );
+  } catch {
+    return blob;
+  }
+}
+
 export function EditProfileSheet({ open, onOpenChange }: Props) {
   const { user, profile, updateProfile, refreshProfile } = useAuth();
   const [displayName, setDisplayName] = useState(profile?.display_name || "");
@@ -111,9 +130,11 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
     if (!user) return;
     setCropPreview(null);
     setUploading(true);
+    const uploadBlob = await resizeAvatarBlob(blob, 400);
     const path = `${user.id}/avatar-${Date.now()}.jpg`;
-    const { error } = await supabase.storage.from("social-media").upload(path, blob, {
+    const { error } = await supabase.storage.from("social-media").upload(path, uploadBlob, {
       contentType: "image/jpeg",
+      cacheControl: "31536000",
     });
     if (error) {
       console.error("Avatar upload failed:", error);
