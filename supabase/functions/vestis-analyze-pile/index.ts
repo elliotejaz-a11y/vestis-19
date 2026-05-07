@@ -36,8 +36,8 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
 
     const systemPrompt = isOutfit
       ? "You identify every distinct clothing item, footwear and accessory worn by a person in an outfit photo. Scan the full body: hats, tops, jumpers/outerwear, bottoms, dresses, shoes, watches, jewellery, bags, belts and other accessories. Return each visible item separately. Bounding boxes normalised 0–1. CRITICAL: Always identify the COMPLETE garment, never a graphic, logo, patch, or print that appears ON the garment."
@@ -47,14 +47,14 @@ serve(async (req) => {
       ? "Analyse this outfit photo and return up to 8 distinct worn items. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1."
       : "Analyse this wardrobe pile image and return up to 8 distinct items. For each item provide: id, name, category, color, fabric, tags, notes, estimated_price_nzd, confidence, crop_hint, and bbox with x,y,width,height normalised between 0 and 1.";
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GEMINI_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -124,12 +124,7 @@ serve(async (req) => {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI usage limit reached. Please add credits." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI gateway error ${response.status}: ${text.substring(0, 400)}`);
+      throw new Error(`Gemini API error ${response.status}: ${text.substring(0, 400)}`);
     }
 
     const aiData = await response.json();
