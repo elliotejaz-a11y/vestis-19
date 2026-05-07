@@ -34,18 +34,45 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
   reauthentication: ReauthenticationEmail,
 }
 
+async function verifySignature(secret: string, body: string, headers: Headers): Promise<boolean> {
+  try {
+    // Supabase uses Standard Webhooks format: v1,whsec_<base64>
+    const rawSecret = secret.startsWith('v1,whsec_') ? secret.slice('v1,whsec_'.length) : secret
+    const secretBytes = Uint8Array.from(atob(rawSecret), c => c.charCodeAt(0))
+
+    const msgId = headers.get('webhook-id') ?? ''
+    const msgTimestamp = headers.get('webhook-timestamp') ?? ''
+    const msgSignature = headers.get('webhook-signature') ?? ''
+
+    if (!msgId || !msgTimestamp || !msgSignature) return false
+
+    const signedContent = `${msgId}.${msgTimestamp}.${body}`
+    const key = await crypto.subtle.importKey(
+      'raw', secretBytes, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    )
+    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedContent))
+    const computed = btoa(String.fromCharCode(...new Uint8Array(sig)))
+
+    return msgSignature.split(' ').some(s => s === `v1,${computed}`)
+  } catch {
+    return false
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // Verify hook secret — Supabase passes it as Bearer token
+    // Read body once — needed for both signature verification and JSON parsing
+    const rawBody = await req.text()
+
+    // Verify Standard Webhooks signature if HOOK_SECRET is configured
     const HOOK_SECRET = Deno.env.get('HOOK_SECRET')
     if (HOOK_SECRET) {
-      const authHeader = req.headers.get('Authorization') ?? ''
-      const token = authHeader.replace('Bearer ', '')
-      if (token !== HOOK_SECRET) {
+      const valid = await verifySignature(HOOK_SECRET, rawBody, req.headers)
+      if (!valid) {
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -62,7 +89,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    const body = await req.json()
+    const body = JSON.parse(rawBody)
 
     // Supabase auth hook payload shape:
     // { user: { email }, email_data: { token, token_hash, redirect_to, email_action_type, site_url } }
