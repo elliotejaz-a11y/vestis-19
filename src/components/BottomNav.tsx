@@ -17,9 +17,6 @@ export function BottomNav() {
   const navigate = useNavigate();
 
   return (
-    {/* Regression fix (abb31a3 → e674d56): max(14px,safe-area) left a 14px floor on
-        non-notch devices. Restored original design: spacer div fills exactly
-        env(safe-area-inset-bottom) — zero on devices without a home indicator. */}
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass-card border-t border-border/60">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
         {tabs.map(({ path, icon: Icon, label, isCenter }) => {
