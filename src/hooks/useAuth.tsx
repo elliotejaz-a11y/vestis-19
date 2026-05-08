@@ -57,6 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // onAuthStateChange fires INITIAL_SESSION on startup — no need for a separate getSession() call.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (_event, session) => {
+        // Set recovery flag before state updates so App.tsx renders the /reset-password route
+        if (_event === "PASSWORD_RECOVERY") {
+          sessionStorage.setItem("vestis_recovery_mode", "true");
+        }
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {

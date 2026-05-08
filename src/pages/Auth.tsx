@@ -65,7 +65,7 @@ export default function Auth() {
     if (!forgotEmail.trim()) return;
     setForgotLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-      redirectTo: undefined,
+      redirectTo: `${window.location.origin}/reset-password`,
     });
     setForgotLoading(false);
     if (error) {
@@ -373,6 +373,15 @@ export default function Auth() {
             >
               {verifyingRecoveryOtp ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               {verifyingRecoveryOtp ? "Verifying..." : "Verify"}
+            </Button>
+            <Button
+              onClick={handleForgotPassword}
+              disabled={forgotLoading}
+              variant="outline"
+              className="w-full h-12 rounded-2xl text-sm"
+            >
+              {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Resend Code
             </Button>
             <button onClick={() => { setShowForgotPassword(false); setRecoveryStep("email"); setRecoveryOtp(""); setRecoveryOtpError(""); }} className="text-xs text-accent font-semibold hover:underline">
               Back to Sign In

@@ -20,16 +20,23 @@ export default function ResetPassword() {
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
 
   useEffect(() => {
-    // Listen for PASSWORD_RECOVERY event
+    // useAuth sets vestis_recovery_mode before triggering any React re-renders,
+    // so this check is reliable even when PASSWORD_RECOVERY already fired.
+    if (sessionStorage.getItem("vestis_recovery_mode") === "true") {
+      setReady(true);
+      return;
+    }
+    // Implicit flow: token in URL hash
+    if (window.location.hash.includes("type=recovery")) {
+      setReady(true);
+      return;
+    }
+    // Fallback: listen in case code exchange hasn't completed yet
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setReady(true);
       }
     });
-    // Also check hash for type=recovery
-    if (window.location.hash.includes("type=recovery")) {
-      setReady(true);
-    }
     return () => subscription.unsubscribe();
   }, []);
 
@@ -49,7 +56,9 @@ export default function ResetPassword() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Password updated ✓", description: "You can now sign in with your new password." });
+      sessionStorage.removeItem("vestis_recovery_mode");
+      toast({ title: "Password reset successfully", description: "Please sign in with your new password." });
+      await supabase.auth.signOut();
       navigate("/");
     }
   };
