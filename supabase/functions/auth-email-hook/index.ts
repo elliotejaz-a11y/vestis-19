@@ -1,5 +1,5 @@
 import * as React from 'npm:react@18.3.1'
-import { renderAsync } from 'npm:@react-email/components@0.0.22'
+import { render } from 'npm:@react-email/render@0.0.12'
 import { SignupEmail } from '../_shared/email-templates/signup.tsx'
 import { InviteEmail } from '../_shared/email-templates/invite.tsx'
 import { MagicLinkEmail } from '../_shared/email-templates/magic-link.tsx'
@@ -125,10 +125,8 @@ Deno.serve(async (req) => {
     }
 
     const element = React.createElement(EmailTemplate, templateProps)
-    const [html, text] = await Promise.all([
-      renderAsync(element),
-      renderAsync(element, { plainText: true }),
-    ])
+    const html = render(element)
+    const text = render(element, { plainText: true })
 
     const subject = EMAIL_SUBJECTS[emailActionType] ?? 'Vestis Notification'
 
