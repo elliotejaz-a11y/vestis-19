@@ -47,11 +47,24 @@ export default function Auth() {
   const [signUpEmail, setSignUpEmail] = useState("");
   const [resendLoading, setResendLoading] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [emailCooldown, setEmailCooldown] = useState(0);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const { signUp, signIn } = useAuth();
   const { toast } = useToast();
 
   const passwordValid = (pw: string) => pw.length >= 8 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw) && /[^a-zA-Z0-9]/.test(pw);
+
+  // Countdown timer for email cooldown
+  useEffect(() => {
+    if (emailCooldown <= 0) return;
+    const id = setInterval(() => setEmailCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [emailCooldown]);
+
+  const startEmailCooldown = () => setEmailCooldown(60);
+
+  const isRateLimit = (msg?: string) =>
+    msg?.toLowerCase().includes("rate limit") || msg?.toLowerCase().includes("too many");
 
   // Keep status bar colour in sync with the auth gradient
   useEffect(() => {
@@ -62,15 +75,21 @@ export default function Auth() {
   }, []);
 
   const handleForgotPassword = async () => {
-    if (!forgotEmail.trim()) return;
+    if (!forgotEmail.trim() || emailCooldown > 0) return;
     setForgotLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setForgotLoading(false);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      if (isRateLimit(error.message)) {
+        toast({ title: "Too many attempts", description: "Please wait a few minutes before requesting another code.", variant: "destructive" });
+        startEmailCooldown();
+      } else {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
     } else {
+      startEmailCooldown();
       toast({ title: "Check your email for your 8-digit code" });
       setRecoveryStep("otp");
     }
@@ -121,13 +140,20 @@ export default function Auth() {
   };
 
   const handleResendVerification = async () => {
+    if (emailCooldown > 0) return;
     setResendLoading(true);
     const { error } = await supabase.auth.resend({ type: "signup", email: signUpEmail });
     setResendLoading(false);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      if (isRateLimit(error.message)) {
+        toast({ title: "Too many attempts", description: "Please wait a few minutes before requesting another code.", variant: "destructive" });
+        startEmailCooldown();
+      } else {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
     } else {
-      toast({ title: "Email resent ✉️", description: "Check your inbox and spam folder." });
+      startEmailCooldown();
+      toast({ title: "Email resent", description: "Check your inbox and spam folder." });
     }
   };
 
@@ -271,12 +297,12 @@ export default function Auth() {
           </div>
           <Button
             onClick={handleResendVerification}
-            disabled={resendLoading}
+            disabled={resendLoading || emailCooldown > 0}
             variant="outline"
             className="w-full h-12 rounded-2xl text-sm"
           >
             {resendLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Resend Code
+            {emailCooldown > 0 ? `Resend in ${emailCooldown}s` : "Resend Code"}
           </Button>
           <button onClick={() => { setSignUpSuccess(false); setIsSignUp(false); setOtpCode(""); }} className="text-xs text-accent font-semibold hover:underline">
             Back to Sign In
@@ -376,12 +402,12 @@ export default function Auth() {
             </Button>
             <Button
               onClick={handleForgotPassword}
-              disabled={forgotLoading}
+              disabled={forgotLoading || emailCooldown > 0}
               variant="outline"
               className="w-full h-12 rounded-2xl text-sm"
             >
               {forgotLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Resend Code
+              {emailCooldown > 0 ? `Resend in ${emailCooldown}s` : "Resend Code"}
             </Button>
             <button onClick={() => { setShowForgotPassword(false); setRecoveryStep("email"); setRecoveryOtp(""); setRecoveryOtpError(""); }} className="text-xs text-accent font-semibold hover:underline">
               Back to Sign In
@@ -413,10 +439,10 @@ export default function Auth() {
           </div>
            <Button
             onClick={handleForgotPassword}
-            disabled={forgotLoading || !forgotEmail.trim()}
+            disabled={forgotLoading || !forgotEmail.trim() || emailCooldown > 0}
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm"
           >
-            {forgotLoading ? "Sending..." : "Send Code"}
+            {forgotLoading ? "Sending..." : emailCooldown > 0 ? `Resend in ${emailCooldown}s` : "Send Code"}
           </Button>
           <p className="text-xs text-muted-foreground text-center">
             Remember your password?{" "}
