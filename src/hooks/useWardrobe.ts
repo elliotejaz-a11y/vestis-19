@@ -514,6 +514,8 @@ export function useWardrobe() {
           tags: item.tags,
           notes: item.notes,
           estimated_price: item.estimatedPrice || null,
+          size: (item as any).size || "",
+          privacy: (item as any).privacy || "public",
           is_private: (item as any).privacy === "private" || item.isPrivate || false,
         })
         .select()
@@ -644,6 +646,8 @@ export function useWardrobe() {
           estimated_price: item.estimatedPrice || null,
           is_private: item.isPrivate || false,
           image_url: item.imagePath || item.imageUrl,
+          size: (item as any).size || "",
+          privacy: (item as any).privacy || "public",
         } as any)
         .eq("id", item.id)
         .eq("user_id", user.id);
