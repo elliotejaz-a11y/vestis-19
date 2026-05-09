@@ -521,7 +521,13 @@ export function useWardrobe() {
         .select()
         .single();
 
-      if (!error && data) {
+      if (error) {
+        console.error("clothing_items insert error:", error);
+        toast({ title: "Couldn't save item", description: error.message || "Please try again.", variant: "destructive" });
+        return;
+      }
+
+      if (data) {
         const newItem = await resolveSignedClothingImageFields({
           id: data.id,
           name: data.name,
@@ -539,6 +545,7 @@ export function useWardrobe() {
           isPrivate: data.is_private ?? false,
         });
         setItems((prev) => [newItem, ...prev]);
+        toast({ title: "Added to wardrobe! ✨" });
 
         if (runBgRemoval && data.id) {
           processBackgroundRemoval({
