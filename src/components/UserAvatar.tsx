@@ -5,10 +5,6 @@ import { cn } from "@/lib/utils";
 const MAX_RETRIES = 2;
 const RETRY_DELAY_MS = 2000;
 
-function dicebearUrl(seed: string) {
-  return `https://api.dicebear.com/9.x/lorelei/svg?seed=${encodeURIComponent(seed)}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf`;
-}
-
 // Head circle + rounded shoulder path — scales cleanly from 24px to 200px via viewBox
 function Silhouette({ bg, figure }: { bg: string; figure: string }) {
   return (
@@ -21,19 +17,13 @@ function Silhouette({ bg, figure }: { bg: string; figure: string }) {
 }
 
 const PRESET_CONFIGS: Record<string, { bg: string; figure: string }> = {
-  silhouette_grey:  { bg: "#E8E4E0", figure: "#BFBAB5" },
-  silhouette_rose:  { bg: "hsl(350,55%,31%)", figure: "rgba(255,255,255,0.85)" },
-  silhouette_navy:  { bg: "hsl(236,65%,34%)", figure: "rgba(255,255,255,0.85)" },
-  silhouette_amber: { bg: "hsl(38,45%,40%)",  figure: "rgba(255,255,255,0.85)" },
-  silhouette_sage:  { bg: "hsl(160,35%,30%)", figure: "rgba(255,255,255,0.85)" },
+  silhouette_grey: { bg: "#D8D8D8", figure: "#FFFFFF" },
 };
 
+export const DEFAULT_AVATAR_PRESET_ID = "silhouette_grey";
+
 export const AVATAR_PRESET_LIST = [
-  { id: "silhouette_grey",  label: "Grey" },
-  { id: "silhouette_rose",  label: "Rose" },
-  { id: "silhouette_navy",  label: "Navy" },
-  { id: "silhouette_amber", label: "Amber" },
-  { id: "silhouette_sage",  label: "Sage" },
+  { id: DEFAULT_AVATAR_PRESET_ID, label: "Default" },
 ] as const;
 
 export type AvatarPresetId = typeof AVATAR_PRESET_LIST[number]["id"];
@@ -102,9 +92,10 @@ export function UserAvatar({
     }
   };
 
-  const seed      = userId || displayName || email || "vestis";
   const showPhoto = !!resolvedUrl && !imgError;
-  const presetCfg = !showPhoto && avatarPreset ? (PRESET_CONFIGS[avatarPreset] ?? null) : null;
+  const presetCfg = !showPhoto
+    ? (PRESET_CONFIGS[avatarPreset || DEFAULT_AVATAR_PRESET_ID] ?? PRESET_CONFIGS[DEFAULT_AVATAR_PRESET_ID])
+    : null;
   // PERF: Use the transform URL (small WebP from CDN) when available; fall back to original.
   const displaySrc = showPhoto
     ? (useTransform ? (getAvatarDisplayUrl(resolvedUrl) ?? resolvedUrl!) : resolvedUrl!)
@@ -129,11 +120,7 @@ export function UserAvatar({
       ) : presetCfg ? (
         <Silhouette bg={presetCfg.bg} figure={presetCfg.figure} />
       ) : (
-        <img
-          src={dicebearUrl(seed)}
-          alt=""
-          className="w-full h-full object-cover"
-        />
+        <Silhouette bg={PRESET_CONFIGS[DEFAULT_AVATAR_PRESET_ID].bg} figure={PRESET_CONFIGS[DEFAULT_AVATAR_PRESET_ID].figure} />
       )}
     </div>
   );

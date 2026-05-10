@@ -9,7 +9,7 @@ import { Camera, Loader2, Move, Lock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { UserAvatar, AVATAR_PRESET_LIST } from "@/components/UserAvatar";
+import { UserAvatar, AVATAR_PRESET_LIST, DEFAULT_AVATAR_PRESET_ID } from "@/components/UserAvatar";
 import { cn } from "@/lib/utils";
 import { differenceInDays } from "date-fns";
 import { ImageCropEditor } from "@/components/ImageCropEditor";
@@ -57,7 +57,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [username, setUsername] = useState(profile?.username || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || "");
-  const [avatarPreset, setAvatarPreset] = useState<string | null>(profile?.avatar_preset || null);
+  const [avatarPreset, setAvatarPreset] = useState<string | null>(profile?.avatar_preset || DEFAULT_AVATAR_PRESET_ID);
   const [avatarPosition, setAvatarPosition] = useState(profile?.avatar_position || "50% 50%");
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
   const [uploading, setUploading] = useState(false);
@@ -179,7 +179,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       username: username || null,
       bio: bio || null,
       avatar_url: avatarUrl || null,
-      avatar_preset: avatarPreset || null,
+      avatar_preset: avatarUrl ? null : (avatarPreset || DEFAULT_AVATAR_PRESET_ID),
       avatar_position: avatarPosition,
       currency_preference: currencyPref,
     };
@@ -201,7 +201,7 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setUsername(profile.username || "");
       setBio(profile.bio || "");
       setAvatarUrl(profile.avatar_url || "");
-      setAvatarPreset(profile.avatar_preset || null);
+      setAvatarPreset(profile.avatar_preset || DEFAULT_AVATAR_PRESET_ID);
       setAvatarPosition(profile.avatar_position || "50% 50%");
       setCurrencyPref(profile.currency_preference || "NZD");
       setCropPreview(null);
@@ -287,21 +287,6 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
                 <div className="space-y-1.5 w-full">
                   <p className="text-[10px] text-muted-foreground text-center">Or pick a default</p>
                   <div className="flex items-center justify-center gap-2">
-                    <button
-                      onClick={() => { setAvatarUrl(""); setAvatarPreset(null); }}
-                      className={cn(
-                        "w-10 h-10 rounded-full overflow-hidden border-2 transition-all",
-                        !avatarUrl && !avatarPreset ? "border-accent" : "border-transparent"
-                      )}
-                      title="Initials"
-                    >
-                      <UserAvatar
-                        displayName={profile?.display_name}
-                        email={user?.email}
-                        userId={user?.id}
-                        className="w-full h-full rounded-none"
-                      />
-                    </button>
                     {AVATAR_PRESET_LIST.map((p) => (
                       <button
                         key={p.id}

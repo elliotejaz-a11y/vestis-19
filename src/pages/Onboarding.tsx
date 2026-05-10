@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, HelpCircle, Pencil, Loader2, X } from "lucide-react";
-import { UserAvatar, AVATAR_PRESET_LIST } from "@/components/UserAvatar";
+import { UserAvatar, AVATAR_PRESET_LIST, DEFAULT_AVATAR_PRESET_ID } from "@/components/UserAvatar";
 import { StyleQuizSheet } from "@/components/StyleQuizSheet";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ interface OnboardingProps {
 export default function Onboarding({ editMode = false, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [avatarUrl, setAvatarUrl] = useState("");
-  const [avatarPreset, setAvatarPreset] = useState<string | null>(null);
+  const [avatarPreset, setAvatarPreset] = useState<string | null>(DEFAULT_AVATAR_PRESET_ID);
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [editingUsername, setEditingUsername] = useState(false);
@@ -80,7 +80,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   useEffect(() => {
     if (editMode && profile) {
       setAvatarUrl(profile.avatar_url || "");
-      setAvatarPreset(profile.avatar_preset || null);
+      setAvatarPreset(profile.avatar_preset || DEFAULT_AVATAR_PRESET_ID);
       setDisplayName(profile.display_name || "");
       setUsername(profile.username || "");
       setBio(profile.bio || "");
@@ -225,21 +225,6 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
             <div className="w-full space-y-1.5">
               <p className="text-[10px] text-muted-foreground text-center">Or pick a default</p>
               <div className="flex items-center justify-center gap-2">
-                <button
-                  onClick={() => { setAvatarUrl(""); setAvatarPreset(null); }}
-                  className={cn(
-                    "w-10 h-10 rounded-full overflow-hidden border-2 transition-all",
-                    !avatarUrl && !avatarPreset ? "border-accent" : "border-transparent"
-                  )}
-                  title="Initials"
-                >
-                  <UserAvatar
-                    displayName={displayName || undefined}
-                    email={user?.email}
-                    userId={user?.id}
-                    className="w-full h-full rounded-none"
-                  />
-                </button>
                 {AVATAR_PRESET_LIST.map((p) => (
                   <button
                     key={p.id}
@@ -456,7 +441,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         onboarding_completed: true,
         display_name: displayName.trim() || null,
         avatar_url: avatarUrl || null,
-        avatar_preset: avatarPreset || null,
+        avatar_preset: avatarUrl ? null : (avatarPreset || DEFAULT_AVATAR_PRESET_ID),
         bio: bio || null,
         username: username.trim() || null,
         is_public: isPublic,

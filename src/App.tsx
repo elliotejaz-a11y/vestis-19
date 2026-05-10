@@ -15,7 +15,7 @@ import { MassUploadReviewSheet } from "@/components/MassUploadReviewSheet";
 import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { ThemeProvider } from "next-themes";
-import { preloadAvatarUrls } from "@/lib/storage";
+import { preloadAllProfileAvatarUrls, preloadAvatarUrls } from "@/lib/storage";
 
 // Lazy-loaded page components — assigned to variables so we can preload them
 const Wardrobe = lazy(() => import("./pages/Wardrobe"));
@@ -78,6 +78,7 @@ const Noop = () => <div />;
 
 function AppRoutes() {
   const { user, profile, loading } = useAuth();
+  const didPreloadProfileAvatars = useRef(false);
 
   // Preload the current user's avatar as soon as profile resolves — before any component mounts.
   useEffect(() => {
@@ -93,10 +94,18 @@ function AppRoutes() {
       if ("requestIdleCallback" in window) {
         (window as any).requestIdleCallback(() => {
           preloadAllRoutes();
+          if (!didPreloadProfileAvatars.current) {
+            didPreloadProfileAvatars.current = true;
+            preloadAllProfileAvatarUrls();
+          }
         });
       } else {
         setTimeout(() => {
           preloadAllRoutes();
+          if (!didPreloadProfileAvatars.current) {
+            didPreloadProfileAvatars.current = true;
+            preloadAllProfileAvatarUrls();
+          }
         }, 200);
       }
     }

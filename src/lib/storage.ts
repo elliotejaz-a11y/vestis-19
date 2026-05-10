@@ -169,6 +169,30 @@ export async function preloadAvatarUrls(urls: (string | null | undefined)[]): Pr
   });
 }
 
+export async function preloadAllProfileAvatarUrls(): Promise<void> {
+  const pageSize = 500;
+  let from = 0;
+
+  while (true) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("avatar_url")
+      .not("avatar_url", "is", null)
+      .range(from, from + pageSize - 1);
+
+    if (error) {
+      console.warn("Avatar preload failed:", error);
+      return;
+    }
+
+    const urls = (data || []).map((profile) => profile.avatar_url);
+    await preloadAvatarUrls(urls);
+
+    if (!data || data.length < pageSize) return;
+    from += pageSize;
+  }
+}
+
 // Signs avatar URLs from either social-content (new uploads) or social-media (legacy) buckets.
 // Falls back to the original URL if signing fails so there's never a regression.
 export async function batchResolveAvatarUrls(avatarUrls: (string | null | undefined)[]): Promise<(string | null)[]> {
