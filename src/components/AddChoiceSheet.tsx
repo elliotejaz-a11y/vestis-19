@@ -1,5 +1,5 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Camera, Layers, ChevronRight, UserSquare2 } from "lucide-react";
+import { Camera, Layers, ChevronRight, UserSquare2, Lock } from "lucide-react";
 
 export type AddChoice = "single" | "mass" | "outfit";
 
@@ -38,32 +38,38 @@ export function AddChoiceSheet({ open, onOpenChange, onPick, children }: Props) 
 
           <button
             type="button"
-            onClick={() => onPick("mass")}
-            className="w-full rounded-2xl bg-card border border-border flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors text-left"
+            disabled
+            className="w-full rounded-2xl bg-muted/50 border border-border flex items-center gap-4 px-5 py-4 text-left opacity-75"
           >
             <div className="w-11 h-11 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
               <Layers className="w-5 h-5 text-accent" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">Mass Upload</p>
-              <p className="text-[11px] text-muted-foreground">Snap a pile or closet — AI detects each item</p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-sm font-semibold text-foreground">Mass Upload</p>
+                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent">Coming soon</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Snap a pile or closet - AI detects each item</p>
             </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <Lock className="w-4 h-4 text-muted-foreground" />
           </button>
 
           <button
             type="button"
-            onClick={() => onPick("outfit")}
-            className="w-full rounded-2xl bg-card border border-border flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors text-left"
+            disabled
+            className="w-full rounded-2xl bg-muted/50 border border-border flex items-center gap-4 px-5 py-4 text-left opacity-75"
           >
             <div className="w-11 h-11 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
               <UserSquare2 className="w-5 h-5 text-accent" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground">Extract from Outfit Photo</p>
-              <p className="text-[11px] text-muted-foreground">Scan a worn outfit — tops, bottoms, shoes, watches & more</p>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-sm font-semibold text-foreground">Extract from Outfit Photo</p>
+                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent">Coming soon</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Scan a worn outfit - tops, bottoms, shoes, watches & more</p>
             </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <Lock className="w-4 h-4 text-muted-foreground" />
           </button>
         </div>
       </SheetContent>

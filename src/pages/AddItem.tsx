@@ -1,9 +1,8 @@
 import { useEffect } from "react";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
-import { MassUploadSheet } from "@/components/MassUploadSheet";
 import { PresetItemsSheet } from "@/components/PresetItemsSheet";
 import { ClothingItem } from "@/types/wardrobe";
-import { Camera, Upload, Sparkles, Package, Home, ScanSearch, UserSquare2 } from "lucide-react";
+import { Camera, Upload, Sparkles, Package, Home, ScanSearch, UserSquare2, Lock } from "lucide-react";
 import heroImage from "@/assets/hero-wardrobe.jpg";
 import { WardrobeServiceSheet } from "@/components/WardrobeServiceSheet";
 import { preloadBgRemovalModel } from "@/lib/image-processing";
@@ -62,29 +61,41 @@ export function AddItem({ onAdd }: Props) {
           </button>
         </AddClothingSheet>
 
-        <MassUploadSheet mode="pile">
-          <button className="w-full h-16 rounded-2xl bg-card border border-border flex items-center gap-4 px-5 hover:bg-muted transition-colors">
+        <button
+          type="button"
+          disabled
+          className="w-full min-h-16 rounded-2xl bg-muted/50 border border-border flex items-center gap-4 px-5 py-3 opacity-75"
+        >
             <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
               <ScanSearch className="w-5 h-5 text-accent" />
             </div>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-foreground">Mass Upload a Pile</p>
+            <div className="min-w-0 flex-1 text-left">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-sm font-semibold text-foreground">Mass Upload a Pile</p>
+                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent">Coming soon</span>
+              </div>
               <p className="text-[11px] text-muted-foreground">Detect and review multiple items from one photo</p>
             </div>
-          </button>
-        </MassUploadSheet>
+            <Lock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+        </button>
 
-        <MassUploadSheet mode="outfit">
-          <button className="w-full h-16 rounded-2xl bg-card border border-border flex items-center gap-4 px-5 hover:bg-muted transition-colors">
+        <button
+          type="button"
+          disabled
+          className="w-full min-h-16 rounded-2xl bg-muted/50 border border-border flex items-center gap-4 px-5 py-3 opacity-75"
+        >
             <div className="w-10 h-10 rounded-xl bg-accent/15 flex items-center justify-center">
               <UserSquare2 className="w-5 h-5 text-accent" />
             </div>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-foreground">Extract from Outfit Photo</p>
+            <div className="min-w-0 flex-1 text-left">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <p className="text-sm font-semibold text-foreground">Extract from Outfit Photo</p>
+                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent">Coming soon</span>
+              </div>
               <p className="text-[11px] text-muted-foreground">Detect worn items from an outfit photo</p>
             </div>
-          </button>
-        </MassUploadSheet>
+            <Lock className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+        </button>
 
         <PresetItemsSheet onAdd={onAdd}>
           <button className="w-full h-16 rounded-2xl bg-card border border-border flex items-center gap-4 px-5 hover:bg-muted transition-colors">
