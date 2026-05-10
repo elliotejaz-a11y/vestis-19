@@ -329,12 +329,12 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
             }]);
             setExtracted((prev) => prev + 1);
           }
-        } catch {
+        } catch (error) {
           if (sessionRef.current === mySession) {
             setCandidates((prev) => [...prev, {
               ...baseCandidate,
               previewStatus: "failed",
-              error: "Could not generate flatlay image",
+              error: error instanceof Error ? error.message : "Could not generate flatlay image",
             }]);
             setExtracted((prev) => prev + 1);
           }

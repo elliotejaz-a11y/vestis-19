@@ -102,12 +102,19 @@ serve(async (req) => {
     if (!response.ok) {
       const text = await response.text();
       console.error("OpenAI image gen error:", response.status, text);
+      let message = `Image generation error ${response.status}`;
+      try {
+        const payload = JSON.parse(text);
+        message = payload?.error?.message || message;
+      } catch {
+        // Keep the generic status message if OpenAI did not return JSON.
+      }
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limits exceeded.", imageBase64: null }), {
+        return new Response(JSON.stringify({ error: message || "Rate limits exceeded.", imageBase64: null }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ error: `Image generation error ${response.status}`, imageBase64: null }), {
+      return new Response(JSON.stringify({ error: message, imageBase64: null }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }

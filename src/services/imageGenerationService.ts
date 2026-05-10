@@ -20,9 +20,11 @@ export async function generateClothingImage(
     const { data, error } = await supabase.functions.invoke("vestis-extract-item", {
       body: { item: metadata, maskBase64: maskBase64 ?? "" },
     });
-    if (error || !data?.imageBase64) return null;
+    if (error) throw new Error(error.message || "Image generation request failed");
+    if (data?.error) throw new Error(String(data.error));
+    if (!data?.imageBase64) throw new Error("No generated image returned");
     return data.imageBase64 as string;
-  } catch {
-    return null;
+  } catch (error) {
+    throw error instanceof Error ? error : new Error("Image generation failed");
   }
 }
