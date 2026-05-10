@@ -9,10 +9,8 @@ export interface ClothingMetadata {
 }
 
 /**
- * Optional: calls the vestis-extract-item edge function (Pixazo SD Inpainting)
- * to generate an AI product photo. This is NOT used in the primary mass-upload
- * pipeline — the free client-side bg-removal + soft-shadow path is used instead.
- * Kept here for future opt-in / power-user use.
+ * Calls the vestis-extract-item edge function to generate a clean studio
+ * flatlay from a cropped source item before client-side background removal.
  */
 export async function generateClothingImage(
   metadata: ClothingMetadata,

@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
+import { processClothingImage } from "@/lib/image-processing";
+import { generateClothingImage } from "@/services/imageGenerationService";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
 
@@ -74,6 +76,18 @@ function base64ToBlob(base64: string, mimeType = "image/png"): Blob {
   return new Blob([arr], { type: mimeType });
 }
 
+async function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      resolve(dataUrl.split(",")[1] ?? "");
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 async function cropToBase64(
   sourceBase64: string,
   bbox: { x: number; y: number; width: number; height: number } | undefined,
@@ -105,6 +119,34 @@ async function cropToBase64(
     img.onerror = reject;
     img.src = `data:image/jpeg;base64,${sourceBase64}`;
   });
+}
+
+async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previewUrl: string; imageBase64: string }> {
+  const croppedBase64 = await cropToBase64(item._sourceBase64, item.bbox);
+  const generatedBase64 = await generateClothingImage(
+    {
+      name: item.name,
+      category: item.category,
+      color: item.color,
+      fabric: item.fabric,
+      tags: item.tags,
+      notes: item.notes,
+    },
+    croppedBase64,
+  );
+
+  const sourceBlob = generatedBase64
+    ? base64ToBlob(generatedBase64, "image/png")
+    : base64ToBlob(croppedBase64, "image/jpeg");
+  const sourceFile = new File([sourceBlob], "mass-upload-item.png", { type: sourceBlob.type || "image/png" });
+  const bgRemovedBlob = await processClothingImage(sourceFile);
+  const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
+  const finalBase64 = await blobToBase64(finalBlob);
+
+  return {
+    previewUrl: URL.createObjectURL(finalBlob),
+    imageBase64: finalBase64,
+  };
 }
 
 interface ContextValue {
@@ -227,8 +269,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       if (sessionRef.current !== mySession) return;
       if (allItemsWithSrc.length === 0) { setPhase("ready"); return; }
 
-      // ── Phase 2: Crop items locally — instant, no AI calls ────────────────
-      // Studio image gen is deferred to when the user actually adds an item.
+      // ── Phase 2: Generate clean studio flat lays, then bg-remove them ─────
       setPhase("extracting");
 
       for (const item of allItemsWithSrc) {
@@ -251,15 +292,14 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         };
 
         try {
-          const croppedBase64 = await cropToBase64(item._sourceBase64, item.bbox);
-          const previewUrl = URL.createObjectURL(base64ToBlob(croppedBase64, "image/jpeg"));
+          const { previewUrl, imageBase64 } = await createStudioFlatlayPreview(item);
 
           if (sessionRef.current === mySession) {
             setCandidates((prev) => [...prev, {
               ...baseCandidate,
               previewStatus: "ready",
               previewUrl,
-              croppedBase64,
+              croppedBase64: imageBase64,
             }]);
             setExtracted((prev) => prev + 1);
           }
@@ -287,20 +327,6 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
     updateCandidate(candidate.id, { addState: "saving" });
     try {
       let finalImageUrl = candidate.previewUrl!;
-
-      // On-device background removal + shadow composite — free, no API call.
-      if (candidate.croppedBase64) {
-        try {
-          const croppedBlob = base64ToBlob(candidate.croppedBase64, "image/jpeg");
-          const { removeBackground } = await import("@imgly/background-removal");
-          const bgRemovedBlob = await removeBackground(croppedBlob);
-          const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
-          finalImageUrl = URL.createObjectURL(finalBlob);
-          updateCandidate(candidate.id, { previewUrl: finalImageUrl });
-        } catch {
-          // fall through — use cropped preview as-is
-        }
-      }
 
       await onAddRef.current(
         {

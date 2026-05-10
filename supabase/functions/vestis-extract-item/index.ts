@@ -12,13 +12,13 @@ function buildPrompt(item: Record<string, unknown>): string {
   const color = String(item.color ?? "");
   const fabric = String(item.fabric ?? "");
 
-  let posing = "flat lay, fully spread out showing the front of the garment";
+  let posing = "clean flatlay, fully spread out showing the front of the garment";
   if (category === "bottoms") posing = "flat lay with both legs straight and parallel, waistband at top";
   else if (category === "shoes") posing = "three-quarter front product view";
   else if (category === "hats") posing = "front-facing product view";
   else if (category === "accessories") posing = "centered product view";
 
-  return `Re-render the garment shown in the input image as a professional studio product photograph. Keep the EXACT same garment — same shape, colour (${color}), fabric (${fabric}), pattern, prints, logos and details — do not invent or change anything. Remove the original background completely and replace with a pure clean white background. Pose: ${posing}. Item: ${name}. Soft even studio lighting, subtle natural shadow under the garment, sharp focus, high resolution e-commerce catalogue style. No person, no model, no mannequin, no hanger.`;
+  return `Re-render the garment shown in the input image as a clean flatlay studio product photograph. Keep the EXACT same garment — same shape, colour (${color}), fabric (${fabric}), pattern, prints, logos and details — do not invent or change anything. Place it on a pure clean white studio background. Pose: ${posing}. Item: ${name}. Soft even studio lighting, subtle natural shadow under the garment, sharp focus, high resolution e-commerce catalogue style. No person, no model, no mannequin, no hanger.`;
 }
 
 function dataUrlToBase64(dataUrl: string): string {
