@@ -10,17 +10,15 @@ export interface ClothingMetadata {
 
 /**
  * Calls the vestis-extract-item edge function to generate a clean studio
- * flatlay from the original uploaded photo plus detected item metadata before
- * client-side background removal.
+ * flatlay from detected item metadata before client-side background removal.
  */
 export async function generateClothingImage(
   metadata: ClothingMetadata,
-  referenceImageBase64?: string,
   maskBase64?: string,
 ): Promise<string | null> {
   try {
     const { data, error } = await supabase.functions.invoke("vestis-extract-item", {
-      body: { item: metadata, referenceImageBase64: referenceImageBase64 ?? "", maskBase64: maskBase64 ?? "" },
+      body: { item: metadata, maskBase64: maskBase64 ?? "" },
     });
     if (error || !data?.imageBase64) return null;
     return data.imageBase64 as string;

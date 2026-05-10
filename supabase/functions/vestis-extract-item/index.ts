@@ -11,10 +11,8 @@ function buildPrompt(item: Record<string, unknown>): string {
   const category = String(item.category ?? "").toLowerCase();
   const color = String(item.color ?? "");
   const fabric = String(item.fabric ?? "");
-  const cropHint = String(item.cropHint ?? item.crop_hint ?? "");
-  const bbox = item.bbox && typeof item.bbox === "object"
-    ? JSON.stringify(item.bbox)
-    : "";
+  const notes = String(item.notes ?? "");
+  const tags = Array.isArray(item.tags) ? item.tags.join(", ") : "";
 
   let posing = "front-facing flatlay, fully spread out showing the entire front of the garment";
   if (category === "bottoms") posing = "front-facing flatlay with both legs straight and parallel, waistband at top";
@@ -22,20 +20,16 @@ function buildPrompt(item: Record<string, unknown>): string {
   else if (category === "hats") posing = "single hat, centered, front-facing product view";
   else if (category === "accessories") posing = "single accessory, centered product view";
 
-  return `Use the input photo only as a reference for identifying the requested garment. Do not copy, crop, paste, or preserve the original photo composition. Create a brand-new clean e-commerce product image of this single item: ${name}. Target details: category ${category}, colour ${color}, fabric ${fabric}. ${cropHint ? `Location/reference hint: ${cropHint}.` : ""} ${bbox ? `Bounding-box hint in normalized image coordinates: ${bbox}.` : ""} The generated item must be isolated, centered, large in frame, and fill about 80 percent of the image height like a catalogue product photo. Keep the same garment shape, colour, fabric, pattern, prints, logos and details visible in the reference. Do not include any other clothes, piles, body parts, floor, bed, shadows from the original photo, or background clutter. Pose: ${posing}. Pure white studio background, soft even studio lighting, subtle natural product shadow, sharp focus, high resolution. No person, no model, no mannequin, no hanger, no folded pile.`;
-}
+  return `Create a brand-new clean e-commerce catalogue product image of one clothing item.
 
-function dataUrlToBase64(dataUrl: string): string {
-  const idx = dataUrl.indexOf(",");
-  return idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
-}
+Item name: ${name}
+Category: ${category}
+Colour: ${color}
+Fabric/material: ${fabric}
+Detected details: ${notes || "none"}
+Style tags: ${tags || "none"}
 
-function base64ToBlob(base64: string, mimeType = "image/jpeg"): Blob {
-  const cleanBase64 = dataUrlToBase64(base64);
-  const binary = atob(cleanBase64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: mimeType });
+Render a plausible single item matching those details as a polished studio flatlay. The item must be isolated, centered, large in frame, and fill about 80 percent of the image height. Pose: ${posing}. Use a pure white studio background, soft even studio lighting, sharp focus, clean product-photography realism, and a subtle natural shadow. Do not include any clothing piles, multiple unrelated garments, body parts, floor, bed, model, mannequin, hanger, text, labels, watermarks, or background clutter.`;
 }
 
 async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
@@ -74,15 +68,9 @@ serve(async (req) => {
       });
     }
 
-    const { item, croppedImageBase64, referenceImageBase64 } = await req.json();
+    const { item } = await req.json();
     if (!item || typeof item !== "object") {
       return new Response(JSON.stringify({ error: "Missing item details" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const sourceImageBase64 = referenceImageBase64 || croppedImageBase64;
-    if (!sourceImageBase64 || typeof sourceImageBase64 !== "string") {
-      return new Response(JSON.stringify({ error: "Missing reference image" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -91,20 +79,23 @@ serve(async (req) => {
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
     const prompt = buildPrompt(item as Record<string, unknown>);
-    const formData = new FormData();
-    formData.append("model", "gpt-image-1");
-    formData.append("prompt", prompt);
-    formData.append("size", "1024x1024");
-    formData.append("quality", "medium");
-    formData.append("background", "opaque");
-    formData.append("image", base64ToBlob(sourceImageBase64, "image/jpeg"), "reference.jpg");
 
     const response = await fetchWithRetry(
-      "https://api.openai.com/v1/images/edits",
+      "https://api.openai.com/v1/images/generations",
       {
         method: "POST",
-        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
-        body: formData,
+        headers: {
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-image-1",
+          prompt,
+          size: "1024x1024",
+          quality: "medium",
+          background: "opaque",
+          output_format: "png",
+        }),
       },
     );
 

@@ -148,39 +148,6 @@ async function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-async function cropToBase64(
-  sourceBase64: string,
-  bbox: { x: number; y: number; width: number; height: number } | undefined,
-): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const iw = img.naturalWidth;
-      const ih = img.naturalHeight;
-      const canvas = document.createElement("canvas");
-      canvas.width = 512;
-      canvas.height = 512;
-      const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, 512, 512);
-      if (bbox) {
-        const pad = 0.06;
-        const sx = Math.max(0, (bbox.x - pad) * iw);
-        const sy = Math.max(0, (bbox.y - pad) * ih);
-        const sw = Math.min(iw - sx, (bbox.width + 2 * pad) * iw);
-        const sh = Math.min(ih - sy, (bbox.height + 2 * pad) * ih);
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 512, 512);
-      } else {
-        const side = Math.min(iw, ih);
-        ctx.drawImage(img, (iw - side) / 2, (ih - side) / 2, side, side, 0, 0, 512, 512);
-      }
-      resolve(canvas.toDataURL("image/jpeg", 0.88).split(",")[1]);
-    };
-    img.onerror = reject;
-    img.src = `data:image/jpeg;base64,${sourceBase64}`;
-  });
-}
-
 async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previewUrl: string; imageBase64: string }> {
   const generatedBase64 = await generateClothingImage(
     {
@@ -193,12 +160,10 @@ async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previ
       cropHint: item.crop_hint,
       bbox: item.bbox,
     },
-    item._sourceBase64,
   );
+  if (!generatedBase64) throw new Error("Image generation failed");
 
-  const sourceBlob = generatedBase64
-    ? base64ToBlob(generatedBase64, "image/png")
-    : base64ToBlob(await cropToBase64(item._sourceBase64, item.bbox), "image/jpeg");
+  const sourceBlob = base64ToBlob(generatedBase64, "image/png");
   const sourceFile = new File([sourceBlob], "mass-upload-item.png", { type: sourceBlob.type || "image/png" });
   const bgRemovedBlob = await processClothingImage(sourceFile);
   const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
@@ -369,7 +334,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
             setCandidates((prev) => [...prev, {
               ...baseCandidate,
               previewStatus: "failed",
-              error: "Could not crop image",
+              error: "Could not generate flatlay image",
             }]);
             setExtracted((prev) => prev + 1);
           }
