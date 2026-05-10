@@ -11,6 +11,10 @@ function buildPrompt(item: Record<string, unknown>): string {
   const category = String(item.category ?? "").toLowerCase();
   const color = String(item.color ?? "");
   const fabric = String(item.fabric ?? "");
+  const cropHint = String(item.cropHint ?? item.crop_hint ?? "");
+  const bbox = item.bbox && typeof item.bbox === "object"
+    ? JSON.stringify(item.bbox)
+    : "";
 
   let posing = "front-facing flatlay, fully spread out showing the entire front of the garment";
   if (category === "bottoms") posing = "front-facing flatlay with both legs straight and parallel, waistband at top";
@@ -18,7 +22,7 @@ function buildPrompt(item: Record<string, unknown>): string {
   else if (category === "hats") posing = "single hat, centered, front-facing product view";
   else if (category === "accessories") posing = "single accessory, centered product view";
 
-  return `Use the input crop only as the source garment reference. Create one clean e-commerce product image of that single item: ${name}. The item must be isolated, centered, large in frame, and fill about 80 percent of the image height like a catalogue product photo. Keep the same garment shape, colour (${color}), fabric (${fabric}), pattern, prints, logos and details. Do not include any other clothes, piles, body parts, floor, bed, shadows from the original photo, or background clutter. Pose: ${posing}. Pure white studio background, soft even studio lighting, subtle natural product shadow, sharp focus, high resolution. No person, no model, no mannequin, no hanger, no folded pile.`;
+  return `Use the input photo only as a reference for identifying the requested garment. Do not copy, crop, paste, or preserve the original photo composition. Create a brand-new clean e-commerce product image of this single item: ${name}. Target details: category ${category}, colour ${color}, fabric ${fabric}. ${cropHint ? `Location/reference hint: ${cropHint}.` : ""} ${bbox ? `Bounding-box hint in normalized image coordinates: ${bbox}.` : ""} The generated item must be isolated, centered, large in frame, and fill about 80 percent of the image height like a catalogue product photo. Keep the same garment shape, colour, fabric, pattern, prints, logos and details visible in the reference. Do not include any other clothes, piles, body parts, floor, bed, shadows from the original photo, or background clutter. Pose: ${posing}. Pure white studio background, soft even studio lighting, subtle natural product shadow, sharp focus, high resolution. No person, no model, no mannequin, no hanger, no folded pile.`;
 }
 
 function dataUrlToBase64(dataUrl: string): string {

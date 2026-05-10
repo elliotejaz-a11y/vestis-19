@@ -182,7 +182,6 @@ async function cropToBase64(
 }
 
 async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previewUrl: string; imageBase64: string }> {
-  const croppedBase64 = await cropToBase64(item._sourceBase64, item.bbox);
   const generatedBase64 = await generateClothingImage(
     {
       name: item.name,
@@ -191,13 +190,15 @@ async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previ
       fabric: item.fabric,
       tags: item.tags,
       notes: item.notes,
+      cropHint: item.crop_hint,
+      bbox: item.bbox,
     },
-    croppedBase64,
+    item._sourceBase64,
   );
 
   const sourceBlob = generatedBase64
     ? base64ToBlob(generatedBase64, "image/png")
-    : base64ToBlob(croppedBase64, "image/jpeg");
+    : base64ToBlob(await cropToBase64(item._sourceBase64, item.bbox), "image/jpeg");
   const sourceFile = new File([sourceBlob], "mass-upload-item.png", { type: sourceBlob.type || "image/png" });
   const bgRemovedBlob = await processClothingImage(sourceFile);
   const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
