@@ -30,6 +30,14 @@ function dataUrlToBase64(dataUrl: string): string {
   return idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
 }
 
+function base64ToBlob(base64: string, mimeType = "image/jpeg"): Blob {
+  const cleanBase64 = dataUrlToBase64(base64);
+  const binary = atob(cleanBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mimeType });
+}
+
 async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
   for (let i = 0; i < maxRetries; i++) {
     const res = await fetch(url, options);
@@ -66,50 +74,43 @@ serve(async (req) => {
       });
     }
 
-    const { item, croppedImageBase64 } = await req.json();
+    const { item, croppedImageBase64, referenceImageBase64 } = await req.json();
     if (!item || typeof item !== "object") {
       return new Response(JSON.stringify({ error: "Missing item details" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!croppedImageBase64 || typeof croppedImageBase64 !== "string") {
-      return new Response(JSON.stringify({ error: "Missing croppedImageBase64" }), {
+    const sourceImageBase64 = referenceImageBase64 || croppedImageBase64;
+    if (!sourceImageBase64 || typeof sourceImageBase64 !== "string") {
+      return new Response(JSON.stringify({ error: "Missing reference image" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
     const prompt = buildPrompt(item as Record<string, unknown>);
-
-    const geminiBody = {
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: "image/jpeg", data: dataUrlToBase64(croppedImageBase64) } },
-          ],
-        },
-      ],
-      generationConfig: {
-        responseModalities: ["IMAGE", "TEXT"],
-      },
-    };
+    const formData = new FormData();
+    formData.append("model", "gpt-image-1");
+    formData.append("prompt", prompt);
+    formData.append("size", "1024x1024");
+    formData.append("quality", "medium");
+    formData.append("background", "opaque");
+    formData.append("image", base64ToBlob(sourceImageBase64, "image/jpeg"), "reference.jpg");
 
     const response = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp-image-generation:generateContent?key=${GEMINI_API_KEY}`,
+      "https://api.openai.com/v1/images/edits",
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(geminiBody),
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+        body: formData,
       },
     );
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("Gemini image gen error:", response.status, text);
+      console.error("OpenAI image gen error:", response.status, text);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limits exceeded.", imageBase64: null }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -120,19 +121,17 @@ serve(async (req) => {
       });
     }
 
-    const aiData = await response.json();
-    const parts: Array<Record<string, unknown>> = aiData.candidates?.[0]?.content?.parts ?? [];
-    const imagePart = parts.find((p) => p.inlineData);
-    if (!imagePart) {
-      console.error("No image in Gemini response:", JSON.stringify(aiData).substring(0, 400));
+    const result = await response.json();
+    const imageData = result?.data?.[0];
+    if (!imageData?.b64_json) {
+      console.error("No image in OpenAI response:", JSON.stringify(result).substring(0, 400));
       return new Response(JSON.stringify({ error: "No image returned", imageBase64: null }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const inlineData = imagePart.inlineData as { mimeType: string; data: string };
     return new Response(
-      JSON.stringify({ imageBase64: inlineData.data, mimeType: inlineData.mimeType }),
+      JSON.stringify({ imageBase64: imageData.b64_json, mimeType: "image/png" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {

@@ -20,7 +20,7 @@ export async function generateClothingImage(
 ): Promise<string | null> {
   try {
     const { data, error } = await supabase.functions.invoke("vestis-extract-item", {
-      body: { item: metadata, croppedImageBase64: referenceImageBase64 ?? "", maskBase64: maskBase64 ?? "" },
+      body: { item: metadata, referenceImageBase64: referenceImageBase64 ?? "", maskBase64: maskBase64 ?? "" },
     });
     if (error || !data?.imageBase64) return null;
     return data.imageBase64 as string;
