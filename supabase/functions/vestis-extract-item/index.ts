@@ -12,13 +12,13 @@ function buildPrompt(item: Record<string, unknown>): string {
   const color = String(item.color ?? "");
   const fabric = String(item.fabric ?? "");
 
-  let posing = "clean flatlay, fully spread out showing the front of the garment";
-  if (category === "bottoms") posing = "flat lay with both legs straight and parallel, waistband at top";
-  else if (category === "shoes") posing = "three-quarter front product view";
-  else if (category === "hats") posing = "front-facing product view";
-  else if (category === "accessories") posing = "centered product view";
+  let posing = "front-facing flatlay, fully spread out showing the entire front of the garment";
+  if (category === "bottoms") posing = "front-facing flatlay with both legs straight and parallel, waistband at top";
+  else if (category === "shoes") posing = "single pair of shoes, centered, three-quarter front product view";
+  else if (category === "hats") posing = "single hat, centered, front-facing product view";
+  else if (category === "accessories") posing = "single accessory, centered product view";
 
-  return `Re-render the garment shown in the input image as a clean flatlay studio product photograph. Keep the EXACT same garment — same shape, colour (${color}), fabric (${fabric}), pattern, prints, logos and details — do not invent or change anything. Place it on a pure clean white studio background. Pose: ${posing}. Item: ${name}. Soft even studio lighting, subtle natural shadow under the garment, sharp focus, high resolution e-commerce catalogue style. No person, no model, no mannequin, no hanger.`;
+  return `Use the input crop only as the source garment reference. Create one clean e-commerce product image of that single item: ${name}. The item must be isolated, centered, large in frame, and fill about 80 percent of the image height like a catalogue product photo. Keep the same garment shape, colour (${color}), fabric (${fabric}), pattern, prints, logos and details. Do not include any other clothes, piles, body parts, floor, bed, shadows from the original photo, or background clutter. Pose: ${posing}. Pure white studio background, soft even studio lighting, subtle natural product shadow, sharp focus, high resolution. No person, no model, no mannequin, no hanger, no folded pile.`;
 }
 
 function dataUrlToBase64(dataUrl: string): string {

@@ -24,11 +24,71 @@ interface DetectedItem {
 
 type ItemWithSource = DetectedItem & { _sourceBase64: string };
 
+async function trimTransparentPadding(blob: Blob, alphaThreshold = 8): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) {
+        reject(new Error("Canvas is not available"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      let minX = canvas.width;
+      let minY = canvas.height;
+      let maxX = -1;
+      let maxY = -1;
+
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const alpha = data[(y * canvas.width + x) * 4 + 3];
+          if (alpha > alphaThreshold) {
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      if (maxX < minX || maxY < minY) {
+        resolve(blob);
+        return;
+      }
+
+      const padding = Math.round(Math.max(maxX - minX + 1, maxY - minY + 1) * 0.04);
+      const sx = Math.max(0, minX - padding);
+      const sy = Math.max(0, minY - padding);
+      const sw = Math.min(canvas.width - sx, maxX - minX + 1 + padding * 2);
+      const sh = Math.min(canvas.height - sy, maxY - minY + 1 + padding * 2);
+      const out = document.createElement("canvas");
+      out.width = sw;
+      out.height = sh;
+      out.getContext("2d")?.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+      out.toBlob(
+        (trimmed) => trimmed ? resolve(trimmed) : reject(new Error("trim toBlob failed")),
+        "image/png",
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load failed")); };
+    img.src = url;
+  });
+}
+
 // Composites a bg-removed transparent PNG with a drop shadow and studio
 // vibrancy, outputting a transparent PNG blob (alpha preserved for Supabase).
 async function compositeWithSoftShadow(bgRemovedBlob: Blob, size = 512): Promise<Blob> {
+  const trimmedBlob = await trimTransparentPadding(bgRemovedBlob);
+
   return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(bgRemovedBlob);
+    const url = URL.createObjectURL(trimmedBlob);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
@@ -41,7 +101,7 @@ async function compositeWithSoftShadow(bgRemovedBlob: Blob, size = 512): Promise
       ctx.scale(dpr, dpr);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      const padding = size * 0.08;
+      const padding = size * 0.06;
       const maxDim = size - padding * 2;
       const scale = Math.min(maxDim / img.naturalWidth, maxDim / img.naturalHeight);
       const w = img.naturalWidth * scale;
