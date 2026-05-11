@@ -16,6 +16,7 @@ import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { ThemeProvider } from "next-themes";
 import { preloadAllProfileAvatarUrls, preloadAvatarUrls } from "@/lib/storage";
+import { preloadBgRemovalModel } from "@/lib/image-processing";
 
 // Lazy-loaded page components — assigned to variables so we can preload them
 const Wardrobe = lazy(() => import("./pages/Wardrobe"));
@@ -92,8 +93,9 @@ function AppRoutes() {
   useEffect(() => {
     if (!loading && user) {
       if ("requestIdleCallback" in window) {
-        (window as any).requestIdleCallback(() => {
+        (window as Window & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(() => {
           preloadAllRoutes();
+          preloadBgRemovalModel();
           if (!didPreloadProfileAvatars.current) {
             didPreloadProfileAvatars.current = true;
             preloadAllProfileAvatarUrls();
@@ -102,6 +104,7 @@ function AppRoutes() {
       } else {
         setTimeout(() => {
           preloadAllRoutes();
+          preloadBgRemovalModel();
           if (!didPreloadProfileAvatars.current) {
             didPreloadProfileAvatars.current = true;
             preloadAllProfileAvatarUrls();
