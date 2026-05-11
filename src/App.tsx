@@ -16,7 +16,6 @@ import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { ThemeProvider } from "next-themes";
 import { preloadAllProfileAvatarUrls, preloadAvatarUrls } from "@/lib/storage";
-import { preloadBgRemovalModel } from "@/lib/image-processing";
 
 // Lazy-loaded page components — assigned to variables so we can preload them
 const Wardrobe = lazy(() => import("./pages/Wardrobe"));
@@ -88,14 +87,16 @@ function AppRoutes() {
     }
   }, [profile?.avatar_url]);
 
-  // Preload all route chunks and warm up the bg-removal ONNX model once auth resolves.
-  // Both are fire-and-forget: never throw, never block rendering.
+  // Preload all route chunks once auth resolves — fire-and-forget, never blocks rendering.
+  // NOTE: preloadBgRemovalModel() is intentionally NOT called here. The ONNX model is ~50 MB
+  // and initialising it on every app load freezes low-end devices. It is already warmed up
+  // by AddItem.tsx the moment the user navigates to the /add screen — before they can pick
+  // a file — so the cold-start is eliminated at the right time without impacting app start.
   useEffect(() => {
     if (!loading && user) {
       if ("requestIdleCallback" in window) {
         (window as Window & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(() => {
           preloadAllRoutes();
-          preloadBgRemovalModel();
           if (!didPreloadProfileAvatars.current) {
             didPreloadProfileAvatars.current = true;
             preloadAllProfileAvatarUrls();
@@ -104,7 +105,6 @@ function AppRoutes() {
       } else {
         setTimeout(() => {
           preloadAllRoutes();
-          preloadBgRemovalModel();
           if (!didPreloadProfileAvatars.current) {
             didPreloadProfileAvatars.current = true;
             preloadAllProfileAvatarUrls();
