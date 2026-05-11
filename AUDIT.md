@@ -121,17 +121,17 @@ Generated: 2026-05-11
 
 ---
 
-## FIX LOG (filled in as fixes are applied)
+## FIX LOG
 
 | ID | File | Status | Commit |
 |----|------|--------|--------|
-| TOAST-001 | use-toast.ts | Pending | — |
-| CHAT-001 | useChat.ts | Pending | — |
-| CHAT-002 | useChat.ts | Pending | — |
-| AVATAR-001 | UserAvatar.tsx | Pending | — |
-| SOCIAL-001 | SignedSocialImage.tsx | Pending | — |
-| OUTFITS-001 | Outfits.tsx | Pending | — |
-| DB-001 | useChat.ts | Pending | — |
-| DB-002 | useNotifications.ts | Pending | — |
-| DB-003 | useAuth.tsx | Pending | — |
-| MOBILE-001 | VirtualizedGrid.tsx | Pending | — |
+| TOAST-001 | use-toast.ts | Fixed | 8562a29 |
+| CHAT-001 | useChat.ts | Fixed | 8562a29 |
+| CHAT-002 | useChat.ts | Fixed | 8562a29 |
+| AVATAR-001 | UserAvatar.tsx | Fixed | 8562a29 |
+| SOCIAL-001 | SignedSocialImage.tsx | Fixed | 8562a29 |
+| OUTFITS-001 | Outfits.tsx | Fixed | 8562a29 |
+| DB-001 | useChat.ts | Fixed | 8562a29 |
+| DB-002 | useNotifications.ts | Fixed | 8562a29 |
+| DB-003 | useAuth.tsx | Fixed | 8562a29 |
+| MOBILE-001 | VirtualizedGrid.tsx | Fixed | 8562a29 |
