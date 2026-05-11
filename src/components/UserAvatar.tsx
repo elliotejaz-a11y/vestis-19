@@ -60,9 +60,13 @@ export function UserAvatar({
   useEffect(() => {
     if (!avatarUrl) { setResolvedUrl(null); return; }
     let cancelled = false;
-    batchResolveAvatarUrls([avatarUrl]).then(([signed]) => {
-      if (!cancelled) setResolvedUrl(signed ?? avatarUrl);
-    });
+    batchResolveAvatarUrls([avatarUrl])
+      .then(([signed]) => {
+        if (!cancelled) setResolvedUrl(signed ?? avatarUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedUrl(avatarUrl);
+      });
     return () => { cancelled = true; };
   }, [avatarUrl]);
 

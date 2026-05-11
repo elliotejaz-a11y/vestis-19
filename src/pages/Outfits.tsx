@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Sparkles, Loader2, Cloud, Sun, CloudRain, Snowflake, ArrowLeft, Layers, Lightbulb, MessageCircle, Bookmark, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,13 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const planDate = searchParams.get("planDate");
+  const calendarNavTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (calendarNavTimerRef.current) clearTimeout(calendarNavTimerRef.current);
+    };
+  }, []);
 
   const activeOccasion = customOccasion.trim() || selectedOccasion;
   const hasShoes = items.some((item) => item.category === "shoes");
@@ -101,7 +108,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
             planned_date: planDate,
           });
           toast({ title: "Outfit planned for calendar! 📅" });
-          setTimeout(() => navigate("/calendar"), 1500);
+          calendarNavTimerRef.current = setTimeout(() => navigate("/calendar"), 1500);
         }
       }
     } catch (err) {
