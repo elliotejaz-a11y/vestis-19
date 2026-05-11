@@ -739,23 +739,33 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                       const ext = wfFile.name.split(".").pop() || "jpg";
                       const filePath = `wishlist/${user.id}/${Date.now()}.${ext}`;
                       const { error: upErr } = await supabase.storage.from("wishlist-images").upload(filePath, wfFile);
-                      if (upErr) throw upErr;
-                      const { data: urlData } = supabase.storage.from("wishlist-images").getPublicUrl(filePath);
-                      imageUrl = urlData.publicUrl;
+                      if (upErr) {
+                        console.warn("[wishlist] storage upload failed — saving item without image", {
+                          bucket: "wishlist-images",
+                          path: filePath,
+                          error: upErr,
+                        });
+                        toast({ title: "Image upload failed", description: "Item saved without photo. Try again later.", variant: "destructive" });
+                      } else {
+                        const { data: urlData } = supabase.storage.from("wishlist-images").getPublicUrl(filePath);
+                        imageUrl = urlData.publicUrl;
+                      }
                     }
                     const price = parseFloat(wfPrice);
-                    await supabase.from("wishlist_items").insert({
+                    const { error: dbErr } = await supabase.from("wishlist_items").insert({
                       user_id: user.id,
                       name: wfName.trim(),
                       image_url: imageUrl,
                       estimated_price: isNaN(price) ? null : price,
                     });
+                    if (dbErr) throw dbErr;
                     setShowWishlistForm(false);
                     setWfName("");
                     setWfPrice("");
                     setWfFile(null);
                     fetchWishlist();
                   } catch (err: any) {
+                    console.warn("[wishlist] failed to save item", { error: err });
                     toast({ title: "Error", description: err.message || "Failed to add item", variant: "destructive" });
                   } finally {
                     setWfSubmitting(false);
