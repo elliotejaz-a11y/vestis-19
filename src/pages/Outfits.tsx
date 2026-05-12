@@ -52,14 +52,43 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
 
   const activeOccasion = customOccasion.trim() || selectedOccasion;
   const hasShoes = items.some((item) => item.category === "shoes");
-  const hasBottoms = items.some((item) => item.category === "bottoms");
-  const hasTopHalf = items.some((item) => item.category === "tops" || item.category === "jumpers");
-  const missingRequiredPieces = [!hasTopHalf ? "tops/jumpers" : null, !hasBottoms ? "bottoms" : null, !hasShoes ? "shoes" : null].filter(Boolean).join(" and ");
+  const hasBottoms = items.some((item) => item.category === "bottoms" || item.category === "dresses");
+  const hasTopHalf = items.some((item) => item.category === "tops" || item.category === "dresses");
+  const missingRequiredPieces = [!hasTopHalf ? "tops" : null, !hasBottoms ? "bottoms" : null, !hasShoes ? "shoes" : null].filter(Boolean).join(" and ");
 
-  // Fetch weather - only prompt for permission once, then remember the choice
+  // Fetch weather — 10-minute localStorage cache to avoid redundant API calls.
+  // Permission state is persisted separately: 'granted' | 'denied' | null (first time).
   useEffect(() => {
     const savedPermission = localStorage.getItem('weather_permission');
     if (savedPermission === 'denied') return;
+
+    const WEATHER_CACHE_KEY = 'weather_cache';
+    const WEATHER_CACHE_TTL = 10 * 60 * 1000;
+
+    function getCachedWeather(): { temp: number; description: string } | null {
+      try {
+        const raw = localStorage.getItem(WEATHER_CACHE_KEY);
+        if (!raw) return null;
+        const { data, timestamp } = JSON.parse(raw);
+        if (Date.now() - timestamp > WEATHER_CACHE_TTL) return null;
+        return data;
+      } catch {
+        return null;
+      }
+    }
+
+    function setCachedWeather(data: { temp: number; description: string }) {
+      try {
+        localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+      } catch {}
+    }
+
+    // Serve from cache instantly if fresh
+    const cached = getCachedWeather();
+    if (cached) {
+      setWeather(cached);
+      return;
+    }
 
     const fetchWeather = (pos: GeolocationPosition, persistGranted = false) => {
       fetch(
@@ -70,7 +99,9 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
           const code = data.current.weather_code;
           const temp = Math.round(data.current.temperature_2m);
           const description = code <= 3 ? "Clear" : code <= 48 ? "Cloudy" : code <= 67 ? "Rainy" : "Snowy";
-          setWeather({ temp, description });
+          const weatherData = { temp, description };
+          setWeather(weatherData);
+          setCachedWeather(weatherData);
           if (persistGranted) localStorage.setItem('weather_permission', 'granted');
         })
         .catch(() => {});
@@ -79,7 +110,6 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
     if (savedPermission === 'granted') {
       navigator.geolocation?.getCurrentPosition(fetchWeather, () => {}, { timeout: 5000 });
     } else if (savedPermission === null) {
-      // First time only — only persist 'granted' once the weather fetch actually succeeds
       navigator.geolocation?.getCurrentPosition(
         (pos) => fetchWeather(pos, true),
         () => { localStorage.setItem('weather_permission', 'denied'); },

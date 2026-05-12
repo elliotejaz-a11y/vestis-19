@@ -6,6 +6,9 @@ import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 import { isStoragePath, resolveSignedClothingImageFields, batchResolveSignedClothingImageFields, getSignedStorageUrl } from "@/lib/storage";
 import { buildRecentIdCounts, isExactDuplicateOfRecent, breakExactDuplicate } from "@/lib/outfitRotation";
+import { resolveSlots, buildFallbackOutfit } from "@/lib/outfitSlotEngine";
+import { buildAIPrompt } from "@/lib/outfitPromptBuilder";
+import type { SlotResult } from "@/lib/outfitSlotEngine";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
 const isBottomsCategory = (category?: string) => (category || "").trim().toLowerCase() === "bottoms";
@@ -304,6 +307,36 @@ function buildOutfitReasoningFallback({
   ];
 
   return sentences.filter(Boolean).join(" ");
+}
+
+/**
+ * RULE 3: jumper is additive — it layers over a shirt, never replacing it.
+ * If the AI returned a jumper without a top (shirt), inject the best top candidate.
+ */
+function ensureTopIsPresent(
+  selectedItems: ClothingItem[],
+  allItems: ClothingItem[],
+  slotResult: SlotResult
+): ClothingItem[] {
+  const topCat = (i: ClothingItem) => {
+    const c = (i.category || '').toLowerCase();
+    return c === 'tops' || c === 'dresses';
+  };
+  if (selectedItems.some(topCat)) return selectedItems;
+
+  const hasJumper = selectedItems.some(i => (i.category || '').toLowerCase() === 'jumpers');
+  if (!hasJumper) return selectedItems;
+
+  const usedIds = new Set(selectedItems.map(i => i.id));
+  const topCandidates = (slotResult.candidatesBySlot['top'] || allItems.filter(topCat))
+    .filter(t => !usedIds.has(t.id));
+  const topToInject = topCandidates[0];
+  if (!topToInject) return selectedItems;
+
+  const jumperIdx = selectedItems.findIndex(i => (i.category || '').toLowerCase() === 'jumpers');
+  const result = [...selectedItems];
+  result.splice(jumperIdx, 0, topToInject);
+  return result;
 }
 
 export function useWardrobe() {
@@ -706,22 +739,43 @@ export function useWardrobe() {
       const profile = profileRef.current;
       if (!user || items.length < 2) return null;
 
-      const missingCore: string[] = [];
-      if (!items.some((item) => isTopOrJumperCategory(item.category))) missingCore.push("top or jumper");
-      if (!items.some((item) => isBottomsCategory(item.category))) missingCore.push("bottoms");
-      if (!items.some((item) => isShoesCategory(item.category))) missingCore.push("shoes");
+      const gymRequest = isGymOccasion(occasion);
 
-      if (missingCore.length > 0) {
-        toast({
-          title: "Add required items to generate outfits",
-          description: `Every outfit requires at least one ${missingCore.join(" and ")} item.`,
-          variant: "destructive",
-        });
-        return null;
+      // ── Phase 0: Slot engine (non-gym only) ─────────────────────────────────
+      // Gym occasions use the edge function's own specialist logic.
+      let slotResult: ReturnType<typeof resolveSlots> | null = null;
+      if (!gymRequest) {
+        slotResult = resolveSlots(items, weather || null, occasion);
+        if (slotResult.error) {
+          toast({
+            title: "Add required items to generate outfits",
+            description: slotResult.error.message,
+            variant: "destructive",
+          });
+          return null;
+        }
+      } else {
+        // Gym: keep existing required-item validation
+        const missingCore: string[] = [];
+        if (!items.some((item) => isTopOrJumperCategory(item.category))) missingCore.push("top or jumper");
+        if (!items.some((item) => isBottomsCategory(item.category))) missingCore.push("bottoms");
+        if (!items.some((item) => isShoesCategory(item.category))) missingCore.push("shoes");
+        if (missingCore.length > 0) {
+          toast({
+            title: "Add required items to generate outfits",
+            description: `Every outfit requires at least one ${missingCore.join(" and ")} item.`,
+            variant: "destructive",
+          });
+          return null;
+        }
       }
 
+      // ── Phase 1: Build focused AI prompt (non-gym only) ─────────────────────
+      const preBuiltPrompt = (!gymRequest && slotResult)
+        ? buildAIPrompt(slotResult, occasion, weather || null, profile?.style_preference || undefined, colourStory)
+        : undefined;
+
       try {
-        const gymRequest = isGymOccasion(occasion);
         const recentOutfitItemIds = outfits.slice(0, 5).map(o => (o.items || []).map(i => i.id));
         const sortedItems = sortedItemsByUsageRef.current;
 
@@ -738,6 +792,7 @@ export function useWardrobe() {
             } : undefined,
             recentOutfitItemIds,
             colourStory,
+            preBuiltPrompt,
           },
         });
 
@@ -747,11 +802,12 @@ export function useWardrobe() {
           ? ensureGymOutfitHasOnlyAllowedPieces((data.items || []) as ClothingItem[], items)
           : ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
 
-        // Safety net: if the edge function still returned an exact duplicate, break it using
-        // the least-recently-worn + most colour-compatible alternative. Passes outfit history
-        // so the replacement itself cannot create a duplicate of an earlier outfit.
-        // The edge function handles primary rotation (applyDiversityPass + Phase 2 inside the
-        // function); this client guard only fires in the rare case that slips through.
+        // ── RULE 3: inject top if AI only selected a jumper (no shirt) ────────
+        if (!gymRequest && slotResult) {
+          selectedItems = ensureTopIsPresent(selectedItems, items, slotResult);
+        }
+
+        // ── Safety net: break exact duplicates ──────────────────────────────
         if (!gymRequest && isExactDuplicateOfRecent(selectedItems, outfits)) {
           selectedItems = breakExactDuplicate(
             selectedItems,
@@ -795,7 +851,8 @@ export function useWardrobe() {
         return outfit;
       } catch (err) {
         console.error("AI outfit generation failed:", err);
-        const gymRequest = isGymOccasion(occasion);
+
+        // ── Fallback Level 1: gym-specific fallback ──────────────────────────
         if (gymRequest) {
           const gymFallbackItems = ensureGymOutfitHasOnlyAllowedPieces([], items);
           if (gymFallbackItems.length === 3) {
@@ -820,11 +877,20 @@ export function useWardrobe() {
           }
         }
 
-        const occasionFilteredItems = filterItemsForOccasion(items, occasion);
-        const weatherFilteredItems = weather ? filterItemsForWeather(occasionFilteredItems, weather, occasion) : occasionFilteredItems;
-        const monochromeBase = buildMonochromeFallback(weatherFilteredItems);
-        const coreItems = ensureOutfitHasCorePieces(monochromeBase, weatherFilteredItems);
-        let fallbackItems = normalizeSelectionForWeather(coreItems, weatherFilteredItems, weather);
+        // ── Fallback Level 2: slot engine + colour theory, no AI ────────────
+        let fallbackItems: ClothingItem[];
+        if (slotResult) {
+          fallbackItems = buildFallbackOutfit(slotResult, items);
+        } else {
+          // Gym or edge case: legacy monochrome fallback
+          const occasionFilteredItems = filterItemsForOccasion(items, occasion);
+          const weatherFilteredItems = weather ? filterItemsForWeather(occasionFilteredItems, weather, occasion) : occasionFilteredItems;
+          const monochromeBase = buildMonochromeFallback(weatherFilteredItems);
+          fallbackItems = ensureOutfitHasCorePieces(monochromeBase, weatherFilteredItems);
+        }
+
+        fallbackItems = normalizeSelectionForWeather(fallbackItems, items, weather);
+
         if (isExactDuplicateOfRecent(fallbackItems, outfits)) {
           fallbackItems = breakExactDuplicate(
             fallbackItems,
