@@ -126,17 +126,16 @@ export const PostCard = memo(function PostCard({ post, onLike, onDelete, isOwn }
               <MessageCircle className="w-6 h-6 text-foreground" />
             </button>
           </div>
-          {(post.likes_count > 0 || post.comments_count > 0) && (
-            <p className="text-xs font-semibold text-foreground">
-              {post.likes_count > 0 && `${post.likes_count} likes`}
-              {post.likes_count > 0 && post.comments_count > 0 && "  "}
-              {post.comments_count > 0 && (
-                <button onClick={() => setShowComments(true)} className="text-xs font-semibold text-foreground">
-                  {post.comments_count} {post.comments_count === 1 ? "comment" : "comments"}
-                </button>
-              )}
-            </p>
-          )}
+          <div className="flex items-center gap-2">
+            {post.likes_count > 0 && (
+              <p className="text-xs font-semibold text-foreground">{post.likes_count} likes</p>
+            )}
+            {post.comments_count > 0 && (
+              <button onClick={() => setShowComments(true)} className="text-xs font-semibold text-foreground">
+                {post.comments_count} {post.comments_count === 1 ? "comment" : "comments"}
+              </button>
+            )}
+          </div>
           {post.caption && (
             <p className="text-xs text-foreground">
               <span className="font-semibold mr-1">{post.user?.username || post.user?.display_name || fashionHandle(post.user_id)}</span>
