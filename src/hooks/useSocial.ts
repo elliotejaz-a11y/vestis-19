@@ -17,16 +17,6 @@ export interface SocialPost {
   liked_by_me?: boolean;
 }
 
-export interface SocialStory {
-  id: string;
-  user_id: string;
-  image_url: string;
-  caption: string;
-  expires_at: string;
-  created_at: string;
-  user?: { display_name: string | null; username: string | null; avatar_url: string | null; avatar_preset: string | null };
-}
-
 export interface SocialComment {
   id: string;
   user_id: string;
@@ -121,35 +111,7 @@ export function useSocial() {
 
   const posts = postsData?.pages.flatMap((p) => p.posts) ?? [];
 
-  // Stories
-  const { data: stories = [], isLoading: storiesLoading } = useQuery({
-    queryKey: ["social-stories", user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data: storyData } = await supabase
-        .from("social_stories")
-        .select("*")
-        .gt("expires_at", new Date().toISOString())
-        .order("created_at", { ascending: false });
-      if (!storyData) return [];
-      const userIds = [...new Set(storyData.map((s: any) => s.user_id))];
-      const { data: profiles } = await supabase.from("profiles").select("id, display_name, username, avatar_url, avatar_preset").in("id", userIds);
-      const rawProfilesForStories = profiles || [];
-      const signedStoryAvatars = await batchResolveAvatarUrls(rawProfilesForStories.map((p: any) => p.avatar_url));
-      const profileMap = new Map(rawProfilesForStories.map((p: any, i: number) => [p.id, { ...p, avatar_url: signedStoryAvatars[i] ?? p.avatar_url }]));
-      const signedStoryUrls = await batchGetSignedSocialUrls(storyData.map((s: any) => s.image_url));
-      const enriched = storyData.map((s: any, i: number) => ({
-        ...s,
-        image_url: signedStoryUrls[i] || s.image_url,
-        user: profileMap.get(s.user_id),
-      }));
-      return enriched as SocialStory[];
-    },
-    enabled: !!user,
-    staleTime: 30_000,
-  });
-
-  const loading = postsLoading && storiesLoading;
+  const loading = postsLoading;
 
   // Optimistic like toggle
   const toggleLikeMutation = useMutation({
@@ -200,15 +162,6 @@ export function useSocial() {
       user_id: user.id, image_urls: imageUrls, caption, outfit_id: outfitId || null,
     } as any);
     if (!error) queryClient.invalidateQueries({ queryKey: ["social-posts"] });
-    return error;
-  };
-
-  const createStory = async (imageUrl: string, caption: string) => {
-    if (!user) return;
-    const { error } = await supabase.from("social_stories").insert({
-      user_id: user.id, image_url: imageUrl, caption,
-    } as any);
-    if (!error) queryClient.invalidateQueries({ queryKey: ["social-stories"] });
     return error;
   };
 
@@ -282,12 +235,11 @@ export function useSocial() {
 
   const refreshFeed = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["social-posts"] });
-    queryClient.invalidateQueries({ queryKey: ["social-stories"] });
   }, [queryClient]);
 
   return {
-    posts, stories, loading, followingIds,
-    createPost, createStory, toggleLike, followUser, unfollowUser,
+    posts, loading, followingIds,
+    createPost, toggleLike, followUser, unfollowUser,
     deletePost, uploadSocialImage, refreshFeed,
     blockUser, unblockUser, getBlockedIds,
     fetchNextPage, hasNextPage, isFetchingNextPage,

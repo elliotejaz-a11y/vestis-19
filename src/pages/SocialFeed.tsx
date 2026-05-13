@@ -3,30 +3,26 @@ import { useNavigate } from "react-router-dom";
 import { Plus, Compass } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { StoriesBar } from "@/components/StoriesBar";
 import { PostCard } from "@/components/PostCard";
 import { CreatePostSheet } from "@/components/CreatePostSheet";
-import { useSocial, SocialStory } from "@/hooks/useSocial";
+import { useSocial } from "@/hooks/useSocial";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
-import { SignedSocialImage } from "@/components/SignedSocialImage";
 
 type Tab = "feed" | "discover";
 
 export default function SocialFeed() {
   const { user } = useAuth();
   const {
-    posts, stories, loading, toggleLike, deletePost,
-    createPost, createStory, uploadSocialImage,
+    posts, loading, toggleLike, deletePost,
+    createPost, uploadSocialImage,
     fetchNextPage, hasNextPage, isFetchingNextPage,
   } = useSocial();
   const [tab, setTab] = useState<Tab>("feed");
   const [showCreatePost, setShowCreatePost] = useState(false);
-  const [showCreateStory, setShowCreateStory] = useState(false);
-  const [viewingStory, setViewingStory] = useState<SocialStory | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
@@ -138,9 +134,6 @@ export default function SocialFeed() {
         </div>
       )}
 
-      {/* Stories — always render immediately */}
-      <StoriesBar stories={stories} onAdd={() => setShowCreateStory(true)} onView={setViewingStory} />
-
       {/* Posts — always render immediately, data fills in */}
       <div className="space-y-2 mt-2">
         {displayPosts.length === 0 && !loading ? (
@@ -179,43 +172,7 @@ export default function SocialFeed() {
           )}
       </div>
 
-      {/* Story viewer */}
-      {viewingStory && (
-        <div
-          className="fixed inset-0 z-50 bg-background flex flex-col"
-          onClick={() => setViewingStory(null)}
-          onKeyDown={(e) => e.key === "Escape" && setViewingStory(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Story viewer"
-          tabIndex={-1}
-        >
-          <div className="flex items-center gap-3 px-4 py-3">
-            <UserAvatar
-              avatarUrl={viewingStory.user?.avatar_url}
-              avatarPreset={viewingStory.user?.avatar_preset}
-              displayName={viewingStory.user?.display_name}
-              userId={viewingStory.user_id}
-              className="w-8 h-8 bg-muted"
-            />
-            <span className="text-xs font-semibold text-foreground">
-              {viewingStory.user?.username || viewingStory.user?.display_name}
-            </span>
-            <button className="ml-auto text-xs text-muted-foreground focus-visible:ring-2 focus-visible:ring-accent rounded" onClick={() => setViewingStory(null)}>✕</button>
-          </div>
-          <div className="flex-1 relative">
-            <SignedSocialImage src={viewingStory.image_url} alt="" className="w-full h-full object-contain" />
-            {viewingStory.caption && (
-              <div className="absolute bottom-8 left-4 right-4 bg-background/70 backdrop-blur rounded-xl p-3">
-                <p className="text-sm text-foreground">{viewingStory.caption}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       <CreatePostSheet open={showCreatePost} onOpenChange={setShowCreatePost} onSubmit={(urls, caption) => createPost(urls, caption)} uploadImage={uploadSocialImage} type="post" />
-      <CreatePostSheet open={showCreateStory} onOpenChange={setShowCreateStory} onSubmit={(urls, caption) => createStory(urls[0], caption)} uploadImage={uploadSocialImage} type="story" />
     </div>
   );
 }
