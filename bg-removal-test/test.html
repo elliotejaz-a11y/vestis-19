@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Background Removal Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f0f0f; color: #f0f0f0; min-height: 100vh; padding: 32px 24px; }
+    h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    p.sub { font-size: 13px; color: #888; margin-bottom: 24px; }
+    .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+    label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; }
+    input[type="text"] { width: 100%; background: #0f0f0f; border: 1px solid #333; border-radius: 10px; padding: 10px 14px; color: #f0f0f0; font-size: 13px; outline: none; }
+    input[type="text"]:focus { border-color: #7c5cfc; }
+    .upload-area { border: 2px dashed #333; border-radius: 12px; padding: 40px 20px; text-align: center; cursor: pointer; transition: border-color 0.15s; }
+    .upload-area:hover { border-color: #7c5cfc; }
+    .upload-area.dragover { border-color: #7c5cfc; background: #1e1a2e; }
+    .upload-icon { font-size: 32px; margin-bottom: 8px; }
+    .upload-text { font-size: 14px; font-weight: 600; }
+    .upload-sub { font-size: 12px; color: #888; margin-top: 4px; }
+    input[type="file"] { display: none; }
+    button { width: 100%; background: #7c5cfc; color: white; border: none; border-radius: 12px; padding: 14px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; margin-top: 12px; }
+    button:hover { background: #6a4de0; }
+    button:disabled { background: #333; color: #666; cursor: not-allowed; }
+    .results { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    .result-box { text-align: center; }
+    .result-box p { font-size: 11px; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .result-box img { width: 100%; border-radius: 12px; border: 1px solid #2a2a2a; background: repeating-conic-gradient(#2a2a2a 0% 25%, #1a1a1a 0% 50%) 0 0 / 20px 20px; }
+    .status { font-size: 13px; padding: 12px 16px; border-radius: 10px; margin-top: 12px; }
+    .status.loading { background: #1a1a2e; color: #7c5cfc; }
+    .status.success { background: #0d1f0d; color: #4caf50; }
+    .status.error { background: #1f0d0d; color: #f44336; }
+    .timing { font-size: 12px; color: #888; margin-top: 8px; text-align: center; }
+    a { color: #7c5cfc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .note { font-size: 12px; color: #666; margin-top: 8px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <h1>Background Removal Test</h1>
+  <p class="sub">Test the Modal API before wiring it into the app.</p>
+
+  <div class="card">
+    <label>Modal Endpoint URL</label>
+    <input type="text" id="endpointUrl" placeholder="https://your-username--vestis-bg-removal-remove-background.modal.run" />
+    <p class="note">Paste the URL you get after running <code>modal deploy remove_bg.py</code></p>
+  </div>
+
+  <div class="card">
+    <label>Test Image</label>
+    <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">🖼️</div>
+      <p class="upload-text">Click or drag a clothing photo here</p>
+      <p class="upload-sub">JPG, PNG or WebP — ideally a clothing item on any background</p>
+    </div>
+    <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" />
+    <button id="testBtn" disabled>Remove Background</button>
+
+    <div id="status" style="display:none"></div>
+    <div id="timing" class="timing" style="display:none"></div>
+  </div>
+
+  <div id="resultsCard" class="card" style="display:none">
+    <div class="results">
+      <div class="result-box">
+        <p>Original</p>
+        <img id="originalImg" src="" alt="Original" />
+      </div>
+      <div class="result-box">
+        <p>Background Removed</p>
+        <img id="resultImg" src="" alt="Result" />
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const testBtn = document.getElementById('testBtn');
+    const status = document.getElementById('status');
+    const timing = document.getElementById('timing');
+    const resultsCard = document.getElementById('resultsCard');
+    const originalImg = document.getElementById('originalImg');
+    const resultImg = document.getElementById('resultImg');
+
+    let selectedFile = null;
+
+    uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) handleFile(fileInput.files[0]);
+    });
+
+    function handleFile(file) {
+      selectedFile = file;
+      uploadArea.querySelector('.upload-text').textContent = file.name;
+      uploadArea.querySelector('.upload-sub').textContent = `${(file.size / 1024).toFixed(0)} KB`;
+      testBtn.disabled = false;
+      resultsCard.style.display = 'none';
+      status.style.display = 'none';
+      timing.style.display = 'none';
+    }
+
+    testBtn.addEventListener('click', async () => {
+      const url = document.getElementById('endpointUrl').value.trim();
+      if (!url) { alert('Paste your Modal endpoint URL first.'); return; }
+      if (!selectedFile) return;
+
+      testBtn.disabled = true;
+      status.style.display = 'block';
+      status.className = 'status loading';
+      status.textContent = '⏳ Sending to Modal… (first request may take 15–30s for cold start)';
+      timing.style.display = 'none';
+      resultsCard.style.display = 'none';
+
+      const originalUrl = URL.createObjectURL(selectedFile);
+      originalImg.src = originalUrl;
+
+      try {
+        const base64 = await fileToBase64(selectedFile);
+        const wallStart = Date.now();
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64 }),
+        });
+
+        const wallElapsed = ((Date.now() - wallStart) / 1000).toFixed(2);
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`${response.status}: ${text}`);
+        }
+
+        const data = await response.json();
+        resultImg.src = 'data:image/png;base64,' + data.imageBase64;
+        resultsCard.style.display = 'block';
+
+        status.className = 'status success';
+        status.textContent = '✅ Done!';
+        timing.style.display = 'block';
+        timing.textContent = `Total round-trip: ${wallElapsed}s  |  Server processing: ${data.processingSeconds ?? '?'}s`;
+      } catch (err) {
+        status.className = 'status error';
+        status.textContent = '❌ Error: ' + err.message;
+        console.error(err);
+      } finally {
+        testBtn.disabled = false;
+      }
+    });
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result;
+          resolve(result.includes(',') ? result.split(',')[1] : result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+  </script>
+</body>
+</html>
