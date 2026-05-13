@@ -39,10 +39,20 @@ USING (
   AND (storage.foldername(name))[1] = 'wishlist'
 );
 
--- ── wishlist_items RLS policies ───────────────────────────────────────────────
--- The table was created via Dashboard with RLS enabled but no migration tracks
--- its policies. Idempotent: DROP IF EXISTS + CREATE for each policy.
+-- ── wishlist_items table (idempotent) ────────────────────────────────────────
+-- Originally created via Dashboard in the old project; ensure it exists here.
+CREATE TABLE IF NOT EXISTS public.wishlist_items (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  name          text NOT NULL,
+  image_url     text,
+  estimated_price numeric,
+  created_at    timestamptz NOT NULL DEFAULT now()
+);
 
+ALTER TABLE public.wishlist_items ENABLE ROW LEVEL SECURITY;
+
+-- ── wishlist_items RLS policies ───────────────────────────────────────────────
 DROP POLICY IF EXISTS "wishlist_items: owner can select" ON public.wishlist_items;
 CREATE POLICY "wishlist_items: owner can select"
 ON public.wishlist_items
