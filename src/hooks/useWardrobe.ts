@@ -696,10 +696,14 @@ export function useWardrobe() {
   const removeItem = useCallback(
     async (id: string) => {
       if (!user) return;
-      await supabase.from("clothing_items").delete().eq("id", id).eq("user_id", user.id);
+      const { error } = await supabase.from("clothing_items").delete().eq("id", id).eq("user_id", user.id);
+      if (error) {
+        toast({ title: "Failed to remove item", description: "Please try again.", variant: "destructive" });
+        return;
+      }
       setItems((prev) => prev.filter((i) => i.id !== id));
     },
-    [user]
+    [user, toast]
   );
 
   const saveOutfit = useCallback(
@@ -708,10 +712,14 @@ export function useWardrobe() {
       const update: Record<string, any> = { saved };
       if (name !== undefined) update.name = name;
       if (description !== undefined) update.description = description;
-      await supabase.from("outfits").update(update as any).eq("id", id).eq("user_id", user.id);
+      const { error } = await supabase.from("outfits").update(update as any).eq("id", id).eq("user_id", user.id);
+      if (error) {
+        toast({ title: "Failed to save outfit", description: "Please try again.", variant: "destructive" });
+        return;
+      }
       setOutfits((prev) => prev.map((o) => (o.id === id ? { ...o, saved, ...(name !== undefined ? { name } : {}), ...(description !== undefined ? { description } : {}) } : o)));
     },
-    [user]
+    [user, toast]
   );
 
   const deleteOutfit = useCallback(

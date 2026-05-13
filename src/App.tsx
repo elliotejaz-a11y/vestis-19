@@ -39,6 +39,7 @@ const Cookies = lazy(() => import("./pages/policies/Cookies"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const LaunchVideo = lazy(() => import("./components/VestisLaunchVideo"));
 const SharedOutfit = lazy(() => import("./pages/SharedOutfit"));
+const SocialFeed = lazy(() => import("./pages/SocialFeed"));
 
 // Eagerly preload ALL route chunks so every tab is instant on first tap.
 // This runs in the background after initial paint — users see the current page
@@ -55,6 +56,7 @@ function preloadAllRoutes() {
 () => import("./pages/UserProfile"),
     () => import("./pages/Friends"),
     () => import("./pages/Chat"),
+    () => import("./pages/SocialFeed"),
   ];
   // Stagger imports slightly so we don't block the main thread
   routes.forEach((load, i) => {
@@ -202,6 +204,7 @@ function AuthenticatedApp() {
         <Route path="/builder" element={
           <OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />
         } />
+        <Route path="/social" element={<SocialFeed />} />
         <Route path="/friends" element={<Friends />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/calendar" element={

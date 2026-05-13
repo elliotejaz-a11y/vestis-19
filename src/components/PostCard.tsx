@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ReportSheet } from "@/components/ReportSheet";
+import { CommentSheet } from "@/components/CommentSheet";
 
 interface Props {
   post: SocialPost;
@@ -37,6 +38,7 @@ interface Props {
 export const PostCard = memo(function PostCard({ post, onLike, onDelete, isOwn }: Props) {
   const [currentImage, setCurrentImage] = useState(0);
   const [showReport, setShowReport] = useState(false);
+  const [showComments, setShowComments] = useState(false);
   const navigate = useNavigate();
 
   return (
@@ -120,10 +122,20 @@ export const PostCard = memo(function PostCard({ post, onLike, onDelete, isOwn }
                 )}
               />
             </button>
-            <MessageCircle className="w-6 h-6 text-foreground" />
+            <button onClick={() => setShowComments(true)}>
+              <MessageCircle className="w-6 h-6 text-foreground" />
+            </button>
           </div>
-          {post.likes_count > 0 && (
-            <p className="text-xs font-semibold text-foreground">{post.likes_count} likes</p>
+          {(post.likes_count > 0 || post.comments_count > 0) && (
+            <p className="text-xs font-semibold text-foreground">
+              {post.likes_count > 0 && `${post.likes_count} likes`}
+              {post.likes_count > 0 && post.comments_count > 0 && "  "}
+              {post.comments_count > 0 && (
+                <button onClick={() => setShowComments(true)} className="text-xs font-semibold text-foreground">
+                  {post.comments_count} {post.comments_count === 1 ? "comment" : "comments"}
+                </button>
+              )}
+            </p>
           )}
           {post.caption && (
             <p className="text-xs text-foreground">
@@ -143,6 +155,12 @@ export const PostCard = memo(function PostCard({ post, onLike, onDelete, isOwn }
         reportedUserId={post.user_id}
         reportType="post"
         referenceId={post.id}
+      />
+      <CommentSheet
+        open={showComments}
+        onOpenChange={setShowComments}
+        postId={post.id}
+        initialCount={post.comments_count}
       />
     </>
   );

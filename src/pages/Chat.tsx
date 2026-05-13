@@ -331,6 +331,7 @@ function FriendsTab({
 }) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchMode, setSearchMode] = useState(false);
@@ -371,12 +372,18 @@ function FriendsTab({
 
   const handleFollow = async (targetId: string) => {
     if (!user) return;
-    if (followingIds.includes(targetId)) {
-      await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
-    } else {
-      await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+    try {
+      if (followingIds.includes(targetId)) {
+        const { error } = await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+        if (error) throw error;
+      }
+      await refreshFollowData();
+    } catch {
+      toast({ title: "Could not update follow status", description: "Please try again.", variant: "destructive" });
     }
-    await refreshFollowData();
   };
 
   const viewFriendWardrobe = async (friend: FriendProfile) => {
@@ -540,6 +547,7 @@ function DiscoverTab({
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [people, setPeople] = useState<FriendProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -607,13 +615,20 @@ function DiscoverTab({
   const handleFollow = async (targetId: string) => {
     if (!user) return;
     setFollowingLoading(targetId);
-    if (followingIds.includes(targetId)) {
-      await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
-    } else {
-      await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+    try {
+      if (followingIds.includes(targetId)) {
+        const { error } = await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+        if (error) throw error;
+      }
+      await refreshFollowData();
+    } catch {
+      toast({ title: "Could not update follow status", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setFollowingLoading(null);
     }
-    await refreshFollowData();
-    setFollowingLoading(null);
   };
 
   return (

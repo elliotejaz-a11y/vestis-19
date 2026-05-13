@@ -96,6 +96,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       .from("wishlist_items")
       .select("*")
       .eq("user_id", user.id)
+      .order("position" as any, { ascending: true, nullsFirst: false })
       .order("created_at", { ascending: true })
       .limit(3);
     if (!data) { setWishlistItems([]); return; }
@@ -470,7 +471,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
             <div className="flex items-center gap-2 mb-3">
               <Trash2 className="w-4 h-4 text-muted-foreground" />
               <p className="text-sm font-semibold text-foreground">Recently Deleted</p>
-              <span className="text-[10px] text-muted-foreground ml-auto">Auto-deletes after 30 days</span>
+              <span className="text-[10px] text-muted-foreground ml-auto">Deleted items can be restored within 30 days</span>
             </div>
             <div className="space-y-2">
               {deletedItems.map((item) => (
@@ -757,7 +758,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
                       name: wfName.trim(),
                       image_url: imageUrl,
                       estimated_price: isNaN(price) ? null : price,
-                    });
+                      position: selectedSlotIndex,
+                    } as any);
                     if (dbErr) throw dbErr;
                     setShowWishlistForm(false);
                     setWfName("");
