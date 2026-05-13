@@ -62,7 +62,7 @@ export function buildAIPrompt(
   const header = [
     `OCCASION: "${occasion}"`,
     `WEATHER: ${weatherSummary(weather, weatherRules)}`,
-    userStyle ? `USER STYLE: ${userStyle}` : null,
+    userStyle ? `USER STYLE (secondary context — occasion and weather take priority): ${userStyle}` : null,
     colourStory && colourStory !== 'surprise'
       ? `COLOUR PALETTE REQUESTED: ${colourStory.replace(/-/g, ' ')}`
       : 'COLOUR PALETTE: Your choice — pick the approach (tonal, neutral anchor, complementary, monochromatic) that best suits the occasion and name it in stylingNote.',

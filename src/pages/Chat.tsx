@@ -114,7 +114,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="min-h-screen pb-32">
       <header className="px-5 pt-12 pb-2">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Socials</h1>
       </header>
@@ -581,7 +581,9 @@ function DiscoverTab({
     ]);
     setBlockedIds(blocked);
 
-    const visible = (profiles || []).filter((p: any) => !blocked.has(p.id) && p.username && p.username.trim() !== "");
+    const visible = (profiles || [])
+      .filter((p: any) => !blocked.has(p.id) && p.username && p.username.trim() !== "")
+      .sort((a: any, b: any) => (b.avatar_url ? 1 : 0) - (a.avatar_url ? 1 : 0));
     setPeople(visible as FriendProfile[]);
     setHasMore((profiles || []).length === DISCOVER_PAGE_SIZE);
     setPage(0);
@@ -995,6 +997,7 @@ function ChatView({
   const [uploadingImage, setUploadingImage] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const initialScrollDone = useRef(false);
   const { toast } = useToast();
 
   const loadFitPics = async () => {
@@ -1040,8 +1043,13 @@ function ChatView({
   };
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+    if (!scrollRef.current || messages.length === 0) return;
+    const el = scrollRef.current;
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: initialScrollDone.current ? "smooth" : "instant" });
+      initialScrollDone.current = true;
+    });
+  }, [messages.length]);
 
   const handleSend = async () => {
     if (!input.trim() || sending) return;

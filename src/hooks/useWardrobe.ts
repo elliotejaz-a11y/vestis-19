@@ -787,10 +787,19 @@ export function useWardrobe() {
         const recentOutfitItemIds = outfits.slice(0, 5).map(o => (o.items || []).map(i => i.id));
         const sortedItems = sortedItemsByUsageRef.current;
 
+        // In guided mode, the edge function only needs to look up items referenced in
+        // preBuiltPrompt — send only those to avoid shipping the full wardrobe payload.
+        const promptItems = (!gymRequest && slotResult)
+          ? [
+              ...slotResult.mandatoryItems,
+              ...Object.values(slotResult.candidatesBySlot).flat(),
+            ].filter((item, idx, arr) => arr.findIndex((i) => i.id === item.id) === idx)
+          : sortedItems;
+
         const { data, error } = await supabase.functions.invoke("generate-outfit", {
           body: {
             occasion,
-            items: sortedItems,
+            items: promptItems,
             weather,
             userProfile: profile ? {
               stylePreference: profile.style_preference,

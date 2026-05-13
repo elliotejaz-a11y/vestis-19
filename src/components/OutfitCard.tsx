@@ -103,7 +103,9 @@ export const OutfitCard = memo(function OutfitCard({ outfit, onSave, onDelete, o
               {outfit.description && (
                 <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-1">{outfit.description}</p>
               )}
-              <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{outfit.reasoning}</p>
+              {outfit.reasoning && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{outfit.reasoning}</p>
+              )}
               {outfit.styleTips && (
                 <div className="flex items-start gap-1.5 bg-accent/10 rounded-xl p-2">
                   <Lightbulb className="w-3 h-3 text-accent mt-0.5 flex-shrink-0" />

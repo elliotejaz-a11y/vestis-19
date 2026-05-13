@@ -19,7 +19,8 @@ import FollowListSheet from "@/components/FollowListSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { useTheme } from "next-themes";
 import { ChangePasswordSheet } from "@/components/ChangePasswordSheet";
-import { getStoragePathFromUrl, getSignedStorageUrl, batchGetSignedSocialUrls } from "@/lib/storage";
+import { getStoragePathFromUrl, getSignedStorageUrl, batchGetSignedSocialUrls, batchResolveAvatarUrls } from "@/lib/storage";
+import { ImageZoomModal } from "@/components/ImageZoomModal";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -45,6 +46,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<any>(null);
+  const [avatarZoomOpen, setAvatarZoomOpen] = useState(false);
+  const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | null>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
@@ -158,6 +161,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     };
   }, [fetchFollowCounts, fetchFitPics, fetchWishlist]);
 
+  useEffect(() => {
+    if (!profile?.avatar_url) { setResolvedAvatarUrl(null); return; }
+    batchResolveAvatarUrls([profile.avatar_url]).then(([signed]) => {
+      setResolvedAvatarUrl(signed ?? profile.avatar_url ?? null);
+    });
+  }, [profile?.avatar_url]);
+
   const savedOutfits = useMemo(() => outfits.filter((o) => o.saved), [outfits]);
 
   const categoryBreakdown = useMemo(
@@ -216,15 +226,21 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       </div>
       <header className="px-5 pt-12 pb-6">
         <div className="flex flex-col items-center gap-3">
-          <UserAvatar
-            avatarUrl={profile?.avatar_url}
-            avatarPreset={profile?.avatar_preset}
-            displayName={profile?.display_name}
-            email={user?.email}
-            userId={user?.id}
-            avatarPosition={profile?.avatar_position}
-            className="w-20 h-20 bg-card border border-border"
-          />
+          <button
+            onClick={() => resolvedAvatarUrl && setAvatarZoomOpen(true)}
+            className="rounded-full focus:outline-none active:opacity-80 transition-opacity"
+            aria-label="View profile picture"
+          >
+            <UserAvatar
+              avatarUrl={profile?.avatar_url}
+              avatarPreset={profile?.avatar_preset}
+              displayName={profile?.display_name}
+              email={user?.email}
+              userId={user?.id}
+              avatarPosition={profile?.avatar_position}
+              className="w-20 h-20 bg-card border border-border"
+            />
+          </button>
           <div className="text-center">
             <h1 className="text-xl font-bold tracking-tight text-foreground">
               {displayNameForTitle}
@@ -782,28 +798,19 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         </div>
       )}
 
-      {/* Fullscreen Fit Pic Modal */}
-      {fullscreenFitPic && (
-        <div
-          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
-          onClick={() => setFullscreenFitPic(null)}
-        >
-          <button
-            onClick={() => setFullscreenFitPic(null)}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          {fullscreenFitPic.image_url && (
-            <img
-              src={fullscreenFitPic.image_url}
-              alt={fullscreenFitPic.description || ""}
-              className="max-w-full max-h-full object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
-          )}
-        </div>
-      )}
+      <ImageZoomModal
+        src={fullscreenFitPic?.image_url ?? null}
+        alt={fullscreenFitPic?.description || ""}
+        open={!!fullscreenFitPic}
+        onClose={() => setFullscreenFitPic(null)}
+      />
+
+      <ImageZoomModal
+        src={resolvedAvatarUrl}
+        alt={profile?.display_name || "Profile picture"}
+        open={avatarZoomOpen}
+        onClose={() => setAvatarZoomOpen(false)}
+      />
     </div>
   );
 }

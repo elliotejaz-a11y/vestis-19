@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
+import { ArrowLeft, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { batchResolveAvatarUrls } from "@/lib/storage";
 import { CATEGORIES } from "@/types/wardrobe";
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SignedSocialImage } from "@/components/SignedSocialImage";
+import { ImageZoomModal } from "@/components/ImageZoomModal";
 interface UserProfileData {
   id: string;
   display_name: string | null;
@@ -469,48 +470,20 @@ export default function UserProfilePage() {
         </>
       )}
 
-      {/* Fullscreen Fit Pic Modal */}
-      {fullscreenFitPic && (
-        <div
-          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
-          onClick={() => setFullscreenFitPic(null)}
-        >
-          <button
-            onClick={() => setFullscreenFitPic(null)}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <SignedSocialImage
-            src={fullscreenFitPic.image_url}
-            alt={fullscreenFitPic.description || ""}
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      <ImageZoomModal
+        src={fullscreenFitPic?.image_url ?? null}
+        alt={fullscreenFitPic?.description || ""}
+        open={!!fullscreenFitPic}
+        onClose={() => setFullscreenFitPic(null)}
+        needsSigning
+      />
 
-      {/* Avatar Lightbox */}
-      <div
-        className={`fixed inset-0 z-[10002] flex items-center justify-center transition-opacity duration-200 ${avatarLightboxOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-        style={{ background: "rgba(0,0,0,0.92)" }}
-        onClick={() => setAvatarLightboxOpen(false)}
-      >
-        <button
-          onClick={() => setAvatarLightboxOpen(false)}
-          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
-        >
-          <X className="w-5 h-5" />
-        </button>
-        {resolvedAvatarUrl && (
-          <img
-            src={resolvedAvatarUrl}
-            alt={profile?.display_name || "Profile picture"}
-            className="max-w-[90vw] max-h-[90vh] rounded-2xl object-cover"
-            onClick={(e) => e.stopPropagation()}
-          />
-        )}
-      </div>
+      <ImageZoomModal
+        src={resolvedAvatarUrl}
+        alt={profile?.display_name || "Profile picture"}
+        open={avatarLightboxOpen}
+        onClose={() => setAvatarLightboxOpen(false)}
+      />
     </div>
   );
 }

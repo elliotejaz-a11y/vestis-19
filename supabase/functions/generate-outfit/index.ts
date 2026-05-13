@@ -604,8 +604,8 @@ serve(async (req) => {
    Always name the colour story in your reasoning. Never randomly pick items hoping the colours work.
 7. Fabric/weather: heavier fabrics for cold weather, lightweight breathable for warm. Match formality of fabric to occasion.
 
-## STYLE PREFERENCE
-Strongly favour items matching the user's stated style. A minimalist user gets clean lines and neutral palettes; a streetwear user gets relaxed fits and statement pieces; a classic user gets timeless silhouettes.
+## STYLE PREFERENCE (secondary context)
+Once occasion, weather, and colour rules are satisfied, lean towards items that fit the user's stated style. Occasion always takes priority — a minimalist does not wear gym wear to a wedding just because it is minimal.
 
 ## REASONING (shown to user as "WHY THIS WORKS")
 Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.`;
@@ -613,7 +613,7 @@ Write 4–6 specific sentences. Reference the actual items chosen, the actual co
     const userPrompt = `Build the best outfit for: "${occasion}"
 Occasion tier: ${occasionTier.tier}
 ${weather ? `${getWeatherDirective(weather, occasion)}\n` : ''}${colourStoryDirective}${avoidanceSection}${userProfile ? `User profile:
-- Style preference: ${userProfile.stylePreference || 'not specified'} (CRITICAL: match closely)
+- Style preference: ${userProfile.stylePreference || 'not specified'} (secondary — occasion takes priority)
 - Body type: ${userProfile.bodyType || 'not specified'}
 - Preferred colours: ${(userProfile.preferredColors || []).join(', ') || 'not specified'}
 - Fashion goal: ${userProfile.fashionGoals || 'not specified'}
