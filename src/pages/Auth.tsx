@@ -194,17 +194,20 @@ export default function Auth() {
         setLoading(false);
         return;
       }
-      const generatedEmail = `${username.toLowerCase()}@vestis.app`;
-      const { error } = await signUp(generatedEmail, password, username);
+      const trimmedEmail = email.trim().toLowerCase();
+      const { error } = await signUp(trimmedEmail, password, displayName);
       if (error) {
         if (error.message?.toLowerCase().includes("already registered") || error.message?.toLowerCase().includes("already been registered")) {
-          toast({ title: "Username already in use", description: "That username is taken. Please choose a different one.", variant: "destructive" });
+          toast({ title: "Email already in use", description: "An account with this email already exists. Please sign in instead.", variant: "destructive" });
         } else {
           toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
         }
       } else {
         localStorage.setItem("pending_username", username);
-        toast({ title: "Account created!", description: "You can now sign in with your username and password." });
+        setSignUpEmail(trimmedEmail);
+        // VERIFICATION_FLOW: restore the two lines below (and remove the toast+setIsSignUp) to re-enable OTP verification
+        // setSignUpSuccess(true);
+        toast({ title: "Account created!", description: "You can now sign in with your email and password." });
         setIsSignUp(false);
         setSignUpStep(0);
       }
@@ -479,11 +482,13 @@ export default function Auth() {
 
   // ============ SIGN-UP MULTI-STEP FLOW ============
   if (isSignUp) {
-    const totalSteps = 2;
+    const totalSteps = 3;
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
     const namesValid = username.length >= 3 && usernameAvailable !== false;
     const canAdvance =
-      (signUpStep === 0 && namesValid && !checkingUsername) ||
-      (signUpStep === 1 && passwordValid(password));
+      (signUpStep === 0 && emailValid) ||
+      (signUpStep === 1 && namesValid && !checkingUsername) ||
+      (signUpStep === 2 && passwordValid(password));
 
     const goNext = () => {
       if (!canAdvance) return;
@@ -541,8 +546,29 @@ export default function Auth() {
             {signUpStep === 0 && (
               <div className="space-y-6 animate-fade-in">
                 <div className="space-y-2">
+                  <h1 className="text-3xl font-bold text-foreground">What's your email?</h1>
+                  <p className="text-sm text-muted-foreground">We'll use this to create your account and send important updates.</p>
+                </div>
+                <div>
+                  <Label className="text-xs font-medium text-muted-foreground">Email</Label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="mt-1 rounded-xl bg-card h-12 text-base"
+                    autoFocus
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {signUpStep === 1 && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="space-y-2">
                   <h1 className="text-3xl font-bold text-foreground">Pick your username</h1>
-                  <p className="text-sm text-muted-foreground">This is your unique @handle on Vestis.</p>
+                  <p className="text-sm text-muted-foreground">This is your unique @handle on Vestis. You can set your display name next.</p>
                 </div>
                 <div>
                   <Label className="text-xs font-medium text-muted-foreground">Username</Label>
@@ -571,7 +597,7 @@ export default function Auth() {
               </div>
             )}
 
-            {signUpStep === 1 && (
+            {signUpStep === 2 && (
               <div className="space-y-6 animate-fade-in">
                 <div className="space-y-2">
                   <h1 className="text-3xl font-bold text-foreground">Create a password</h1>
