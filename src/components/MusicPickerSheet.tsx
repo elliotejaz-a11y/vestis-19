@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Music2, Search, Play, Pause, Check, X, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface MusicTrack {
   id: string;
@@ -46,11 +47,11 @@ export function MusicPickerSheet({ open, onOpenChange, selected, onSelect }: Pro
     if (!term.trim()) { setResults([]); return; }
     setSearching(true);
     try {
-      const res = await fetch(
-        `https://itunes.apple.com/search?term=${encodeURIComponent(term)}&media=music&entity=song&limit=20`
-      );
-      const json = await res.json();
-      const tracks: MusicTrack[] = (json.results as ItunesResult[])
+      const { data, error } = await supabase.functions.invoke("music-search", {
+        body: { term },
+      });
+      if (error) throw error;
+      const tracks: MusicTrack[] = ((data?.results ?? []) as ItunesResult[])
         .filter((r) => r.previewUrl)
         .map((r) => ({
           id: String(r.trackId),
