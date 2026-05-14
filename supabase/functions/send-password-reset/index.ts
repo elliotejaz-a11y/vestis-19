@@ -23,6 +23,24 @@ Deno.serve(async (req) => {
       })
     }
 
+    // Verify the account exists before sending a code the user can never use
+    const searchResp = await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/auth/v1/admin/users?search=${encodeURIComponent(email.toLowerCase())}&per_page=10`,
+      {
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        },
+      }
+    )
+    const searchData = await searchResp.json()
+    const user = searchData?.users?.find((u: { email?: string }) => u.email?.toLowerCase() === email.toLowerCase())
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'No account found with that email.' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     // Generate 6-digit numeric OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
     const exp = Date.now() + 3600000 // 1 hour

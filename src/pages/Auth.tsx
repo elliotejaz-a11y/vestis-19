@@ -83,11 +83,13 @@ export default function Auth() {
     });
     setForgotLoading(false);
     if (error) {
-      if (isRateLimit(error.message)) {
+      let message = error.message;
+      try { const body = await (error as any).context?.json(); if (body?.error) message = body.error; } catch {}
+      if (isRateLimit(message)) {
         toast({ title: "Too many attempts", description: "Please wait a few minutes before requesting another code.", variant: "destructive" });
         startEmailCooldown();
       } else {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast({ title: "Error", description: message, variant: "destructive" });
       }
     } else {
       if (data?.token) setResetToken(data.token);
@@ -191,6 +193,8 @@ export default function Auth() {
       if (error) {
         if (error.message?.toLowerCase().includes("already registered") || error.message?.toLowerCase().includes("already been registered")) {
           toast({ title: "Email already in use", description: "An account with this email already exists. Please sign in instead.", variant: "destructive" });
+        } else if (error.message?.toLowerCase().includes("database error")) {
+          toast({ title: "Sign up failed", description: "Something went wrong on our end. Please try again in a moment.", variant: "destructive" });
         } else {
           toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
         }
