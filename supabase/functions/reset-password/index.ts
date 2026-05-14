@@ -79,8 +79,21 @@ Deno.serve(async (req) => {
     const user = users?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
 
     if (!user) {
-      return new Response(JSON.stringify({ error: 'No account found with that email.' }), {
-        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      // User exists in profiles but not in auth.users (imported account) — create them
+      const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email: email.toLowerCase(),
+        password: newPassword,
+        email_confirm: true,
+      })
+      if (createError) {
+        console.error('User create error:', createError.message)
+        return new Response(JSON.stringify({ error: createError.message }), {
+          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      console.log('Created auth user and set password for:', email)
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
