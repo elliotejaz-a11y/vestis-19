@@ -96,9 +96,16 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       .eq("user_id", user.id)
       .order("pic_date", { ascending: false });
     if (!data) { setFitPics([]); return; }
-    const imageUrls = data.map((p: any) => p.image_url as string | null);
-    const signedUrls = await batchGetSignedSocialUrls(imageUrls);
-    setFitPics(data.map((p: any, i: number) => ({ ...p, image_url: signedUrls[i] ?? p.image_url })));
+    const withUrls = await Promise.all(
+      data.map(async (p: any) => {
+        if (!p.image_url || /^https?:\/\//i.test(p.image_url)) return p;
+        const { data: signed } = await supabase.storage
+          .from("social-content")
+          .createSignedUrl(p.image_url, 3600);
+        return { ...p, image_url: signed?.signedUrl ?? p.image_url };
+      })
+    );
+    setFitPics(withUrls);
   }, [user]);
 
   const fetchWishlist = useCallback(async () => {
@@ -826,6 +833,15 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           getSlideUrl={getSlideUrl}
           onClose={() => setStoryViewerOpen(false)}
           onView={recordView}
+          isOwner
+          owner={{
+            id: user?.id ?? "",
+            displayName: profile?.display_name,
+            username: profile?.username,
+            avatarUrl: profile?.avatar_url,
+            avatarPreset: profile?.avatar_preset,
+            avatarPosition: profile?.avatar_position,
+          }}
         />
       )}
 
