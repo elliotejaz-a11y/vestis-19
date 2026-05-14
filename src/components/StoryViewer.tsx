@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Music2, Eye, Send, MessageCircle } from "lucide-react";
+import { X, Music2, Eye, Send, MessageCircle, Heart } from "lucide-react";
 import { Story, StorySlide } from "@/hooks/useStories";
 import { UserAvatar } from "@/components/UserAvatar";
 import { formatDistanceToNow } from "date-fns";
@@ -37,12 +37,15 @@ export function StoryViewer({
   const [progress, setProgress] = useState(0);
   const [slideUrls, setSlideUrls] = useState<Record<string, string | null>>({});
   const [paused, setPaused] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [showHeart, setShowHeart] = useState(false);
 
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const accumulatedRef = useRef<number>(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTapRef = useRef<number>(0);
 
   const currentStory = stories[storyIdx];
   const currentSlides = currentStory?.slides ?? [];
@@ -115,10 +118,32 @@ export function StoryViewer({
     return () => { if (progressRef.current) clearInterval(progressRef.current); };
   }, [slideIdx, storyIdx, paused, slideDurationMs, goNext]);
 
+  const triggerLike = useCallback(() => {
+    setLiked(true);
+    setShowHeart(true);
+    setTimeout(() => setShowHeart(false), 900);
+  }, []);
+
   const handleTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    const now = Date.now();
     const x = e.clientX / e.currentTarget.offsetWidth;
-    if (x < 0.33) goPrev();
-    else if (x > 0.67) goNext();
+
+    // Double-tap detection (within 300ms)
+    if (now - lastTapRef.current < 300) {
+      lastTapRef.current = 0;
+      triggerLike();
+      return;
+    }
+    lastTapRef.current = now;
+
+    // Single tap nav (fire after 320ms if no second tap)
+    setTimeout(() => {
+      if (Date.now() - lastTapRef.current >= 300 && lastTapRef.current !== 0) {
+        if (x < 0.33) goPrev();
+        else if (x > 0.67) goNext();
+        lastTapRef.current = 0;
+      }
+    }, 320);
   };
 
   const handlePointerDown = () => {
@@ -141,55 +166,12 @@ export function StoryViewer({
   const displayName = owner?.displayName || owner?.username || "Your story";
 
   return (
-    <div className="fixed inset-0 z-50 bg-black flex flex-col select-none overflow-hidden">
+    // z-[200] beats BottomNav z-50
+    <div className="fixed inset-0 z-[200] bg-black select-none touch-none">
 
-      {/* ── Progress bars ── */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 px-2 pt-10">
-        {currentSlides.map((slide, i) => (
-          <div key={slide.id} className="flex-1 h-[2px] bg-white/30 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-white rounded-full transition-none"
-              style={{ width: i < slideIdx ? "100%" : i === slideIdx ? `${progress}%` : "0%" }}
-            />
-          </div>
-        ))}
-      </div>
-
-      {/* ── Header ── */}
-      <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2.5 px-3 pt-14 pb-3">
-        <div className="relative flex-shrink-0">
-          <UserAvatar
-            avatarUrl={owner?.avatarUrl}
-            avatarPreset={owner?.avatarPreset}
-            avatarPosition={owner?.avatarPosition}
-            displayName={displayName}
-            className="w-9 h-9 border-2 border-white/60"
-          />
-          {isOwner && (
-            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-accent border border-black flex items-center justify-center">
-              <span className="text-white text-[9px] font-bold leading-none">+</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <p className="text-white text-sm font-semibold leading-tight truncate">
-            {isOwner ? "Your story" : (owner?.username ?? displayName)}
-          </p>
-          <p className="text-white/60 text-xs leading-tight">{timeAgo}</p>
-        </div>
-
-        <button
-          onClick={onClose}
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-black/30 text-white flex-shrink-0"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* ── Media ── */}
+      {/* ── Full-screen media ── */}
       <div
-        className="flex-1 relative overflow-hidden"
+        className="absolute inset-0"
         onClick={handleTap}
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
@@ -217,41 +199,110 @@ export function StoryViewer({
             <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           </div>
         )}
-
-        {/* Music label */}
-        {hasMusic && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm pointer-events-none">
-            <Music2 className="w-3 h-3 text-white animate-pulse" />
-            <span className="text-white text-xs font-medium truncate max-w-[180px]">
-              {currentSlide?.music_track_name}
-              {currentSlide?.music_artist_name ? ` — ${currentSlide.music_artist_name}` : ""}
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* ── Bottom bar ── */}
-      {isOwner && (
-        <div className="flex-shrink-0 bg-black/80 backdrop-blur-sm px-4 pt-3 pb-safe pb-6">
-          <div className="flex items-center justify-around">
-            <button className="flex flex-col items-center gap-1 opacity-80">
-              <div className="flex items-center gap-1.5">
-                <Eye className="w-5 h-5 text-white" />
-                <span className="text-white text-sm font-semibold">{currentStory.view_count}</span>
-              </div>
-              <span className="text-white/60 text-[10px]">Activity</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 opacity-80">
-              <Send className="w-5 h-5 text-white" />
-              <span className="text-white/60 text-[10px]">Share</span>
-            </button>
-            <button className="flex flex-col items-center gap-1 opacity-80">
-              <MessageCircle className="w-5 h-5 text-white" />
-              <span className="text-white/60 text-[10px]">Mention</span>
-            </button>
-          </div>
+      {/* Double-tap heart burst */}
+      {showHeart && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+          <Heart
+            className="w-24 h-24 text-white fill-white drop-shadow-lg"
+            style={{ animation: "heartBurst 0.9s ease-out forwards" }}
+          />
         </div>
       )}
+
+      {/* ── Progress bars ── */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex gap-1 px-2 pt-12">
+        {currentSlides.map((slide, i) => (
+          <div key={slide.id} className="flex-1 h-[2px] bg-white/30 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-white rounded-full transition-none"
+              style={{ width: i < slideIdx ? "100%" : i === slideIdx ? `${progress}%` : "0%" }}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* ── Header ── */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center gap-2.5 px-3 pt-16 pb-2">
+        <div className="relative flex-shrink-0">
+          <UserAvatar
+            avatarUrl={owner?.avatarUrl}
+            avatarPreset={owner?.avatarPreset}
+            avatarPosition={owner?.avatarPosition}
+            displayName={displayName}
+            className="w-9 h-9 border-2 border-white/60"
+          />
+          {isOwner && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-accent border border-black flex items-center justify-center">
+              <span className="text-white text-[9px] font-bold leading-none">+</span>
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-white text-sm font-semibold leading-tight truncate drop-shadow">
+            {isOwner ? "Your story" : (owner?.username ?? displayName)}
+          </p>
+          <p className="text-white/70 text-xs leading-tight drop-shadow">{timeAgo}</p>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-black/30 text-white flex-shrink-0"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* ── Music label ── */}
+      {hasMusic && (
+        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm pointer-events-none">
+          <Music2 className="w-3 h-3 text-white animate-pulse" />
+          <span className="text-white text-xs font-medium truncate max-w-[200px]">
+            {currentSlide?.music_track_name}
+            {currentSlide?.music_artist_name ? ` — ${currentSlide.music_artist_name}` : ""}
+          </span>
+        </div>
+      )}
+
+      {/* ── Like button (bottom-right) ── */}
+      <button
+        onClick={triggerLike}
+        className="absolute bottom-12 right-4 z-20 w-11 h-11 flex items-center justify-center"
+      >
+        <Heart
+          className={`w-7 h-7 drop-shadow transition-all duration-200 ${liked ? "text-red-500 fill-red-500 scale-110" : "text-white"}`}
+        />
+      </button>
+
+      {/* ── Owner bottom bar ── */}
+      {isOwner && (
+        <div className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-around px-4 pt-3 pb-8 bg-gradient-to-t from-black/60 to-transparent">
+          <button className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <Eye className="w-5 h-5 text-white" />
+              <span className="text-white text-sm font-semibold">{currentStory.view_count}</span>
+            </div>
+            <span className="text-white/60 text-[10px]">Activity</span>
+          </button>
+          <button className="flex flex-col items-center gap-1">
+            <Send className="w-5 h-5 text-white" />
+            <span className="text-white/60 text-[10px]">Share</span>
+          </button>
+          <button className="flex flex-col items-center gap-1">
+            <MessageCircle className="w-5 h-5 text-white" />
+            <span className="text-white/60 text-[10px]">Mention</span>
+          </button>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes heartBurst {
+          0%   { opacity: 0; transform: scale(0.3); }
+          40%  { opacity: 1; transform: scale(1.2); }
+          70%  { opacity: 1; transform: scale(1.0); }
+          100% { opacity: 0; transform: scale(1.1); }
+        }
+      `}</style>
     </div>
   );
 }
