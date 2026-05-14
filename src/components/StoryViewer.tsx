@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Music2 } from "lucide-react";
 import { Story, StorySlide } from "@/hooks/useStories";
 
 interface Props {
@@ -20,11 +20,13 @@ export function StoryViewer({ stories, initialStoryIndex = 0, getSlideUrl, onClo
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(Date.now());
   const accumulatedRef = useRef<number>(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const currentStory = stories[storyIdx];
   const currentSlides = currentStory?.slides ?? [];
   const currentSlide: StorySlide | undefined = currentSlides[slideIdx];
   const slideDurationMs = (currentSlide?.duration ?? 5) * 1000;
+  const hasMusic = !!currentSlide?.music_preview_url;
 
   // Preload slide URLs for current story
   useEffect(() => {
@@ -42,6 +44,42 @@ export function StoryViewer({ stories, initialStoryIndex = 0, getSlideUrl, onClo
   useEffect(() => {
     if (currentStory && onView) onView(currentStory.id);
   }, [currentStory?.id]);
+
+  // Music playback — start/stop when slide changes or viewer closes
+  useEffect(() => {
+    const previewUrl = currentSlide?.music_preview_url;
+
+    if (!previewUrl) {
+      audioRef.current?.pause();
+      return;
+    }
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.volume = 0.7;
+    }
+
+    const audio = audioRef.current;
+    if (audio.src !== previewUrl) {
+      audio.src = previewUrl;
+      audio.currentTime = currentSlide?.music_start_offset ?? 0;
+    }
+    audio.play().catch(() => {});
+
+    return () => { audio.pause(); };
+  }, [currentSlide?.music_preview_url, currentSlide?.music_start_offset]);
+
+  // Sync audio with pause state
+  useEffect(() => {
+    if (!audioRef.current || !hasMusic) return;
+    if (paused) audioRef.current.pause();
+    else audioRef.current.play().catch(() => {});
+  }, [paused, hasMusic]);
+
+  // Stop audio on unmount
+  useEffect(() => {
+    return () => { audioRef.current?.pause(); };
+  }, []);
 
   const goNext = useCallback(() => {
     accumulatedRef.current = 0;
@@ -85,9 +123,7 @@ export function StoryViewer({ stories, initialStoryIndex = 0, getSlideUrl, onClo
       }
     }, 50);
 
-    return () => {
-      if (progressRef.current) clearInterval(progressRef.current);
-    };
+    return () => { if (progressRef.current) clearInterval(progressRef.current); };
   }, [slideIdx, storyIdx, paused, slideDurationMs, goNext]);
 
   // Tap zones
@@ -127,12 +163,7 @@ export function StoryViewer({ stories, initialStoryIndex = 0, getSlideUrl, onClo
             <div
               className="h-full bg-white rounded-full transition-none"
               style={{
-                width:
-                  i < slideIdx
-                    ? "100%"
-                    : i === slideIdx
-                    ? `${progress}%`
-                    : "0%",
+                width: i < slideIdx ? "100%" : i === slideIdx ? `${progress}%` : "0%",
               }}
             />
           </div>
@@ -163,7 +194,7 @@ export function StoryViewer({ stories, initialStoryIndex = 0, getSlideUrl, onClo
               className="absolute inset-0 w-full h-full object-cover"
               autoPlay
               playsInline
-              muted
+              muted={hasMusic}
               loop={false}
             />
           ) : (
@@ -180,15 +211,18 @@ export function StoryViewer({ stories, initialStoryIndex = 0, getSlideUrl, onClo
             <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           </div>
         )}
-
-        {/* Tap hint arrows (subtle) */}
-        <div className="absolute left-2 top-1/2 -translate-y-1/2 opacity-0 pointer-events-none">
-          <ChevronLeft className="w-6 h-6 text-white/60" />
-        </div>
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 pointer-events-none">
-          <ChevronRight className="w-6 h-6 text-white/60" />
-        </div>
       </div>
+
+      {/* Music label */}
+      {hasMusic && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/50 backdrop-blur-sm">
+          <Music2 className="w-3 h-3 text-white animate-pulse" />
+          <span className="text-white text-xs font-medium truncate max-w-[180px]">
+            {currentSlide?.music_track_name ?? "Music"}
+            {currentSlide?.music_artist_name ? ` — ${currentSlide.music_artist_name}` : ""}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

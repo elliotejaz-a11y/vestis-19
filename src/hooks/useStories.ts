@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
+import type { MusicTrack } from "@/components/MusicPickerSheet";
 
 export interface StorySlide {
   id: string;
@@ -9,6 +10,11 @@ export interface StorySlide {
   media_url: string | null;
   media_type: "image" | "video" | null;
   duration: number;
+  music_track_id: string | null;
+  music_track_name: string | null;
+  music_artist_name: string | null;
+  music_preview_url: string | null;
+  music_start_offset: number;
   created_at: string;
 }
 
@@ -89,7 +95,7 @@ export function useStories() {
     return data?.signedUrl ?? null;
   }, []);
 
-  const createStory = useCallback(async (file: File): Promise<void> => {
+  const createStory = useCallback(async (file: File, music?: MusicTrack | null): Promise<void> => {
     if (!user) return;
     const mediaPath = await uploadStoryMedia(file);
     if (!mediaPath) throw new Error("Upload failed");
@@ -110,6 +116,13 @@ export function useStories() {
       media_url: mediaPath,
       media_type: mediaType,
       duration: isVideo ? 15 : 5,
+      ...(music ? {
+        music_track_id: music.id,
+        music_track_name: music.name,
+        music_artist_name: music.artist,
+        music_preview_url: music.previewUrl,
+        music_start_offset: 0,
+      } : {}),
     });
     if (slideError) throw slideError;
 
