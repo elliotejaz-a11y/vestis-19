@@ -77,9 +77,7 @@ export default function Auth() {
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim() || emailCooldown > 0) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
     setForgotLoading(false);
     if (error) {
       if (isRateLimit(error.message)) {
