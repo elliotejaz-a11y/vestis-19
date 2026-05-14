@@ -57,7 +57,10 @@ export default function SocialFeed() {
         .select("id, display_name, username, avatar_url, avatar_preset")
         .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
         .limit(10);
-      setSearchResults(data || []);
+      const filtered = (data || []).filter(u =>
+        !(u.display_name?.trim().toLowerCase() === "user" && !u.avatar_url && !u.avatar_preset)
+      );
+      setSearchResults(filtered);
       setSearching(false);
     }, 300);
   }, []);

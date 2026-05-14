@@ -1,0 +1,6 @@
+INSERT INTO public.wishlist_items (id,user_id,name,brand,category,color,fabric,estimated_price,image_url,notes,created_at)
+VALUES
+('f2a0619a-bc19-4826-ae00-db5e2a80a820','d37b0f1b-85f6-4b70-aebf-1f11f6d9ffad','Supreme Camo Puffer','','','','',NULL,'https://kvulebsvnmlxuhgtrney.supabase.co/storage/v1/object/public/wishlist-images/wishlist/d37b0f1b-85f6-4b70-aebf-1f11f6d9ffad/1776595481041.jpeg','','2026-04-19T10:44:41.821495+00:00'),
+('b9f160b6-a7c7-42e5-890d-b16f2a99bd72','d37b0f1b-85f6-4b70-aebf-1f11f6d9ffad','Stone Island heat reactive Knit','','','','',800,'https://kvulebsvnmlxuhgtrney.supabase.co/storage/v1/object/public/wishlist-images/wishlist/d37b0f1b-85f6-4b70-aebf-1f11f6d9ffad/1776595517988.jpeg','','2026-04-19T10:45:18.460355+00:00'),
+('db7e88cc-79b1-44a8-8ac2-7d7ae6b9d56d','d37b0f1b-85f6-4b70-aebf-1f11f6d9ffad','Supreme Stone Island Mona Lisa','','','','',NULL,'https://kvulebsvnmlxuhgtrney.supabase.co/storage/v1/object/public/wishlist-images/wishlist/d37b0f1b-85f6-4b70-aebf-1f11f6d9ffad/1776595559701.jpeg','','2026-04-19T10:46:00.439224+00:00')
+ON CONFLICT (id) DO NOTHING;
