@@ -77,7 +77,9 @@ export default function Auth() {
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim() || emailCooldown > 0) return;
     setForgotLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim());
+    const { error } = await supabase.functions.invoke('send-password-reset', {
+      body: { email: forgotEmail.trim() },
+    });
     setForgotLoading(false);
     if (error) {
       if (isRateLimit(error.message)) {
@@ -88,7 +90,7 @@ export default function Auth() {
       }
     } else {
       startEmailCooldown();
-      toast({ title: "Check your email for your 8-digit code" });
+      toast({ title: "Check your email for your reset code" });
       setRecoveryStep("otp");
     }
   };
