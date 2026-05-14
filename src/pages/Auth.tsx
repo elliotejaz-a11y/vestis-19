@@ -205,7 +205,11 @@ export default function Auth() {
       } else {
         localStorage.setItem("pending_username", username);
         setSignUpEmail(trimmedEmail);
-        setSignUpSuccess(true);
+        // VERIFICATION_FLOW: restore the two lines below (and remove the toast+setIsSignUp) to re-enable OTP verification
+        // setSignUpSuccess(true);
+        toast({ title: "Account created!", description: "You can now sign in with your email and password." });
+        setIsSignUp(false);
+        setSignUpStep(0);
       }
     } else {
       let signInEmail = emailOrUsername.trim();
@@ -263,6 +267,8 @@ export default function Auth() {
     }
   };
 
+  // VERIFICATION_FLOW_START — remove the block comment below to re-enable email OTP verification after sign-up
+  /*
   if (signUpSuccess) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
@@ -311,6 +317,8 @@ export default function Auth() {
       </div>
     );
   }
+  */
+  // VERIFICATION_FLOW_END
 
   if (showForgotPassword) {
     // Step 3: Set new password
