@@ -8,6 +8,7 @@ import { SaveOutfitDialog } from "@/components/SaveOutfitDialog";
 import { OutfitDetailSheet } from "@/components/OutfitDetailSheet";
 import { OutfitCollagePreview } from "@/components/OutfitCollagePreview";
 import { ShareOutfitButton } from "@/components/ShareOutfitButton";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 interface Props {
   outfit: Outfit;
@@ -21,6 +22,7 @@ export const OutfitCard = memo(function OutfitCard({ outfit, onSave, onDelete, o
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDescription, setEditDescription] = useState("");
 
@@ -89,7 +91,7 @@ export const OutfitCard = memo(function OutfitCard({ outfit, onSave, onDelete, o
                 </Button>
               )}
               {onDelete && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 active:scale-90 transition-transform" onClick={() => onDelete(outfit.id)}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 active:scale-90 transition-transform" onClick={(e) => { e.stopPropagation(); setDeleteDialogOpen(true); }}>
                   <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
                 </Button>
               )}
@@ -101,7 +103,9 @@ export const OutfitCard = memo(function OutfitCard({ outfit, onSave, onDelete, o
               {outfit.description && (
                 <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-1">{outfit.description}</p>
               )}
-              <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{outfit.reasoning}</p>
+              {outfit.reasoning && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">{outfit.reasoning}</p>
+              )}
               {outfit.styleTips && (
                 <div className="flex items-start gap-1.5 bg-accent/10 rounded-xl p-2">
                   <Lightbulb className="w-3 h-3 text-accent mt-0.5 flex-shrink-0" />
@@ -132,6 +136,14 @@ export const OutfitCard = memo(function OutfitCard({ outfit, onSave, onDelete, o
         defaultName={editName}
         defaultDescription={editDescription}
         editMode
+      />
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={() => { setDeleteDialogOpen(false); onDelete?.(outfit.id); }}
+        title="Delete this outfit?"
+        description="This can't be undone."
       />
     </>
   );

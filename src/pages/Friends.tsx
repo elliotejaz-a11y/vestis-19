@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { formatPrice } from "@/lib/currency";
 import { batchResolveSignedClothingImageFields, isStoragePath } from "@/lib/storage";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import { useNotifications } from "@/hooks/useNotifications";
 import { NotificationsSheet } from "@/components/NotificationsSheet";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
@@ -29,6 +30,7 @@ type View = "list" | "search" | "wardrobe";
 export default function Friends() {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [view, setView] = useState<View>("list");
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -98,12 +100,18 @@ export default function Friends() {
 
   const handleFollow = async (targetId: string) => {
     if (!user) return;
-    if (followingIds.includes(targetId)) {
-      await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
-    } else {
-      await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+    try {
+      if (followingIds.includes(targetId)) {
+        const { error } = await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+        if (error) throw error;
+      }
+      await fetchFriends();
+    } catch {
+      toast({ title: "Could not update follow status", description: "Please try again.", variant: "destructive" });
     }
-    await fetchFriends();
   };
 
   const viewFriendWardrobe = async (friend: FriendProfile) => {

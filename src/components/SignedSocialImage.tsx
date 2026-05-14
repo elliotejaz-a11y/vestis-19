@@ -24,9 +24,13 @@ export const SignedSocialImage = memo(function SignedSocialImage({ src, ...rest 
       return;
     }
     setResolved(null);
-    getSignedSocialUrl(src).then((u) => {
-      if (!cancelled) setResolved(u);
-    });
+    getSignedSocialUrl(src)
+      .then((u) => {
+        if (!cancelled) setResolved(u);
+      })
+      .catch((err) => {
+        console.warn("SignedSocialImage: failed to resolve URL:", err);
+      });
     return () => {
       cancelled = true;
     };

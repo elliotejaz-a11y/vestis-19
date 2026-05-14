@@ -35,7 +35,7 @@ export function useChat() {
     // Get all messages involving this user
     const { data: messages } = await supabase
       .from("messages")
-      .select("*")
+      .select("id, sender_id, receiver_id, content, created_at, read, is_flagged")
       .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order("created_at", { ascending: false })
       .limit(500);
@@ -183,7 +183,7 @@ export function useChatMessages(friendId: string | null) {
 
     const { data } = await supabase
       .from("messages")
-      .select("*")
+      .select("id, sender_id, receiver_id, content, created_at, read, is_flagged")
       .or(
         `and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`
       )
@@ -249,7 +249,7 @@ export function useChatMessages(friendId: string | null) {
             });
             if (msg.receiver_id === user.id && !msg.read) {
               setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, read: true } : m));
-              supabase.rpc("mark_messages_read", { friend_user_id: friendId }).then(() => {});
+              supabase.rpc("mark_messages_read", { friend_user_id: friendId }).then(() => {}).catch((e) => console.warn("mark_messages_read failed:", e));
             }
           }
         }
@@ -280,7 +280,7 @@ export function useChatMessages(friendId: string | null) {
 
     // Optimistic update: show message immediately
     const optimisticMsg: ChatMessage = {
-      id: `temp-${Date.now()}`,
+      id: `temp-${crypto.randomUUID()}`,
       sender_id: user.id,
       receiver_id: friendId,
       content: content.trim(),

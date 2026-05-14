@@ -372,7 +372,7 @@ serve(async (req) => {
       });
     }
 
-    const { occasion, items, userProfile, weather, recentOutfitItemIds, colourStory } = await req.json();
+    const { occasion, items, userProfile, weather, recentOutfitItemIds, colourStory, preBuiltPrompt } = await req.json();
 
     if (!occasion || typeof occasion !== 'string' || occasion.length > 200) {
       return new Response(JSON.stringify({ error: 'Invalid occasion' }), {
@@ -430,6 +430,113 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
 
+    // ── GUIDED MODE: preBuiltPrompt provided by client slot engine ───────────
+    // The client has already pre-filtered candidates by colour score and built a
+    // focused prompt under 800 tokens. We just call the AI and map the response.
+    if (preBuiltPrompt && typeof preBuiltPrompt === 'string' && !isGymRequest) {
+      const guidedSystemPrompt = `You are a senior personal fashion stylist. Select the best outfit from the provided candidates and write a short styling note. Respond using the create_outfit tool only.`;
+
+      const guidedResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash',
+          messages: [
+            { role: 'system', content: guidedSystemPrompt },
+            { role: 'user', content: preBuiltPrompt },
+          ],
+          max_completion_tokens: 800,
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'create_outfit',
+                description: 'Return the selected outfit items and styling notes',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    selectedItems: {
+                      type: 'array',
+                      description: 'Items chosen for the outfit — one per slot',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          itemId: { type: 'string', description: 'The id from the candidate list (value inside brackets)' },
+                          slot: { type: 'string', description: 'top | bottom | jumper | outerwear | shoes | hat | accessory' },
+                        },
+                        required: ['itemId', 'slot'],
+                        additionalProperties: false,
+                      },
+                    },
+                    outfitName: { type: 'string', description: '2–4 word outfit name' },
+                    stylingNote: { type: 'string', description: '1–2 sentences explaining the colour story and why it works' },
+                    proTip: { type: 'string', description: 'One actionable styling tip' },
+                  },
+                  required: ['selectedItems', 'outfitName', 'stylingNote', 'proTip'],
+                  additionalProperties: false,
+                },
+              },
+            },
+          ],
+          tool_choice: { type: 'function', function: { name: 'create_outfit' } },
+        }),
+      });
+
+      if (!guidedResponse.ok) {
+        if (guidedResponse.status === 429) {
+          return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
+            status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        if (guidedResponse.status === 402) {
+          return new Response(JSON.stringify({ error: 'AI usage limit reached. Please add credits.' }), {
+            status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        const text = await guidedResponse.text();
+        console.error('AI gateway error (guided):', guidedResponse.status, text);
+        throw new Error(`AI gateway error: ${guidedResponse.status}`);
+      }
+
+      const guidedAiData = await guidedResponse.json();
+      const guidedToolCall = guidedAiData.choices?.[0]?.message?.tool_calls?.[0];
+      if (!guidedToolCall) throw new Error('No tool call in guided response');
+
+      let guidedResult: any;
+      try {
+        guidedResult = JSON.parse(guidedToolCall.function.arguments);
+      } catch {
+        // Fallback Level 1: malformed JSON — regex extraction of itemIds
+        const raw = guidedToolCall.function.arguments || '';
+        const idMatches = [...raw.matchAll(/"itemId"\s*:\s*"([^"]+)"/g)].map((m: any) => m[1]);
+        guidedResult = {
+          selectedItems: idMatches.map((id: string) => ({ itemId: id, slot: 'unknown' })),
+          outfitName: 'Today\'s Pick',
+          stylingNote: '',
+          proTip: null,
+        };
+      }
+
+      // Map itemId strings back to actual wardrobe items
+      const guidedSelected = (Array.isArray(guidedResult.selectedItems) ? guidedResult.selectedItems : [])
+        .map(({ itemId }: { itemId: string }) =>
+          items.find((item: any) => String(item.id) === String(itemId))
+        )
+        .filter(Boolean);
+
+      const guidedNormalized = normalizeSelectionWithRequiredCore(guidedSelected, candidateItems);
+      const guidedFinal = normalizeSelectionForWeather(guidedNormalized, candidateItems, weather, false);
+
+      return new Response(JSON.stringify({
+        items: guidedFinal,
+        reasoning: guidedResult.stylingNote || '',
+        style_tips: guidedResult.proTip || null,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── LEGACY MODE: gym occasions or fallback ───────────────────────────────
     const occasionTier = getOccasionTier(occasion);
 
     // Count how many of the last 5 outfits each item appeared in (for diversity markers).
@@ -497,8 +604,8 @@ serve(async (req) => {
    Always name the colour story in your reasoning. Never randomly pick items hoping the colours work.
 7. Fabric/weather: heavier fabrics for cold weather, lightweight breathable for warm. Match formality of fabric to occasion.
 
-## STYLE PREFERENCE
-Strongly favour items matching the user's stated style. A minimalist user gets clean lines and neutral palettes; a streetwear user gets relaxed fits and statement pieces; a classic user gets timeless silhouettes.
+## STYLE PREFERENCE (secondary context)
+Once occasion, weather, and colour rules are satisfied, lean towards items that fit the user's stated style. Occasion always takes priority — a minimalist does not wear gym wear to a wedding just because it is minimal.
 
 ## REASONING (shown to user as "WHY THIS WORKS")
 Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.`;
@@ -506,7 +613,7 @@ Write 4–6 specific sentences. Reference the actual items chosen, the actual co
     const userPrompt = `Build the best outfit for: "${occasion}"
 Occasion tier: ${occasionTier.tier}
 ${weather ? `${getWeatherDirective(weather, occasion)}\n` : ''}${colourStoryDirective}${avoidanceSection}${userProfile ? `User profile:
-- Style preference: ${userProfile.stylePreference || 'not specified'} (CRITICAL: match closely)
+- Style preference: ${userProfile.stylePreference || 'not specified'} (secondary — occasion takes priority)
 - Body type: ${userProfile.bodyType || 'not specified'}
 - Preferred colours: ${(userProfile.preferredColors || []).join(', ') || 'not specified'}
 - Fashion goal: ${userProfile.fashionGoals || 'not specified'}

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSocial } from "@/hooks/useSocial";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban, X } from "lucide-react";
+import { ArrowLeft, Lock, Loader2, AtSign, Shirt, Palette, TrendingUp, Camera, MoreVertical, Flag, Ban } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { batchResolveAvatarUrls } from "@/lib/storage";
 import { CATEGORIES } from "@/types/wardrobe";
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SignedSocialImage } from "@/components/SignedSocialImage";
+import { ImageZoomModal } from "@/components/ImageZoomModal";
 interface UserProfileData {
   id: string;
   display_name: string | null;
@@ -60,6 +61,8 @@ export default function UserProfilePage() {
   const [showCategories, setShowCategories] = useState(false);
   const [showColors, setShowColors] = useState(false);
   const [userColors, setUserColors] = useState<[string, number][]>([]);
+  const [categoryCount, setCategoryCount] = useState(0);
+  const [isFriend, setIsFriend] = useState(false);
   const [showReportSheet, setShowReportSheet] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [isBlockedByThem, setIsBlockedByThem] = useState(false);
@@ -100,6 +103,8 @@ export default function UserProfilePage() {
         blockResult,
         reversedBlockResult,
         reqResult,
+        statsResult,
+        friendResult,
       ] = await Promise.all([
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", userId),
         supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", userId),
@@ -114,21 +119,31 @@ export default function UserProfilePage() {
         !isOwnProfile && user
           ? supabase.from("follow_requests").select("id").eq("requester_id", user.id).eq("target_id", userId).eq("status", "pending").maybeSingle()
           : Promise.resolve({ data: null }),
+        // SECURITY DEFINER — bypasses RLS to return accurate counts for everyone
+        (supabase as any).rpc("get_wardrobe_stats", { target_user_id: userId }).single(),
+        !isOwnProfile && user
+          ? supabase.rpc("are_friends", { user_a: user.id, user_b: userId })
+          : Promise.resolve({ data: false }),
       ]);
 
       setFollowersCount(fc || 0);
       setFollowingCount(fgc || 0);
 
+      // Counts from SECURITY DEFINER RPC — accurate for all viewers regardless of RLS
+      const stats = (statsResult as any)?.data as { piece_count: number; color_count: number; category_count: number } | null;
+      setWardrobeCount(stats?.piece_count ?? 0);
+      setColorCount(stats?.color_count ?? 0);
+      setCategoryCount(stats?.category_count ?? 0);
+      setIsFriend((friendResult as any)?.data === true);
+
+      // Detailed breakdown data only available when RLS grants item-level access (mutual friends)
       if (wardrobeData) {
-        setWardrobeCount(wardrobeData.length);
         const catCounts = CATEGORIES.map(cat => ({
           label: cat.label,
           icon: cat.icon,
           count: wardrobeData.filter(i => i.category === cat.value).length,
         }));
         setCategoryBreakdown(catCounts);
-        const uniqueColors = new Set(wardrobeData.map(i => i.color).filter(Boolean));
-        setColorCount(uniqueColors.size);
         const colorMap: Record<string, number> = {};
         wardrobeData.forEach(i => { if (i.color) colorMap[i.color] = (colorMap[i.color] || 0) + 1; });
         setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
@@ -368,24 +383,54 @@ export default function UserProfilePage() {
             </div>
           )}
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-2 w-full">
-            <button onClick={() => setShowWardrobe(true)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
-              <Shirt className="w-5 h-5 mx-auto text-accent mb-1" />
-              <p className="text-lg font-bold text-foreground">{wardrobeCount}</p>
-              <p className="text-[10px] text-muted-foreground">Total Pieces</p>
-            </button>
-            <button onClick={() => setShowColors(!showColors)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
-              <Palette className="w-5 h-5 mx-auto text-accent mb-1" />
-              <p className="text-lg font-bold text-foreground">{colorCount}</p>
-              <p className="text-[10px] text-muted-foreground">Colours</p>
-            </button>
-            <button onClick={() => setShowCategories(!showCategories)} className="rounded-2xl bg-card border border-border/40 p-3 text-center">
-              <TrendingUp className="w-5 h-5 mx-auto text-accent mb-1" />
-              <p className="text-lg font-bold text-foreground">{categoryBreakdown.filter(c => c.count > 0).length}</p>
-              <p className="text-[10px] text-muted-foreground">Categories</p>
-            </button>
-          </div>
+          {/* Stats — only tappable for mutual friends (wardrobe items are friend-gated) */}
+          {(() => {
+            const canBrowseWardrobe = isOwnProfile || isFriend;
+            const cardClass = "rounded-2xl bg-card border border-border/40 p-3 text-center";
+            return (
+              <div className="grid grid-cols-3 gap-2 w-full">
+                {canBrowseWardrobe ? (
+                  <button onClick={() => setShowWardrobe(true)} className={cardClass}>
+                    <Shirt className="w-5 h-5 mx-auto text-accent mb-1" />
+                    <p className="text-lg font-bold text-foreground">{wardrobeCount}</p>
+                    <p className="text-[10px] text-muted-foreground">Total Pieces</p>
+                  </button>
+                ) : (
+                  <div className={cardClass}>
+                    <Shirt className="w-5 h-5 mx-auto text-accent mb-1" />
+                    <p className="text-lg font-bold text-foreground">{wardrobeCount}</p>
+                    <p className="text-[10px] text-muted-foreground">Total Pieces</p>
+                  </div>
+                )}
+                {canBrowseWardrobe ? (
+                  <button onClick={() => setShowColors(!showColors)} className={cardClass}>
+                    <Palette className="w-5 h-5 mx-auto text-accent mb-1" />
+                    <p className="text-lg font-bold text-foreground">{colorCount}</p>
+                    <p className="text-[10px] text-muted-foreground">Colours</p>
+                  </button>
+                ) : (
+                  <div className={cardClass}>
+                    <Palette className="w-5 h-5 mx-auto text-accent mb-1" />
+                    <p className="text-lg font-bold text-foreground">{colorCount}</p>
+                    <p className="text-[10px] text-muted-foreground">Colours</p>
+                  </div>
+                )}
+                {canBrowseWardrobe ? (
+                  <button onClick={() => setShowCategories(!showCategories)} className={cardClass}>
+                    <TrendingUp className="w-5 h-5 mx-auto text-accent mb-1" />
+                    <p className="text-lg font-bold text-foreground">{categoryCount}</p>
+                    <p className="text-[10px] text-muted-foreground">Categories</p>
+                  </button>
+                ) : (
+                  <div className={cardClass}>
+                    <TrendingUp className="w-5 h-5 mx-auto text-accent mb-1" />
+                    <p className="text-lg font-bold text-foreground">{categoryCount}</p>
+                    <p className="text-[10px] text-muted-foreground">Categories</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Color breakdown (expandable) */}
           {showColors && userColors.length > 0 && (
@@ -469,48 +514,20 @@ export default function UserProfilePage() {
         </>
       )}
 
-      {/* Fullscreen Fit Pic Modal */}
-      {fullscreenFitPic && (
-        <div
-          className="fixed inset-0 z-[10002] bg-black/90 flex items-center justify-center"
-          onClick={() => setFullscreenFitPic(null)}
-        >
-          <button
-            onClick={() => setFullscreenFitPic(null)}
-            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <SignedSocialImage
-            src={fullscreenFitPic.image_url}
-            alt={fullscreenFitPic.description || ""}
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      <ImageZoomModal
+        src={fullscreenFitPic?.image_url ?? null}
+        alt={fullscreenFitPic?.description || ""}
+        open={!!fullscreenFitPic}
+        onClose={() => setFullscreenFitPic(null)}
+        needsSigning
+      />
 
-      {/* Avatar Lightbox */}
-      <div
-        className={`fixed inset-0 z-[10002] flex items-center justify-center transition-opacity duration-200 ${avatarLightboxOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-        style={{ background: "rgba(0,0,0,0.92)" }}
-        onClick={() => setAvatarLightboxOpen(false)}
-      >
-        <button
-          onClick={() => setAvatarLightboxOpen(false)}
-          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white z-10"
-        >
-          <X className="w-5 h-5" />
-        </button>
-        {resolvedAvatarUrl && (
-          <img
-            src={resolvedAvatarUrl}
-            alt={profile?.display_name || "Profile picture"}
-            className="max-w-[90vw] max-h-[90vh] rounded-2xl object-cover"
-            onClick={(e) => e.stopPropagation()}
-          />
-        )}
-      </div>
+      <ImageZoomModal
+        src={resolvedAvatarUrl}
+        alt={profile?.display_name || "Profile picture"}
+        open={avatarLightboxOpen}
+        onClose={() => setAvatarLightboxOpen(false)}
+      />
     </div>
   );
 }

@@ -114,7 +114,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="min-h-screen pb-32">
       <header className="px-5 pt-12 pb-2">
         <h1 className="text-2xl font-bold text-foreground tracking-tight">Socials</h1>
       </header>
@@ -331,6 +331,7 @@ function FriendsTab({
 }) {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchMode, setSearchMode] = useState(false);
@@ -371,12 +372,18 @@ function FriendsTab({
 
   const handleFollow = async (targetId: string) => {
     if (!user) return;
-    if (followingIds.includes(targetId)) {
-      await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
-    } else {
-      await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+    try {
+      if (followingIds.includes(targetId)) {
+        const { error } = await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+        if (error) throw error;
+      }
+      await refreshFollowData();
+    } catch {
+      toast({ title: "Could not update follow status", description: "Please try again.", variant: "destructive" });
     }
-    await refreshFollowData();
   };
 
   const viewFriendWardrobe = async (friend: FriendProfile) => {
@@ -540,6 +547,7 @@ function DiscoverTab({
 }) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [people, setPeople] = useState<FriendProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -573,7 +581,9 @@ function DiscoverTab({
     ]);
     setBlockedIds(blocked);
 
-    const visible = (profiles || []).filter((p: any) => !blocked.has(p.id) && p.username && p.username.trim() !== "");
+    const visible = (profiles || [])
+      .filter((p: any) => !blocked.has(p.id) && p.username && p.username.trim() !== "")
+      .sort((a: any, b: any) => (b.avatar_url ? 1 : 0) - (a.avatar_url ? 1 : 0));
     setPeople(visible as FriendProfile[]);
     setHasMore((profiles || []).length === DISCOVER_PAGE_SIZE);
     setPage(0);
@@ -607,13 +617,20 @@ function DiscoverTab({
   const handleFollow = async (targetId: string) => {
     if (!user) return;
     setFollowingLoading(targetId);
-    if (followingIds.includes(targetId)) {
-      await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
-    } else {
-      await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+    try {
+      if (followingIds.includes(targetId)) {
+        const { error } = await supabase.from("follows").delete().eq("follower_id", user.id).eq("following_id", targetId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("follows").insert({ follower_id: user.id, following_id: targetId });
+        if (error) throw error;
+      }
+      await refreshFollowData();
+    } catch {
+      toast({ title: "Could not update follow status", description: "Please try again.", variant: "destructive" });
+    } finally {
+      setFollowingLoading(null);
     }
-    await refreshFollowData();
-    setFollowingLoading(null);
   };
 
   return (
@@ -980,6 +997,7 @@ function ChatView({
   const [uploadingImage, setUploadingImage] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const initialScrollDone = useRef(false);
   const { toast } = useToast();
 
   const loadFitPics = async () => {
@@ -1025,8 +1043,13 @@ function ChatView({
   };
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages]);
+    if (!scrollRef.current || messages.length === 0) return;
+    const el = scrollRef.current;
+    requestAnimationFrame(() => {
+      el.scrollTo({ top: el.scrollHeight, behavior: initialScrollDone.current ? "smooth" : "instant" });
+      initialScrollDone.current = true;
+    });
+  }, [messages.length]);
 
   const handleSend = async () => {
     if (!input.trim() || sending) return;

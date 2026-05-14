@@ -44,7 +44,7 @@ function VirtualizedGridInner<T extends { id: string }>({
   }
 
   return (
-    <div ref={parentRef} className={className} style={{ height: "calc(100vh - 280px)", overflow: "auto" }}>
+    <div ref={parentRef} className={className} style={{ height: "calc(100vh - 280px)", overflow: "auto", WebkitOverflowScrolling: "touch" }}>
       <div
         style={{
           height: `${virtualizer.getTotalSize()}px`,

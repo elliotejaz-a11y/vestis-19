@@ -263,3 +263,33 @@ Lighthouse cannot be run programmatically in this environment (no Chromium/headl
 8. **Favicon resize**: The `favicon.png` is 52K (should be 4–8K at 32×32). Resize and convert to `.ico` containing 16×16, 32×32, and 48×48 variants.
 
 9. **Font subsetting**: The app loads DM Sans in weights 400–900 from Google Fonts. Subsetting to only Latin characters + the weights actually used would reduce font payload by ~30%.
+
+---
+
+## Audit Round 2 — 2026-05-11 (commit 8562a29)
+
+Second systematic audit of the full codebase. 10 verified issues fixed. See AUDIT.md for full findings and rollback instructions.
+
+### Fixes Applied
+
+| ID | Severity | Change | User Impact |
+|----|----------|--------|-------------|
+| TOAST-001 | High | `useToast` effect deps: `[state]` → `[]` | Stops listener re-registration on every toast; removes micro-stutter during dismiss animations |
+| CHAT-001 | Medium | `.catch()` on `mark_messages_read` RPC | Prevents silent read/unread desync when RPC fails |
+| CHAT-002 | Medium | Optimistic message IDs: `Date.now()` → `crypto.randomUUID()` | Eliminates dropped-message bug on fast sequential sends |
+| AVATAR-001 | Medium | `.catch()` fallback on avatar URL resolution | Avatars recover gracefully on network errors |
+| SOCIAL-001 | Medium | `.catch()` + warning on social image URL fetch | Errors are now visible in dev tools |
+| OUTFITS-001 | Medium | Calendar-nav `setTimeout` tracked and cleared on unmount | Eliminates spurious navigation on fast tab switches |
+| DB-001 | Medium | Explicit column selects on messages queries | Future-proofs against schema additions inflating payloads |
+| DB-002 | Low | Explicit column select on notifications query | Same rationale |
+| DB-003 | Low | Explicit profile column select on auth fetch | Same rationale; matches `Profile` interface exactly |
+| MOBILE-001 | Low | `WebkitOverflowScrolling: touch` on virtualised grid | Momentum scroll on older iOS devices |
+
+### Bundle Size (Round 2)
+
+| Metric | Before | After |
+|--------|--------|-------|
+| index.js | 218.04 kB | 218.25 kB |
+| All vendor chunks | Unchanged | Unchanged |
+
+The +0.21 kB increase is from added error handlers and ref cleanup. Negligible.

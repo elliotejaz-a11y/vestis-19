@@ -46,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profileFetchingRef.current = userId;
     const { data, error } = await supabase
       .from("profiles")
-      .select("*")
+      .select("id, display_name, username, avatar_url, avatar_preset, avatar_position, bio, is_public, style_preference, body_type, preferred_colors, fashion_goals, onboarding_completed, currency_preference, username_changed_at")
       .eq("id", userId)
       .single();
     if (!error) setProfile(data);

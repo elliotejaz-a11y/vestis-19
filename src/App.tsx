@@ -39,6 +39,7 @@ const Cookies = lazy(() => import("./pages/policies/Cookies"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const LaunchVideo = lazy(() => import("./components/VestisLaunchVideo"));
 const SharedOutfit = lazy(() => import("./pages/SharedOutfit"));
+const SocialFeed = lazy(() => import("./pages/SocialFeed"));
 
 // Eagerly preload ALL route chunks so every tab is instant on first tap.
 // This runs in the background after initial paint — users see the current page
@@ -55,6 +56,7 @@ function preloadAllRoutes() {
 () => import("./pages/UserProfile"),
     () => import("./pages/Friends"),
     () => import("./pages/Chat"),
+    () => import("./pages/SocialFeed"),
   ];
   // Stagger imports slightly so we don't block the main thread
   routes.forEach((load, i) => {
@@ -87,12 +89,15 @@ function AppRoutes() {
     }
   }, [profile?.avatar_url]);
 
-  // Preload all route chunks and warm up the bg-removal ONNX model once auth resolves.
-  // Both are fire-and-forget: never throw, never block rendering.
+  // Preload all route chunks once auth resolves — fire-and-forget, never blocks rendering.
+  // NOTE: preloadBgRemovalModel() is intentionally NOT called here. The ONNX model is ~50 MB
+  // and initialising it on every app load freezes low-end devices. It is already warmed up
+  // by AddItem.tsx the moment the user navigates to the /add screen — before they can pick
+  // a file — so the cold-start is eliminated at the right time without impacting app start.
   useEffect(() => {
     if (!loading && user) {
       if ("requestIdleCallback" in window) {
-        (window as any).requestIdleCallback(() => {
+        (window as Window & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(() => {
           preloadAllRoutes();
           if (!didPreloadProfileAvatars.current) {
             didPreloadProfileAvatars.current = true;
@@ -199,6 +204,7 @@ function AuthenticatedApp() {
         <Route path="/builder" element={
           <OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />
         } />
+        <Route path="/social" element={<SocialFeed />} />
         <Route path="/friends" element={<Friends />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/calendar" element={
