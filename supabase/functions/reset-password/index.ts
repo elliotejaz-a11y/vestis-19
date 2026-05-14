@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers()
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
     const user = users?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
 
     if (!user) {

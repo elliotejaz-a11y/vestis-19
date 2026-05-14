@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers()
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
     const userExists = users?.users?.some(u => u.email?.toLowerCase() === email.toLowerCase())
     if (!userExists) {
       // Return success anyway to avoid leaking user existence
