@@ -21,6 +21,10 @@ import { useTheme } from "next-themes";
 import { ChangePasswordSheet } from "@/components/ChangePasswordSheet";
 import { getStoragePathFromUrl, getSignedStorageUrl, batchGetSignedSocialUrls, batchResolveAvatarUrls } from "@/lib/storage";
 import { ImageZoomModal } from "@/components/ImageZoomModal";
+import { StoryRing } from "@/components/StoryRing";
+import { StoryViewer } from "@/components/StoryViewer";
+import { StoryCreatorSheet } from "@/components/StoryCreatorSheet";
+import { useStories } from "@/hooks/useStories";
 
 interface DeletedItem extends ClothingItem {
   deletedAt: string;
@@ -47,6 +51,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<any>(null);
   const [avatarZoomOpen, setAvatarZoomOpen] = useState(false);
+  const [storyViewerOpen, setStoryViewerOpen] = useState(false);
+  const [storyCreatorOpen, setStoryCreatorOpen] = useState(false);
+
+  const { ownStories, hasActiveStories, createStory, getSlideUrl, recordView } = useStories();
   const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | null>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -226,10 +234,10 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       </div>
       <header className="px-5 pt-12 pb-6">
         <div className="flex flex-col items-center gap-3">
-          <button
-            onClick={() => resolvedAvatarUrl && setAvatarZoomOpen(true)}
-            className="rounded-full focus:outline-none active:opacity-80 transition-opacity"
-            aria-label="View profile picture"
+          <StoryRing
+            hasStories={hasActiveStories}
+            onTap={() => hasActiveStories ? setStoryViewerOpen(true) : setStoryCreatorOpen(true)}
+            onAdd={() => setStoryCreatorOpen(true)}
           >
             <UserAvatar
               avatarUrl={profile?.avatar_url}
@@ -240,7 +248,7 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
               avatarPosition={profile?.avatar_position}
               className="w-20 h-20 bg-card border border-border"
             />
-          </button>
+          </StoryRing>
           <div className="text-center">
             <h1 className="text-xl font-bold tracking-tight text-foreground">
               {displayNameForTitle}
@@ -810,6 +818,21 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         alt={profile?.display_name || "Profile picture"}
         open={avatarZoomOpen}
         onClose={() => setAvatarZoomOpen(false)}
+      />
+
+      {storyViewerOpen && ownStories.length > 0 && (
+        <StoryViewer
+          stories={ownStories}
+          getSlideUrl={getSlideUrl}
+          onClose={() => setStoryViewerOpen(false)}
+          onView={recordView}
+        />
+      )}
+
+      <StoryCreatorSheet
+        open={storyCreatorOpen}
+        onOpenChange={setStoryCreatorOpen}
+        onCreateStory={createStory}
       />
     </div>
   );
