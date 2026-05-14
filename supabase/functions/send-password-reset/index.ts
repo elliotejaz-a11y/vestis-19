@@ -1,5 +1,3 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -22,21 +20,6 @@ Deno.serve(async (req) => {
     if (!email) {
       return new Response(JSON.stringify({ error: 'Email required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    // Check user exists
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    )
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-    const userExists = users?.users?.some(u => u.email?.toLowerCase() === email.toLowerCase())
-    if (!userExists) {
-      // Return success anyway to avoid leaking user existence
-      console.log('Password reset requested for unknown email:', email)
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
