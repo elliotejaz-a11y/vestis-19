@@ -75,25 +75,23 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-    const user = users?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
+    // Search by email via REST API to avoid pagination limits
+    const searchResp = await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/auth/v1/admin/users?search=${encodeURIComponent(email.toLowerCase())}&per_page=10`,
+      {
+        headers: {
+          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+        },
+      }
+    )
+    const searchData = await searchResp.json()
+    const user = searchData?.users?.find((u: { email?: string }) => u.email?.toLowerCase() === email.toLowerCase())
 
     if (!user) {
-      // User exists in profiles but not in auth.users (imported account) — create them
-      const { error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: email.toLowerCase(),
-        password: newPassword,
-        email_confirm: true,
-      })
-      if (createError) {
-        console.error('User create error:', createError.message)
-        return new Response(JSON.stringify({ error: createError.message }), {
-          status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-      }
-      console.log('Created auth user and set password for:', email)
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      console.error('User not found in auth.users for email:', email)
+      return new Response(JSON.stringify({ error: 'No account found with that email.' }), {
+        status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
