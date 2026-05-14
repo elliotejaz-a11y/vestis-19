@@ -234,7 +234,7 @@ export default function Auth() {
 
       const { error } = await signIn(signInEmail, password);
       if (error) {
-        toast({ title: "Sign in failed", description: error.message, variant: "destructive" });
+        toast({ title: "Incorrect password", description: "That password doesn't match our records. Use the 'Forgot password?' link below to reset it.", variant: "destructive" });
       }
     }
     setLoading(false);
