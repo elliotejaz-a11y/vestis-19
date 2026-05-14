@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { X, Music2, Heart, Send, Eye, MessageCircle } from "lucide-react";
+import { X, Music2, Eye, Send, MessageCircle } from "lucide-react";
 import { Story, StorySlide } from "@/hooks/useStories";
 import { UserAvatar } from "@/components/UserAvatar";
 import { formatDistanceToNow } from "date-fns";
@@ -37,7 +37,6 @@ export function StoryViewer({
   const [progress, setProgress] = useState(0);
   const [slideUrls, setSlideUrls] = useState<Record<string, string | null>>({});
   const [paused, setPaused] = useState(false);
-  const [message, setMessage] = useState("");
 
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number>(Date.now());
@@ -232,8 +231,7 @@ export function StoryViewer({
       </div>
 
       {/* ── Bottom bar ── */}
-      {isOwner ? (
-        /* Owner: view count + action buttons */
+      {isOwner && (
         <div className="flex-shrink-0 bg-black/80 backdrop-blur-sm px-4 pt-3 pb-safe pb-6">
           <div className="flex items-center justify-around">
             <button className="flex flex-col items-center gap-1 opacity-80">
@@ -252,25 +250,6 @@ export function StoryViewer({
               <span className="text-white/60 text-[10px]">Mention</span>
             </button>
           </div>
-        </div>
-      ) : (
-        /* Viewer: message input + reactions */
-        <div className="flex-shrink-0 bg-black/80 backdrop-blur-sm px-3 pt-2 pb-safe pb-5 flex items-center gap-2">
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Send message..."
-            className="flex-1 h-10 px-4 rounded-full bg-white/10 text-white placeholder:text-white/50 text-sm outline-none border border-white/20 focus:border-white/40"
-            onFocus={() => { if (progressRef.current) clearInterval(progressRef.current); accumulatedRef.current += Date.now() - startTimeRef.current; setPaused(true); }}
-            onBlur={() => { setPaused(false); startTimeRef.current = Date.now(); }}
-          />
-          <button className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-            <Heart className="w-6 h-6 text-white" />
-          </button>
-          <button className="flex-shrink-0 w-10 h-10 flex items-center justify-center">
-            <Send className="w-6 h-6 text-white" />
-          </button>
         </div>
       )}
     </div>

@@ -96,15 +96,13 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
       .eq("user_id", user.id)
       .order("pic_date", { ascending: false });
     if (!data) { setFitPics([]); return; }
-    const withUrls = await Promise.all(
-      data.map(async (p: any) => {
-        if (!p.image_url || /^https?:\/\//i.test(p.image_url)) return p;
-        const { data: signed } = await supabase.storage
-          .from("social-content")
-          .createSignedUrl(p.image_url, 3600);
-        return { ...p, image_url: signed?.signedUrl ?? p.image_url };
-      })
-    );
+    const withUrls = data.map((p: any) => {
+      if (!p.image_url || /^https?:\/\//i.test(p.image_url)) return p;
+      const { data: urlData } = supabase.storage
+        .from("social-content")
+        .getPublicUrl(p.image_url);
+      return { ...p, image_url: urlData.publicUrl };
+    });
     setFitPics(withUrls);
   }, [user]);
 
