@@ -117,7 +117,7 @@ export default function UserProfilePage() {
           ? supabase.from("blocked_users").select("id").eq("blocker_id", userId).eq("blocked_id", user.id).maybeSingle()
           : Promise.resolve({ data: null }),
         !isOwnProfile && user
-          ? supabase.from("follow_requests").select("id").eq("requester_id", user.id).eq("target_id", userId).eq("status", "pending").maybeSingle()
+          ? supabase.from("follow_requests").select("id").eq("requester_id", user.id).eq("target_id", userId).maybeSingle()
           : Promise.resolve({ data: null }),
         // SECURITY DEFINER — bypasses RLS to return accurate counts for everyone
         (supabase as any).rpc("get_wardrobe_stats", { target_user_id: userId }).single(),

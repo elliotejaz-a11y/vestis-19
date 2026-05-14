@@ -92,7 +92,6 @@ export function NotificationsSheet({ open, onOpenChange }: Props) {
         await supabase.from("follow_requests").insert({
           requester_id: user.id,
           target_id: targetUserId,
-          status: "pending",
         } as any);
         await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: targetUserId });
         toast({ title: "Follow request sent" });

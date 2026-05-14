@@ -792,7 +792,7 @@ function NotificationsTab({
         // Private account — send a follow request. Ignore duplicate (23505) silently.
         const { error: reqError } = await supabase
           .from("follow_requests")
-          .insert({ requester_id: user.id, target_id: targetId, status: "pending" });
+          .insert({ requester_id: user.id, target_id: targetId });
         if (reqError && reqError.code !== "23505") throw reqError;
         await supabase.rpc("notify_follow_request", { requester_id: user.id, target_id: targetId });
         // refreshFollowData won't reflect a pending request, so track locally.
