@@ -14,6 +14,13 @@ import { UserAvatar } from "@/components/UserAvatar";
 
 type Tab = "feed" | "discover";
 
+/** True only for users with a confirmed custom uploaded photo.
+ *  avatar_url must be a non-empty string — null, undefined, and "" all mean
+ *  the user is still showing the default grey silhouette preset. */
+function hasCustomAvatar(user: { avatar_url?: string | null }): boolean {
+  return typeof user.avatar_url === "string" && user.avatar_url.length > 0;
+}
+
 export default function SocialFeed() {
   const { user } = useAuth();
   const {
@@ -59,7 +66,7 @@ export default function SocialFeed() {
         .not("avatar_url", "is", null)
         .neq("avatar_url", "")
         .limit(10);
-      const filtered = data || [];
+      const filtered = (data || []).filter(hasCustomAvatar);
       setSearchResults(filtered);
       setSearching(false);
     }, 300);
@@ -67,7 +74,7 @@ export default function SocialFeed() {
 
   const feedPosts = posts;
   const discoverPosts = useMemo(
-    () => posts.filter(p => p.user_id !== user?.id),
+    () => posts.filter(p => p.user_id !== user?.id && hasCustomAvatar(p.user ?? {})),
     [posts, user?.id]
   );
   const displayPosts = tab === "feed" ? feedPosts : discoverPosts;
