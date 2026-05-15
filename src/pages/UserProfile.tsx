@@ -149,7 +149,12 @@ export default function UserProfilePage() {
         setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
       }
 
-      setFitPics((pics || []) as FitPic[]);
+      const withUrls = (pics || []).map((p: any) => {
+        if (!p.image_url || /^https?:\/\//i.test(p.image_url)) return p;
+        const { data: urlData } = supabase.storage.from("social-content").getPublicUrl(p.image_url);
+        return { ...p, image_url: urlData.publicUrl };
+      });
+      setFitPics(withUrls as FitPic[]);
       setIsBlocked(!!(blockResult as any)?.data);
       setIsBlockedByThem(!!(reversedBlockResult as any)?.data);
       setPendingRequest(!!(reqResult as any)?.data);

@@ -1,5 +1,6 @@
 import { useEffect, useState, memo } from "react";
 import { getSignedSocialUrl } from "@/lib/storage";
+import { cn } from "@/lib/utils";
 
 interface Props extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string | null | undefined;
@@ -9,11 +10,13 @@ interface Props extends React.ImgHTMLAttributes<HTMLImageElement> {
  * Renders an <img> for a value that may be either a legacy public URL or a
  * private "social-content" path/URL needing a signed URL.
  */
-export const SignedSocialImage = memo(function SignedSocialImage({ src, ...rest }: Props) {
+export const SignedSocialImage = memo(function SignedSocialImage({ src, className, ...rest }: Props) {
   const [resolved, setResolved] = useState<string | null>(null);
+  const [errored, setErrored] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setErrored(false);
     if (!src) {
       setResolved(null);
       return;
@@ -36,6 +39,6 @@ export const SignedSocialImage = memo(function SignedSocialImage({ src, ...rest 
     };
   }, [src]);
 
-  if (!resolved) return <div className={rest.className} aria-hidden />;
-  return <img {...rest} src={resolved} />;
+  if (!resolved || errored) return <div className={cn("animate-pulse bg-muted", className)} aria-hidden />;
+  return <img {...rest} className={className} src={resolved} onError={() => setErrored(true)} />;
 });
