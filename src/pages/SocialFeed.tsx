@@ -175,7 +175,7 @@ export default function SocialFeed() {
           )}
       </div>
 
-      <CreatePostSheet open={showCreatePost} onOpenChange={setShowCreatePost} onSubmit={(urls, caption) => createPost(urls, caption)} uploadImage={uploadSocialImage} type="post" />
+      <CreatePostSheet open={showCreatePost} onOpenChange={setShowCreatePost} onSubmit={(urls, caption) => createPost(urls, caption)} uploadImage={uploadSocialImage} />
     </div>
   );
 }

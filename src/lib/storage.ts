@@ -9,6 +9,11 @@ type ImageFields = {
 
 type SignedStorageBucket = "clothing-images" | "wishlist-images" | "social-content" | "social-media";
 
+// Only extract paths from URLs belonging to this project — prevents generating
+// signed URLs on the current project for files that live in a different Supabase
+// project (e.g. migrated data whose image_url still points at the old instance).
+const CURRENT_SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.replace(/\/$/, "");
+
 const SIGNED_URL_EXPIRES_IN_SECONDS = 60 * 60;
 
 // Module-level cache: raw path/URL → { signedUrl, expiresAt }

@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Upload, Image, Loader2, Sparkles } from "lucide-react";
+import { Image, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Props {
@@ -10,10 +10,9 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onSubmit: (imageUrls: string[], caption: string) => Promise<any>;
   uploadImage: (file: File) => Promise<string | null>;
-  type: "post" | "story";
 }
 
-export function CreatePostSheet({ open, onOpenChange, onSubmit, uploadImage, type }: Props) {
+export function CreatePostSheet({ open, onOpenChange, onSubmit, uploadImage }: Props) {
   const [images, setImages] = useState<string[]>([]);
   const [caption, setCaption] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -37,9 +36,9 @@ export function CreatePostSheet({ open, onOpenChange, onSubmit, uploadImage, typ
     setPosting(true);
     const error = await onSubmit(images, caption);
     if (error) {
-      toast({ title: "Failed to create " + type, variant: "destructive" });
+      toast({ title: "Failed to create post", variant: "destructive" });
     } else {
-      toast({ title: type === "post" ? "Post shared! 🎉" : "Story posted! ✨" });
+      toast({ title: "Post shared! 🎉" });
       setImages([]); setCaption("");
       onOpenChange(false);
     }
@@ -50,9 +49,7 @@ export function CreatePostSheet({ open, onOpenChange, onSubmit, uploadImage, typ
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh] overflow-y-auto bg-background pb-24">
         <SheetHeader>
-          <SheetTitle className="text-lg font-bold tracking-tight">
-            {type === "post" ? "New Post" : "New Story"}
-          </SheetTitle>
+          <SheetTitle className="text-lg font-bold tracking-tight">New Post</SheetTitle>
         </SheetHeader>
 
         <div className="mt-4 space-y-4">
@@ -82,9 +79,7 @@ export function CreatePostSheet({ open, onOpenChange, onSubmit, uploadImage, typ
             ) : (
               <>
                 <Image className="w-6 h-6" />
-                <span className="text-xs font-medium">
-                  {type === "post" ? "Add photos" : "Add story photo"}
-                </span>
+                <span className="text-xs font-medium">Add photos</span>
               </>
             )}
           </button>
@@ -92,7 +87,7 @@ export function CreatePostSheet({ open, onOpenChange, onSubmit, uploadImage, typ
             ref={fileRef}
             type="file"
             accept="image/*"
-            multiple={type === "post"}
+            multiple
             className="hidden"
             onChange={handleFiles}
           />
@@ -101,7 +96,7 @@ export function CreatePostSheet({ open, onOpenChange, onSubmit, uploadImage, typ
           <Textarea
             value={caption}
             onChange={(e) => setCaption(e.target.value)}
-            placeholder={type === "post" ? "Write a caption..." : "Add text to your story..."}
+            placeholder="Write a caption..."
             className="rounded-xl bg-card text-sm min-h-[60px]"
             maxLength={500}
           />
@@ -112,7 +107,7 @@ export function CreatePostSheet({ open, onOpenChange, onSubmit, uploadImage, typ
             className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
           >
             {posting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-            {type === "post" ? "Share Post" : "Share Story"}
+            Share Post
           </Button>
         </div>
       </SheetContent>
