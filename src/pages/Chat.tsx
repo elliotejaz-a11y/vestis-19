@@ -569,6 +569,8 @@ function DiscoverTab({
         .neq("id", user.id)
         .not("username", "is", null)
         .neq("username", "")
+        .not("avatar_url", "is", null)
+        .neq("avatar_url", "")
         .order("created_at", { ascending: false })
         .range(0, DISCOVER_PAGE_SIZE - 1),
       supabase.from("blocked_users").select("blocked_id").eq("blocker_id", user.id),
@@ -582,8 +584,7 @@ function DiscoverTab({
     setBlockedIds(blocked);
 
     const visible = (profiles || [])
-      .filter((p: any) => !blocked.has(p.id) && p.username && p.username.trim() !== "")
-      .sort((a: any, b: any) => (b.avatar_url ? 1 : 0) - (a.avatar_url ? 1 : 0));
+      .filter((p: any) => !blocked.has(p.id) && p.username && p.username.trim() !== "" && typeof p.avatar_url === "string" && p.avatar_url.length > 0);
     setPeople(visible as FriendProfile[]);
     setHasMore((profiles || []).length === DISCOVER_PAGE_SIZE);
     setPage(0);
@@ -600,10 +601,12 @@ function DiscoverTab({
       .neq("id", user.id)
       .not("username", "is", null)
       .neq("username", "")
+      .not("avatar_url", "is", null)
+      .neq("avatar_url", "")
       .order("created_at", { ascending: false })
       .range(nextPage * DISCOVER_PAGE_SIZE, (nextPage + 1) * DISCOVER_PAGE_SIZE - 1);
 
-    const visible = (profiles || []).filter((p: any) => !blockedIds.has(p.id) && p.username && p.username.trim() !== "");
+    const visible = (profiles || []).filter((p: any) => !blockedIds.has(p.id) && p.username && p.username.trim() !== "" && typeof p.avatar_url === "string" && p.avatar_url.length > 0);
     setPeople((prev) => [...prev, ...visible as FriendProfile[]]);
     setHasMore((profiles || []).length === DISCOVER_PAGE_SIZE);
     setPage(nextPage);
