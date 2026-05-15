@@ -43,6 +43,12 @@ export function getStoragePathFromUrl(bucket: SignedStorageBucket, value: string
   if (!value) return null;
   if (isStoragePath(value)) return value;
 
+  // Guard: only extract paths from the current project. If the URL belongs to a
+  // different Supabase project (e.g. pre-migration data), return null so callers
+  // fall back to the original URL rather than generating a signed URL for a file
+  // that doesn't exist on this project.
+  if (CURRENT_SUPABASE_URL && !value.startsWith(CURRENT_SUPABASE_URL)) return null;
+
   const publicMatch = value.match(new RegExp(`/storage/v1/object/(?:public|sign)/${bucket}/(.+?)(?:\\?|$)`));
   return publicMatch ? decodeURIComponent(publicMatch[1]) : null;
 }

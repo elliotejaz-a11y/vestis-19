@@ -28,6 +28,8 @@ export default function Auth() {
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
+  const [usernameAllowed, setUsernameAllowed] = useState<boolean | null>(null);
+  const [usernameBlockedReason, setUsernameBlockedReason] = useState<string>("");
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -152,14 +154,30 @@ export default function Auth() {
   };
 
   const checkUsername = async (value: string) => {
-    if (value.length < 3) { setUsernameAvailable(null); return; }
+    if (value.length < 3) {
+      setUsernameAvailable(null);
+      setUsernameAllowed(null);
+      setUsernameBlockedReason("");
+      return;
+    }
     setCheckingUsername(true);
-    const { data } = await supabase
-      .from("profiles")
-      .select("id")
-      .ilike("username", value)
-      .limit(1);
-    setUsernameAvailable(!data || data.length === 0);
+
+    // Run availability check and profanity check in parallel.
+    const [{ data: existingRows }, profanityResult] = await Promise.all([
+      supabase.from("profiles").select("id").ilike("username", value).limit(1),
+      supabase.functions
+        .invoke("validate-username", { body: { username: value } })
+        .then(({ data }) => data as { valid: boolean; reason?: string } | null)
+        .catch(() => null), // network errors fail open
+    ]);
+
+    const taken = !(!existingRows || existingRows.length === 0);
+    const allowed = profanityResult === null || profanityResult.valid;
+    const blockedReason = (!allowed && profanityResult?.reason) ? profanityResult.reason : "";
+
+    setUsernameAvailable(!taken);
+    setUsernameAllowed(allowed);
+    setUsernameBlockedReason(blockedReason);
     setCheckingUsername(false);
   };
 
@@ -167,6 +185,8 @@ export default function Auth() {
     const cleaned = value.toLowerCase().replace(/[^a-z0-9._]/g, "");
     setUsername(cleaned);
     setUsernameAvailable(null);
+    setUsernameAllowed(null);
+    setUsernameBlockedReason("");
     if (cleaned.length >= 3) {
       const timeout = setTimeout(() => checkUsername(cleaned), 400);
       return () => clearTimeout(timeout);
@@ -180,6 +200,11 @@ export default function Auth() {
     if (isSignUp) {
       if (usernameAvailable === false) {
         toast({ title: "Username taken", description: "Please choose a different username.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      if (usernameAllowed === false) {
+        toast({ title: "Invalid username", description: usernameBlockedReason || "This username isn't allowed. Please choose a different one.", variant: "destructive" });
         setLoading(false);
         return;
       }
@@ -471,7 +496,7 @@ export default function Auth() {
   if (isSignUp) {
     const totalSteps = 3;
     const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-    const namesValid = username.length >= 3 && usernameAvailable !== false;
+    const namesValid = username.length >= 3 && usernameAvailable !== false && usernameAllowed !== false;
     const canAdvance =
       (signUpStep === 0 && emailValid) ||
       (signUpStep === 1 && namesValid && !checkingUsername) ||
@@ -573,12 +598,15 @@ export default function Auth() {
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
                       {checkingUsername && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
-                      {!checkingUsername && username.length >= 3 && usernameAvailable === true && <Check className="w-4 h-4 text-accent" />}
-                      {!checkingUsername && usernameAvailable === false && <X className="w-4 h-4 text-destructive" />}
+                      {!checkingUsername && username.length >= 3 && usernameAvailable === true && usernameAllowed !== false && <Check className="w-4 h-4 text-accent" />}
+                      {!checkingUsername && (usernameAvailable === false || usernameAllowed === false) && <X className="w-4 h-4 text-destructive" />}
                     </div>
                   </div>
                   {usernameAvailable === false && (
                     <p className="text-[10px] text-destructive mt-1">Username is already taken</p>
+                  )}
+                  {usernameAllowed === false && usernameBlockedReason && (
+                    <p className="text-[10px] text-destructive mt-1">{usernameBlockedReason}</p>
                   )}
                 </div>
               </div>

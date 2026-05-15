@@ -11,3 +11,5 @@ project_id = "ytiwuzdleyqfzwrwgtbc"
     verify_jwt = false
   [functions.klaviyo-subscribe]
     verify_jwt = false
+  [functions.validate-username]
+    verify_jwt = false

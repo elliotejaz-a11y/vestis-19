@@ -5,8 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, Upload, HelpCircle, Pencil, Loader2, X } from "lucide-react";
-import { UserAvatar, AVATAR_PRESET_LIST, DEFAULT_AVATAR_PRESET_ID } from "@/components/UserAvatar";
+import { Sparkles, ArrowRight, ArrowLeft, Check, Camera, HelpCircle, Pencil, Loader2, X } from "lucide-react";
+import { UserAvatar, DEFAULT_AVATAR_PRESET_ID } from "@/components/UserAvatar";
 import { StyleQuizSheet } from "@/components/StyleQuizSheet";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
@@ -221,25 +221,9 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
               <Camera className="w-3.5 h-3.5" />
               {uploading ? "Uploading..." : avatarUrl ? "Change photo" : "Upload photo"}
             </button>
-            {/* Preset picker */}
-            <div className="w-full space-y-1.5">
-              <p className="text-[10px] text-muted-foreground text-center">Or pick a default</p>
-              <div className="flex items-center justify-center gap-2">
-                {AVATAR_PRESET_LIST.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => { setAvatarUrl(""); setAvatarPreset(p.id); }}
-                    className={cn(
-                      "w-10 h-10 rounded-full overflow-hidden border-2 transition-all",
-                      !avatarUrl && avatarPreset === p.id ? "border-accent" : "border-transparent"
-                    )}
-                    title={p.label}
-                  >
-                    <UserAvatar avatarPreset={p.id} className="w-full h-full rounded-none" />
-                  </button>
-                ))}
-              </div>
-            </div>
+            {!editMode && !avatarUrl && !uploading && (
+              <p className="text-[10px] text-destructive">A profile photo is required to continue</p>
+            )}
           </div>
           {/* Display Name */}
           <div>
@@ -305,7 +289,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
           </div>
         </div>
       ),
-      valid: !!username.trim() && username.trim().length >= 3 && usernameAvailable !== false && !checkingUsername && !!displayName.trim(),
+      valid: !!username.trim() && username.trim().length >= 3 && usernameAvailable !== false && !checkingUsername && !!displayName.trim() && (editMode || !!avatarUrl),
     },
     {
       title: "Account Privacy",
@@ -399,6 +383,7 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
 
   const handleNext = () => {
     if (step === 0) {
+      if (!editMode && !avatarUrl) { setProfileError("A profile photo is required to continue"); return; }
       if (!displayName.trim()) { setProfileError("Please enter your display name"); return; }
       if (!username.trim()) { setProfileError("Please choose a username"); return; }
       if (username.trim().length < 3) { setProfileError("Username must be at least 3 characters"); return; }

@@ -56,10 +56,10 @@ export default function SocialFeed() {
         .from("profiles")
         .select("id, display_name, username, avatar_url, avatar_preset")
         .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
+        .not("avatar_url", "is", null)
+        .neq("avatar_url", "")
         .limit(10);
-      const filtered = (data || []).filter(u =>
-        !(u.display_name?.trim().toLowerCase() === "user" && !u.avatar_url && !u.avatar_preset)
-      );
+      const filtered = data || [];
       setSearchResults(filtered);
       setSearching(false);
     }, 300);
