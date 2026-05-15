@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Pencil, Trash2, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getStoragePathFromUrl } from "@/lib/storage";
 import { useToast } from "@/hooks/use-toast";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { format } from "date-fns";
@@ -68,6 +69,8 @@ export function FitPicDetailSheet({ pic, open, onOpenChange, onUpdated }: FitPic
     if (error) {
       toast({ title: "Failed to delete", variant: "destructive" });
     } else {
+      const path = getStoragePathFromUrl("social-content", pic.image_url);
+      if (path) await supabase.storage.from("social-content").remove([path]);
       toast({ title: "Fit pic deleted" });
       onOpenChange(false);
       onUpdated();

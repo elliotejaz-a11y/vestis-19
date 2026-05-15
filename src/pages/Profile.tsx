@@ -46,6 +46,8 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
   const [fitPics, setFitPics] = useState<any[]>([]);
   const [selectedFitPic, setSelectedFitPic] = useState<any>(null);
   const [fullscreenFitPic, setFullscreenFitPic] = useState<any>(null);
+  const [deleteFitPicTarget, setDeleteFitPicTarget] = useState<any>(null);
+  const [deletingFitPic, setDeletingFitPic] = useState(false);
   const [avatarZoomOpen, setAvatarZoomOpen] = useState(false);
   const [resolvedAvatarUrl, setResolvedAvatarUrl] = useState<string | null>(null);
   const [followSheet, setFollowSheet] = useState<{ open: boolean; type: "followers" | "following" }>({ open: false, type: "followers" });
@@ -97,6 +99,22 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
     });
     setFitPics(withUrls);
   }, [user]);
+
+  const handleDeleteFitPic = async () => {
+    if (!deleteFitPicTarget) return;
+    setDeletingFitPic(true);
+    const { error } = await supabase.from("fit_pics").delete().eq("id", deleteFitPicTarget.id);
+    if (error) {
+      toast({ title: "Failed to delete", variant: "destructive" });
+    } else {
+      const path = getStoragePathFromUrl("social-content", deleteFitPicTarget.image_url);
+      if (path) await supabase.storage.from("social-content").remove([path]);
+      toast({ title: "Fit pic removed" });
+      setDeleteFitPicTarget(null);
+      fetchFitPics();
+    }
+    setDeletingFitPic(false);
+  };
 
   const fetchWishlist = useCallback(async () => {
     if (!user) return;
@@ -305,19 +323,26 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
           ) : (
             <div className="grid grid-cols-3 gap-1">
               {fitPics.slice(0, 9).map((pic: any) => (
-                <button
-                  key={pic.id}
-                  onClick={() => setFullscreenFitPic(pic)}
-                  onContextMenu={(e) => { e.preventDefault(); setSelectedFitPic(pic); }}
-                  className="aspect-square rounded-xl overflow-hidden relative"
-                >
-                  {pic.image_url && <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />}
+                <div key={pic.id} className="aspect-square rounded-xl overflow-hidden relative group">
+                  <button
+                    onClick={() => setFullscreenFitPic(pic)}
+                    className="w-full h-full"
+                  >
+                    {pic.image_url && <img src={pic.image_url} alt={pic.description || ""} className="w-full h-full object-cover" />}
+                  </button>
                   {pic.is_private && (
-                    <div className="absolute top-1 right-1 bg-foreground/60 rounded-full px-1.5 py-0.5">
+                    <div className="absolute top-1 left-1 bg-foreground/60 rounded-full px-1.5 py-0.5 pointer-events-none">
                       <span className="text-[8px] text-background">Private</span>
                     </div>
                   )}
-                </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteFitPicTarget(pic); }}
+                    className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/50 flex items-center justify-center"
+                    aria-label="Remove fit pic"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -681,6 +706,14 @@ export function Profile({ items, outfits = [], onSaveOutfit, onDeleteOutfit, del
         open={!!selectedFitPic}
         onOpenChange={(o) => { if (!o) setSelectedFitPic(null); }}
         onUpdated={() => { setSelectedFitPic(null); fetchFitPics(); }}
+      />
+
+      <DeleteConfirmDialog
+        open={!!deleteFitPicTarget}
+        onOpenChange={(o) => { if (!o) setDeleteFitPicTarget(null); }}
+        onConfirm={handleDeleteFitPic}
+        title="Remove fit pic?"
+        description="This photo will be permanently deleted."
       />
 
       <DeleteConfirmDialog
