@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import vestisLogo from "@/assets/vestis-logo.png";
 import { useNavigate } from "react-router-dom";
 import { SignUpIntro } from "@/components/SignUpIntro";
+import { COUNTRY_CODES } from "@/lib/countryCodes";
 
 export default function Auth() {
   // If in recovery mode (OTP verified, setting new password), keep showing Auth
@@ -27,6 +29,8 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [phoneCountryCode, setPhoneCountryCode] = useState("+1");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [usernameAllowed, setUsernameAllowed] = useState<boolean | null>(null);
   const [usernameBlockedReason, setUsernameBlockedReason] = useState<string>("");
@@ -225,6 +229,8 @@ export default function Auth() {
         }
       } else {
         localStorage.setItem("pending_username", username);
+        localStorage.setItem("pending_phone_country_code", phoneCountryCode);
+        localStorage.setItem("pending_phone_number", phoneNumber);
         setSignUpEmail(trimmedEmail);
         setSignUpSuccess(true);
       }
@@ -494,19 +500,19 @@ export default function Auth() {
 
   // ============ SIGN-UP MULTI-STEP FLOW ============
   if (isSignUp) {
-    const totalSteps = 3;
+    const totalSteps = 4;
     const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
     const namesValid = username.length >= 3 && usernameAvailable !== false && usernameAllowed !== false;
+    const phoneValid = phoneNumber.replace(/\D/g, "").length >= 6;
     const canAdvance =
       (signUpStep === 0 && emailValid) ||
       (signUpStep === 1 && namesValid && !checkingUsername) ||
-      (signUpStep === 2 && passwordValid(password));
+      (signUpStep === 2 && phoneValid) ||
+      (signUpStep === 3 && passwordValid(password));
 
     const goNext = () => {
       if (!canAdvance) return;
-      if (signUpStep < totalSteps - 1) {
-        setSignUpStep(signUpStep + 1);
-      }
+      if (signUpStep < totalSteps - 1) setSignUpStep(signUpStep + 1);
     };
 
     const goBack = () => {
@@ -613,6 +619,42 @@ export default function Auth() {
             )}
 
             {signUpStep === 2 && (
+              <div className="space-y-6 animate-fade-in">
+                <div className="space-y-2">
+                  <h1 className="text-3xl font-bold text-foreground">What's your mobile number?</h1>
+                  <p className="text-sm text-muted-foreground">Select your country code and enter your number.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-muted-foreground">Mobile Number</Label>
+                  <div className="flex gap-2">
+                    <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode}>
+                      <SelectTrigger className="rounded-xl bg-card h-12 w-32 shrink-0 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {COUNTRY_CODES.map((c) => (
+                          <SelectItem key={`${c.code}-${c.country}`} value={c.code}>
+                            {c.flag} {c.code}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="tel"
+                      inputMode="tel"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d\s\-()+]/g, ""))}
+                      placeholder="021 123 4567"
+                      className="rounded-xl bg-card h-12 text-base flex-1"
+                      autoFocus
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Used for account security only — never shared.</p>
+                </div>
+              </div>
+            )}
+
+            {signUpStep === 3 && (
               <div className="space-y-6 animate-fade-in">
                 <div className="space-y-2">
                   <h1 className="text-3xl font-bold text-foreground">Create a password</h1>

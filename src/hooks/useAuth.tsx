@@ -18,6 +18,8 @@ interface Profile {
   onboarding_completed: boolean;
   currency_preference: string;
   username_changed_at: string | null;
+  phone_country_code: string | null;
+  phone_number: string | null;
 }
 
 interface AuthContextType {
@@ -46,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profileFetchingRef.current = userId;
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, display_name, username, avatar_url, avatar_preset, avatar_position, bio, is_public, style_preference, body_type, preferred_colors, fashion_goals, onboarding_completed, currency_preference, username_changed_at")
+      .select("id, display_name, username, avatar_url, avatar_preset, avatar_position, bio, is_public, style_preference, body_type, preferred_colors, fashion_goals, onboarding_completed, currency_preference, username_changed_at, phone_country_code, phone_number")
       .eq("id", userId)
       .single();
     if (!error) setProfile(data);

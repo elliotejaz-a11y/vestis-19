@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { differenceInDays } from "date-fns";
+import { COUNTRY_CODES } from "@/lib/countryCodes";
 
 interface Props {
   open: boolean;
@@ -22,6 +23,8 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
   const [username, setUsername] = useState(profile?.username || "");
   const [bio, setBio] = useState(profile?.bio || "");
   const [currencyPref, setCurrencyPref] = useState(profile?.currency_preference || "NZD");
+  const [phoneCountryCode, setPhoneCountryCode] = useState((profile as any)?.phone_country_code || "+1");
+  const [phoneNumber, setPhoneNumber] = useState((profile as any)?.phone_number || "");
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -58,6 +61,8 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       username: username || null,
       bio: bio || null,
       currency_preference: currencyPref,
+      phone_country_code: phoneCountryCode || null,
+      phone_number: phoneNumber || null,
     };
 
     if (usernameChanged) {
@@ -77,6 +82,8 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
       setUsername(profile.username || "");
       setBio(profile.bio || "");
       setCurrencyPref(profile.currency_preference || "NZD");
+      setPhoneCountryCode((profile as any).phone_country_code || "+1");
+      setPhoneNumber((profile as any).phone_number || "");
     }
     onOpenChange(isOpen);
   };
@@ -132,6 +139,32 @@ export function EditProfileSheet({ open, onOpenChange }: Props) {
               maxLength={160}
             />
             <p className="text-[10px] text-muted-foreground text-right">{bio.length}/160</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Mobile Number</Label>
+            <div className="flex gap-2">
+              <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode}>
+                <SelectTrigger className="rounded-xl bg-card text-sm w-32 shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  {COUNTRY_CODES.map((c) => (
+                    <SelectItem key={`${c.code}-${c.country}`} value={c.code}>
+                      {c.flag} {c.code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="tel"
+                inputMode="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value.replace(/[^\d\s\-()+]/g, ""))}
+                placeholder="021 123 4567"
+                className="rounded-xl bg-card text-sm flex-1"
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">

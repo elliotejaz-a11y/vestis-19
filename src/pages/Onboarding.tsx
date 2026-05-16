@@ -107,10 +107,24 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   useEffect(() => {
     if (user && !editMode) {
       const pendingUsername = localStorage.getItem("pending_username");
+      const pendingPhoneCountryCode = localStorage.getItem("pending_phone_country_code");
+      const pendingPhoneNumber = localStorage.getItem("pending_phone_number");
+
+      const pendingUpdate: Record<string, string> = {};
+
       if (pendingUsername) {
         setUsername(pendingUsername);
-        supabase.from("profiles").update({ username: pendingUsername, username_changed_at: new Date().toISOString() } as any).eq("id", user.id).then(() => {
+        pendingUpdate.username = pendingUsername;
+        pendingUpdate.username_changed_at = new Date().toISOString();
+      }
+      if (pendingPhoneCountryCode) pendingUpdate.phone_country_code = pendingPhoneCountryCode;
+      if (pendingPhoneNumber) pendingUpdate.phone_number = pendingPhoneNumber;
+
+      if (Object.keys(pendingUpdate).length > 0) {
+        supabase.from("profiles").update(pendingUpdate as any).eq("id", user.id).then(() => {
           localStorage.removeItem("pending_username");
+          localStorage.removeItem("pending_phone_country_code");
+          localStorage.removeItem("pending_phone_number");
         });
       }
     }
