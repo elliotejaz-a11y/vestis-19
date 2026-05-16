@@ -75,7 +75,7 @@ export default function ResetPassword() {
     <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center space-y-2">
-          <img src={vestisLogo} alt="Vestis" className="h-14 mx-auto" />
+          <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Set New Password</h2>
           <p className="text-sm text-muted-foreground">Enter your new password below</p>
         </div>

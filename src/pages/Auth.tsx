@@ -294,7 +294,7 @@ export default function Auth() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
         <div className="w-full max-w-sm space-y-6 text-center">
-          <img src={vestisLogo} alt="Vestis" className="h-14 mx-auto" />
+          <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Enter verification code</h2>
           <p className="text-sm text-muted-foreground">We sent an 8-digit code to <span className="font-medium text-foreground">{signUpEmail}</span></p>
           <div>
@@ -346,7 +346,7 @@ export default function Auth() {
         <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
           <div className="w-full max-w-sm space-y-6">
             <div className="text-center space-y-2">
-              <img src={vestisLogo} alt="Vestis" className="h-14 mx-auto" />
+              <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
               <h2 className="text-xl font-bold text-foreground">Set New Password</h2>
               <p className="text-sm text-muted-foreground">Enter your new password below</p>
             </div>
@@ -401,7 +401,7 @@ export default function Auth() {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
           <div className="w-full max-w-sm space-y-6 text-center">
-            <img src={vestisLogo} alt="Vestis" className="h-14 mx-auto" />
+            <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
             <h2 className="text-xl font-bold text-foreground">Enter reset code</h2>
             <p className="text-sm text-muted-foreground">We sent a 6-digit code to <span className="font-medium text-foreground">{forgotEmail}</span></p>
             <div>
@@ -448,7 +448,7 @@ export default function Auth() {
       <div className="min-h-screen flex flex-col items-center justify-center px-6 bg-background">
         <div className="w-full max-w-sm space-y-6">
           <div className="text-center space-y-2">
-            <img src={vestisLogo} alt="Vestis" className="h-14 mx-auto" />
+            <img src={vestisLogo} alt="Vestis" className="h-12 mx-auto" />
             <h2 className="text-xl font-bold text-foreground">Reset Password</h2>
             <p className="text-sm text-muted-foreground">Enter your email and we'll send you a reset code</p>
           </div>
@@ -546,7 +546,7 @@ export default function Auth() {
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <img src={vestisLogo} alt="Vestis" className="h-10 ml-1" />
+          <img src={vestisLogo} alt="Vestis" className="h-8 ml-1" />
         </div>
 
         <form
@@ -741,7 +741,7 @@ export default function Auth() {
       <div className="relative w-full max-w-sm space-y-8">
         {/* Logo + headline */}
         <div className="text-center space-y-3">
-          <img src={vestisLogo} alt="Vestis" className="h-20 drop-shadow-sm mx-auto" />
+          <img src={vestisLogo} alt="Vestis" className="h-16 drop-shadow-sm mx-auto" />
           <div>
             <h1 className="text-2xl font-bold tracking-tight" style={{ color: "#7B2432" }}>Welcome back</h1>
             <p className="text-sm mt-1" style={{ color: "rgba(123,36,50,0.6)" }}>Your wardrobe is waiting</p>

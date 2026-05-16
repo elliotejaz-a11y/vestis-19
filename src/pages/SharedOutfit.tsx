@@ -73,7 +73,7 @@ export default function SharedOutfit() {
 
       {!loading && error && (
         <div style={{ textAlign: "center", maxWidth: 360 }}>
-          <img src={logo} alt="Vestis" style={{ height: 72, margin: "0 auto 16px", display: "block" }} />
+          <img src={logo} alt="Vestis" style={{ height: 56, margin: "0 auto 16px", display: "block" }} />
           <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 8 }}>Outfit not found</h1>
           <p style={{ fontSize: 14, opacity: 0.7 }}>{error}</p>
         </div>
