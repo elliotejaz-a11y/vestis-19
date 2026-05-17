@@ -6,7 +6,9 @@ export const COLORS = {
   white: '#FFFFFF',
 } as const;
 
-export const FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+// fontFamily is set at runtime from @remotion/google-fonts/Inter — see ExplainerVideo.tsx
+export let FONT = "'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif";
+export const setFont = (f: string) => { FONT = f; };
 
 // Composition
 export const W = 1920;
