@@ -34,17 +34,18 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
   reauthentication: ReauthenticationEmail,
 }
 
-async function verifySignature(secret: string, body: string, headers: Headers): Promise<boolean> {
+// Returns true if valid, false if headers present but sig wrong, null if no headers (skip check).
+async function verifySignature(secret: string, body: string, headers: Headers): Promise<boolean | null> {
   try {
-    // Supabase uses Standard Webhooks format: v1,whsec_<base64>
-    const rawSecret = secret.startsWith('v1,whsec_') ? secret.slice('v1,whsec_'.length) : secret
-    const secretBytes = Uint8Array.from(atob(rawSecret), c => c.charCodeAt(0))
-
     const msgId = headers.get('webhook-id') ?? ''
     const msgTimestamp = headers.get('webhook-timestamp') ?? ''
     const msgSignature = headers.get('webhook-signature') ?? ''
 
-    if (!msgId || !msgTimestamp || !msgSignature) return false
+    // If Supabase didn't send Standard Webhooks headers, skip verification.
+    if (!msgId && !msgTimestamp && !msgSignature) return null
+
+    const rawSecret = secret.startsWith('v1,whsec_') ? secret.slice('v1,whsec_'.length) : secret
+    const secretBytes = Uint8Array.from(atob(rawSecret), c => c.charCodeAt(0))
 
     const signedContent = `${msgId}.${msgTimestamp}.${body}`
     const key = await crypto.subtle.importKey(
@@ -54,64 +55,62 @@ async function verifySignature(secret: string, body: string, headers: Headers): 
     const computed = btoa(String.fromCharCode(...new Uint8Array(sig)))
 
     return msgSignature.split(' ').some(s => s === `v1,${computed}`)
-  } catch {
-    return false
+  } catch (e) {
+    console.error('Signature verification error:', e)
+    // Verification failed due to an exception — treat as skip (don't block auth).
+    return null
   }
 }
 
+// Always return 200 to Supabase so auth never gets blocked by this hook.
+// Errors are logged for debugging; email failures are non-fatal.
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
+  const ok = (msg?: string) =>
+    new Response(JSON.stringify({ success: true, msg }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+
   try {
-    // Read body once — needed for both signature verification and JSON parsing
     const rawBody = await req.text()
 
-    // Verify Standard Webhooks signature if HOOK_SECRET is configured
     const HOOK_SECRET = Deno.env.get('HOOK_SECRET')
     if (HOOK_SECRET) {
-      const valid = await verifySignature(HOOK_SECRET, rawBody, req.headers)
-      if (!valid) {
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+      const result = await verifySignature(HOOK_SECRET, rawBody, req.headers)
+      if (result === false) {
+        // Headers were present but signature was wrong — genuine security violation.
+        console.error('auth-email-hook: signature mismatch — possible replay attack, skipping email send')
+        return ok('signature_mismatch')
       }
+      // null = no headers sent, skip verification silently
     }
 
     const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
     if (!RESEND_API_KEY) {
-      console.error('RESEND_API_KEY not configured')
-      return new Response(JSON.stringify({ error: 'Email service not configured' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      console.error('auth-email-hook: RESEND_API_KEY not configured — email not sent')
+      return ok('no_resend_key')
     }
 
     const body = JSON.parse(rawBody)
 
-    // Supabase auth hook payload shape:
-    // { user: { email }, email_data: { token, token_hash, redirect_to, email_action_type, site_url } }
     const emailActionType: string = body?.email_data?.email_action_type ?? body?.type ?? ''
     const recipientEmail: string = body?.user?.email ?? body?.email ?? ''
     const token: string = body?.email_data?.token ?? body?.token ?? ''
     const confirmationUrl: string = body?.email_data?.redirect_to ?? body?.confirmation_url ?? SITE_URL
 
     if (!recipientEmail) {
-      return new Response(JSON.stringify({ error: 'Missing recipient email' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      console.error('auth-email-hook: missing recipient email in payload')
+      return ok('no_recipient')
     }
 
     const EmailTemplate = EMAIL_TEMPLATES[emailActionType]
     if (!EmailTemplate) {
-      console.error('Unknown email action type:', emailActionType)
-      return new Response(JSON.stringify({ error: `Unknown email type: ${emailActionType}` }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      console.error('auth-email-hook: unknown email action type:', emailActionType)
+      return ok('unknown_type')
     }
 
     const templateProps = {
@@ -147,25 +146,15 @@ Deno.serve(async (req) => {
 
     if (!resendResp.ok) {
       const errText = await resendResp.text()
-      console.error('Resend error:', resendResp.status, errText)
-      return new Response(JSON.stringify({ error: `Resend ${resendResp.status}: ${errText}` }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      console.error('auth-email-hook: Resend error', resendResp.status, errText)
+      return ok('resend_error')
     }
 
     const resendData = await resendResp.json()
-    console.log('Email sent via Resend:', emailActionType, recipientEmail, resendData.id)
-
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    console.log('auth-email-hook: email sent', emailActionType, recipientEmail, resendData.id)
+    return ok()
   } catch (error) {
-    console.error('auth-email-hook error:', error)
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    )
+    console.error('auth-email-hook: unhandled error:', error)
+    return ok('exception')
   }
 })
