@@ -75,18 +75,17 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    // Search by email via REST API to avoid pagination limits
-    const searchResp = await fetch(
-      `${Deno.env.get('SUPABASE_URL')}/auth/v1/admin/users?search=${encodeURIComponent(email.toLowerCase())}&per_page=10`,
-      {
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-        },
-      }
-    )
-    const searchData = await searchResp.json()
-    const user = searchData?.users?.find((u: { email?: string }) => u.email?.toLowerCase() === email.toLowerCase())
+    // Find user by paginating through all users — more reliable than search param
+    let user: { id: string; email?: string } | null = null
+    let page = 1
+    while (!user) {
+      const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 })
+      if (listError || !listData?.users?.length) break
+      const found = listData.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())
+      if (found) { user = found; break }
+      if (listData.users.length < 1000) break
+      page++
+    }
 
     if (!user) {
       console.error('User not found in auth.users for email:', email)

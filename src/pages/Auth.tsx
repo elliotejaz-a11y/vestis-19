@@ -123,19 +123,23 @@ export default function Auth() {
       try { const body = await (error as any).context?.json(); if (body?.error) message = body.error; } catch {}
       toast({ title: "Error", description: message, variant: "destructive" });
     } else {
-      toast({ title: "Password reset successfully" });
-      setTimeout(() => {
-        setUpdatingPassword(false);
-        setShowForgotPassword(false);
-        setRecoveryStep("email");
-        setRecoveryOtp("");
-        setResetToken("");
-        setNewPassword("");
-        setConfirmNewPassword("");
-        setForgotEmail("");
-        setRecoveryOtpError("");
+      toast({ title: "Password reset! Signing you in…" });
+      // Auto sign-in so the user lands directly on their wardrobe
+      const { error: signInError } = await signIn(forgotEmail.trim(), newPassword);
+      setUpdatingPassword(false);
+      setShowForgotPassword(false);
+      setRecoveryStep("email");
+      setRecoveryOtp("");
+      setResetToken("");
+      setNewPassword("");
+      setConfirmNewPassword("");
+      setForgotEmail("");
+      setRecoveryOtpError("");
+      if (signInError) {
+        // Fallback: let them sign in manually
         navigate("/");
-      }, 2000);
+      }
+      // On success, auth state change in useAuth handles navigation to the wardrobe automatically
     }
   };
 

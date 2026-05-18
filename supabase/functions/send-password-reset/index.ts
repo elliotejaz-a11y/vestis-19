@@ -1,3 +1,5 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -24,17 +26,22 @@ Deno.serve(async (req) => {
     }
 
     // Verify the account exists before sending a code the user can never use
-    const searchResp = await fetch(
-      `${Deno.env.get('SUPABASE_URL')}/auth/v1/admin/users?search=${encodeURIComponent(email.toLowerCase())}&per_page=10`,
-      {
-        headers: {
-          'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
-          'apikey': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-        },
-      }
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
-    const searchData = await searchResp.json()
-    const user = searchData?.users?.find((u: { email?: string }) => u.email?.toLowerCase() === email.toLowerCase())
+
+    let user: { id: string; email?: string } | null = null
+    let page = 1
+    while (!user) {
+      const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 })
+      if (listError || !listData?.users?.length) break
+      const found = listData.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())
+      if (found) { user = found; break }
+      if (listData.users.length < 1000) break
+      page++
+    }
+
     if (!user) {
       return new Response(JSON.stringify({ error: 'No account found with that email.' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
