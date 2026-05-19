@@ -91,7 +91,8 @@ serve(async (req) => {
           source: r.source || '',
         };
       })
-      .filter((r: any) => !!r.imageUrl);
+      .filter((r: any) => !!r.imageUrl)
+      .slice(0, 10);
 
     return new Response(JSON.stringify({ results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
