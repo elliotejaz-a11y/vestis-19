@@ -71,7 +71,7 @@ serve(async (req) => {
     }
 
     const serperData = await serperRes.json();
-    const shoppingResults: any[] = serperData.shopping_results || [];
+    const shoppingResults: any[] = serperData.shopping || serperData.shopping_results || [];
 
     const results = shoppingResults
       .map((r: any) => {
