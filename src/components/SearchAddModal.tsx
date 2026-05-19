@@ -6,6 +6,7 @@ import { Loader2, Search } from "lucide-react";
 import { ClothingItem } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { processClothingImage } from "@/lib/image-processing";
 
 interface SearchResult {
   title: string;
@@ -79,6 +80,19 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
     if (addingId) return;
     setAddingId(key);
     try {
+      // Fetch image → run client-side background removal → blob URL
+      // This mirrors exactly what AddClothingSheet does before calling onAdd.
+      let finalImageUrl = result.imageUrl;
+      try {
+        const res = await fetch(result.imageUrl);
+        const blob = await res.blob();
+        const file = new File([blob], "item.webp", { type: blob.type || "image/webp" });
+        const cleanBlob = await processClothingImage(file);
+        finalImageUrl = URL.createObjectURL(cleanBlob);
+      } catch {
+        // Background removal failed — fall back to original image
+      }
+
       await onAdd(
         {
           id: crypto.randomUUID(),
@@ -86,14 +100,14 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
           category: "",
           color: "",
           fabric: "",
-          imageUrl: result.imageUrl,
+          imageUrl: finalImageUrl,
           tags: result.brand ? [result.brand.toLowerCase()] : [],
           notes: result.source ? `Source: ${result.source}` : "",
           addedAt: new Date(),
           estimatedPrice: result.priceNumeric || undefined,
           isPrivate: false,
         } as ClothingItem,
-        { runBackgroundRemoval: false }
+        { runBackgroundRemoval: true }
       );
       toast({ title: "Added to wardrobe!" });
       handleClose();
@@ -208,8 +222,9 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
                       ) : null}
                     </div>
                     {isAdding && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-background/60 rounded-2xl">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/70 rounded-2xl">
                         <Loader2 className="w-6 h-6 animate-spin text-accent" />
+                        <p className="text-[10px] font-medium text-foreground">Removing background…</p>
                       </div>
                     )}
                   </button>
