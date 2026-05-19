@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AddChoiceSheet, type AddChoice } from "@/components/AddChoiceSheet";
 import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { MassUploadSheet } from "@/components/MassUploadSheet";
+import { SearchAddModal } from "@/components/SearchAddModal";
 import { ClothingItem } from "@/types/wardrobe";
 
 interface Props {
@@ -22,6 +23,7 @@ export function WardrobeAddButton({ onAdd, children }: Props) {
   const [singleOpen, setSingleOpen] = useState(false);
   const [massOpen, setMassOpen] = useState(false);
   const [outfitOpen, setOutfitOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const handlePick = (which: AddChoice) => {
     setChooserOpen(false);
@@ -31,6 +33,7 @@ export function WardrobeAddButton({ onAdd, children }: Props) {
       document.body.style.pointerEvents = "";
       if (which === "single") setSingleOpen(true);
       else if (which === "mass") setMassOpen(true);
+      else if (which === "search") setSearchOpen(true);
       else setOutfitOpen(true);
     }, 350);
   };
@@ -44,6 +47,7 @@ export function WardrobeAddButton({ onAdd, children }: Props) {
       <AddClothingSheet onAdd={onAdd} open={singleOpen} onOpenChange={setSingleOpen} />
       <MassUploadSheet open={massOpen} onOpenChange={setMassOpen} mode="pile" />
       <MassUploadSheet open={outfitOpen} onOpenChange={setOutfitOpen} mode="outfit" />
+      <SearchAddModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} onAdd={onAdd} />
     </>
   );
 }
