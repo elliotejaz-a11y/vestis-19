@@ -160,6 +160,16 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
           </Button>
         </div>
 
+        {addingId && (
+          <div className="mt-4 flex items-center gap-3 rounded-2xl bg-accent/10 border border-accent/20 px-4 py-3">
+            <div className="w-4 h-4 rounded-full border-2 border-accent/30 border-t-accent animate-spin shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Removing background…</p>
+              <p className="text-[11px] text-muted-foreground">This takes a few seconds — hang tight</p>
+            </div>
+          </div>
+        )}
+
         <div className="mt-5">
           {searchState === "idle" && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
