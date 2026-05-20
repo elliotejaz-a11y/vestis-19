@@ -26,6 +26,18 @@ interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean }) => Promise<void> | void;
 }
 
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.includes(",") ? result.split(",")[1] : result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
 export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -64,31 +76,41 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
     if (addingId) return;
     setAddingId(key);
     try {
-      // Fetch image → run client-side background removal → blob URL
-      // This mirrors exactly what AddClothingSheet does before calling onAdd.
-      let finalImageUrl = result.imageUrl;
-      try {
-        const res = await fetch(result.imageUrl);
-        const blob = await res.blob();
-        const file = new File([blob], "item.webp", { type: blob.type || "image/webp" });
-        const cleanBlob = await processClothingImage(file);
-        finalImageUrl = URL.createObjectURL(cleanBlob);
-      } catch {
-        // Background removal failed — fall back to original image
-      }
+      // Fetch the product image once — reuse the blob for both operations
+      const res = await fetch(result.imageUrl);
+      const blob = await res.blob();
+      const file = new File([blob], "item.webp", { type: blob.type || "image/webp" });
+
+      // Run background removal and AI classification in parallel
+      const [cleanBlob, aiData] = await Promise.all([
+        processClothingImage(file).catch(() => null),
+        blobToBase64(blob)
+          .then((base64) =>
+            supabase.functions.invoke("vestis-analyze-item", { body: { imageBase64: base64 } })
+          )
+          .then(({ data }) => data ?? null)
+          .catch(() => null),
+      ]);
+
+      const finalImageUrl = cleanBlob
+        ? URL.createObjectURL(cleanBlob)
+        : result.imageUrl;
+
+      const aiTags: string[] = aiData?.style_tags ?? [];
+      const brandTag = result.brand ? [result.brand.toLowerCase()] : [];
 
       await onAdd(
         {
           id: crypto.randomUUID(),
           name: result.title,
-          category: "",
-          color: "",
-          fabric: "",
+          category: aiData?.category ?? "",
+          color: aiData?.color ?? "",
+          fabric: aiData?.fabric ?? "",
           imageUrl: finalImageUrl,
-          tags: result.brand ? [result.brand.toLowerCase()] : [],
+          tags: [...new Set([...aiTags, ...brandTag])],
           notes: result.source ? `Source: ${result.source}` : "",
           addedAt: new Date(),
-          estimatedPrice: result.priceNumeric || undefined,
+          estimatedPrice: aiData?.estimated_price_nzd || result.priceNumeric || undefined,
           isPrivate: false,
         } as ClothingItem,
         { runBackgroundRemoval: true }
@@ -146,8 +168,8 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
           <div className="mt-4 flex items-center gap-3 rounded-2xl bg-accent/10 border border-accent/20 px-4 py-3">
             <div className="w-4 h-4 rounded-full border-2 border-accent/30 border-t-accent animate-spin shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-foreground">Removing background…</p>
-              <p className="text-[11px] text-muted-foreground">This takes a few seconds — hang tight</p>
+              <p className="text-sm font-semibold text-foreground">Analysing & removing background…</p>
+              <p className="text-[11px] text-muted-foreground">AI is classifying the item — hang tight</p>
             </div>
           </div>
         )}
@@ -216,7 +238,7 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
                     {isAdding && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/70 rounded-2xl">
                         <Loader2 className="w-6 h-6 animate-spin text-accent" />
-                        <p className="text-[10px] font-medium text-foreground">Removing background…</p>
+                        <p className="text-[10px] font-medium text-foreground">Analysing…</p>
                       </div>
                     )}
                   </button>
