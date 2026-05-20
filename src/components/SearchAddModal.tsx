@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,22 +26,17 @@ interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean }) => Promise<void> | void;
 }
 
-const DEBOUNCE_MS = 400;
-
 export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchState, setSearchState] = useState<SearchState>("idle");
   const [addingId, setAddingId] = useState<string | null>(null);
   const { toast } = useToast();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const searchingRef = useRef(false);
 
   const runSearch = async (q: string) => {
-    if (!q) { setSearchState("idle"); setResults([]); return; }
-    // Cancel any in-flight request
-    abortRef.current?.abort();
-    abortRef.current = new AbortController();
+    if (!q || searchingRef.current) return;
+    searchingRef.current = true;
     setSearchState("loading");
     setResults([]);
     try {
@@ -52,27 +47,16 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
       const items: SearchResult[] = data?.results || [];
       setResults(items);
       setSearchState(items.length > 0 ? "results" : "empty");
-    } catch (err: any) {
-      if (err?.name === "AbortError") return;
+    } catch (err) {
       console.error("[SearchAddModal] search failed:", err);
       setSearchState("error");
+    } finally {
+      searchingRef.current = false;
     }
   };
 
-  // Debounced auto-search as user types
-  useEffect(() => {
-    const q = query.trim();
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!q) { setSearchState("idle"); setResults([]); return; }
-    debounceRef.current = setTimeout(() => runSearch(q), DEBOUNCE_MS);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query]);
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      runSearch(query.trim());
-    }
+    if (e.key === "Enter") runSearch(query.trim());
   };
 
   const handleAdd = async (result: SearchResult) => {
@@ -120,8 +104,6 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
   };
 
   const handleClose = () => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    abortRef.current?.abort();
     setQuery("");
     setResults([]);
     setSearchState("idle");
@@ -150,7 +132,7 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
             autoFocus={false}
           />
           <Button
-            onClick={() => { if (debounceRef.current) clearTimeout(debounceRef.current); runSearch(query.trim()); }}
+            onClick={() => runSearch(query.trim())}
             disabled={!query.trim() || searchState === "loading"}
             className="rounded-xl bg-accent text-accent-foreground hover:bg-accent/90 shrink-0 px-3"
           >
