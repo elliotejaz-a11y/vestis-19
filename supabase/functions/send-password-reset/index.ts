@@ -31,18 +31,14 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     )
 
-    let user: { id: string; email?: string } | null = null
-    let page = 1
-    while (!user) {
-      const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 })
-      if (listError || !listData?.users?.length) break
-      const found = listData.users.find((u) => u.email?.toLowerCase() === email.toLowerCase())
-      if (found) { user = found; break }
-      if (listData.users.length < 1000) break
-      page++
-    }
+    // O(1) lookup via indexed profiles table — avoids slow listUsers pagination
+    const { data: profileData } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email')
+      .ilike('email', email)
+      .maybeSingle()
 
-    if (!user) {
+    if (!profileData) {
       return new Response(JSON.stringify({ error: 'No account found with that email.' }), {
         status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })

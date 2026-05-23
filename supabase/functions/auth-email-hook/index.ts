@@ -129,24 +129,28 @@ Deno.serve(async (req) => {
 
     const subject = EMAIL_SUBJECTS[emailActionType] ?? 'Vestis Notification'
 
-    const resendResp = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: FROM_ADDRESS,
-        to: [recipientEmail],
-        subject,
-        html,
-        text,
-      }),
+    const resendBody = JSON.stringify({
+      from: FROM_ADDRESS,
+      to: [recipientEmail],
+      subject,
+      html,
+      text,
     })
 
-    if (!resendResp.ok) {
-      const errText = await resendResp.text()
-      console.error('auth-email-hook: Resend error', resendResp.status, errText)
+    let resendResp: Response | null = null
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      resendResp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+        body: resendBody,
+      })
+      if (resendResp.ok) break
+      if (attempt < 3) await new Promise(r => setTimeout(r, 500 * attempt))
+    }
+
+    if (!resendResp || !resendResp.ok) {
+      const errText = await resendResp?.text() ?? 'no response'
+      console.error('auth-email-hook: Resend failed after 3 attempts', resendResp?.status, errText)
       return ok('resend_error')
     }
 
