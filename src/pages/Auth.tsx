@@ -222,21 +222,40 @@ export default function Auth() {
         return;
       }
       const trimmedEmail = email.trim().toLowerCase();
-      const { error } = await signUp(trimmedEmail, password, displayName);
-      if (error) {
-        if (error.message?.toLowerCase().includes("already registered") || error.message?.toLowerCase().includes("already been registered")) {
-          toast({ title: "Email already in use", description: "An account with this email already exists. Please sign in instead.", variant: "destructive" });
-        } else if (error.message?.toLowerCase().includes("database error")) {
-          toast({ title: "Sign up failed", description: "Something went wrong on our end. Please try again in a moment.", variant: "destructive" });
-        } else {
-          toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
-        }
-      } else {
+      const doSignUp = () => signUp(trimmedEmail, password, displayName);
+      const saveAndAdvance = () => {
         localStorage.setItem("pending_username", username);
         localStorage.setItem("pending_phone_country_code", phoneCountryCode);
         localStorage.setItem("pending_phone_number", phoneNumber);
         setSignUpEmail(trimmedEmail);
         setSignUpSuccess(true);
+      };
+
+      let { error } = await doSignUp();
+
+      // Transient DB trigger errors: auto-retry once after a short pause.
+      // With the migration applied the retry almost always succeeds; without it
+      // the user at least gets a clear, actionable message.
+      if (error && (error.message?.toLowerCase().includes("database error") || error.message?.toLowerCase().includes("unexpected_failure"))) {
+        await new Promise((r) => setTimeout(r, 1200));
+        const retry = await doSignUp();
+        error = retry.error;
+        if (!error) { saveAndAdvance(); setLoading(false); return; }
+      }
+
+      if (error) {
+        const msg = error.message?.toLowerCase() ?? "";
+        if (msg.includes("already registered") || msg.includes("already been registered") || msg.includes("user already registered")) {
+          toast({ title: "Email already in use", description: "An account with this email already exists. Please sign in instead.", variant: "destructive" });
+        } else if (msg.includes("rate limit") || msg.includes("too many")) {
+          toast({ title: "Too many attempts", description: "Please wait a few minutes before trying again.", variant: "destructive" });
+        } else if (msg.includes("database error") || msg.includes("unexpected_failure")) {
+          toast({ title: "Sign up failed", description: "Our server hit a snag. Please tap 'Create Account' to try again.", variant: "destructive" });
+        } else {
+          toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
+        }
+      } else {
+        saveAndAdvance();
       }
     } else {
       let signInEmail = emailOrUsername.trim();
