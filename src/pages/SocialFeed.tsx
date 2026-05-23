@@ -169,7 +169,9 @@ export default function SocialFeed() {
           ) : (
             <>
               {displayPosts.map((post) => (
-                <PostCard key={post.id} post={post} onLike={toggleLike} onDelete={deletePost} isOwn={post.user_id === user?.id} />
+                <div key={post.id} style={{ contentVisibility: "auto", containIntrinsicSize: "0 560px" }}>
+                  <PostCard post={post} onLike={toggleLike} onDelete={deletePost} isOwn={post.user_id === user?.id} />
+                </div>
               ))}
               {/* Infinite scroll sentinel */}
               <div ref={sentinelRef} className="h-1" />

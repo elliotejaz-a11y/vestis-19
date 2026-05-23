@@ -38,6 +38,8 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const [colourStory, setColourStory] = useState("surprise");
   const [showColourPicker, setShowColourPicker] = useState(false);
   const [weather, setWeather] = useState<{ temp: number; description: string } | null>(null);
+  const [outfitPage, setOutfitPage] = useState(1);
+  const OUTFITS_PER_PAGE = 20;
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -292,18 +294,28 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
             <OutfitCard outfit={latestOutfit} onSave={onSave} onDelete={(id) => { if (id === latestOutfit?.id) setLatestOutfit(null); onDelete?.(id); }} onChat={setChatOutfit} />
           </div>
         )}
-        {outfits.length > 0 && (
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">Previous Outfits</p>
-            <div className="space-y-3">
-              {outfits
-                .filter((o) => o.id !== latestOutfit?.id)
-                .map((outfit) => (
+        {outfits.length > 0 && (() => {
+          const previous = outfits.filter((o) => o.id !== latestOutfit?.id);
+          const visible = previous.slice(0, outfitPage * OUTFITS_PER_PAGE);
+          return (
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Previous Outfits</p>
+              <div className="space-y-3">
+                {visible.map((outfit) => (
                   <OutfitCard key={outfit.id} outfit={outfit} onSave={onSave} onDelete={onDelete} onChat={setChatOutfit} />
                 ))}
+              </div>
+              {visible.length < previous.length && (
+                <button
+                  onClick={() => setOutfitPage((p) => p + 1)}
+                  className="mt-3 w-full py-2.5 rounded-2xl bg-card border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Show more ({previous.length - visible.length} more)
+                </button>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Generated outfit popup */}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { batchResolveAvatarUrls, getCachedAvatarUrl, getAvatarDisplayUrl } from "@/lib/storage";
+import { batchResolveAvatarUrls, getCachedAvatarUrl, getAvatarDisplayUrl, isStoragePath } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 const MAX_RETRIES = 2;
@@ -48,7 +48,9 @@ export function UserAvatar({
   avatarPosition,
 }: UserAvatarProps) {
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(
-    getCachedAvatarUrl(avatarUrl) ?? avatarUrl ?? null
+    !avatarUrl ? null
+    : isStoragePath(avatarUrl) ? (getCachedAvatarUrl(avatarUrl) ?? avatarUrl)
+    : avatarUrl
   );
   const [imgError, setImgError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
@@ -59,6 +61,17 @@ export function UserAvatar({
 
   useEffect(() => {
     if (!avatarUrl) { setResolvedUrl(null); return; }
+    // Already a public/signed https:// URL — no signing needed, use as-is immediately.
+    if (!isStoragePath(avatarUrl)) {
+      setResolvedUrl(avatarUrl);
+      return;
+    }
+    // Storage path: check the module-level cache before firing a network call.
+    const cached = getCachedAvatarUrl(avatarUrl);
+    if (cached) {
+      setResolvedUrl(cached);
+      return;
+    }
     let cancelled = false;
     batchResolveAvatarUrls([avatarUrl])
       .then(([signed]) => {

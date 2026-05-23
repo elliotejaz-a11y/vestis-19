@@ -35,6 +35,8 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
+  const [savedOutfitPage, setSavedOutfitPage] = useState(1);
+  const SAVED_OUTFITS_PER_PAGE = 20;
   const navigate = useNavigate();
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -119,13 +121,26 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
                 </button>
               </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {savedOutfits.map((outfit) => (
-                <OutfitCard key={outfit.id} outfit={outfit} onSave={onSaveOutfit} onDelete={onDeleteOutfit} compact />
-              ))}
-            </div>
-          )}
+          ) : (() => {
+            const visibleSaved = savedOutfits.slice(0, savedOutfitPage * SAVED_OUTFITS_PER_PAGE);
+            return (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  {visibleSaved.map((outfit) => (
+                    <OutfitCard key={outfit.id} outfit={outfit} onSave={onSaveOutfit} onDelete={onDeleteOutfit} compact />
+                  ))}
+                </div>
+                {visibleSaved.length < savedOutfits.length && (
+                  <button
+                    onClick={() => setSavedOutfitPage((p) => p + 1)}
+                    className="mt-3 w-full py-2.5 rounded-2xl bg-card border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Show more ({savedOutfits.length - visibleSaved.length} more)
+                  </button>
+                )}
+              </>
+            );
+          })()}
         </div>
       ) : (
         /* My Clothes Tab */
