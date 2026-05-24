@@ -49,6 +49,8 @@ export default defineConfig(({ mode }) => ({
         comments: false,
       },
     },
+    target: "esnext",
+    modulePreload: { polyfill: false },
     reportCompressedSize: false,
     rollupOptions: {
       output: {

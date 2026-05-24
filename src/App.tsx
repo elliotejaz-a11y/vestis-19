@@ -7,15 +7,12 @@ import { BottomNav } from "@/components/BottomNav";
 import { useWardrobe } from "@/hooks/useWardrobe";
 import { useRecentlyDeleted } from "@/hooks/useRecentlyDeleted";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
-import { AppTutorial } from "@/components/AppTutorial";
 import { MassUploadProvider } from "@/contexts/MassUploadContext";
 import { MassUploadProgressBanner } from "@/components/MassUploadProgressBanner";
-import { MassUploadReviewSheet } from "@/components/MassUploadReviewSheet";
 
 import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { ThemeProvider } from "next-themes";
-import { preloadAllProfileAvatarUrls, preloadAvatarUrls } from "@/lib/storage";
 
 // Lazy-loaded page components — assigned to variables so we can preload them
 const Wardrobe = lazy(() => import("./pages/Wardrobe"));
@@ -41,9 +38,13 @@ const LaunchVideo = lazy(() => import("./components/VestisLaunchVideo"));
 const SharedOutfit = lazy(() => import("./pages/SharedOutfit"));
 const SocialFeed = lazy(() => import("./pages/SocialFeed"));
 
+// Lazy-load non-critical UI overlays — they render null until needed so
+// keeping them out of the main bundle reduces initial parse time.
+const AppTutorial = lazy(() => import("./components/AppTutorial").then(m => ({ default: m.AppTutorial })));
+const MassUploadReviewSheet = lazy(() => import("./components/MassUploadReviewSheet").then(m => ({ default: m.MassUploadReviewSheet })));
+
 // Eagerly preload ALL route chunks so every tab is instant on first tap.
-// This runs in the background after initial paint — users see the current page
-// immediately while the rest downloads silently.
+// Runs inside requestIdleCallback so it never competes with first paint.
 function preloadAllRoutes() {
   const routes = [
     () => import("./pages/Wardrobe"),
@@ -53,15 +54,13 @@ function preloadAllRoutes() {
     () => import("./pages/Profile"),
     () => import("./pages/Calendar"),
     () => import("./pages/Feedback"),
-() => import("./pages/UserProfile"),
+    () => import("./pages/UserProfile"),
     () => import("./pages/Friends"),
     () => import("./pages/Chat"),
     () => import("./pages/SocialFeed"),
   ];
-  // Stagger imports slightly so we don't block the main thread
-  routes.forEach((load, i) => {
-    setTimeout(load, i * 100);
-  });
+  // Stagger imports slightly so we don't saturate the network on first load
+  routes.forEach((load, i) => setTimeout(load, i * 50));
 }
 
 const queryClient = new QueryClient({
@@ -82,36 +81,35 @@ function AppRoutes() {
   const { user, profile, loading } = useAuth();
   const didPreloadProfileAvatars = useRef(false);
 
-  // Preload the current user's avatar as soon as profile resolves — before any component mounts.
+  // Preload the current user's avatar as soon as profile resolves.
+  // Dynamic import keeps the storage module out of the main bundle.
   useEffect(() => {
     if (profile?.avatar_url) {
-      preloadAvatarUrls([profile.avatar_url]);
+      import("@/lib/storage").then(({ preloadAvatarUrls }) => {
+        preloadAvatarUrls([profile.avatar_url!]);
+      });
     }
   }, [profile?.avatar_url]);
 
-  // Preload all route chunks once auth resolves — fire-and-forget, never blocks rendering.
+  // Preload all route chunks once auth resolves — fire-and-forget.
   // NOTE: preloadBgRemovalModel() is intentionally NOT called here. The ONNX model is ~50 MB
   // and initialising it on every app load freezes low-end devices. It is already warmed up
-  // by AddItem.tsx the moment the user navigates to the /add screen — before they can pick
-  // a file — so the cold-start is eliminated at the right time without impacting app start.
+  // by AddItem.tsx the moment the user navigates to the /add screen.
   useEffect(() => {
     if (!loading && user) {
+      const run = () => {
+        preloadAllRoutes();
+        if (!didPreloadProfileAvatars.current) {
+          didPreloadProfileAvatars.current = true;
+          import("@/lib/storage").then(({ preloadAllProfileAvatarUrls }) => {
+            preloadAllProfileAvatarUrls();
+          });
+        }
+      };
       if ("requestIdleCallback" in window) {
-        (window as Window & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(() => {
-          preloadAllRoutes();
-          if (!didPreloadProfileAvatars.current) {
-            didPreloadProfileAvatars.current = true;
-            preloadAllProfileAvatarUrls();
-          }
-        });
+        (window as Window & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(run);
       } else {
-        setTimeout(() => {
-          preloadAllRoutes();
-          if (!didPreloadProfileAvatars.current) {
-            didPreloadProfileAvatars.current = true;
-            preloadAllProfileAvatarUrls();
-          }
-        }, 200);
+        setTimeout(run, 200);
       }
     }
   }, [loading, user]);
@@ -221,7 +219,7 @@ function AuthenticatedApp() {
             onPermanentDelete={handlePermanentDelete}
           />
         } />
-<Route path="/user/:userId" element={<UserProfilePage />} />
+        <Route path="/user/:userId" element={<UserProfilePage />} />
         <Route path="/feedback" element={<FeedbackPage />} />
         <Route path="/policies/terms" element={<Terms />} />
         <Route path="/policies/privacy" element={<Privacy />} />
@@ -232,8 +230,8 @@ function AuthenticatedApp() {
       </Suspense>
       </div>
       <BottomNav />
-      <AppTutorial />
-      <MassUploadReviewSheet />
+      <Suspense fallback={null}><AppTutorial /></Suspense>
+      <Suspense fallback={null}><MassUploadReviewSheet /></Suspense>
     </div>
     </MassUploadProvider>
   );
