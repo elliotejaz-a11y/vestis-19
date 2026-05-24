@@ -54,32 +54,68 @@ serve(async (req) => {
       });
     }
 
-    const serperRes = await fetch('https://google.serper.dev/shopping', {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ q: query.trim(), num: 10 }),
-    });
+    // Use Images search with flatlay terms — Shopping returns model/editorial photos
+    // which look wrong after background removal. Image search with "flat lay" bias
+    // specifically surfaces product-only shots suitable for wardrobe use.
+    const flatLayQuery = `${query.trim()} flat lay product photo clothing`;
 
-    if (!serperRes.ok) {
-      console.error(`[search-clothes] Serper responded ${serperRes.status}`);
+    // Run both images and shopping in parallel: images for clean visuals,
+    // shopping for price/source metadata to enrich results.
+    const [imagesRes, shoppingRes] = await Promise.all([
+      fetch('https://google.serper.dev/images', {
+        method: 'POST',
+        headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: flatLayQuery, num: 12 }),
+      }),
+      fetch('https://google.serper.dev/shopping', {
+        method: 'POST',
+        headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ q: query.trim(), num: 10 }),
+      }),
+    ]);
+
+    if (!imagesRes.ok && !shoppingRes.ok) {
+      console.error(`[search-clothes] Both Serper endpoints failed: images=${imagesRes.status} shopping=${shoppingRes.status}`);
       return new Response(JSON.stringify({ results: [], error: 'Search unavailable' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const serperData = await serperRes.json();
-    const shoppingResults: any[] = serperData.shopping || serperData.shopping_results || [];
+    // Build a price lookup from shopping results keyed by source domain
+    const priceByDomain: Record<string, { price: string; priceNumeric: number }> = {};
+    if (shoppingRes.ok) {
+      const shoppingData = await shoppingRes.json();
+      const shoppingItems: any[] = shoppingData.shopping || shoppingData.shopping_results || [];
+      for (const r of shoppingItems) {
+        try {
+          const domain = new URL(r.link || '').hostname.replace(/^www\./, '');
+          if (domain && r.price && !priceByDomain[domain]) {
+            const priceNumeric = parseFloat((r.price || '').replace(/[^0-9.]/g, '')) || 0;
+            priceByDomain[domain] = { price: r.price, priceNumeric };
+          }
+        } catch { /* invalid URL — skip */ }
+      }
+    }
 
-    const results = shoppingResults
+    // Parse image results
+    const imageData = imagesRes.ok ? await imagesRes.json() : { images: [] };
+    const imageItems: any[] = imageData.images || [];
+
+    const results = imageItems
+      .filter((r: any) => !!(r.imageUrl || r.thumbnailUrl))
       .map((r: any) => {
-        const title: string = r.title || '';
-        const imageUrl: string =
-          r.imageUrl || r.thumbnailUrl || r.imageLink || r.thumbnail || '';
-        const price: string = r.price || '';
-        const priceNumeric = price ? parseFloat(price.replace(/[^0-9.]/g, '')) || 0 : 0;
+        const title: string = r.title || query.trim();
+        const imageUrl: string = r.imageUrl || r.thumbnailUrl || '';
+        let price = '';
+        let priceNumeric = 0;
+        // Enrich with shopping price if we have one for the same domain
+        try {
+          const domain = new URL(r.link || '').hostname.replace(/^www\./, '');
+          if (domain && priceByDomain[domain]) {
+            price = priceByDomain[domain].price;
+            priceNumeric = priceByDomain[domain].priceNumeric;
+          }
+        } catch { /* skip */ }
 
         return {
           title,
@@ -91,7 +127,6 @@ serve(async (req) => {
           source: r.source || '',
         };
       })
-      .filter((r: any) => !!r.imageUrl)
       .slice(0, 10);
 
     return new Response(JSON.stringify({ results }), {
