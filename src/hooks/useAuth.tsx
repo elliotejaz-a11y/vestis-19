@@ -46,12 +46,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const fetchProfile = async (userId: string, force = false) => {
     if (!force && profileFetchingRef.current === userId) return;
     profileFetchingRef.current = userId;
-    const { data, error } = await supabase
+    const result = await supabase
       .from("profiles")
       .select("id, display_name, username, avatar_url, avatar_preset, avatar_position, bio, is_public, style_preference, body_type, preferred_colors, fashion_goals, onboarding_completed, currency_preference, username_changed_at, phone_country_code, phone_number")
       .eq("id", userId)
       .single();
-    if (!error) setProfile(data);
+    if (result && !result.error) setProfile(result.data);
     profileFetchingRef.current = null;
   };
 

@@ -120,6 +120,7 @@ export default function UserProfilePage() {
           ? supabase.from("follow_requests").select("id").eq("requester_id", user.id).eq("target_id", userId).maybeSingle()
           : Promise.resolve({ data: null }),
         // SECURITY DEFINER — bypasses RLS to return accurate counts for everyone
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (supabase as any).rpc("get_wardrobe_stats", { target_user_id: userId }).single(),
         !isOwnProfile && user
           ? supabase.rpc("are_friends", { user_a: user.id, user_b: userId })
@@ -130,11 +131,12 @@ export default function UserProfilePage() {
       setFollowingCount(fgc || 0);
 
       // Counts from SECURITY DEFINER RPC — accurate for all viewers regardless of RLS
-      const stats = (statsResult as any)?.data as { piece_count: number; color_count: number; category_count: number } | null;
-      setWardrobeCount(stats?.piece_count ?? 0);
-      setColorCount(stats?.color_count ?? 0);
-      setCategoryCount(stats?.category_count ?? 0);
-      setIsFriend((friendResult as any)?.data === true);
+      type WardrobeStats = { piece_count: number; color_count: number; category_count: number };
+      const statsData = (statsResult as { data: WardrobeStats | null }).data;
+      setWardrobeCount(statsData?.piece_count ?? 0);
+      setColorCount(statsData?.color_count ?? 0);
+      setCategoryCount(statsData?.category_count ?? 0);
+      setIsFriend((friendResult as { data: boolean | null }).data === true);
 
       // Detailed breakdown data only available when RLS grants item-level access (mutual friends)
       if (wardrobeData) {
@@ -149,20 +151,20 @@ export default function UserProfilePage() {
         setUserColors(Object.entries(colorMap).sort(([,a],[,b]) => b - a));
       }
 
-      const withUrls = (pics || []).map((p: any) => {
+      const withUrls = (pics || []).map((p: FitPic) => {
         if (!p.image_url || /^https?:\/\//i.test(p.image_url)) return p;
         const { data: urlData } = supabase.storage.from("social-content").getPublicUrl(p.image_url);
         return { ...p, image_url: urlData.publicUrl };
       });
-      setFitPics(withUrls as FitPic[]);
-      setIsBlocked(!!(blockResult as any)?.data);
-      setIsBlockedByThem(!!(reversedBlockResult as any)?.data);
-      setPendingRequest(!!(reqResult as any)?.data);
+      setFitPics(withUrls);
+      setIsBlocked(!!(blockResult as { data: { id: string } | null }).data);
+      setIsBlockedByThem(!!(reversedBlockResult as { data: { id: string } | null }).data);
+      setPendingRequest(!!(reqResult as { data: { id: string } | null }).data);
 
       setLoading(false);
     };
     load();
-  }, [userId]);
+  }, [userId, isOwnProfile, user]);
 
   const handleFollow = async () => {
     if (!userId || !user) return;

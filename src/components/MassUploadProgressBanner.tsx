@@ -86,15 +86,12 @@ function useStaticEta(count: number, secPerUnit: number, active: boolean) {
 export function MassUploadProgressBanner() {
   const { phase, extracted, total, analysisDone, analysisTotal, candidates, openReview, reset } = useMassUpload();
 
-  if (phase === "idle") return null;
-
+  // Derive all values needed by hooks before any early return — Rules of Hooks requires
+  // hooks to be called unconditionally in the same order on every render.
   const isReady = phase === "ready";
   const isAnalysing = phase === "analysing";
   const isExtracting = phase === "extracting";
   const isProcessing = isAnalysing || isExtracting;
-
-  const readyCount = candidates.filter((c) => c.previewStatus === "ready").length;
-  const failedCount = candidates.filter((c) => c.previewStatus === "failed").length;
 
   const realCompletion = isAnalysing
     ? Math.max(5, Math.round((analysisDone / Math.max(1, analysisTotal)) * 28))
@@ -105,9 +102,13 @@ export function MassUploadProgressBanner() {
   const animatedCompletion = useAnimatedProgress(realCompletion, isProcessing);
   const analysingMsg = useCyclingMessage(ANALYSING_MESSAGES, isAnalysing);
   const extractingMsg = useCyclingMessage(EXTRACTING_MESSAGES, isExtracting);
-
   const analysisEta = useStaticEta(analysisTotal, 8, isAnalysing);
   const extractionEta = useStaticEta(total, 24, isExtracting);
+
+  if (phase === "idle") return null;
+
+  const readyCount = candidates.filter((c) => c.previewStatus === "ready").length;
+  const failedCount = candidates.filter((c) => c.previewStatus === "failed").length;
   const eta = isAnalysing ? analysisEta : extractionEta;
 
   const primaryLabel = isAnalysing

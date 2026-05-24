@@ -21,10 +21,13 @@ export const ClothingCard = memo(function ClothingCard({ item, onRemove, onDetai
   return (
     <>
       <div className="group relative rounded-2xl overflow-hidden bg-card border border-border/40 shadow-sm hover:shadow-md transition-transform duration-150">
-        <button
-          type="button"
-          className={`${compact ? "aspect-square" : "aspect-[3/4]"} bg-white dark:bg-neutral-800 cursor-pointer relative w-full focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset`}
+        {/* div+role prevents a <button> inside <button> when the retry banner is visible */}
+        <div
+          role="button"
+          tabIndex={0}
+          className={`${compact ? "aspect-square" : "aspect-[3/4]"} bg-white dark:bg-neutral-800 cursor-pointer relative w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset`}
           onClick={() => onDetail?.(item)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onDetail?.(item); } }}
         >
           <LazyImage
             src={item.imageUrl}
@@ -53,7 +56,7 @@ export const ClothingCard = memo(function ClothingCard({ item, onRemove, onDetai
               </button>
             </div>
           )}
-        </button>
+        </div>
         <div className="p-2.5">
           <p className="text-xs font-semibold truncate text-foreground">{item.name}</p>
           <p className="text-[10px] text-muted-foreground capitalize">{item.category} · {item.color}</p>

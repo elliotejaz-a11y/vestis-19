@@ -134,11 +134,11 @@ export function OutfitChat({ outfit, open, onOpenChange }: Props) {
                 return [...prev, { role: "assistant", content: assistantContent }];
               });
             }
-          } catch {}
+          } catch { /* non-JSON SSE line — skip */ }
         }
       }
-    } catch (e: any) {
-      if (e?.name !== "AbortError") {
+    } catch (e) {
+      if ((e as { name?: string })?.name !== "AbortError") {
         console.error(e);
         setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, something went wrong. Please try again." }]);
       }
