@@ -54,75 +54,32 @@ serve(async (req) => {
       });
     }
 
-    // Use Images search with flatlay/ghost-mannequin terms and negative signals to
-    // exclude model/editorial photos. Product shots are near-square; model photos
-    // are tall portrait — so we also filter by aspect ratio after fetching.
-    const flatLayQuery = `${query.trim()} flat lay OR "ghost mannequin" -model -person -wearing`;
+    const serperRes = await fetch('https://google.serper.dev/shopping', {
+      method: 'POST',
+      headers: {
+        'X-API-KEY': apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ q: query.trim(), num: 10 }),
+    });
 
-    // Run both images and shopping in parallel: images for clean visuals,
-    // shopping for price/source metadata to enrich results.
-    const [imagesRes, shoppingRes] = await Promise.all([
-      fetch('https://google.serper.dev/images', {
-        method: 'POST',
-        headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: flatLayQuery, num: 20 }),
-      }),
-      fetch('https://google.serper.dev/shopping', {
-        method: 'POST',
-        headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: query.trim(), num: 10 }),
-      }),
-    ]);
-
-    if (!imagesRes.ok && !shoppingRes.ok) {
-      console.error(`[search-clothes] Both Serper endpoints failed: images=${imagesRes.status} shopping=${shoppingRes.status}`);
+    if (!serperRes.ok) {
+      console.error(`[search-clothes] Serper responded ${serperRes.status}`);
       return new Response(JSON.stringify({ results: [], error: 'Search unavailable' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Build a price lookup from shopping results keyed by source domain
-    const priceByDomain: Record<string, { price: string; priceNumeric: number }> = {};
-    if (shoppingRes.ok) {
-      const shoppingData = await shoppingRes.json();
-      const shoppingItems: any[] = shoppingData.shopping || shoppingData.shopping_results || [];
-      for (const r of shoppingItems) {
-        try {
-          const domain = new URL(r.link || '').hostname.replace(/^www\./, '');
-          if (domain && r.price && !priceByDomain[domain]) {
-            const priceNumeric = parseFloat((r.price || '').replace(/[^0-9.]/g, '')) || 0;
-            priceByDomain[domain] = { price: r.price, priceNumeric };
-          }
-        } catch { /* invalid URL — skip */ }
-      }
-    }
+    const serperData = await serperRes.json();
+    const shoppingResults: any[] = serperData.shopping || serperData.shopping_results || [];
 
-    // Parse image results
-    const imageData = imagesRes.ok ? await imagesRes.json() : { images: [] };
-    const imageItems: any[] = imageData.images || [];
-
-    const results = imageItems
-      .filter((r: any) => {
-        if (!(r.imageUrl || r.thumbnailUrl)) return false;
-        // Reject tall portrait images (aspect ratio > 1.4 tall) — these are
-        // almost always model/editorial photos. Product/flatlay shots are square
-        // or mildly portrait (≤ 1.4:1 height:width).
-        if (r.imageWidth && r.imageHeight && r.imageHeight > r.imageWidth * 1.4) return false;
-        return true;
-      })
+    const results = shoppingResults
       .map((r: any) => {
-        const title: string = r.title || query.trim();
-        const imageUrl: string = r.imageUrl || r.thumbnailUrl || '';
-        let price = '';
-        let priceNumeric = 0;
-        // Enrich with shopping price if we have one for the same domain
-        try {
-          const domain = new URL(r.link || '').hostname.replace(/^www\./, '');
-          if (domain && priceByDomain[domain]) {
-            price = priceByDomain[domain].price;
-            priceNumeric = priceByDomain[domain].priceNumeric;
-          }
-        } catch { /* skip */ }
+        const title: string = r.title || '';
+        const imageUrl: string =
+          r.imageUrl || r.thumbnailUrl || r.imageLink || r.thumbnail || '';
+        const price: string = r.price || '';
+        const priceNumeric = price ? parseFloat(price.replace(/[^0-9.]/g, '')) || 0 : 0;
 
         return {
           title,
@@ -134,6 +91,7 @@ serve(async (req) => {
           source: r.source || '',
         };
       })
+      .filter((r: any) => !!r.imageUrl)
       .slice(0, 10);
 
     return new Response(JSON.stringify({ results }), {
