@@ -54,10 +54,10 @@ serve(async (req) => {
       });
     }
 
-    // Use Images search with flatlay terms — Shopping returns model/editorial photos
-    // which look wrong after background removal. Image search with "flat lay" bias
-    // specifically surfaces product-only shots suitable for wardrobe use.
-    const flatLayQuery = `${query.trim()} flat lay product photo clothing`;
+    // Use Images search with flatlay/ghost-mannequin terms and negative signals to
+    // exclude model/editorial photos. Product shots are near-square; model photos
+    // are tall portrait — so we also filter by aspect ratio after fetching.
+    const flatLayQuery = `${query.trim()} flat lay OR "ghost mannequin" -model -person -wearing`;
 
     // Run both images and shopping in parallel: images for clean visuals,
     // shopping for price/source metadata to enrich results.
@@ -65,7 +65,7 @@ serve(async (req) => {
       fetch('https://google.serper.dev/images', {
         method: 'POST',
         headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q: flatLayQuery, num: 12 }),
+        body: JSON.stringify({ q: flatLayQuery, num: 20 }),
       }),
       fetch('https://google.serper.dev/shopping', {
         method: 'POST',
@@ -102,7 +102,14 @@ serve(async (req) => {
     const imageItems: any[] = imageData.images || [];
 
     const results = imageItems
-      .filter((r: any) => !!(r.imageUrl || r.thumbnailUrl))
+      .filter((r: any) => {
+        if (!(r.imageUrl || r.thumbnailUrl)) return false;
+        // Reject tall portrait images (aspect ratio > 1.4 tall) — these are
+        // almost always model/editorial photos. Product/flatlay shots are square
+        // or mildly portrait (≤ 1.4:1 height:width).
+        if (r.imageWidth && r.imageHeight && r.imageHeight > r.imageWidth * 1.4) return false;
+        return true;
+      })
       .map((r: any) => {
         const title: string = r.title || query.trim();
         const imageUrl: string = r.imageUrl || r.thumbnailUrl || '';
