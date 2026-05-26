@@ -89,7 +89,9 @@ export function buildAIPrompt(
     `WEATHER: ${weatherSummary(weather, weatherRules)}`,
     userStyle ? `USER STYLE (secondary context — occasion and weather take priority): ${userStyle}` : null,
     colourStory && colourStory !== 'surprise'
-      ? `COLOUR PALETTE REQUESTED: ${colourStory.replace(/-/g, ' ')}`
+      ? `COLOUR PALETTE REQUESTED: ${colourStory.replace(/-/g, ' ')}. Rank candidates accordingly — pick items that best fulfil this palette.`
+      : slotResult.colourStrategy
+      ? `COLOUR APPROACH: The candidates are pre-ranked for a ${slotResult.colourStrategy}. Pick the top-ranked item in each slot unless a worn marker (⚠️/🚫) forces a substitution — the ranking was done so the #1 items form a coherent colour story together. Name the final colour story in stylingNote.`
       : 'COLOUR PALETTE: Your choice — pick the approach (tonal, neutral anchor, complementary, monochromatic) that best suits the occasion and name it in stylingNote.',
     avoidanceLines.length > 0
       ? `\nRECENT OUTFITS — do NOT recreate any of these item combinations:\n${avoidanceLines.join('\n')}`

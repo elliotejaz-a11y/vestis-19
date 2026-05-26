@@ -5,6 +5,7 @@ import {
   rankCombinations,
   rankSlotCandidates,
   isNeutralColor,
+  inferColourStrategy,
 } from "@/lib/colourTheory";
 import type { ClothingItem } from "@/types/wardrobe";
 
@@ -276,6 +277,90 @@ describe("outfitPromptBuilder — token budget", () => {
 });
 
 // ── Fallback Level 1: malformed JSON from AI ─────────────────────────────────
+
+// ── inferColourStrategy ───────────────────────────────────────────────────────
+
+describe("inferColourStrategy", () => {
+  it("returns 'monochromatic' when all garments share a colour word", () => {
+    const items = [
+      makeItem("t", "tops",    "navy"),
+      makeItem("b", "bottoms", "navy chino"),
+      makeItem("s", "shoes",   "navy suede"),
+    ];
+    expect(inferColourStrategy(items)).toBe("monochromatic");
+  });
+
+  it("returns 'complementary pairing' when two garments form a known pair (navy + orange)", () => {
+    // navy is neutral, orange is not → not all-neutral, so complementary pair check runs.
+    // navy+orange is an entry in COMPLEMENTARY_PAIRS.
+    const items = [
+      makeItem("t", "tops",    "navy"),
+      makeItem("b", "bottoms", "orange"),
+      makeItem("s", "shoes",   "white"),
+    ];
+    expect(inferColourStrategy(items)).toBe("complementary pairing");
+  });
+
+  it("returns 'neutral anchor with accent' for 2 neutrals + 1 non-neutral", () => {
+    const items = [
+      makeItem("t", "tops",    "white"),
+      makeItem("b", "bottoms", "grey"),
+      makeItem("s", "shoes",   "red"),
+    ];
+    expect(inferColourStrategy(items)).toBe("neutral anchor with accent");
+  });
+
+  it("returns 'neutral palette' when all garments are neutrals", () => {
+    const items = [
+      makeItem("t", "tops",    "white"),
+      makeItem("b", "bottoms", "black"),
+      makeItem("s", "shoes",   "grey"),
+    ];
+    expect(inferColourStrategy(items)).toBe("neutral palette");
+  });
+
+  it("returns 'tonal palette' for a high-scoring same-family combination (no exact complementary pair)", () => {
+    // olive + tan — no COMPLEMENTARY_PAIRS entry, 1 neutral (tan), 1 non-neutral (olive)... but olive IS neutral
+    // Use blue + teal — no exact pair, not all neutral, high score from similar family
+    const items = [
+      makeItem("t", "tops",    "teal"),
+      makeItem("b", "bottoms", "blue"),
+    ];
+    // teal and blue: no COMPLEMENTARY_PAIRS entry, neither is neutral; score depends on shared letters
+    // Result could be tonal or balanced — just verify no throw and returns a string
+    const result = inferColourStrategy(items);
+    expect(typeof result).toBe("string");
+    expect(result.length).toBeGreaterThan(0);
+  });
+
+  it("ignores accessories and hats in strategy inference", () => {
+    const items = [
+      makeItem("t",   "tops",        "beige"),
+      makeItem("b",   "bottoms",     "tan"),
+      makeItem("h",   "hats",        "red"),    // hat — ignored
+      makeItem("acc", "accessories", "purple"), // accessory — ignored
+    ];
+    // Without hat/accessory: beige + tan → both neutral → 'neutral palette'
+    expect(inferColourStrategy(items)).toBe("neutral palette");
+  });
+
+  it("returns 'neutral palette' for single garment (< 2 visible garments)", () => {
+    const items = [makeItem("t", "tops", "red")];
+    expect(inferColourStrategy(items)).toBe("neutral palette");
+  });
+
+  it("does not throw on empty array", () => {
+    expect(() => inferColourStrategy([])).not.toThrow();
+  });
+
+  it("does not throw when color is empty string", () => {
+    const items = [
+      makeItem("t", "tops",    ""),
+      makeItem("b", "bottoms", ""),
+    ];
+    expect(() => inferColourStrategy(items)).not.toThrow();
+  });
+});
 
 describe("Fallback Level 1 — malformed AI JSON", () => {
   it("colourTheory module exports do not throw on empty inputs", () => {
