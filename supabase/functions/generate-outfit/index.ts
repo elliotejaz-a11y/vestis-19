@@ -434,7 +434,15 @@ serve(async (req) => {
     // The client has already pre-filtered candidates by colour score and built a
     // focused prompt under 800 tokens. We just call the AI and map the response.
     if (preBuiltPrompt && typeof preBuiltPrompt === 'string' && !isGymRequest) {
-      const guidedSystemPrompt = `You are a senior personal fashion stylist. Select the best outfit from the provided candidates and write a short styling note. Respond using the create_outfit tool only.`;
+      const guidedSystemPrompt = `You are a senior personal fashion stylist with a designer's eye for colour and proportion. Select the best outfit from the provided candidates.
+
+Key principles:
+1. COLOUR COHERENCE: The candidate list in each slot is pre-ranked — the #1 item is the best colour match with the other slots. Follow the stated colour approach. Pick items that form a coherent colour story together.
+2. OCCASION FIT: The outfit must suit the stated occasion — polished for business/formal, relaxed for casual, expressive for a night out.
+3. RECENCY: Always avoid items marked 🚫 (worn multiple times recently). Strongly prefer fresh alternatives over items marked ⚠️ (worn once recently).
+4. ONE ITEM PER SLOT: Pick exactly one item from each available slot. Do not skip any slot that has candidates.
+
+Respond using the create_outfit tool only. Do not add any text outside the tool call.`;
 
       const guidedResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',

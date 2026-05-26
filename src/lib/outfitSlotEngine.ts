@@ -23,7 +23,7 @@
  */
 
 import type { ClothingItem } from "@/types/wardrobe";
-import { rankSlotCandidates } from "@/lib/colourTheory";
+import { rankSlotCandidates, rankCombinations, inferColourStrategy } from "@/lib/colourTheory";
 
 // ── Weather thresholds (new spec) ────────────────────────────────────────────
 const WARM_TEMP = 19;   // above → no jumper/outerwear unless rain
@@ -70,6 +70,22 @@ export interface SlotResult {
   error: SlotError | null;
   /** Which weather rules triggered. */
   weatherRules: WeatherRules;
+  /** Inferred colour story name for the best-ranking candidate combination (e.g. "tonal palette"). */
+  colourStrategy?: string;
+}
+
+/**
+ * Maps a ClothingItem category string to the slot key used in candidatesBySlot.
+ * "tops" → "top", "bottoms" → "bottom", "dresses" → "top", "jumpers" → "jumper",
+ * "hats" → "hat", "accessories" → "accessory", others pass through unchanged.
+ */
+function categoryToSlotKey(category: string): string {
+  const cat = (category || '').toLowerCase();
+  const MAP: Record<string, string> = {
+    tops: 'top', dresses: 'top', bottoms: 'bottom',
+    jumpers: 'jumper', hats: 'hat', accessories: 'accessory',
+  };
+  return MAP[cat] ?? cat;
 }
 
 function searchText(item: ClothingItem): string {
@@ -221,15 +237,52 @@ export function resolveSlots(
     candidatesBySlot.accessory = accessories;
   }
 
-  // ── Colour-rank each slot's candidates against all other confirmed items ──
-  // Use mandatory items as anchors; rank each slot against them.
+  // ── Colour-rank each slot's candidates ───────────────────────────────────────
+  // Strategy A (mandatory items exist): rank each slot against weather-forced anchor(s)
+  //   e.g. if the puffer is mandatory, rank all other slots relative to it.
+  // Strategy B (no mandatory items — the common case): use rankCombinations() on the
+  //   three core visual slots (top / bottom / shoes) to find the highest-scoring colour
+  //   combination, then rank every slot's candidates against the other core slots' best
+  //   items. This is what makes the #1 candidate in each slot "work together" as an outfit.
   const ranked: CandidatesBySlot = {};
-  for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
-    const anchors = mandatoryItems.filter(m => (m.category || '').toLowerCase() !== slot);
-    ranked[slot] = rankSlotCandidates(candidates, anchors).slice(0, MAX_CANDIDATES_PER_SLOT);
+  let colourStrategy: string | undefined;
+
+  if (mandatoryItems.length > 0) {
+    for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+      const anchors = mandatoryItems.filter(
+        m => categoryToSlotKey((m.category || '').toLowerCase()) !== slot
+      );
+      ranked[slot] = rankSlotCandidates(candidates, anchors).slice(0, MAX_CANDIDATES_PER_SLOT);
+    }
+  } else {
+    // Build core slot candidates for combination ranking (bounded: ≤3 slots × 3 items = 27)
+    const CORE_SLOTS = ['top', 'bottom', 'shoes'];
+    const coreForRanking: Record<string, ClothingItem[]> = {};
+    for (const s of CORE_SLOTS) {
+      if (candidatesBySlot[s]?.length > 0) coreForRanking[s] = candidatesBySlot[s];
+    }
+
+    const topCombos = rankCombinations(coreForRanking, 3, 1);
+
+    if (topCombos.length > 0) {
+      const bestItems = topCombos[0].items;
+      colourStrategy = inferColourStrategy(bestItems);
+      // Rank each slot using the other core slots' best items as colour anchors
+      for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+        const crossAnchors = bestItems.filter(
+          i => categoryToSlotKey((i.category || '').toLowerCase()) !== slot
+        );
+        ranked[slot] = rankSlotCandidates(candidates, crossAnchors).slice(0, MAX_CANDIDATES_PER_SLOT);
+      }
+    } else {
+      // Sparse wardrobe (missing core slots) — preserve original order
+      for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+        ranked[slot] = candidates.slice(0, MAX_CANDIDATES_PER_SLOT);
+      }
+    }
   }
 
-  return { mandatoryItems, candidatesBySlot: ranked, error: null, weatherRules };
+  return { mandatoryItems, candidatesBySlot: ranked, error: null, weatherRules, colourStrategy };
 }
 
 /** Produce a no-AI fallback outfit from the slot result (Fallback Level 2). */

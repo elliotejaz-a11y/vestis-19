@@ -66,6 +66,64 @@ export interface RankedCombination {
   score: number;
 }
 
+/**
+ * Infer a human-readable colour story name from a set of outfit items.
+ *
+ * Priority (most specific → most general):
+ * 1. Monochromatic — all visible garments share at least one colour word
+ * 2. Complementary pairing — any two garments form a known COMPLEMENTARY_PAIRS entry
+ * 3. Neutral anchor with accent — mostly neutrals plus exactly one saturated piece
+ * 4. Neutral palette — every garment is a neutral
+ * 5. Tonal palette — high overall score without an explicit complementary pair
+ * 6. Balanced mix — fallback
+ */
+export function inferColourStrategy(items: ClothingItem[]): string {
+  const garments = items.filter(i => {
+    const cat = (i.category || '').toLowerCase();
+    return cat !== 'accessories' && cat !== 'hats';
+  });
+  if (garments.length < 2) return 'neutral palette';
+
+  const colorWordSets = garments.map(i => colourWords(i.color || ''));
+
+  // 1. Monochromatic: all garments share at least one colour word (≥3 chars)
+  for (const word of colorWordSets[0]) {
+    if (word.length < 3) continue;
+    if (colorWordSets.every(ws => ws.some(cw => cw === word || cw.includes(word) || word.includes(cw)))) {
+      return 'monochromatic';
+    }
+  }
+
+  const neutralFlags = garments.map(i => isNeutralColor(i.color || ''));
+  const nonNeutralCount = neutralFlags.filter(f => !f).length;
+  const neutralCount = neutralFlags.filter(Boolean).length;
+
+  // 2. All neutrals — classify before complementary pairs: a white+black+grey outfit
+  //    is a "neutral palette" look, not a "complementary pairing" even though those
+  //    colours appear in the COMPLEMENTARY_PAIRS table.
+  if (nonNeutralCount === 0) return 'neutral palette';
+
+  // 3. Complementary pairing: any two non-all-neutral garments form a known pair
+  const wordSets = colorWordSets.map(ws => new Set(ws));
+  for (const [a, b] of COMPLEMENTARY_PAIRS) {
+    for (let i = 0; i < wordSets.length; i++) {
+      for (let j = i + 1; j < wordSets.length; j++) {
+        if ((wordSets[i].has(a) && wordSets[j].has(b)) || (wordSets[i].has(b) && wordSets[j].has(a))) {
+          return 'complementary pairing';
+        }
+      }
+    }
+  }
+
+  // 4. Neutral anchor with accent: ≥1 neutral + exactly 1 non-neutral
+  if (neutralCount >= 1 && nonNeutralCount === 1) return 'neutral anchor with accent';
+
+  // 5. Tonal: high combined score suggests same colour family
+  if (scoreOutfitCombination(garments) >= 75) return 'tonal palette';
+
+  return 'balanced mix';
+}
+
 /** Extract lowercase colour words from a colour string. */
 function colourWords(color: string): string[] {
   return (color || '').toLowerCase().split(/[,\s/\-]+/).filter(w => w.length > 1);

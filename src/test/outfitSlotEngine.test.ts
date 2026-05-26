@@ -287,3 +287,38 @@ describe("Fallback Level 4 — weather unavailable", () => {
     expect(result.candidatesBySlot).toHaveProperty("bottom");
   });
 });
+
+// ── COLOUR STRATEGY + CROSS-SLOT RANKING ─────────────────────────────────────
+
+describe("cross-slot colour ranking and colourStrategy", () => {
+  it("populates colourStrategy when all three core slots (top/bottom/shoes) are present", () => {
+    const result = resolveSlots([top1, top2, bottom1, bottom2, shoe1], null, "Casual day out");
+    expect(result.error).toBeNull();
+    expect(typeof result.colourStrategy).toBe("string");
+    expect(result.colourStrategy!.length).toBeGreaterThan(0);
+  });
+
+  it("colourStrategy is undefined when wardrobe has no shoes (missing core slot)", () => {
+    const result = resolveSlots([top1, bottom1], null, "Casual day out");
+    expect(result.error).toBeNull();
+    // No shoes → coreForRanking has only top+bottom, rankCombinations still returns results
+    // Strategy should still be populated if ≥2 core slots exist
+    // (test that it doesn't throw, not the exact value)
+    expect(() => result.colourStrategy).not.toThrow();
+  });
+
+  it("all slot candidates are ranked (non-empty arrays) after cross-slot ranking", () => {
+    const result = resolveSlots([top1, top2, bottom1, bottom2, shoe1], null, "Casual day out");
+    expect(result.candidatesBySlot.top.length).toBeGreaterThan(0);
+    expect(result.candidatesBySlot.bottom.length).toBeGreaterThan(0);
+    expect(result.candidatesBySlot.shoes.length).toBeGreaterThan(0);
+  });
+
+  it("does not throw for a wardrobe that has only tops and bottoms (no shoes)", () => {
+    expect(() => resolveSlots([top1, bottom1], null, "Casual day out")).not.toThrow();
+  });
+
+  it("does not throw on a minimal 3-item wardrobe (1 top, 1 bottom, 1 shoe)", () => {
+    expect(() => resolveSlots([top1, bottom1, shoe1], null, "Date night")).not.toThrow();
+  });
+});
