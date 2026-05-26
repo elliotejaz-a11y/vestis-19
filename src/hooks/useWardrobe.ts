@@ -779,12 +779,13 @@ export function useWardrobe() {
       }
 
       // ── Phase 1: Build focused AI prompt (non-gym only) ─────────────────────
+      // Compute recency before building the prompt so the AI sees worn markers + avoidance list.
+      const recentOutfitItemIds = outfits.slice(0, 5).map(o => (o.items || []).map(i => i.id));
       const preBuiltPrompt = (!gymRequest && slotResult)
-        ? buildAIPrompt(slotResult, occasion, weather || null, profile?.style_preference || undefined, colourStory)
+        ? buildAIPrompt(slotResult, occasion, weather || null, profile?.style_preference || undefined, colourStory, recentOutfitItemIds)
         : undefined;
 
       try {
-        const recentOutfitItemIds = outfits.slice(0, 5).map(o => (o.items || []).map(i => i.id));
         const sortedItems = sortedItemsByUsageRef.current;
 
         // In guided mode, the edge function only needs to look up items referenced in

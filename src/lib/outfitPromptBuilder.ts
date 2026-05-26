@@ -29,6 +29,13 @@ function formatItem(item: ClothingItem): string {
   return `[${item.id}] ${name} (${color}${extra})`;
 }
 
+/** Returns a worn marker string based on how many recent outfits contained this item. */
+function wornMarker(count: number): string {
+  if (count >= 2) return ' [🚫 worn multiple times — avoid]';
+  if (count === 1) return ' [⚠️ worn recently — prefer alternatives]';
+  return '';
+}
+
 /** Format mandatory (pre-selected) items for display in the prompt. */
 function formatMandatorySection(mandatoryItems: ClothingItem[]): string {
   if (mandatoryItems.length === 0) return '';
@@ -36,10 +43,14 @@ function formatMandatorySection(mandatoryItems: ClothingItem[]): string {
   return `PRE-SELECTED (do not change these):\n${lines.join('\n')}\n\n`;
 }
 
-/** Format candidate items for a slot, numbered for readability. */
-function formatSlotCandidates(slot: string, candidates: ClothingItem[]): string {
+/** Format candidate items for a slot with optional recency markers. */
+function formatSlotCandidates(
+  slot: string,
+  candidates: ClothingItem[],
+  recentIdCounts: Map<string, number>,
+): string {
   const label = slot.toUpperCase();
-  const lines = candidates.map(c => `  ${formatItem(c)}`);
+  const lines = candidates.map(c => `  ${formatItem(c)}${wornMarker(recentIdCounts.get(c.id) || 0)}`);
   return `${label} (pick 1):\n${lines.join('\n')}`;
 }
 
@@ -55,9 +66,23 @@ export function buildAIPrompt(
   occasion: string,
   weather: WeatherData | null,
   userStyle?: string,
-  colourStory?: string
+  colourStory?: string,
+  recentOutfitItemIds?: string[][],
 ): string {
   const { mandatoryItems, candidatesBySlot, weatherRules } = slotResult;
+
+  // Build recency counts (how many of the last 5 outfits each item appeared in).
+  const recentIdCounts = new Map<string, number>();
+  const avoidanceLines: string[] = [];
+  if (recentOutfitItemIds) {
+    recentOutfitItemIds.slice(0, 5).forEach((idSet, i) => {
+      if (!idSet || idSet.length === 0) return;
+      avoidanceLines.push(`- Outfit ${i + 1}: [${idSet.join(', ')}]`);
+      new Set(idSet).forEach(id => {
+        recentIdCounts.set(id, (recentIdCounts.get(id) || 0) + 1);
+      });
+    });
+  }
 
   const header = [
     `OCCASION: "${occasion}"`,
@@ -66,6 +91,9 @@ export function buildAIPrompt(
     colourStory && colourStory !== 'surprise'
       ? `COLOUR PALETTE REQUESTED: ${colourStory.replace(/-/g, ' ')}`
       : 'COLOUR PALETTE: Your choice — pick the approach (tonal, neutral anchor, complementary, monochromatic) that best suits the occasion and name it in stylingNote.',
+    avoidanceLines.length > 0
+      ? `\nRECENT OUTFITS — do NOT recreate any of these item combinations:\n${avoidanceLines.join('\n')}`
+      : null,
   ].filter(Boolean).join('\n');
 
   const rules = [
@@ -78,6 +106,9 @@ export function buildAIPrompt(
     weatherRules.needsPuffer ? '- Cold weather: jumper + puffer/coat both required if available.' : null,
     weatherRules.isRaining ? '- Rain: always include waterproof outerwear.' : null,
     weatherRules.noOuterwear ? '- Warm weather: no outerwear unless the occasion requires it.' : null,
+    recentIdCounts.size > 0
+      ? '- Items marked ⚠️ or 🚫 have been worn recently. Prefer alternatives where available — especially for bottoms and shoes.'
+      : null,
   ].filter(Boolean).join('\n');
 
   const mandatory = formatMandatorySection(mandatoryItems);
@@ -96,7 +127,7 @@ export function buildAIPrompt(
 
   // Build candidate sections, then trim if over budget
   let candidateSections: string[] = slots.map(slot =>
-    formatSlotCandidates(slot, candidatesBySlot[slot] || [])
+    formatSlotCandidates(slot, candidatesBySlot[slot] || [], recentIdCounts)
   );
 
   const assemble = (sections: string[]) =>
@@ -107,13 +138,13 @@ export function buildAIPrompt(
   // If over budget, progressively reduce candidates per slot to 3, then 2
   if (estimateTokens(draft) > TOKEN_BUDGET) {
     candidateSections = slots.map(slot =>
-      formatSlotCandidates(slot, (candidatesBySlot[slot] || []).slice(0, 3))
+      formatSlotCandidates(slot, (candidatesBySlot[slot] || []).slice(0, 3), recentIdCounts)
     );
     draft = assemble(candidateSections);
   }
   if (estimateTokens(draft) > TOKEN_BUDGET) {
     candidateSections = slots.map(slot =>
-      formatSlotCandidates(slot, (candidatesBySlot[slot] || []).slice(0, 2))
+      formatSlotCandidates(slot, (candidatesBySlot[slot] || []).slice(0, 2), recentIdCounts)
     );
     draft = assemble(candidateSections);
   }

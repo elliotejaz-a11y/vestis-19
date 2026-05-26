@@ -525,7 +525,69 @@ serve(async (req) => {
         .filter(Boolean);
 
       const guidedNormalized = normalizeSelectionWithRequiredCore(guidedSelected, candidateItems);
-      const guidedFinal = normalizeSelectionForWeather(guidedNormalized, candidateItems, weather, false);
+      let guidedFinal = normalizeSelectionForWeather(guidedNormalized, candidateItems, weather, false);
+
+      // ── Guided mode dedup: mirrors Phase 1 + Phase 2 from the legacy path below.
+      // Wrapped in try/catch so any edge-case error degrades gracefully — the client
+      // safety net (breakExactDuplicate) remains the final fallback.
+      try {
+        if (
+          Array.isArray(recentOutfitItemIds) &&
+          recentOutfitItemIds.length > 0 &&
+          isDuplicateOutfit(guidedFinal, recentOutfitItemIds)
+        ) {
+          const guidedRecentCounts = new Map<string, number>();
+          recentOutfitItemIds.slice(0, 5).forEach((idSet: any) => {
+            if (Array.isArray(idSet)) {
+              new Set<string>(idSet.map(String)).forEach(id => {
+                guidedRecentCounts.set(id, (guidedRecentCounts.get(id) || 0) + 1);
+              });
+            }
+          });
+          const guidedAllRecentIds = new Set<string>(guidedRecentCounts.keys());
+
+          // Phase 1: swap the top for a fresh alternative if one exists.
+          const usedIds = new Set(guidedFinal.map((i: any) => String(i.id)));
+          const topIdx = guidedFinal.findIndex(isTopHalf);
+          if (topIdx >= 0 && guidedAllRecentIds.has(String(guidedFinal[topIdx].id))) {
+            const freshTops = candidateItems.filter((item: any) =>
+              isTopHalf(item) &&
+              !guidedAllRecentIds.has(String(item.id)) &&
+              !usedIds.has(String(item.id))
+            );
+            if (freshTops.length > 0) {
+              guidedFinal = [...guidedFinal];
+              guidedFinal[topIdx] = freshTops[0];
+              guidedFinal = dedupeById(guidedFinal);
+            }
+          }
+
+          // Phase 2: if still duplicate, swap the least-recently-worn item in any core slot.
+          if (isDuplicateOutfit(guidedFinal, recentOutfitItemIds)) {
+            const usedIds2 = new Set(guidedFinal.map((i: any) => String(i.id)));
+            for (const predicate of [isBottom, isShoe, isTopHalf]) {
+              const idx = guidedFinal.findIndex(predicate);
+              if (idx < 0) continue;
+              const alternatives = candidateItems
+                .filter((item: any) => predicate(item) && !usedIds2.has(String(item.id)))
+                .sort((a: any, b: any) =>
+                  (guidedRecentCounts.get(String(a.id)) || 0) -
+                  (guidedRecentCounts.get(String(b.id)) || 0)
+                );
+              const pick = alternatives[0];
+              if (pick) {
+                guidedFinal = [...guidedFinal];
+                guidedFinal[idx] = pick;
+                guidedFinal = dedupeById(guidedFinal);
+                break;
+              }
+            }
+          }
+        }
+      } catch (dedupErr) {
+        console.error('Guided mode dedup error (non-fatal):', dedupErr);
+        // guidedFinal is unchanged; client safety net handles any remaining duplicate.
+      }
 
       return new Response(JSON.stringify({
         items: guidedFinal,
