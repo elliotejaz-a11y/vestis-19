@@ -107,7 +107,7 @@ export function buildAIPrompt(
     weatherRules.isRaining ? '- Rain: always include waterproof outerwear.' : null,
     weatherRules.noOuterwear ? '- Warm weather: no outerwear unless the occasion requires it.' : null,
     recentIdCounts.size > 0
-      ? '- Items marked ⚠️ or 🚫 have been worn recently. Prefer alternatives where available — especially for bottoms and shoes.'
+      ? '- Items marked ⚠️ or 🚫 have been worn recently. Rotate across ALL slots equally — prefer fresh tops, bottoms, shoes, and accessories. No single slot gets priority over another.'
       : null,
   ].filter(Boolean).join('\n');
 

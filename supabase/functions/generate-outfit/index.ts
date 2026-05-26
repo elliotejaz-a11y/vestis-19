@@ -527,15 +527,11 @@ serve(async (req) => {
       const guidedNormalized = normalizeSelectionWithRequiredCore(guidedSelected, candidateItems);
       let guidedFinal = normalizeSelectionForWeather(guidedNormalized, candidateItems, weather, false);
 
-      // ── Guided mode dedup: mirrors Phase 1 + Phase 2 from the legacy path below.
+      // ── Guided mode rotation + dedup.
       // Wrapped in try/catch so any edge-case error degrades gracefully — the client
       // safety net (breakExactDuplicate) remains the final fallback.
       try {
-        if (
-          Array.isArray(recentOutfitItemIds) &&
-          recentOutfitItemIds.length > 0 &&
-          isDuplicateOutfit(guidedFinal, recentOutfitItemIds)
-        ) {
+        if (Array.isArray(recentOutfitItemIds) && recentOutfitItemIds.length > 0) {
           const guidedRecentCounts = new Map<string, number>();
           recentOutfitItemIds.slice(0, 5).forEach((idSet: any) => {
             if (Array.isArray(idSet)) {
@@ -546,7 +542,9 @@ serve(async (req) => {
           });
           const guidedAllRecentIds = new Set<string>(guidedRecentCounts.keys());
 
-          // Phase 1: swap the top for a fresh alternative if one exists.
+          // Proactive top rotation: if the AI picked a recently-worn top AND a fresh
+          // alternative exists in the candidate pool, swap it now — regardless of whether
+          // the full outfit is an exact duplicate. This mirrors applyDiversityPass for tops.
           const usedIds = new Set(guidedFinal.map((i: any) => String(i.id)));
           const topIdx = guidedFinal.findIndex(isTopHalf);
           if (topIdx >= 0 && guidedAllRecentIds.has(String(guidedFinal[topIdx].id))) {
@@ -555,14 +553,16 @@ serve(async (req) => {
               !guidedAllRecentIds.has(String(item.id)) &&
               !usedIds.has(String(item.id))
             );
-            if (freshTops.length > 0) {
+            const freshTop = pickFreshItem(freshTops, guidedFinal);
+            if (freshTop) {
               guidedFinal = [...guidedFinal];
-              guidedFinal[topIdx] = freshTops[0];
+              guidedFinal[topIdx] = freshTop;
               guidedFinal = dedupeById(guidedFinal);
             }
           }
 
-          // Phase 2: if still duplicate, swap the least-recently-worn item in any core slot.
+          // Exact-duplicate guard: if the outfit still exactly matches a recent one,
+          // swap the least-recently-worn item in any core slot (bottom → shoe → top).
           if (isDuplicateOutfit(guidedFinal, recentOutfitItemIds)) {
             const usedIds2 = new Set(guidedFinal.map((i: any) => String(i.id)));
             for (const predicate of [isBottom, isShoe, isTopHalf]) {
