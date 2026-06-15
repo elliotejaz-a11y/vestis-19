@@ -7,6 +7,7 @@ import { OutfitCard } from "@/components/OutfitCard";
 import { OutfitChat } from "@/components/OutfitChat";
 import { OutfitCollagePreview } from "@/components/OutfitCollagePreview";
 import { ClothingItem, Outfit, OCCASIONS } from "@/types/wardrobe";
+import { COLOUR_STORY_SURPRISE } from "@/lib/outfitConstants";
 
 const WEATHER_ICON_MAP: Record<string, typeof Sun> = {
   Rainy: CloudRain,
@@ -35,7 +36,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const [latestOutfit, setLatestOutfit] = useState<Outfit | null>(null);
   const [popupOutfit, setPopupOutfit] = useState<Outfit | null>(null);
   const [chatOutfit, setChatOutfit] = useState<Outfit | null>(null);
-  const [colourStory, setColourStory] = useState("surprise");
+  const [colourStory, setColourStory] = useState(COLOUR_STORY_SURPRISE);
   const [showColourPicker, setShowColourPicker] = useState(false);
   const [weather, setWeather] = useState<{ temp: number; description: string } | null>(null);
   const [outfitPage, setOutfitPage] = useState(1);
@@ -126,7 +127,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
     if (!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms || !hasTopHalf) return;
     setGenerating(true);
     try {
-      const outfit = await onGenerate(activeOccasion, weather || undefined, colourStory !== "surprise" ? colourStory : undefined);
+      const outfit = await onGenerate(activeOccasion, weather || undefined, colourStory !== COLOUR_STORY_SURPRISE ? colourStory : undefined);
       setLatestOutfit(outfit);
       if (outfit) {
         setPopupOutfit(outfit);
@@ -230,18 +231,18 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         <button
           onClick={() => {
             setShowColourPicker(v => !v);
-            if (showColourPicker) setColourStory("surprise");
+            if (showColourPicker) setColourStory(COLOUR_STORY_SURPRISE);
           }}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
           {showColourPicker
             ? "Hide colour palette"
-            : `Colour palette${colourStory !== "surprise" ? `: ${colourStory.replace(/-/g, " ")}` : ""} ›`}
+            : `Colour palette${colourStory !== COLOUR_STORY_SURPRISE ? `: ${colourStory.replace(/-/g, " ")}` : ""} ›`}
         </button>
         {showColourPicker && (
           <div className="flex flex-wrap gap-2 mt-2">
             {[
-              { id: "surprise", label: "Surprise me" },
+              { id: COLOUR_STORY_SURPRISE, label: "Surprise me" },
               { id: "neutral-anchor", label: "Neutral anchor" },
               { id: "tonal", label: "Tonal" },
               { id: "monochromatic", label: "Monochromatic" },

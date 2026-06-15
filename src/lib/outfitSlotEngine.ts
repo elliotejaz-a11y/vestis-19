@@ -24,11 +24,12 @@
 
 import type { ClothingItem } from "@/types/wardrobe";
 import { rankSlotCandidates, rankCombinations, inferColourStrategy } from "@/lib/colourTheory";
+import { WARM_TEMP } from "@/lib/outfitConstants";
 
-// ── Weather thresholds (new spec) ────────────────────────────────────────────
-const WARM_TEMP = 19;   // above → no jumper/outerwear unless rain
-const JUMPER_TEMP = 16; // 16–19°C → jumper recommended if available
-const COLD_TEMP = 15;   // ≤15°C → jumper + puffer/coat required if available
+// ── Weather thresholds (slot-engine specific) ────────────────────────────────
+// WARM_TEMP (19) is imported from outfitConstants — above this, no layering needed.
+// PUFFER_TEMP is local — below this, a puffer/coat is required if available.
+const PUFFER_TEMP = 15;
 
 const PUFFER_PATTERN = /\b(puffer|parka|duvet jacket|padded jacket|quilted jacket|down jacket|anorak|peacoat|overcoat|trench coat|duffel coat|wool coat|toggle coat|shearling|puffer coat|padded coat)\b/i;
 const WATERPROOF_PATTERN = /\b(waterproof|water[-\s]?resistant|rain ?jacket|windbreaker|shell jacket|gore[-\s]?tex|mac|mackintosh|cagoule|pac[-\s]?a[-\s]?mac|hardshell|anorak)\b/i;
@@ -36,6 +37,16 @@ const RAIN_PATTERN = /\b(rain|rainy|drizzle|shower|showers|wet|precipitation|sto
 const FORMAL_PATTERN = /\b(wedding|gala|black[-\s]?tie|formal|cocktail|funeral|opera)\b/i;
 const BUSINESS_PATTERN = /\b(business|interview|meeting|office|work|corporate|conference|presentation)\b/i;
 const GYM_PATTERN = /\b(gym|workout|training|exercise|fitness|run|running|jog|jogging|cardio|lift|lifting|weights?|pilates|yoga|sport|sports)\b/i;
+const BEACH_PATTERN = /\b(beach|pool|swim|holiday|vacation|tropical|summer)\b/i;
+const NIGHT_OUT_PATTERN = /\b(night out|party|club|bar|drinks|going out)\b/i;
+const DATE_PATTERN = /\b(date|dinner|romantic|brunch)\b/i;
+
+// ── Occasion-specific item exclusion patterns ────────────────────────────────
+const OCCASION_GYM_WEAR_PATTERN = /\b(compression|activewear|athletic wear|performance top|training top|workout top|gym top|sports top|spandex|elastane|dry[-\s]?fit|moisture[-\s]?wicking)\b/i;
+const OCCASION_HEAVY_COAT_PATTERN = /\b(puffer|parka|duvet jacket|padded jacket|quilted jacket|down jacket|peacoat|overcoat|trench coat|duffel coat|wool coat|toggle coat|shearling)\b/i;
+const OCCASION_FORMAL_SHOE_PATTERN = /\b(oxford|derby|derbies|brogue|court shoe|kitten heel|stiletto)\b/i;
+const OCCASION_BRANDED_ATHLETIC_SHOE_PATTERN = /\b(TN|TNs|air ?max|air ?force|running shoe|trail shoe|training shoe|gym shoe|sports shoe|basketball shoe|tech runner|boost|ultra ?boost|foam ?runner)\b/i;
+const OCCASION_TRACKSUIT_PATTERN = /\b(tracksuit|track ?pants?|sweatpants?)\b/i;
 
 // Max candidates sent to AI per slot — keeps the prompt under the token budget
 const MAX_CANDIDATES_PER_SLOT = 5;
@@ -101,6 +112,82 @@ function isWaterproof(item: ClothingItem): boolean {
   return WATERPROOF_PATTERN.test(searchText(item));
 }
 
+// ── Occasion-based item filter ───────────────────────────────────────────────
+
+function occSearchText(item: ClothingItem): string {
+  return [item.name, item.category, item.color, item.fabric, item.notes, ...(item.tags || [])]
+    .filter(Boolean).join(' ').toLowerCase();
+}
+
+function isOccasionGymWear(item: ClothingItem): boolean {
+  const c = (item.category || '').toLowerCase();
+  if (c !== 'tops' && c !== 'bottoms') return false;
+  return OCCASION_GYM_WEAR_PATTERN.test(occSearchText(item));
+}
+
+function isOccasionBrandedAthleticShoe(item: ClothingItem): boolean {
+  if ((item.category || '').toLowerCase() !== 'shoes') return false;
+  return OCCASION_BRANDED_ATHLETIC_SHOE_PATTERN.test(occSearchText(item));
+}
+
+function isOccasionHeavyCoat(item: ClothingItem): boolean {
+  if ((item.category || '').toLowerCase() !== 'outerwear') return false;
+  return OCCASION_HEAVY_COAT_PATTERN.test(occSearchText(item));
+}
+
+function isOccasionFormalShoe(item: ClothingItem): boolean {
+  if ((item.category || '').toLowerCase() !== 'shoes') return false;
+  return OCCASION_FORMAL_SHOE_PATTERN.test(occSearchText(item));
+}
+
+function isOccasionTracksuit(item: ClothingItem): boolean {
+  const c = (item.category || '').toLowerCase();
+  if (c !== 'bottoms' && c !== 'tops') return false;
+  return OCCASION_TRACKSUIT_PATTERN.test(occSearchText(item));
+}
+
+/**
+ * Deterministically removes items that are definitively wrong for the occasion.
+ * Runs before slot resolution so the AI never sees inappropriate candidates.
+ *
+ * Safety: if the filtered pool would leave no tops or no bottoms (e.g. wardrobe
+ * is entirely gym-wear and occasion is formal), returns the full wardrobe unchanged.
+ */
+function filterItemsByOccasion(wardrobe: ClothingItem[], occasion: string): ClothingItem[] {
+  let filtered: ClothingItem[];
+
+  if (FORMAL_PATTERN.test(occasion)) {
+    // Formal events + wedding guest: remove gym wear, branded athletic shoes, tracksuits.
+    // Clean sneakers are allowed (streetwear-formal crossover). Only exclude sports-branded trainers.
+    filtered = wardrobe.filter(
+      i => !isOccasionGymWear(i) && !isOccasionBrandedAthleticShoe(i) && !isOccasionTracksuit(i)
+    );
+  } else if (BUSINESS_PATTERN.test(occasion)) {
+    // Business / interview: exclude gym wear + branded athletic shoes.
+    filtered = wardrobe.filter(i => !isOccasionGymWear(i) && !isOccasionBrandedAthleticShoe(i));
+  } else if (BEACH_PATTERN.test(occasion)) {
+    // Beach / vacation: exclude heavy coats and strict formal shoes.
+    filtered = wardrobe.filter(i => !isOccasionHeavyCoat(i) && !isOccasionFormalShoe(i));
+  } else if (NIGHT_OUT_PATTERN.test(occasion) || DATE_PATTERN.test(occasion)) {
+    // Night out / party / date / brunch: exclude gym-specific activewear items.
+    filtered = wardrobe.filter(i => !isOccasionGymWear(i));
+  } else {
+    // Casual and everything else: exclude gym activewear as a minimum.
+    filtered = wardrobe.filter(i => !isOccasionGymWear(i));
+  }
+
+  // Safety: if filtering removed all tops or all bottoms, return the full wardrobe.
+  const hasTops = filtered.some(i => {
+    const c = (i.category || '').toLowerCase();
+    return c === 'tops' || c === 'dresses';
+  });
+  const hasBottoms = filtered.some(i => {
+    const c = (i.category || '').toLowerCase();
+    return c === 'bottoms' || c === 'dresses';
+  });
+  return hasTops && hasBottoms ? filtered : wardrobe;
+}
+
 /** Builds weatherRules from a temperature + description pair. */
 function computeWeatherRules(weather: WeatherData | null): WeatherRules {
   if (!weather) {
@@ -111,8 +198,8 @@ function computeWeatherRules(weather: WeatherData | null): WeatherRules {
   const noOuterwear = temp > WARM_TEMP && !isRaining;
   // Jumper is relevant at any temp ≤ 19°C: mild (16–19°C) or cold (≤15°C)
   const needsJumper = temp <= WARM_TEMP;
-  const needsPuffer = temp <= COLD_TEMP;
-  const needsOuterwear = temp <= COLD_TEMP || isRaining;
+  const needsPuffer = temp <= PUFFER_TEMP;
+  const needsOuterwear = temp <= PUFFER_TEMP || isRaining;
   return { needsJumper, needsOuterwear, needsPuffer, isRaining, noOuterwear };
 }
 
@@ -136,14 +223,18 @@ export function resolveSlots(
 ): SlotResult {
   const cat = (item: ClothingItem) => (item.category || '').toLowerCase();
 
-  const tops        = wardrobe.filter(i => cat(i) === 'tops');
-  const dresses     = wardrobe.filter(i => cat(i) === 'dresses');
-  const bottoms     = wardrobe.filter(i => cat(i) === 'bottoms');
-  const jumpers     = wardrobe.filter(i => cat(i) === 'jumpers');
-  const outerwear   = wardrobe.filter(i => cat(i) === 'outerwear');
-  const shoes       = wardrobe.filter(i => cat(i) === 'shoes');
-  const hats        = wardrobe.filter(i => cat(i) === 'hats');
-  const accessories = wardrobe.filter(i => cat(i) === 'accessories');
+  // Apply deterministic occasion filter before building any slot candidates.
+  // Gym occasions are handled by a separate path in useWardrobe and never reach here.
+  const pool = filterItemsByOccasion(wardrobe, occasion);
+
+  const tops        = pool.filter(i => cat(i) === 'tops');
+  const dresses     = pool.filter(i => cat(i) === 'dresses');
+  const bottoms     = pool.filter(i => cat(i) === 'bottoms');
+  const jumpers     = pool.filter(i => cat(i) === 'jumpers');
+  const outerwear   = pool.filter(i => cat(i) === 'outerwear');
+  const shoes       = pool.filter(i => cat(i) === 'shoes');
+  const hats        = pool.filter(i => cat(i) === 'hats');
+  const accessories = pool.filter(i => cat(i) === 'accessories');
 
   const isGym     = GYM_PATTERN.test(occasion);
   const isFormal  = FORMAL_PATTERN.test(occasion);
@@ -188,7 +279,7 @@ export function resolveSlots(
   // Jumper slot: additive (RULE 3 — never replaces the top slot)
   // Trigger: temp 16–19°C OR temp ≤ 15°C, and jumpers exist
   const { needsJumper, needsOuterwear, needsPuffer, isRaining, noOuterwear } = weatherRules;
-  if (!isGym && jumpers.length > 0 && (needsJumper || (weather?.temp ?? 20) <= COLD_TEMP)) {
+  if (!isGym && jumpers.length > 0 && (needsJumper || (weather?.temp ?? 20) <= PUFFER_TEMP)) {
     candidatesBySlot.jumper = jumpers;
   }
 
