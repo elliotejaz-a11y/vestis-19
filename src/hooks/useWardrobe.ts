@@ -5,10 +5,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 import { isStoragePath, resolveSignedClothingImageFields, batchResolveSignedClothingImageFields, getSignedStorageUrl } from "@/lib/storage";
-import { buildRecentIdCounts, breakExactDuplicate, isTooSimilarToRecent } from "@/lib/outfitRotation";
-import { resolveSlots, buildFallbackOutfit } from "@/lib/outfitSlotEngine";
+import { buildRecentIdCounts, breakExactDuplicate, isTooSimilarToRecent, selectAnchorItem } from "@/lib/outfitRotation";
+import { resolveSlots, buildFallbackOutfit, filterItemsByOccasion } from "@/lib/outfitSlotEngine";
 import { buildAIPrompt } from "@/lib/outfitPromptBuilder";
-import { COLD_TEMP, HOT_TEMP, RECENT_OUTFIT_SIMILARITY_WINDOW } from "@/lib/outfitConstants";
+import { COLD_TEMP, HOT_TEMP, RECENT_OUTFIT_SIMILARITY_WINDOW, ANCHOR_SLOTS } from "@/lib/outfitConstants";
+import type { AnchorSlot } from "@/lib/outfitConstants";
 import type { SlotResult } from "@/lib/outfitSlotEngine";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
@@ -748,19 +749,8 @@ export function useWardrobe() {
 
       const gymRequest = isGymOccasion(occasion);
 
-      // ── Phase 0: Slot engine (non-gym only) ─────────────────────────────────
-      let slotResult: ReturnType<typeof resolveSlots> | null = null;
-      if (!gymRequest) {
-        slotResult = resolveSlots(items, weather || null, occasion);
-        if (slotResult.error) {
-          toast({
-            title: "Add required items to generate outfits",
-            description: slotResult.error.message,
-            variant: "destructive",
-          });
-          return null;
-        }
-      } else {
+      // ── Phase 0: Wardrobe validation ─────────────────────────────────────────
+      if (gymRequest) {
         const missingCore: string[] = [];
         if (!items.some((item) => isTopOrJumperCategory(item.category))) missingCore.push("top or jumper");
         if (!items.some((item) => isBottomsCategory(item.category))) missingCore.push("bottoms");
@@ -776,8 +766,8 @@ export function useWardrobe() {
       }
 
       // ── Phase 1: Fetch fresh recent outfits from Supabase ───────────────────
-      // Always query the DB directly — in-memory state may be empty on first load.
-      // Non-fatal: if the query fails, dedup is skipped gracefully (no crash).
+      // Done BEFORE anchor selection and slot engine so anchor scoring uses live data.
+      // Non-fatal: if the query fails, dedup and anchor selection degrade gracefully.
       type ThinOutfit = { id: string; items: Pick<ClothingItem, 'id'>[] };
       let freshRecentOutfits: ThinOutfit[] = [];
       try {
@@ -792,15 +782,52 @@ export function useWardrobe() {
           items: (o.outfit_items || []).map((oi: any) => ({ id: oi.clothing_item_id as string })),
         }));
       } catch {
-        // Non-fatal — proceed without similarity data
+        // Non-fatal — proceed without recency data
       }
 
       const freshRecentItemIds = freshRecentOutfits.map(o => o.items.map(i => i.id));
 
-      // ── Phase 2: Build focused AI prompt (non-gym only) ─────────────────────
+      // ── Phase 2: Algorithmically select the anchor (top/jumper/dress) ────────
+      // Takes the top-selection decision away from the AI, which cannot reliably
+      // honour negative constraints ("avoid item X"). The anchor is chosen using
+      // recency-weighted random selection from the occasion-filtered pool.
+      let mandatoryAnchor: ClothingItem | null = null;
+      if (!gymRequest) {
+        const occasionPool = filterItemsByOccasion(items, occasion);
+        const anchorCandidates = occasionPool.filter(i =>
+          ANCHOR_SLOTS.includes((i.category || '').toLowerCase() as AnchorSlot)
+        );
+        if (anchorCandidates.length > 0) {
+          mandatoryAnchor = selectAnchorItem(anchorCandidates, freshRecentOutfits, items);
+        }
+      } else {
+        // Gym: anchor selection uses gym-appropriate tops only
+        const gymAnchorCandidates = items.filter(isGymTop);
+        if (gymAnchorCandidates.length > 0) {
+          mandatoryAnchor = selectAnchorItem(gymAnchorCandidates, freshRecentOutfits, items);
+        }
+      }
+
+      // ── Phase 3: Slot engine (non-gym only) ──────────────────────────────────
+      // Pass mandatoryAnchor so the top slot is restricted to only that item.
+      // The colour ranking for all other slots then aligns around the chosen anchor.
+      let slotResult: ReturnType<typeof resolveSlots> | null = null;
+      if (!gymRequest) {
+        slotResult = resolveSlots(items, weather || null, occasion, mandatoryAnchor || undefined);
+        if (slotResult.error) {
+          toast({
+            title: "Add required items to generate outfits",
+            description: slotResult.error.message,
+            variant: "destructive",
+          });
+          return null;
+        }
+      }
+
+      // ── Phase 4: Build focused AI prompt (non-gym only) ──────────────────────
       const buildPrompt = (recentIds: string[][]) =>
         (!gymRequest && slotResult)
-          ? buildAIPrompt(slotResult, occasion, weather || null, profile?.style_preference || undefined, colourStory, recentIds)
+          ? buildAIPrompt(slotResult, occasion, weather || null, profile?.style_preference || undefined, colourStory, recentIds, mandatoryAnchor || undefined)
           : undefined;
 
       const preBuiltPrompt = buildPrompt(freshRecentItemIds);
@@ -832,6 +859,8 @@ export function useWardrobe() {
             recentOutfitItemIds: overrideRecentIds ?? freshRecentItemIds,
             colourStory,
             preBuiltPrompt: overridePrompt ?? preBuiltPrompt,
+            mandatoryAnchorId: mandatoryAnchor?.id,
+            mandatoryAnchorName: mandatoryAnchor?.name,
           },
         });
         if (error) throw error;

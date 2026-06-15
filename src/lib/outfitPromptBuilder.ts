@@ -123,6 +123,42 @@ function buildSlotRotationSection(
   ].join('\n');
 }
 
+/** Builds the MANDATORY ANCHOR block placed at the top of the AI prompt. */
+function buildMandatoryAnchorBlock(anchor: ClothingItem): string {
+  const fabric = (anchor.fabric || '').trim();
+  const detail = fabric ? `, ${fabric}` : '';
+  return [
+    '══════════════════════════════════════════',
+    'MANDATORY ANCHOR — HARD SYSTEM CONSTRAINT',
+    '══════════════════════════════════════════',
+    `✓ REQUIRED: ${anchor.name} (${anchor.color}${detail}) — this MUST be the top/primary layer for this outfit.`,
+    'Build the bottom, shoes, outerwear, hat, and accessories around this item.',
+    'Do NOT substitute any other top, shirt, jumper, or primary garment. That decision is already made.',
+  ].join('\n');
+}
+
+/**
+ * Builds a hat rotation instruction when a hat was worn in either of the last 2 outfits.
+ * Uses specific item names so the AI knows exactly which hat to avoid and which to pick.
+ */
+function buildHatAvoidanceNote(
+  hatCandidates: ClothingItem[],
+  recentOutfitItemIds: string[][],
+): string | null {
+  if (!hatCandidates || hatCandidates.length === 0) return null;
+  if (!recentOutfitItemIds || recentOutfitItemIds.length === 0) return null;
+  const last2Sets = recentOutfitItemIds.slice(0, 2).map(ids => new Set(ids));
+  const recentHats = hatCandidates.filter(h => last2Sets.some(s => s.has(h.id)));
+  if (recentHats.length === 0) return null;
+  const alternatives = hatCandidates.filter(h => !recentHats.some(rh => rh.id === h.id));
+  const recentNames = recentHats.map(h => h.name.slice(0, 40)).join(', ');
+  if (alternatives.length === 0) {
+    return `HAT NOTE: ${recentNames} was worn recently but is the only hat available — may be reused if it suits the occasion.`;
+  }
+  const altNames = alternatives.map(h => h.name.slice(0, 40)).join(' or ');
+  return `HAT ROTATION RULE: ${recentNames} was worn in the last 2 outfits. If including a hat, you MUST select ${altNames} instead. Do NOT use ${recentNames}.`;
+}
+
 const FORMAL_RE = /\b(wedding|gala|black[-\s]?tie|formal|cocktail|funeral|opera)\b/i;
 const BUSINESS_RE = /\b(business|interview|meeting|office|work|corporate|conference|presentation)\b/i;
 const BEACH_RE = /\b(beach|pool|swim|holiday|vacation|tropical|summer)\b/i;
@@ -160,6 +196,7 @@ export function buildAIPrompt(
   userStyle?: string,
   colourStory?: string,
   recentOutfitItemIds?: string[][],
+  mandatoryAnchor?: ClothingItem,
 ): string {
   const { mandatoryItems, candidatesBySlot, weatherRules } = slotResult;
 
@@ -178,13 +215,16 @@ export function buildAIPrompt(
 
   const occasionNote = buildOccasionNote(occasion);
   const slotRotationSection = buildSlotRotationSection(mandatoryItems, candidatesBySlot, recentOutfitItemIds ?? []);
+  const hatAvoidanceNote = buildHatAvoidanceNote(candidatesBySlot['hat'] ?? [], recentOutfitItemIds ?? []);
 
   const header = [
+    mandatoryAnchor ? buildMandatoryAnchorBlock(mandatoryAnchor) : null,
     `OCCASION (HARD CONSTRAINT): "${occasion}" — every item MUST be appropriate for this occasion. Pieces that do not suit ${occasion} must not be selected regardless of colour or style.`,
     occasionNote,
     `WEATHER: ${weatherSummary(weather, weatherRules)}`,
     userStyle ? `USER STYLE (secondary context — occasion and weather take priority): ${userStyle}` : null,
     slotRotationSection,
+    hatAvoidanceNote,
     colourStory && colourStory !== COLOUR_STORY_SURPRISE
       ? `COLOUR PALETTE REQUESTED: ${colourStory.replace(/-/g, ' ')}. Rank candidates accordingly — pick items that best fulfil this palette.`
       : slotResult.colourStrategy

@@ -1,5 +1,12 @@
 import type { ClothingItem, Outfit } from "@/types/wardrobe";
-import { CORE_SIMILARITY_THRESHOLD, RECENT_OUTFIT_SIMILARITY_WINDOW } from "@/lib/outfitConstants";
+import {
+  CORE_SIMILARITY_THRESHOLD,
+  RECENT_OUTFIT_SIMILARITY_WINDOW,
+  ANCHOR_SLOTS,
+  ANCHOR_RECENCY_WINDOW,
+  ANCHOR_RECENCY_SCORES,
+} from "@/lib/outfitConstants";
+import type { AnchorSlot } from "@/lib/outfitConstants";
 
 export type CategoryPredicate = (item: ClothingItem) => boolean;
 
@@ -109,9 +116,86 @@ export function breakExactDuplicate(
   return selectedItems;
 }
 
-// ── New coordinated similarity check ────────────────────────────────────────
+// ── Anchor pre-selection ─────────────────────────────────────────────────────
 
 type MinimalOutfit = { items: Pick<ClothingItem, 'id'>[] };
+
+/**
+ * Algorithmically selects the primary garment (top/jumper/dress) for the next
+ * outfit using recency-weighted random selection. Removes the top-selection
+ * decision from the AI, which cannot reliably honour negative constraints.
+ *
+ * Selection logic:
+ * - Each candidate gets a weight from ANCHOR_RECENCY_SCORES based on how
+ *   recently it appeared as the anchor in saved outfits.
+ * - Weighted random draw strongly deprioritises recent items without
+ *   permanently banning them — items return to full weight after 5 outfits.
+ * - If all candidates have zero weight (single-item wardrobe edge case),
+ *   falls back to the least-recently-worn item.
+ *
+ * @param candidates      - Occasion-filtered top/jumper/dress ClothingItems.
+ * @param recentOutfits   - Recent saved outfits, most recent first (id only).
+ * @param allWardrobeItems - Full wardrobe; used to resolve category from item id.
+ * @returns The selected anchor ClothingItem, or null if candidates is empty.
+ */
+export function selectAnchorItem(
+  candidates: ClothingItem[],
+  recentOutfits: MinimalOutfit[],
+  allWardrobeItems: ClothingItem[],
+): ClothingItem | null {
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  // Build a fast id → category lookup from the full wardrobe
+  const wardrobeById = new Map(allWardrobeItems.map(i => [i.id, i]));
+
+  // Walk recent outfits most-recent-first and find each one's anchor item
+  const recentAnchorIds: string[] = [];
+  for (const outfit of recentOutfits.slice(0, ANCHOR_RECENCY_WINDOW)) {
+    for (const oi of (outfit.items || [])) {
+      const wardrobeItem = wardrobeById.get(oi.id);
+      if (wardrobeItem && ANCHOR_SLOTS.includes((wardrobeItem.category || '').toLowerCase() as AnchorSlot)) {
+        recentAnchorIds.push(oi.id);
+        break; // one anchor per outfit
+      }
+    }
+  }
+
+  // Assign a recency-based weight to each candidate
+  const candidateScores = candidates.map((item) => {
+    const recencyIndex = recentAnchorIds.indexOf(item.id);
+    const score = recencyIndex === -1
+      ? ANCHOR_RECENCY_SCORES[ANCHOR_RECENCY_SCORES.length - 1] // not recently worn
+      : (ANCHOR_RECENCY_SCORES[recencyIndex] ?? 0.0);
+    return { item, score };
+  });
+
+  const totalScore = candidateScores.reduce((sum, c) => sum + c.score, 0);
+
+  // Fallback: all candidates have weight 0 (only possible if exactly 1 candidate
+  // was worn last outfit AND candidates.length === 1, but we return early above).
+  // Kept for defensive completeness — pick least-recently-worn.
+  if (totalScore === 0) {
+    return [...candidates].sort((a, b) => {
+      const ia = recentAnchorIds.lastIndexOf(a.id);
+      const ib = recentAnchorIds.lastIndexOf(b.id);
+      if (ia === -1 && ib === -1) return 0;
+      if (ia === -1) return -1; // not in recent = prefer
+      if (ib === -1) return 1;
+      return ib - ia; // higher index = worn longer ago = prefer
+    })[0];
+  }
+
+  // Weighted random draw
+  let rand = Math.random() * totalScore;
+  for (const { item, score } of candidateScores) {
+    rand -= score;
+    if (rand <= 0) return item;
+  }
+  return candidateScores[candidateScores.length - 1].item; // floating-point safety
+}
+
+// ── Coordinated similarity check ─────────────────────────────────────────────
 
 function isCoreTop(item: ClothingItem): boolean {
   const cat = (item.category || '').toLowerCase();
@@ -142,35 +226,38 @@ export function countSharedCoreItems(
 }
 
 /**
- * Returns true if the candidate outfit is too similar to any of the last
- * RECENT_OUTFIT_SIMILARITY_WINDOW saved outfits. Two outfits are too similar if:
+ * Post-generation safety net. Returns true if the proposed outfit is too similar
+ * to a recent outfit that the user would experience it as a repeat.
  *
- * Rule 1 — Same top: the new outfit reuses the same top/jumper/dress as any
- *   recent outfit. A repeated top looks visually identical to the user regardless
- *   of what else changed, so this is always a fail.
+ * Rule 1 — Same anchor (top/jumper/dress) as any of the last 3 outfits.
+ *   Should rarely fire when selectAnchorItem is working correctly. If it does,
+ *   the AI ignored the mandatory anchor instruction — the retry loop handles it.
  *
- * Rule 2 — 2+ shared items across ALL slots (not just the three core slots).
- *   Sharing hats, accessories, or outerwear in addition to one core piece is
- *   visually repetitive even if the core is different.
+ * Rule 2 — 3+ items shared across ALL slots with any of the last 5 outfits.
+ *   Threshold raised from 2 to 3: some shoe/accessory repetition is natural with
+ *   a small wardrobe, and anchor pre-selection already prevents the primary visual repeat.
  */
 export function isTooSimilarToRecent(
   selectedItems: ClothingItem[],
   recentOutfits: MinimalOutfit[],
 ): boolean {
-  return recentOutfits
-    .slice(0, RECENT_OUTFIT_SIMILARITY_WINDOW)
-    .some(recentOutfit => {
-      const recentIds = new Set((recentOutfit.items || []).map(i => i.id));
+  const anchor = selectedItems.find(i =>
+    ANCHOR_SLOTS.includes((i.category || '').toLowerCase() as AnchorSlot)
+  );
 
-      // Rule 1: same top is always too similar
-      const top = selectedItems.find(i => {
-        const c = (i.category || '').toLowerCase();
-        return c === 'tops' || c === 'jumpers' || c === 'dresses';
-      });
-      if (top && recentIds.has(top.id)) return true;
+  // Rule 1: same anchor as any of the last 3 outfits
+  if (anchor) {
+    const last3 = recentOutfits.slice(0, 3);
+    if (last3.some(o => (o.items || []).some(oi => oi.id === anchor.id))) {
+      console.warn('[outfit-gen] isTooSimilarToRecent Rule 1: anchor repeated in last 3 outfits');
+      return true;
+    }
+  }
 
-      // Rule 2: 2+ shared items across all slots
-      const sharedCount = selectedItems.filter(i => recentIds.has(i.id)).length;
-      return sharedCount >= CORE_SIMILARITY_THRESHOLD;
-    });
+  // Rule 2: 3+ shared items across all slots with any of the last 5 outfits
+  return recentOutfits.slice(0, RECENT_OUTFIT_SIMILARITY_WINDOW).some(o => {
+    const recentIds = new Set((o.items || []).map(i => i.id));
+    const sharedCount = selectedItems.filter(i => recentIds.has(i.id)).length;
+    return sharedCount >= CORE_SIMILARITY_THRESHOLD;
+  });
 }
