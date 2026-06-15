@@ -18,6 +18,8 @@ const SIGNED_URL_EXPIRES_IN_SECONDS = 60 * 60;
 
 // Module-level cache: raw path/URL → { signedUrl, expiresAt }
 const avatarUrlCache = new Map<string, { signedUrl: string; expiresAt: number }>();
+const clothingUrlCache = new Map<string, { signedUrl: string; expiresAt: number }>();
+const CLOTHING_CACHE_TTL_MS = 55 * 60 * 1000;
 
 export const SOCIAL_CONTENT_BUCKET = "social-content" as const;
 
@@ -88,27 +90,49 @@ export async function resolveSignedClothingImageFields<T extends ImageFields>(it
 }
 
 // Batches all clothing image paths into a single createSignedUrls call instead of one per item.
+// Results are cached for 55 minutes so repeated navigations within a session skip the API call.
 export async function batchResolveSignedClothingImageFields<T extends ImageFields>(items: T[]): Promise<T[]> {
   if (items.length === 0) return items;
+
+  const now = Date.now();
+  const expiresAt = now + CLOTHING_CACHE_TTL_MS;
 
   const itemPaths = items.map((item) => ({
     imagePath: item.imagePath ?? getStoragePathFromUrl("clothing-images", item.imageUrl),
     backImagePath: item.backImagePath ?? getStoragePathFromUrl("clothing-images", item.backImageUrl),
   }));
 
-  const uniquePaths = [...new Set(
+  const allPaths = [...new Set(
     itemPaths.flatMap((p) => [p.imagePath, p.backImagePath]).filter(Boolean) as string[]
   )];
 
-  if (uniquePaths.length === 0) return items;
+  if (allPaths.length === 0) return items;
 
-  const { data } = await supabase.storage
-    .from("clothing-images")
-    .createSignedUrls(uniquePaths, SIGNED_URL_EXPIRES_IN_SECONDS);
+  // Split into cached hits and paths that need signing
+  const signedMap = new Map<string, string>();
+  const pathsToSign: string[] = [];
 
-  const signedMap = new Map<string, string>(
-    (data || []).filter((d) => d.signedUrl).map((d) => [d.path, d.signedUrl!])
-  );
+  for (const path of allPaths) {
+    const cached = clothingUrlCache.get(path);
+    if (cached && cached.expiresAt - now > 60_000) {
+      signedMap.set(path, cached.signedUrl);
+    } else {
+      pathsToSign.push(path);
+    }
+  }
+
+  if (pathsToSign.length > 0) {
+    const { data } = await supabase.storage
+      .from("clothing-images")
+      .createSignedUrls(pathsToSign, SIGNED_URL_EXPIRES_IN_SECONDS);
+
+    for (const d of data || []) {
+      if (d.signedUrl) {
+        signedMap.set(d.path, d.signedUrl);
+        clothingUrlCache.set(d.path, { signedUrl: d.signedUrl, expiresAt });
+      }
+    }
+  }
 
   return items.map((item, i) => {
     const { imagePath, backImagePath } = itemPaths[i];
