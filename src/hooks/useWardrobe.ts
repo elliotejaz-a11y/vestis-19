@@ -340,6 +340,31 @@ function ensureTopIsPresent(
   return result;
 }
 
+// Compresses an image blob to WebP at max `maxDim` px on the longest edge.
+// Preserves transparency (WebP supports alpha). Falls back to the original blob
+// if canvas output is null (unsupported format) or if encoding throws.
+async function compressToWebP(blob: Blob, maxDim = 1000, quality = 0.85): Promise<Blob> {
+  return new Promise((resolve) => {
+    const blobUrl = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl);
+      const scale = Math.min(1, maxDim / Math.max(img.width, img.height, 1));
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(blob); return; }
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob((out) => resolve(out ?? blob), "image/webp", quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(blobUrl); resolve(blob); };
+    img.src = blobUrl;
+  });
+}
+
 function prefetchWardrobeImages(items: ClothingItem[], count = 10) {
   items.slice(0, count).forEach((item) => {
     if (!item.imageUrl) return;
@@ -464,12 +489,14 @@ export function useWardrobe() {
       if (imageUrl.startsWith("blob:")) {
         try {
           const response = await fetch(imageUrl);
-          const blob = await response.blob();
-          const ext = blob.type.split("/")[1] || "jpg";
-          const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+          const rawBlob = await response.blob();
+          // Compress to WebP at 1000 px max: bg-removed PNGs can be 2–10 MB; WebP brings
+          // them to 80–200 KB while preserving alpha — fast even without Supabase transforms.
+          const blob = await compressToWebP(rawBlob, 1000, 0.85);
+          const path = `${user.id}/${crypto.randomUUID()}.webp`;
           const { error: uploadError } = await supabase.storage
             .from("clothing-images")
-            .upload(path, blob, { contentType: blob.type });
+            .upload(path, blob, { contentType: "image/webp" });
           if (!uploadError) imageUrl = normalizeStorageObjectPath(path);
         } catch (err) {
           console.error("Image upload failed:", err);
@@ -524,12 +551,12 @@ export function useWardrobe() {
       if (backImageUrl && backImageUrl.startsWith("blob:")) {
         try {
           const response = await fetch(backImageUrl);
-          const blob = await response.blob();
-          const ext = blob.type.split("/")[1] || "png";
-          const path = `${user.id}/${crypto.randomUUID()}_back.${ext}`;
+          const rawBlob = await response.blob();
+          const blob = await compressToWebP(rawBlob, 1000, 0.85);
+          const path = `${user.id}/${crypto.randomUUID()}_back.webp`;
           const { error: uploadError } = await supabase.storage
             .from("clothing-images")
-            .upload(path, blob, { contentType: blob.type });
+            .upload(path, blob, { contentType: "image/webp" });
           if (!uploadError) backImageUrl = normalizeStorageObjectPath(path);
         } catch (err) {
           console.error("Back image upload failed:", err);

@@ -92,9 +92,10 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
           .catch(() => null),
       ]);
 
-      const finalImageUrl = cleanBlob
-        ? URL.createObjectURL(cleanBlob)
-        : result.imageUrl;
+      // Always use a local blob URL so the image lands in Supabase storage on save.
+      // Falling back to the external retail URL would store an uncompressed CDN image
+      // that bypasses signed-URL caching and the WebP compression done at upload time.
+      const finalImageUrl = URL.createObjectURL(cleanBlob ?? blob);
 
       const aiTags: string[] = aiData?.style_tags ?? [];
       const brandTag = result.brand ? [result.brand.toLowerCase()] : [];
