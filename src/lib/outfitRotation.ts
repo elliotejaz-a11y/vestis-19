@@ -142,17 +142,35 @@ export function countSharedCoreItems(
 }
 
 /**
- * Returns true if the candidate outfit shares CORE_SIMILARITY_THRESHOLD or more
- * core pieces (top, bottom, shoes) with any of the last RECENT_OUTFIT_SIMILARITY_WINDOW
- * saved outfits. This is the single coordinated dedup check — use it in place of
- * the old isExactDuplicateOfRecent in the AI happy path.
+ * Returns true if the candidate outfit is too similar to any of the last
+ * RECENT_OUTFIT_SIMILARITY_WINDOW saved outfits. Two outfits are too similar if:
+ *
+ * Rule 1 — Same top: the new outfit reuses the same top/jumper/dress as any
+ *   recent outfit. A repeated top looks visually identical to the user regardless
+ *   of what else changed, so this is always a fail.
+ *
+ * Rule 2 — 2+ shared items across ALL slots (not just the three core slots).
+ *   Sharing hats, accessories, or outerwear in addition to one core piece is
+ *   visually repetitive even if the core is different.
  */
 export function isTooSimilarToRecent(
   selectedItems: ClothingItem[],
   recentOutfits: MinimalOutfit[],
-  threshold = CORE_SIMILARITY_THRESHOLD
 ): boolean {
   return recentOutfits
     .slice(0, RECENT_OUTFIT_SIMILARITY_WINDOW)
-    .some(o => countSharedCoreItems(selectedItems, o.items || []) >= threshold);
+    .some(recentOutfit => {
+      const recentIds = new Set((recentOutfit.items || []).map(i => i.id));
+
+      // Rule 1: same top is always too similar
+      const top = selectedItems.find(i => {
+        const c = (i.category || '').toLowerCase();
+        return c === 'tops' || c === 'jumpers' || c === 'dresses';
+      });
+      if (top && recentIds.has(top.id)) return true;
+
+      // Rule 2: 2+ shared items across all slots
+      const sharedCount = selectedItems.filter(i => recentIds.has(i.id)).length;
+      return sharedCount >= CORE_SIMILARITY_THRESHOLD;
+    });
 }

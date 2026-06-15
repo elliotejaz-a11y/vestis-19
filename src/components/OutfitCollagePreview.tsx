@@ -69,7 +69,15 @@ export function OutfitCollagePreview({ items, showHeader = false, className, can
                 transform: "translate(-50%, -50%)",
               }}
             >
-              <img src={item.imageUrl} alt={item.name} className="h-full w-full object-contain drop-shadow-sm" loading="lazy" />
+              {item.imageUrl ? (
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="h-full w-full object-contain drop-shadow-sm"
+                  loading="lazy"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : null}
             </div>
           );
         })}
