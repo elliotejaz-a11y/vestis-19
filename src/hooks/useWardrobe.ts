@@ -340,6 +340,24 @@ function ensureTopIsPresent(
   return result;
 }
 
+function prefetchWardrobeImages(items: ClothingItem[], count = 10) {
+  items.slice(0, count).forEach((item) => {
+    if (!item.imageUrl) return;
+    try {
+      const src = item.imageUrl;
+      let prefetchSrc = src;
+      if (src.includes("/storage/v1/object/")) {
+        const url = new URL(src);
+        url.pathname = url.pathname.replace("/storage/v1/object/", "/storage/v1/render/image/");
+        url.searchParams.set("width", "1200");
+        url.searchParams.set("quality", "80");
+        prefetchSrc = url.toString();
+      }
+      new Image().src = prefetchSrc;
+    } catch {}
+  });
+}
+
 export function useWardrobe() {
   const { user, profile } = useAuth();
   const { toast } = useToast();
@@ -409,6 +427,7 @@ export function useWardrobe() {
       }));
       const dbItems = await batchResolveSignedClothingImageFields(rawItems);
       setItems(dbItems);
+      prefetchWardrobeImages(dbItems);
 
       if (outfitData) {
         const dbOutfits: Outfit[] = outfitData.map((o: any) => {
@@ -579,6 +598,7 @@ export function useWardrobe() {
           isPrivate: data.is_private ?? false,
         });
         setItems((prev) => [newItem, ...prev]);
+        prefetchWardrobeImages([newItem], 1);
         toast({ title: "Added to wardrobe! ✨" });
 
         if (runBgRemoval && data.id) {
