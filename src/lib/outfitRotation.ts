@@ -1,4 +1,5 @@
 import type { ClothingItem, Outfit } from "@/types/wardrobe";
+import { CORE_SIMILARITY_THRESHOLD, RECENT_OUTFIT_SIMILARITY_WINDOW } from "@/lib/outfitConstants";
 
 export type CategoryPredicate = (item: ClothingItem) => boolean;
 
@@ -106,4 +107,52 @@ export function breakExactDuplicate(
     // Every alternative in this slot would also be a duplicate — fall through to next slot.
   }
   return selectedItems;
+}
+
+// ── New coordinated similarity check ────────────────────────────────────────
+
+type MinimalOutfit = { items: Pick<ClothingItem, 'id'>[] };
+
+function isCoreTop(item: ClothingItem): boolean {
+  const cat = (item.category || '').toLowerCase();
+  return cat === 'tops' || cat === 'jumpers' || cat === 'dresses';
+}
+function isCoreBottom(item: ClothingItem): boolean {
+  return (item.category || '').toLowerCase() === 'bottoms';
+}
+function isCoreShoe(item: ClothingItem): boolean {
+  return (item.category || '').toLowerCase() === 'shoes';
+}
+
+/**
+ * Counts how many of the three core outfit slots (top/jumper/dress, bottom, shoes)
+ * are shared between two item arrays, compared by item ID.
+ */
+export function countSharedCoreItems(
+  items1: ClothingItem[],
+  items2: Pick<ClothingItem, 'id'>[]
+): number {
+  const ids2 = new Set(items2.map(i => i.id));
+  let shared = 0;
+  for (const pred of [isCoreTop, isCoreBottom, isCoreShoe] as ((i: ClothingItem) => boolean)[]) {
+    const match = items1.find(pred);
+    if (match && ids2.has(match.id)) shared++;
+  }
+  return shared;
+}
+
+/**
+ * Returns true if the candidate outfit shares CORE_SIMILARITY_THRESHOLD or more
+ * core pieces (top, bottom, shoes) with any of the last RECENT_OUTFIT_SIMILARITY_WINDOW
+ * saved outfits. This is the single coordinated dedup check — use it in place of
+ * the old isExactDuplicateOfRecent in the AI happy path.
+ */
+export function isTooSimilarToRecent(
+  selectedItems: ClothingItem[],
+  recentOutfits: MinimalOutfit[],
+  threshold = CORE_SIMILARITY_THRESHOLD
+): boolean {
+  return recentOutfits
+    .slice(0, RECENT_OUTFIT_SIMILARITY_WINDOW)
+    .some(o => countSharedCoreItems(selectedItems, o.items || []) >= threshold);
 }

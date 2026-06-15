@@ -5,9 +5,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { processBackgroundRemoval } from "@/lib/wardrobeImageProcessing";
 import { isStoragePath, resolveSignedClothingImageFields, batchResolveSignedClothingImageFields, getSignedStorageUrl } from "@/lib/storage";
-import { buildRecentIdCounts, isExactDuplicateOfRecent, breakExactDuplicate } from "@/lib/outfitRotation";
+import { buildRecentIdCounts, breakExactDuplicate, isTooSimilarToRecent } from "@/lib/outfitRotation";
 import { resolveSlots, buildFallbackOutfit } from "@/lib/outfitSlotEngine";
 import { buildAIPrompt } from "@/lib/outfitPromptBuilder";
+import { COLD_TEMP, HOT_TEMP, RECENT_OUTFIT_SIMILARITY_WINDOW } from "@/lib/outfitConstants";
 import type { SlotResult } from "@/lib/outfitSlotEngine";
 
 const isShoesCategory = (category?: string) => (category || "").trim().toLowerCase() === "shoes";
@@ -30,8 +31,7 @@ const BUSINESS_OCCASION_PATTERN = /\b(business|interview|meeting|office|work|cor
 const HEAVY_OUTERWEAR_PATTERN = /\b(puffer|parka|duvet jacket|padded jacket|quilted jacket|winter coat|heavy coat|fur|shearling|down jacket|anorak|peacoat|overcoat|trench coat|duffel coat|toggle coat|wool coat)\b/i;
 const WATERPROOF_PATTERN = /\b(waterproof|water[-\s]?resistant|rain ?jacket|windbreaker|shell jacket|gore[-\s]?tex|mac|mackintosh|cagoule|pac[-\s]?a[-\s]?mac|hardshell)\b/i;
 const RAINY_PATTERN = /\b(rain|rainy|drizzle|shower|showers|wet|precipitation|storm|stormy|downpour)\b/i;
-const COLD_THRESHOLD = 10;
-const HOT_THRESHOLD = 25;
+// COLD_TEMP and HOT_TEMP are imported from outfitConstants
 const DETAILLESS_REASONING_PATTERNS = [
   /^a curated look/i,
   /curated look/i,
@@ -135,7 +135,7 @@ function isWaterproofOuterwear(item: ClothingItem): boolean {
 }
 
 function filterItemsForWeather(items: ClothingItem[], weather: { temp: number; description: string }, occasion: string): ClothingItem[] {
-  if (weather.temp > HOT_THRESHOLD) {
+  if (weather.temp > HOT_TEMP) {
     if (FORMAL_OCCASION_PATTERN.test(occasion) || BUSINESS_OCCASION_PATTERN.test(occasion)) {
       return items.filter(item => !isHeavyOuterwear(item));
     }
@@ -152,9 +152,9 @@ function normalizeSelectionForWeather(
   if (!weather) return selected;
 
   let result = [...selected];
-  const cold = weather.temp < COLD_THRESHOLD;
+  const cold = weather.temp < COLD_TEMP;
   const rainy = RAINY_PATTERN.test(weather.description);
-  const hot = weather.temp > HOT_THRESHOLD;
+  const hot = weather.temp > HOT_TEMP;
 
   if (hot) {
     return result.filter(item => !isHeavyOuterwear(item));
@@ -743,14 +743,12 @@ export function useWardrobe() {
   const generateOutfit = useCallback(
     async (occasion: string, weather?: { temp: number; description: string }, colourStory?: string): Promise<Outfit | null> => {
       const items = itemsRef.current;
-      const outfits = outfitsRef.current;
       const profile = profileRef.current;
       if (!user || items.length < 2) return null;
 
       const gymRequest = isGymOccasion(occasion);
 
       // ── Phase 0: Slot engine (non-gym only) ─────────────────────────────────
-      // Gym occasions use the edge function's own specialist logic.
       let slotResult: ReturnType<typeof resolveSlots> | null = null;
       if (!gymRequest) {
         slotResult = resolveSlots(items, weather || null, occasion);
@@ -763,7 +761,6 @@ export function useWardrobe() {
           return null;
         }
       } else {
-        // Gym: keep existing required-item validation
         const missingCore: string[] = [];
         if (!items.some((item) => isTopOrJumperCategory(item.category))) missingCore.push("top or jumper");
         if (!items.some((item) => isBottomsCategory(item.category))) missingCore.push("bottoms");
@@ -778,18 +775,42 @@ export function useWardrobe() {
         }
       }
 
-      // ── Phase 1: Build focused AI prompt (non-gym only) ─────────────────────
-      // Compute recency before building the prompt so the AI sees worn markers + avoidance list.
-      const recentOutfitItemIds = outfits.slice(0, 5).map(o => (o.items || []).map(i => i.id));
-      const preBuiltPrompt = (!gymRequest && slotResult)
-        ? buildAIPrompt(slotResult, occasion, weather || null, profile?.style_preference || undefined, colourStory, recentOutfitItemIds)
-        : undefined;
-
+      // ── Phase 1: Fetch fresh recent outfits from Supabase ───────────────────
+      // Always query the DB directly — in-memory state may be empty on first load.
+      // Non-fatal: if the query fails, dedup is skipped gracefully (no crash).
+      type ThinOutfit = { id: string; items: Pick<ClothingItem, 'id'>[] };
+      let freshRecentOutfits: ThinOutfit[] = [];
       try {
-        const sortedItems = sortedItemsByUsageRef.current;
+        const { data: recentRows } = await supabase
+          .from("outfits")
+          .select("id, outfit_items(clothing_item_id)")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(RECENT_OUTFIT_SIMILARITY_WINDOW);
+        freshRecentOutfits = (recentRows || []).map((o: any) => ({
+          id: o.id as string,
+          items: (o.outfit_items || []).map((oi: any) => ({ id: oi.clothing_item_id as string })),
+        }));
+      } catch {
+        // Non-fatal — proceed without similarity data
+      }
 
-        // In guided mode, the edge function only needs to look up items referenced in
-        // preBuiltPrompt — send only those to avoid shipping the full wardrobe payload.
+      const freshRecentItemIds = freshRecentOutfits.map(o => o.items.map(i => i.id));
+
+      // ── Phase 2: Build focused AI prompt (non-gym only) ─────────────────────
+      const buildPrompt = (recentIds: string[][]) =>
+        (!gymRequest && slotResult)
+          ? buildAIPrompt(slotResult, occasion, weather || null, profile?.style_preference || undefined, colourStory, recentIds)
+          : undefined;
+
+      const preBuiltPrompt = buildPrompt(freshRecentItemIds);
+
+      // ── Local helper: invoke edge function + normalise result ────────────────
+      const invokeAI = async (
+        overrideRecentIds?: string[][],
+        overridePrompt?: string
+      ): Promise<{ items: ClothingItem[]; reasoning: string; style_tips: string | null }> => {
+        const sortedItems = sortedItemsByUsageRef.current;
         const promptItems = (!gymRequest && slotResult)
           ? [
               ...slotResult.mandatoryItems,
@@ -808,44 +829,55 @@ export function useWardrobe() {
               preferredColors: profile.preferred_colors,
               fashionGoals: profile.fashion_goals,
             } : undefined,
-            recentOutfitItemIds,
+            recentOutfitItemIds: overrideRecentIds ?? freshRecentItemIds,
             colourStory,
-            preBuiltPrompt,
+            preBuiltPrompt: overridePrompt ?? preBuiltPrompt,
           },
         });
-
         if (error) throw error;
 
-        let selectedItems: ClothingItem[] = gymRequest
+        let selected: ClothingItem[] = gymRequest
           ? ensureGymOutfitHasOnlyAllowedPieces((data.items || []) as ClothingItem[], items)
           : ensureOutfitHasCorePieces((data.items || []) as ClothingItem[], items);
 
-        // ── RULE 3: inject top if AI only selected a jumper (no shirt) ────────
         if (!gymRequest && slotResult) {
-          selectedItems = ensureTopIsPresent(selectedItems, items, slotResult);
+          selected = ensureTopIsPresent(selected, items, slotResult);
         }
 
-        // ── Safety net: break exact duplicates ──────────────────────────────
-        if (!gymRequest && isExactDuplicateOfRecent(selectedItems, outfits)) {
-          selectedItems = breakExactDuplicate(
-            selectedItems,
-            sortedItemsByUsageRef.current,
-            buildRecentIdCounts(outfits),
-            [
-              (i) => isBottomsCategory(i.category),
-              (i) => isShoesCategory(i.category),
-              (i) => isTopOrJumperCategory(i.category),
-            ],
-            outfits
-          );
+        return {
+          items: selected,
+          reasoning: data.reasoning || '',
+          style_tips: typeof data.style_tips === 'string' ? data.style_tips : null,
+        };
+      };
+
+      try {
+        // ── First AI call ──────────────────────────────────────────────────────
+        let aiResult = await invokeAI();
+
+        // ── Coordinated similarity check + single retry (non-gym only) ─────────
+        // Replaces the three uncoordinated dedup passes from the old implementation.
+        if (!gymRequest && isTooSimilarToRecent(aiResult.items, freshRecentOutfits)) {
+          // Build a new prompt that adds the first attempt's items to the avoidance list
+          // so the AI has new information and the edge function's internal dedup also avoids them.
+          const retryRecentIds = [
+            aiResult.items.map(i => i.id),
+            ...freshRecentItemIds,
+          ].slice(0, RECENT_OUTFIT_SIMILARITY_WINDOW);
+          const retryPrompt = buildPrompt(retryRecentIds);
+
+          const retryResult = await invokeAI(retryRecentIds, retryPrompt);
+          if (isTooSimilarToRecent(retryResult.items, freshRecentOutfits)) {
+            console.warn('[outfit-gen] Similarity check failed on retry — returning best available result');
+          }
+          aiResult = retryResult;
         }
 
-        const resolvedReasoning = isDetailedReasoning(data.reasoning)
-          ? data.reasoning.trim()
+        const selectedItems = aiResult.items;
+        const resolvedReasoning = isDetailedReasoning(aiResult.reasoning)
+          ? aiResult.reasoning.trim()
           : buildOutfitReasoningFallback({ occasion, selectedItems, profile, weather });
-        const resolvedStyleTips = typeof data.style_tips === "string" && data.style_tips.trim()
-          ? data.style_tips.trim()
-          : null;
+        const resolvedStyleTips = aiResult.style_tips?.trim() || null;
 
         const { data: outfitRow, error: outfitErr } = await supabase
           .from("outfits")
@@ -896,11 +928,12 @@ export function useWardrobe() {
         }
 
         // ── Fallback Level 2: slot engine + colour theory, no AI ────────────
+        // Uses in-memory outfits here since breakExactDuplicate needs full ClothingItem objects.
+        const outfitsForFallback = outfitsRef.current;
         let fallbackItems: ClothingItem[];
         if (slotResult) {
           fallbackItems = buildFallbackOutfit(slotResult, items);
         } else {
-          // Gym or edge case: legacy monochrome fallback
           const occasionFilteredItems = filterItemsForOccasion(items, occasion);
           const weatherFilteredItems = weather ? filterItemsForWeather(occasionFilteredItems, weather, occasion) : occasionFilteredItems;
           const monochromeBase = buildMonochromeFallback(weatherFilteredItems);
@@ -909,19 +942,20 @@ export function useWardrobe() {
 
         fallbackItems = normalizeSelectionForWeather(fallbackItems, items, weather);
 
-        if (isExactDuplicateOfRecent(fallbackItems, outfits)) {
+        if (isTooSimilarToRecent(fallbackItems, freshRecentOutfits)) {
           fallbackItems = breakExactDuplicate(
             fallbackItems,
             sortedItemsByUsageRef.current,
-            buildRecentIdCounts(outfits),
+            buildRecentIdCounts(outfitsForFallback),
             [
               (i) => isBottomsCategory(i.category),
               (i) => isShoesCategory(i.category),
               (i) => isTopOrJumperCategory(i.category),
             ],
-            outfits
+            outfitsForFallback
           );
         }
+
         const fallbackReasoning = buildOutfitReasoningFallback({ occasion, selectedItems: fallbackItems, profile, weather });
 
         const { data: outfitRow } = await supabase
