@@ -33,7 +33,7 @@ export function useKlaviyo() {
 
   const track = useCallback(
     async (metric: VestisEvent, properties?: Record<string, unknown>) => {
-      const email = user?.email ?? profile?.email;
+      const email = user?.email ?? (profile as any)?.email;
       if (!email) return;
       try {
         await supabase.functions.invoke("klaviyo-event", {

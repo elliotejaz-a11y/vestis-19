@@ -48,10 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profileFetchingRef.current = userId;
     const result = await supabase
       .from("profiles")
-      .select("id, display_name, username, avatar_url, avatar_preset, avatar_position, bio, is_public, style_preference, body_type, preferred_colors, fashion_goals, onboarding_completed, currency_preference, username_changed_at, phone_country_code, phone_number")
+      .select("id, display_name, username, avatar_url, avatar_preset, avatar_position, bio, is_public, style_preference, body_type, preferred_colors, fashion_goals, onboarding_completed, currency_preference, username_changed_at, phone_country_code, phone_number" as any)
       .eq("id", userId)
       .single();
-    if (result && !result.error) setProfile(result.data);
+    if (result && !result.error) setProfile(result.data as unknown as Profile);
     profileFetchingRef.current = null;
   };
 
