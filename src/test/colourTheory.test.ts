@@ -8,8 +8,10 @@ import {
 } from "@/lib/colourTheory";
 import type { ClothingItem } from "@/types/wardrobe";
 
-function makeItem(id: string, category: string, color: string): ClothingItem {
-  return { id, name: id, category, color, fabric: "cotton", imageUrl: "", tags: [], notes: "", addedAt: new Date(), isPrivate: false };
+function makeItem(id: string, category: string, nameOrColor: string, maybeColor?: string): ClothingItem {
+  const name = maybeColor !== undefined ? nameOrColor : id;
+  const color = maybeColor !== undefined ? maybeColor : nameOrColor;
+  return { id, name, category, color, fabric: "cotton", imageUrl: "", tags: [], notes: "", addedAt: new Date(), isPrivate: false };
 }
 
 // ── isNeutralColor ────────────────────────────────────────────────────────────
