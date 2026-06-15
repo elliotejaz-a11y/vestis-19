@@ -148,50 +148,7 @@ async function blobToBase64(blob: Blob): Promise<string> {
   });
 }
 
-// Crop the bbox region from the source pile photo so we can feed the AI the
-// actual garment pixels (image-to-image edit) instead of pure text-to-image.
-// bbox values are normalised 0..1 relative to the source image.
-async function cropBboxFromSource(
-  sourceBase64: string,
-  bbox: { x: number; y: number; width: number; height: number } | undefined,
-): Promise<string | undefined> {
-  if (!bbox) return undefined;
-  try {
-    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = `data:image/jpeg;base64,${sourceBase64}`;
-    });
-    // Add 8% padding around the bbox so the model sees context.
-    const padPct = 0.08;
-    const x = Math.max(0, (bbox.x - bbox.width * padPct)) * img.naturalWidth;
-    const y = Math.max(0, (bbox.y - bbox.height * padPct)) * img.naturalHeight;
-    const w = Math.min(1 - bbox.x + bbox.width * padPct, bbox.width * (1 + padPct * 2)) * img.naturalWidth;
-    const h = Math.min(1 - bbox.y + bbox.height * padPct, bbox.height * (1 + padPct * 2)) * img.naturalHeight;
-
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(w));
-    canvas.height = Math.max(1, Math.round(h));
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return undefined;
-    ctx.drawImage(img, x, y, w, h, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, "image/png"));
-    if (!blob) return undefined;
-    return await new Promise<string>((res, rej) => {
-      const r = new FileReader();
-      r.onload = () => res(((r.result as string).split(",")[1]) ?? "");
-      r.onerror = rej;
-      r.readAsDataURL(blob);
-    });
-  } catch {
-    return undefined;
-  }
-}
-
 async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previewUrl: string; imageBase64: string }> {
-  const cropped = await cropBboxFromSource(item._sourceBase64, item.bbox);
-
   const generatedBase64 = await generateClothingImage(
     {
       name: item.name,
@@ -203,7 +160,6 @@ async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previ
       cropHint: item.crop_hint,
       bbox: item.bbox,
     },
-    cropped ?? item._sourceBase64,
   );
   if (!generatedBase64) throw new Error("Image generation failed");
 

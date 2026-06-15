@@ -14,11 +14,11 @@ export interface ClothingMetadata {
  */
 export async function generateClothingImage(
   metadata: ClothingMetadata,
-  sourceImageBase64?: string,
+  maskBase64?: string,
 ): Promise<string | null> {
   try {
     const { data, error } = await supabase.functions.invoke("vestis-extract-item", {
-      body: { item: metadata, sourceImageBase64: sourceImageBase64 ?? "" },
+      body: { item: metadata, maskBase64: maskBase64 ?? "" },
     });
     if (error) throw new Error(error.message || "Image generation request failed");
     if (data?.error) throw new Error(String(data.error));
