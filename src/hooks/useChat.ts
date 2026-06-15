@@ -249,7 +249,7 @@ export function useChatMessages(friendId: string | null) {
             });
             if (msg.receiver_id === user.id && !msg.read) {
               setMessages((prev) => prev.map((m) => m.id === msg.id ? { ...m, read: true } : m));
-              supabase.rpc("mark_messages_read", { friend_user_id: friendId }).then(() => {}).catch((e) => console.warn("mark_messages_read failed:", e));
+              supabase.rpc("mark_messages_read", { friend_user_id: friendId }).then(() => {}, (e) => console.warn("mark_messages_read failed:", e));
             }
           }
         }
