@@ -152,8 +152,11 @@ function isOccasionTracksuit(item: ClothingItem): boolean {
  *
  * Safety: if the filtered pool would leave no tops or no bottoms (e.g. wardrobe
  * is entirely gym-wear and occasion is formal), returns the full wardrobe unchanged.
+ *
+ * Exported so useWardrobe can build anchor candidates from the same filtered pool
+ * before calling resolveSlots.
  */
-function filterItemsByOccasion(wardrobe: ClothingItem[], occasion: string): ClothingItem[] {
+export function filterItemsByOccasion(wardrobe: ClothingItem[], occasion: string): ClothingItem[] {
   let filtered: ClothingItem[];
 
   if (FORMAL_PATTERN.test(occasion)) {
@@ -219,7 +222,8 @@ function computeWeatherRules(weather: WeatherData | null): WeatherRules {
 export function resolveSlots(
   wardrobe: ClothingItem[],
   weather: WeatherData | null,
-  occasion: string
+  occasion: string,
+  mandatoryAnchor?: ClothingItem,
 ): SlotResult {
   const cat = (item: ClothingItem) => (item.category || '').toLowerCase();
 
@@ -267,9 +271,11 @@ export function resolveSlots(
   const candidatesBySlot: CandidatesBySlot = {};
   const mandatoryItems: ClothingItem[] = [];
 
-  // Tops slot: always present (tops + dresses as full-coverage option)
+  // Tops slot: always present (tops + dresses as full-coverage option).
+  // When a mandatory anchor has been pre-selected algorithmically, restrict this
+  // slot to only that item so the colour ranking and AI prompt both align with it.
   const topCandidates = [...tops, ...dresses];
-  candidatesBySlot.top = topCandidates;
+  candidatesBySlot.top = mandatoryAnchor ? [mandatoryAnchor] : topCandidates;
 
   // Bottoms slot (skip if only dresses available — the AI prompt explains this)
   if (bottoms.length > 0) {

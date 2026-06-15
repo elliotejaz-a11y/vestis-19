@@ -372,7 +372,7 @@ serve(async (req) => {
       });
     }
 
-    const { occasion, items, userProfile, weather, recentOutfitItemIds, colourStory, preBuiltPrompt } = await req.json();
+    const { occasion, items, userProfile, weather, recentOutfitItemIds, colourStory, preBuiltPrompt, mandatoryAnchorId, mandatoryAnchorName } = await req.json();
 
     if (!occasion || typeof occasion !== 'string' || occasion.length > 200) {
       return new Response(JSON.stringify({ error: 'Invalid occasion' }), {
@@ -535,6 +535,24 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
       const guidedNormalized = normalizeSelectionWithRequiredCore(guidedSelected, candidateItems);
       let guidedFinal = normalizeSelectionForWeather(guidedNormalized, candidateItems, weather, false);
 
+      // ── Mandatory anchor enforcement (two-layer protection) ──────────────────
+      // The client already restricted the top slot to [mandatoryAnchor] in candidateItems
+      // and injected the MANDATORY ANCHOR block into the prompt. This is the edge-function
+      // layer: if the AI ignored those instructions and picked a different top, replace it.
+      if (mandatoryAnchorId) {
+        const anchorItem = candidateItems.find((i: any) => String(i.id) === String(mandatoryAnchorId));
+        if (anchorItem) {
+          const topIdx = guidedFinal.findIndex(isTopHalf);
+          if (topIdx >= 0 && String(guidedFinal[topIdx].id) !== String(mandatoryAnchorId)) {
+            guidedFinal = [...guidedFinal];
+            guidedFinal[topIdx] = anchorItem;
+            guidedFinal = dedupeById(guidedFinal);
+          } else if (topIdx < 0) {
+            guidedFinal = dedupeById([anchorItem, ...guidedFinal]);
+          }
+        }
+      }
+
       // ── Guided mode rotation + dedup.
       // Wrapped in try/catch so any edge-case error degrades gracefully — the client
       // safety net (breakExactDuplicate) remains the final fallback.
@@ -550,12 +568,13 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
           });
           const guidedAllRecentIds = new Set<string>(guidedRecentCounts.keys());
 
-          // Proactive top rotation: if the AI picked a recently-worn top AND a fresh
-          // alternative exists in the candidate pool, swap it now — regardless of whether
-          // the full outfit is an exact duplicate. This mirrors applyDiversityPass for tops.
+          // Proactive top rotation: skip this entirely when a mandatory anchor is in use.
+          // The anchor was algorithmically chosen — swapping it would undermine the selection.
+          // Without mandatoryAnchorId (legacy path), this still runs as before.
           const usedIds = new Set(guidedFinal.map((i: any) => String(i.id)));
           const topIdx = guidedFinal.findIndex(isTopHalf);
-          if (topIdx >= 0 && guidedAllRecentIds.has(String(guidedFinal[topIdx].id))) {
+          const isAnchorTop = mandatoryAnchorId && topIdx >= 0 && String(guidedFinal[topIdx].id) === String(mandatoryAnchorId);
+          if (!isAnchorTop && topIdx >= 0 && guidedAllRecentIds.has(String(guidedFinal[topIdx].id))) {
             const freshTops = candidateItems.filter((item: any) =>
               isTopHalf(item) &&
               !guidedAllRecentIds.has(String(item.id)) &&
@@ -762,10 +781,28 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
     const result = JSON.parse(toolCall.function.arguments);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
-    const parsedSelectedItems = rawSelectedIndices
+    let parsedSelectedItems = rawSelectedIndices
       .map((idx: unknown) => Number(idx))
       .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= candidateItems.length)
       .map((idx: number) => candidateItems[idx - 1]);
+
+    // Enforce mandatory anchor in legacy mode (gym and non-gym fallback paths).
+    if (mandatoryAnchorId) {
+      const anchorItem = candidateItems.find((i: any) => String(i.id) === String(mandatoryAnchorId));
+      if (anchorItem) {
+        const anchorIsGymTop = isGymRequest ? isGymTop(anchorItem) : isTopHalf(anchorItem);
+        if (anchorIsGymTop) {
+          const predicateFn = isGymRequest ? isGymTop : isTopHalf;
+          const topIdx = parsedSelectedItems.findIndex(predicateFn);
+          if (topIdx >= 0 && String(parsedSelectedItems[topIdx].id) !== String(mandatoryAnchorId)) {
+            parsedSelectedItems = [...parsedSelectedItems];
+            parsedSelectedItems[topIdx] = anchorItem;
+          } else if (topIdx < 0) {
+            parsedSelectedItems = [anchorItem, ...parsedSelectedItems];
+          }
+        }
+      }
+    }
 
     const coreNormalized = isGymRequest
       ? normalizeSelectionForGym(parsedSelectedItems, candidateItems)
@@ -777,11 +814,12 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
       selectedItems = applyDiversityPass(selectedItems, candidateItems, allRecentIds);
 
       // If the outfit is still an exact duplicate of any recent outfit, also rotate the top.
+      // Skip top rotation when a mandatory anchor is in use — the anchor must be respected.
       if (isDuplicateOutfit(selectedItems, Array.isArray(recentOutfitItemIds) ? recentOutfitItemIds : [])) {
-        // Phase 1: try a completely fresh top.
         const usedIds = new Set(selectedItems.map((i: any) => String(i.id)));
         const topIdx = selectedItems.findIndex(isTopHalf);
-        if (topIdx >= 0 && allRecentIds.has(String(selectedItems[topIdx].id))) {
+        const topIsAnchor = mandatoryAnchorId && topIdx >= 0 && String(selectedItems[topIdx].id) === String(mandatoryAnchorId);
+        if (!topIsAnchor && topIdx >= 0 && allRecentIds.has(String(selectedItems[topIdx].id))) {
           const freshTops = candidateItems.filter((item: any) =>
             isTopHalf(item) && !allRecentIds.has(String(item.id)) && !usedIds.has(String(item.id))
           );
