@@ -11,8 +11,6 @@ function buildPrompt(item: Record<string, unknown>): string {
   const category = String(item.category ?? "").toLowerCase();
   const color = String(item.color ?? "");
   const fabric = String(item.fabric ?? "");
-  const notes = String(item.notes ?? "");
-  const tags = Array.isArray(item.tags) ? item.tags.join(", ") : "";
 
   let posing = "front-facing flatlay, fully spread out showing the entire front of the garment";
   if (category === "bottoms") posing = "front-facing flatlay with both legs straight and parallel, waistband at top";
@@ -20,16 +18,21 @@ function buildPrompt(item: Record<string, unknown>): string {
   else if (category === "hats") posing = "single hat, centered, front-facing product view";
   else if (category === "accessories") posing = "single accessory, centered product view";
 
-  return `Create a brand-new clean e-commerce catalogue product image of one clothing item.
+  return `Re-render THIS exact garment from the supplied photo as a clean e-commerce catalogue product image. Preserve the real colour, pattern, fabric texture, cut, and proportions of the actual item — do NOT invent a new garment.
 
-Item name: ${name}
-Category: ${category}
-Colour: ${color}
-Fabric/material: ${fabric}
-Detected details: ${notes || "none"}
-Style tags: ${tags || "none"}
+Reference details (for disambiguation only — the photo is the source of truth):
+- Name: ${name}
+- Category: ${category}
+- Colour: ${color}
+- Fabric: ${fabric}
 
-Render a plausible single item matching those details as a polished studio flatlay. The item must be isolated, centered, large in frame, and fill about 80 percent of the image height. Pose: ${posing}. Use a pure white studio background, soft even studio lighting, sharp focus, clean product-photography realism, and a subtle natural shadow. Do not include any clothing piles, multiple unrelated garments, body parts, floor, bed, model, mannequin, hanger, text, labels, watermarks, or background clutter.`;
+Output requirements:
+- Pose: ${posing}
+- Pure white seamless studio background
+- Soft even studio lighting, sharp focus, subtle natural drop shadow
+- Item centred, large in frame, filling ~80% of the image height
+- No body parts, model, mannequin, hanger, other garments, floor, bed, text, labels, or watermarks
+- Remove any folds, creases or occlusion caused by being in a pile — present the garment cleanly as if styled for a product listing`;
 }
 
 async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3): Promise<Response> {
@@ -68,50 +71,60 @@ serve(async (req) => {
       });
     }
 
-    const { item } = await req.json();
+    const { item, sourceImageBase64 } = await req.json();
     if (!item || typeof item !== "object") {
       return new Response(JSON.stringify({ error: "Missing item details" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const prompt = buildPrompt(item as Record<string, unknown>);
 
+    // Image-to-image edit via Gemini Nano Banana 2 — preserves the actual garment
+    // from the user's photo instead of hallucinating a new one.
+    const userContent: Array<Record<string, unknown>> = [{ type: "text", text: prompt }];
+    if (sourceImageBase64 && typeof sourceImageBase64 === "string") {
+      userContent.push({
+        type: "image_url",
+        image_url: { url: `data:image/png;base64,${sourceImageBase64}` },
+      });
+    }
+
     const response = await fetchWithRetry(
-      "https://api.openai.com/v1/images/generations",
+      "https://ai.gateway.lovable.dev/v1/chat/completions",
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-image-1",
-          prompt,
-          size: "1024x1024",
-          quality: "medium",
-          background: "opaque",
-          output_format: "png",
+          model: "google/gemini-2.5-flash-image",
+          messages: [{ role: "user", content: userContent }],
+          modalities: ["image", "text"],
         }),
       },
     );
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("OpenAI image gen error:", response.status, text);
+      console.error("AI gateway image gen error:", response.status, text);
       let message = `Image generation error ${response.status}`;
       try {
         const payload = JSON.parse(text);
         message = payload?.error?.message || message;
-      } catch {
-        // Keep the generic status message if OpenAI did not return JSON.
-      }
+      } catch { /* keep generic */ }
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: message || "Rate limits exceeded.", imageBase64: null }), {
+        return new Response(JSON.stringify({ error: "Rate limits exceeded, please try again shortly.", imageBase64: null }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "AI usage limit reached. Please add credits.", imageBase64: null }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       return new Response(JSON.stringify({ error: message, imageBase64: null }), {
@@ -120,16 +133,30 @@ serve(async (req) => {
     }
 
     const result = await response.json();
-    const imageData = result?.data?.[0];
-    if (!imageData?.b64_json) {
-      console.error("No image in OpenAI response:", JSON.stringify(result).substring(0, 400));
+
+    // Gateway normalises Gemini image output into the OpenAI images shape under `data[].b64_json`.
+    // Fall back to scanning choices[].message.images[] for raw OpenRouter passthrough.
+    let imageB64: string | null = result?.data?.[0]?.b64_json ?? null;
+    if (!imageB64) {
+      const msg = result?.choices?.[0]?.message;
+      const imgs = msg?.images;
+      if (Array.isArray(imgs) && imgs.length > 0) {
+        const url = imgs[0]?.image_url?.url ?? imgs[0]?.url ?? "";
+        if (typeof url === "string" && url.startsWith("data:")) {
+          imageB64 = url.split(",")[1] ?? null;
+        }
+      }
+    }
+
+    if (!imageB64) {
+      console.error("No image in AI response:", JSON.stringify(result).substring(0, 400));
       return new Response(JSON.stringify({ error: "No image returned", imageBase64: null }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     return new Response(
-      JSON.stringify({ imageBase64: imageData.b64_json, mimeType: "image/png" }),
+      JSON.stringify({ imageBase64: imageB64, mimeType: "image/png" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
