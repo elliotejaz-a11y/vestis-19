@@ -56,7 +56,7 @@ serve(async (req) => {
 
     const params = new URLSearchParams({
       engine: 'google_shopping',
-      q: query.trim(),
+      q: `${query.trim()} flat lay`,
       json: '1',
       num: '10',
       direct_link: '1',
