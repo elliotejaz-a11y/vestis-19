@@ -301,7 +301,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
           return (
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-2">Previous Outfits</p>
-              <div className="space-y-3">
+              <div className="flex flex-col gap-3">
                 {visible.map((outfit) => (
                   <OutfitCard key={outfit.id} outfit={outfit} onSave={onSave} onDelete={onDelete} onChat={setChatOutfit} />
                 ))}

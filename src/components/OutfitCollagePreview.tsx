@@ -38,50 +38,53 @@ export function OutfitCollagePreview({ items, showHeader = false, className, can
   const sorted = useMemo(() => sortItems(items), [items]);
   const countByCategory: Record<string, number> = {};
 
+  const canvas = (
+    <div className={cn("relative overflow-hidden rounded-xl bg-muted/20", canvasClassName || "h-[300px]")}>
+      {sorted.map((item, idx) => {
+        const category = (item.category || "").toLowerCase();
+        const base = BASE_LAYOUT[category] || { x: 20 + (idx % 4) * 18, y: 20 + Math.floor(idx / 4) * 22, w: 80, h: 80, z: 10 };
+        const catIndex = countByCategory[category] || 0;
+        countByCategory[category] = catIndex + 1;
+
+        const spread = SPREAD[catIndex % SPREAD.length];
+        const x = base.x + spread;
+        const y = base.y + (catIndex > 0 ? 4 : 0);
+        const scale = catIndex > 0 ? 0.9 : 1;
+
+        return (
+          <div
+            key={item.id}
+            className="absolute"
+            style={{
+              left: `${x}%`,
+              top: `${y}%`,
+              width: base.w * scale,
+              height: base.h * scale,
+              zIndex: base.z + catIndex,
+              transform: "translate(-50%, -50%)",
+            }}
+          >
+            {item.imageUrl ? (
+              <img
+                src={item.imageUrl}
+                alt={item.name}
+                className="h-full w-full object-contain drop-shadow-sm"
+                loading="lazy"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  if (!showHeader) return canvas;
+
   return (
-    <div className={cn("space-y-3", className)}>
-      {showHeader && (
-        <p className="text-xs font-semibold text-foreground">Your Outfit ({items.length} pieces)</p>
-      )}
-
-      <div className={cn("relative overflow-hidden rounded-xl bg-muted/20", canvasClassName || "h-[300px]")}>
-        {sorted.map((item, idx) => {
-          const category = (item.category || "").toLowerCase();
-          const base = BASE_LAYOUT[category] || { x: 20 + (idx % 4) * 18, y: 20 + Math.floor(idx / 4) * 22, w: 80, h: 80, z: 10 };
-          const catIndex = countByCategory[category] || 0;
-          countByCategory[category] = catIndex + 1;
-
-          const spread = SPREAD[catIndex % SPREAD.length];
-          const x = base.x + spread;
-          const y = base.y + (catIndex > 0 ? 4 : 0);
-          const scale = catIndex > 0 ? 0.9 : 1;
-
-          return (
-            <div
-              key={item.id}
-              className="absolute"
-              style={{
-                left: `${x}%`,
-                top: `${y}%`,
-                width: base.w * scale,
-                height: base.h * scale,
-                zIndex: base.z + catIndex,
-                transform: "translate(-50%, -50%)",
-              }}
-            >
-              {item.imageUrl ? (
-                <img
-                  src={item.imageUrl}
-                  alt={item.name}
-                  className="h-full w-full object-contain drop-shadow-sm"
-                  loading="lazy"
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
-                />
-              ) : null}
-            </div>
-          );
-        })}
-      </div>
+    <div className={cn("flex flex-col gap-3", className)}>
+      <p className="text-xs font-semibold text-foreground">Your Outfit ({items.length} pieces)</p>
+      {canvas}
     </div>
   );
 }
