@@ -55,11 +55,10 @@ serve(async (req) => {
     }
 
     const params = new URLSearchParams({
-      engine: 'google_shopping',
-      q: query.trim(),
+      engine: 'google_images',
+      q: `${query.trim()} flat lay`,
       json: '1',
       num: '10',
-      direct_link: '1',
     });
 
     const talorRes = await fetch('https://serpapi.talordata.net/serp/v1/request', {
@@ -79,31 +78,27 @@ serve(async (req) => {
     }
 
     const talorData = await talorRes.json();
-    const data = talorData?.data || {};
+    const images: any[] = talorData?.data?.images || [];
 
-    // Some queries return a flat `shopping` array; others return `categorized_shopping_results`
-    let shoppingResults: any[] = data.shopping || [];
-    if (shoppingResults.length === 0 && Array.isArray(data.categorized_shopping_results)) {
-      for (const cat of data.categorized_shopping_results) {
-        shoppingResults = shoppingResults.concat(cat.shopping_results || []);
-      }
-    }
+    // Prioritise product images, then fill with remaining
+    const sorted = [
+      ...images.filter((r: any) => r.is_product),
+      ...images.filter((r: any) => !r.is_product),
+    ];
 
-    const results = shoppingResults
+    const results = sorted
       .map((r: any) => {
-        const title: string = r.title || '';
-        const imageUrl: string = r.img_link || r.image_url || '';
-        const price: string = r.price || '';
-        const priceNumeric = price ? parseFloat(price.replace(/[^0-9.]/g, '')) || 0 : 0;
+        const title: string = r.image_alt || '';
+        const imageUrl: string = r.original || '';
 
         return {
           title,
           brand: extractBrand(title),
-          price,
-          priceNumeric,
+          price: '',
+          priceNumeric: 0,
           imageUrl,
-          productLink: r.product_link || '',
-          source: r.source || '',
+          productLink: r.link || '',
+          source: '',
         };
       })
       .filter((r: any) => !!r.imageUrl)
