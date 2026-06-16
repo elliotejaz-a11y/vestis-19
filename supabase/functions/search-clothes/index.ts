@@ -59,9 +59,10 @@ serve(async (req) => {
       q: query.trim(),
       json: '1',
       num: '10',
+      direct_link: '1',
     });
 
-    const talorRes = await fetch('https://serpapi.talordata.net/request', {
+    const talorRes = await fetch('https://serpapi.talordata.net/serp/v1/request', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -78,14 +79,14 @@ serve(async (req) => {
     }
 
     const talorData = await talorRes.json();
-    const shoppingResults: any[] = talorData.shopping_results || talorData.shopping || [];
+    const shoppingResults: any[] = talorData?.data?.shopping || [];
 
     const results = shoppingResults
       .map((r: any) => {
         const title: string = r.title || '';
-        const imageUrl: string = r.thumbnail || r.imageUrl || r.thumbnailUrl || r.imageLink || '';
+        const imageUrl: string = r.img_link || '';
         const price: string = r.price || '';
-        const priceNumeric = r.extracted_price ?? (price ? parseFloat(price.replace(/[^0-9.]/g, '')) || 0 : 0);
+        const priceNumeric = price ? parseFloat(price.replace(/[^0-9.]/g, '')) || 0 : 0;
 
         return {
           title,
@@ -93,7 +94,7 @@ serve(async (req) => {
           price,
           priceNumeric,
           imageUrl,
-          productLink: r.link || r.product_link || '',
+          productLink: r.product_link || '',
           source: r.source || '',
         };
       })
