@@ -9,6 +9,8 @@ import { useRecentlyDeleted } from "@/hooks/useRecentlyDeleted";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { MassUploadProvider } from "@/contexts/MassUploadContext";
 import { MassUploadProgressBanner } from "@/components/MassUploadProgressBanner";
+import { SearchQueueProvider } from "@/contexts/SearchQueueContext";
+import { SearchQueueBadge } from "@/components/SearchQueueBadge";
 
 import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
 import { ClothingItem } from "@/types/wardrobe";
@@ -175,6 +177,7 @@ function AuthenticatedApp() {
   }, [removeFromDeleted]);
 
   return (
+    <SearchQueueProvider>
     <MassUploadProvider onAdd={addItem}>
     <div className="max-w-lg mx-auto min-h-screen relative">
       <MassUploadProgressBanner />
@@ -230,10 +233,12 @@ function AuthenticatedApp() {
       </Suspense>
       </div>
       <BottomNav />
+      <SearchQueueBadge />
       <Suspense fallback={null}><AppTutorial /></Suspense>
       <Suspense fallback={null}><MassUploadReviewSheet /></Suspense>
     </div>
     </MassUploadProvider>
+    </SearchQueueProvider>
   );
 }
 
