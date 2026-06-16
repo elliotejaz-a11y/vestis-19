@@ -80,12 +80,20 @@ serve(async (req) => {
     }
 
     const talorData = await talorRes.json();
-    const shoppingResults: any[] = talorData?.data?.shopping || [];
+    const data = talorData?.data || {};
+
+    // Some queries return a flat `shopping` array; others return `categorized_shopping_results`
+    let shoppingResults: any[] = data.shopping || [];
+    if (shoppingResults.length === 0 && Array.isArray(data.categorized_shopping_results)) {
+      for (const cat of data.categorized_shopping_results) {
+        shoppingResults = shoppingResults.concat(cat.shopping_results || []);
+      }
+    }
 
     const results = shoppingResults
       .map((r: any) => {
         const title: string = r.title || '';
-        const imageUrl: string = r.img_link || '';
+        const imageUrl: string = r.img_link || r.image_url || '';
         const price: string = r.price || '';
         const priceNumeric = price ? parseFloat(price.replace(/[^0-9.]/g, '')) || 0 : 0;
 
