@@ -60,7 +60,6 @@ serve(async (req) => {
       json: '1',
       num: '10',
       direct_link: '1',
-      max_price: '99999999999999',
     });
 
     const talorRes = await fetch('https://serpapi.talordata.net/serp/v1/request', {
