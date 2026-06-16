@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClothingItem } from "@/types/wardrobe";
-import { processClothingImage } from "@/lib/image-processing";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -67,17 +66,14 @@ export function SearchQueueProvider({ children }: { children: ReactNode }) {
     try {
       const res = await fetch(item.result.imageUrl);
       const blob = await res.blob();
-      const file = new File([blob], "item.webp", { type: blob.type || "image/webp" });
 
-      const [cleanBlob, aiData] = await Promise.all([
-        processClothingImage(file).catch(() => null),
-        blobToBase64(blob)
-          .then((base64) => supabase.functions.invoke("vestis-analyze-item", { body: { imageBase64: base64 } }))
-          .then(({ data }) => data ?? null)
-          .catch(() => null),
-      ]);
+      // AI analysis only — background removal runs server-side via addItem({ runBackgroundRemoval: true })
+      const aiData = await blobToBase64(blob)
+        .then((base64) => supabase.functions.invoke("vestis-analyze-item", { body: { imageBase64: base64 } }))
+        .then(({ data }) => data ?? null)
+        .catch(() => null);
 
-      const finalImageUrl = URL.createObjectURL(cleanBlob ?? blob);
+      const finalImageUrl = URL.createObjectURL(blob);
       const aiTags: string[] = aiData?.style_tags ?? [];
       const brandTag = item.result.brand ? [item.result.brand.toLowerCase()] : [];
 
