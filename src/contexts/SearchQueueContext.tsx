@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ClothingItem } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { removeBackgroundInWorker } from "@/lib/bgRemovalWorker";
 
 export interface SearchResult {
   title: string;
@@ -94,16 +95,22 @@ export function SearchQueueProvider({ children }: { children: ReactNode }) {
       const res = await fetch(item.result.imageUrl);
       const blob = await res.blob();
 
-      // Resize to 512px before encoding — keeps base64 fast and AI analysis accurate
-      const aiData = await resizeAndBase64(blob)
-        .then((base64) => supabase.functions.invoke("vestis-analyze-item", { body: { imageBase64: base64 } }))
-        .then(({ data }) => data ?? null)
-        .catch(() => null);
+      // Run background removal (in worker, off-main-thread) and AI analysis in parallel.
+      // Worker keeps ONNX inference off the UI thread so there are no freezes.
+      // If bg removal fails we fall back to the original image silently.
+      const [cleanedBlob, aiData] = await Promise.all([
+        removeBackgroundInWorker(blob).catch(() => blob),
+        resizeAndBase64(blob)
+          .then((base64) => supabase.functions.invoke("vestis-analyze-item", { body: { imageBase64: base64 } }))
+          .then(({ data }) => data ?? null)
+          .catch(() => null),
+      ]);
 
-      const finalImageUrl = URL.createObjectURL(blob);
+      const finalImageUrl = URL.createObjectURL(cleanedBlob);
       const aiTags: string[] = aiData?.style_tags ?? [];
       const brandTag = item.result.brand ? [item.result.brand.toLowerCase()] : [];
 
+      // Image is already cleaned — no need to trigger client-side bg removal in addItem
       await item.onAdd(
         {
           id: item.itemId,
@@ -118,7 +125,7 @@ export function SearchQueueProvider({ children }: { children: ReactNode }) {
           estimatedPrice: aiData?.estimated_price_nzd || item.result.priceNumeric || undefined,
           isPrivate: false,
         } as ClothingItem,
-        { runBackgroundRemoval: true }
+        { runBackgroundRemoval: false }
       );
 
       setStatus(item.queueId, "done");
