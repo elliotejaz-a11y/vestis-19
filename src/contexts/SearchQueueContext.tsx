@@ -39,16 +39,41 @@ const SearchQueueContext = createContext<SearchQueueContextValue | null>(null);
 
 const MAX_CONCURRENT = 2;
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const r = reader.result as string;
-      resolve(r.includes(",") ? r.split(",")[1] : r);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
+// Resize to ≤512px using createImageBitmap (off-main-thread decode) +
+// OffscreenCanvas (off-main-thread draw), then encode the tiny result.
+// This avoids the multi-second FileReader freeze on large source images.
+async function resizeAndBase64(blob: Blob, maxDim = 512): Promise<string> {
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height, 1));
+    const w = Math.round(bitmap.width * scale) || 1;
+    const h = Math.round(bitmap.height * scale) || 1;
+    const canvas = new OffscreenCanvas(w, h);
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const small = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.85 });
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const r = reader.result as string;
+        resolve(r.includes(",") ? r.split(",")[1] : r);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(small);
+    });
+  } catch {
+    // Fallback: encode original (may be slow on old browsers)
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const r = reader.result as string;
+        resolve(r.includes(",") ? r.split(",")[1] : r);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
 }
 
 export function SearchQueueProvider({ children }: { children: ReactNode }) {
@@ -63,12 +88,14 @@ export function SearchQueueProvider({ children }: { children: ReactNode }) {
 
   const processItem = useCallback(async (item: InternalQueueItem) => {
     setStatus(item.queueId, "processing");
+    // Yield to the event loop so the UI renders "Queued" before work starts
+    await new Promise((r) => setTimeout(r, 0));
     try {
       const res = await fetch(item.result.imageUrl);
       const blob = await res.blob();
 
-      // AI analysis only — background removal runs server-side via addItem({ runBackgroundRemoval: true })
-      const aiData = await blobToBase64(blob)
+      // Resize to 512px before encoding — keeps base64 fast and AI analysis accurate
+      const aiData = await resizeAndBase64(blob)
         .then((base64) => supabase.functions.invoke("vestis-analyze-item", { body: { imageBase64: base64 } }))
         .then(({ data }) => data ?? null)
         .catch(() => null);
