@@ -239,6 +239,7 @@ export function buildAIPrompt(
     '## SLOT RULES',
     '- Top (shirt) is ALWAYS required. A jumper LAYERS over the shirt — it does NOT replace it.',
     '- Bottoms are ALWAYS required.',
+    '- LAYERING RULE: A maximum of 1 jumper or hoodie per outfit. You may include 1 jumper alongside outerwear (puffer, jacket, coat) but you must never select 2 jumpers or 2 hoodies. Outerwear does not count toward this limit.',
     weatherRules.needsJumper || (!weatherRules.noOuterwear && !weatherRules.needsPuffer)
       ? '- Jumper slot: include if available and relevant.'
       : null,
