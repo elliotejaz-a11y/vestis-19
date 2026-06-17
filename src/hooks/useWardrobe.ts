@@ -822,6 +822,7 @@ export function useWardrobe() {
         // Non-fatal — proceed without recency data
       }
 
+      console.log('[Debug] recent outfits fetched:', freshRecentOutfits.length, JSON.stringify(freshRecentOutfits.map(o => o.id)));
       const freshRecentItemIds = freshRecentOutfits.map(o => o.items.map(i => i.id));
 
       // ── Phase 2: Algorithmically select the anchor (top/jumper/dress) ────────
@@ -850,7 +851,7 @@ export function useWardrobe() {
       // The colour ranking for all other slots then aligns around the chosen anchor.
       let slotResult: ReturnType<typeof resolveSlots> | null = null;
       if (!gymRequest) {
-        slotResult = resolveSlots(items, weather || null, occasion, mandatoryAnchor || undefined);
+        slotResult = resolveSlots(items, weather || null, occasion, mandatoryAnchor || undefined, freshRecentItemIds);
         if (slotResult.error) {
           toast({
             title: "Add required items to generate outfits",

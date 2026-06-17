@@ -201,6 +201,46 @@ export function filterItemsByOccasion(wardrobe: ClothingItem[], occasion: string
   return hasTops && hasBottoms ? filtered : wardrobe;
 }
 
+/**
+ * Filters each slot's candidate list so recently-worn items are excluded when
+ * enough fresh alternatives exist. Must be called BEFORE colour-ranking so the
+ * ranking window (MAX_CANDIDATES_PER_SLOT = 5) draws from fresh items.
+ *
+ * Rule: if a slot has ≥ MIN_FRESH_TO_FILTER items not worn in the last 5 outfits,
+ * remove all recently-worn items from that slot entirely.
+ * If fewer fresh items exist, keep the full list — never leave a slot empty.
+ * The mandatory anchor slot (top slot with a single pre-selected item) is always exempt.
+ */
+const MIN_FRESH_TO_FILTER = 3;
+
+export function filterCandidatesByRecency(
+  candidatesBySlot: CandidatesBySlot,
+  recentOutfitItemIds: string[][],
+  mandatoryAnchorId?: string,
+): CandidatesBySlot {
+  const recentIds = new Set(recentOutfitItemIds.flat());
+  if (recentIds.size === 0) return candidatesBySlot;
+
+  const result: CandidatesBySlot = {};
+  for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+    // Mandatory anchor slot: always exempt — anchor selection already handles rotation
+    if (mandatoryAnchorId && slot === 'top' && candidates.length === 1 && candidates[0].id === mandatoryAnchorId) {
+      result[slot] = candidates;
+      continue;
+    }
+    const fresh = candidates.filter(c => !recentIds.has(c.id));
+    const removedCount = candidates.length - fresh.length;
+    if (fresh.length >= MIN_FRESH_TO_FILTER) {
+      console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | removed recent: ${removedCount} | remaining: ${fresh.length}`);
+      result[slot] = fresh;
+    } else {
+      console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | removed recent: 0 (only ${fresh.length} fresh — keeping full list)`);
+      result[slot] = candidates;
+    }
+  }
+  return result;
+}
+
 /** Builds weatherRules from a temperature + description pair. */
 function computeWeatherRules(weather: WeatherData | null): WeatherRules {
   if (!weather) {
@@ -234,6 +274,7 @@ export function resolveSlots(
   weather: WeatherData | null,
   occasion: string,
   mandatoryAnchor?: ClothingItem,
+  recentOutfitItemIds?: string[][],
 ): SlotResult {
   const cat = (item: ClothingItem) => (item.category || '').toLowerCase();
 
@@ -348,6 +389,14 @@ export function resolveSlots(
     candidatesBySlot.accessory = accessories;
   }
 
+  // ── Recency filter (before colour-ranking) ───────────────────────────────────
+  // Remove recently-worn items from each slot before the colour-rank slice so the
+  // ranking window (MAX_CANDIDATES_PER_SLOT = 5) draws from fresh items, not worn ones.
+  // Without this, the same colour-best item re-appears at #1 every generation.
+  const candidatesForRanking = (recentOutfitItemIds && recentOutfitItemIds.length > 0)
+    ? filterCandidatesByRecency(candidatesBySlot, recentOutfitItemIds, mandatoryAnchor?.id)
+    : candidatesBySlot;
+
   // ── Colour-rank each slot's candidates ───────────────────────────────────────
   // Strategy A (mandatory items exist): rank each slot against weather-forced anchor(s)
   //   e.g. if the puffer is mandatory, rank all other slots relative to it.
@@ -359,7 +408,7 @@ export function resolveSlots(
   let colourStrategy: string | undefined;
 
   if (mandatoryItems.length > 0) {
-    for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+    for (const [slot, candidates] of Object.entries(candidatesForRanking)) {
       const anchors = mandatoryItems.filter(
         m => categoryToSlotKey((m.category || '').toLowerCase()) !== slot
       );
@@ -370,7 +419,7 @@ export function resolveSlots(
     const CORE_SLOTS = ['top', 'bottom', 'shoes'];
     const coreForRanking: Record<string, ClothingItem[]> = {};
     for (const s of CORE_SLOTS) {
-      if (candidatesBySlot[s]?.length > 0) coreForRanking[s] = candidatesBySlot[s];
+      if (candidatesForRanking[s]?.length > 0) coreForRanking[s] = candidatesForRanking[s];
     }
 
     const topCombos = rankCombinations(coreForRanking, 3, 1);
@@ -379,7 +428,7 @@ export function resolveSlots(
       const bestItems = topCombos[0].items;
       colourStrategy = inferColourStrategy(bestItems);
       // Rank each slot using the other core slots' best items as colour anchors
-      for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+      for (const [slot, candidates] of Object.entries(candidatesForRanking)) {
         const crossAnchors = bestItems.filter(
           i => categoryToSlotKey((i.category || '').toLowerCase()) !== slot
         );
@@ -387,7 +436,7 @@ export function resolveSlots(
       }
     } else {
       // Sparse wardrobe (missing core slots) — preserve original order
-      for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+      for (const [slot, candidates] of Object.entries(candidatesForRanking)) {
         ranked[slot] = candidates.slice(0, MAX_CANDIDATES_PER_SLOT);
       }
     }
