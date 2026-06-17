@@ -401,8 +401,9 @@ export function useWardrobe() {
     if (!user) { setItems([]); setOutfits([]); setLoading(false); return; }
 
     const fetchAll = async () => {
+      try {
       // Fetch clothing items and outfits in parallel — eliminates one full round-trip
-      const [{ data: clothingData }, { data: outfitData }] = await Promise.all([
+      const [clothingResult, outfitResult] = await Promise.all([
         supabase
           .from("clothing_items")
           .select("*")
@@ -414,6 +415,14 @@ export function useWardrobe() {
           .eq("user_id", user.id)
           .order("created_at", { ascending: false }),
       ]);
+
+      if (clothingResult.error) {
+        toast({ title: "Couldn't load your wardrobe", description: "Please refresh the page.", variant: "destructive" });
+        setLoading(false);
+        return;
+      }
+      const clothingData = clothingResult.data;
+      const outfitData = outfitResult.data;
 
       const rawItems: ClothingItem[] = (clothingData || []).map((r: any) => ({
         id: r.id,
@@ -454,6 +463,10 @@ export function useWardrobe() {
       }
       setLoading(false);
       setDataReady(true);
+      } catch {
+        toast({ title: "Couldn't load your wardrobe", description: "Please refresh the page.", variant: "destructive" });
+        setLoading(false);
+      }
     };
 
     fetchAll();
@@ -961,19 +974,22 @@ export function useWardrobe() {
           const gymFallbackItems = ensureGymOutfitHasOnlyAllowedPieces([], items);
           if (gymFallbackItems.length === 3) {
             const fallbackReasoning = buildOutfitReasoningFallback({ occasion, selectedItems: gymFallbackItems, profile, weather });
-            const { data: outfitRow } = await supabase
+            const { data: outfitRow, error: gymFallbackErr } = await supabase
               .from("outfits")
               .insert({ user_id: user.id, occasion, reasoning: fallbackReasoning })
               .select().single();
 
-            if (outfitRow) {
-              await supabase.from("outfit_items").insert(
-                gymFallbackItems.map((si) => ({ outfit_id: outfitRow.id, clothing_item_id: si.id }))
-              );
+            if (gymFallbackErr || !outfitRow) {
+              toast({ title: "Failed to generate outfit", description: "Please try again.", variant: "destructive" });
+              return null;
             }
 
+            await supabase.from("outfit_items").insert(
+              gymFallbackItems.map((si) => ({ outfit_id: outfitRow.id, clothing_item_id: si.id }))
+            );
+
             const outfit: Outfit = {
-              id: outfitRow?.id || crypto.randomUUID(), occasion, items: gymFallbackItems, createdAt: new Date(),
+              id: outfitRow.id, occasion, items: gymFallbackItems, createdAt: new Date(),
               reasoning: fallbackReasoning, saved: false,
             };
             setOutfits((prev) => [outfit, ...prev]);
@@ -1012,19 +1028,24 @@ export function useWardrobe() {
 
         const fallbackReasoning = buildOutfitReasoningFallback({ occasion, selectedItems: fallbackItems, profile, weather });
 
-        const { data: outfitRow } = await supabase
+        const { data: outfitRow, error: fallbackInsertErr } = await supabase
           .from("outfits")
           .insert({ user_id: user.id, occasion, reasoning: fallbackReasoning })
           .select().single();
 
-        if (outfitRow && fallbackItems.length > 0) {
+        if (fallbackInsertErr || !outfitRow) {
+          toast({ title: "Failed to generate outfit", description: "Please try again.", variant: "destructive" });
+          return null;
+        }
+
+        if (fallbackItems.length > 0) {
           await supabase.from("outfit_items").insert(
             fallbackItems.map((si) => ({ outfit_id: outfitRow.id, clothing_item_id: si.id }))
           );
         }
 
         const outfit: Outfit = {
-          id: outfitRow?.id || crypto.randomUUID(), occasion, items: fallbackItems, createdAt: new Date(),
+          id: outfitRow.id, occasion, items: fallbackItems, createdAt: new Date(),
           reasoning: fallbackReasoning, saved: false,
         };
         setOutfits((prev) => [outfit, ...prev]);

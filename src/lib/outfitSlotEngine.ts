@@ -29,6 +29,12 @@ import { WARM_TEMP } from "@/lib/outfitConstants";
 // ── Weather thresholds (slot-engine specific) ────────────────────────────────
 // WARM_TEMP (19) is imported from outfitConstants — above this, no layering needed.
 // PUFFER_TEMP is local — below this, a puffer/coat is required if available.
+// MEDIUM: PUFFER_TEMP (15) differs from the edge function's COLD_THRESHOLD (10).
+// At 11–15°C the slot engine marks needsPuffer=true and adds the outerwear slot, but the edge
+// function legacy mode (gym path) says "Mild — light jacket optional". This only affects gym
+// outfits (which strip outerwear anyway), so there is no visible user impact today. If COLD_THRESHOLD
+// is ever raised in the edge function, or the legacy mode is extended, this will cause a mismatch.
+// Fix: export PUFFER_TEMP from outfitConstants and import it in the edge function.
 const PUFFER_TEMP = 15;
 
 const PUFFER_PATTERN = /\b(puffer|parka|duvet jacket|padded jacket|quilted jacket|down jacket|anorak|peacoat|overcoat|trench coat|duffel coat|wool coat|toggle coat|shearling|puffer coat|padded coat)\b/i;

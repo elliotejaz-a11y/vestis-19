@@ -255,6 +255,9 @@ export function buildAIPrompt(
 
   const slots = Object.keys(candidatesBySlot);
 
+  // LOW: the "slot" value returned by the AI in guided mode is not used. The edge function maps
+  // items by itemId only; the slot field is discarded and each item's category drives normalization.
+  // The schema description is accurate for the AI's benefit but misleading to a code reader.
   const schema = `Respond ONLY with this JSON (no prose outside it):
 {
   "selectedItems": [
