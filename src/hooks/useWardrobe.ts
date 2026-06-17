@@ -311,6 +311,30 @@ function buildOutfitReasoningFallback({
 }
 
 /**
+ * Safety net: if the AI returned more than 1 item from the jumper category, keep only
+ * the most prominent one (mandatory anchor first, then the first jumper in order) and
+ * strip the rest. Outerwear is unaffected. Logs a warning so prompt failures are visible.
+ */
+function enforceSingleJumperRule(
+  selectedItems: ClothingItem[],
+  mandatoryAnchorId?: string
+): ClothingItem[] {
+  const isJumper = (i: ClothingItem) => (i.category || '').toLowerCase() === 'jumpers';
+  const jumpers = selectedItems.filter(isJumper);
+  if (jumpers.length <= 1) return selectedItems;
+
+  console.warn(
+    '[outfit-gen] JUMPER RULE VIOLATION — AI returned multiple jumpers/hoodies:',
+    jumpers.map(j => j.name).join(', '),
+    '— prompt rule may not be working. Keeping only the most prominent one.'
+  );
+
+  // Prefer the mandatory anchor if it's a jumper; otherwise keep the first jumper found.
+  const keep = (mandatoryAnchorId && jumpers.find(j => j.id === mandatoryAnchorId)) ?? jumpers[0];
+  return selectedItems.filter(i => !isJumper(i) || i.id === keep.id);
+}
+
+/**
  * RULE 3: jumper is additive — it layers over a shirt, never replacing it.
  * If the AI returned a jumper without a top (shirt), inject the best top candidate.
  */
@@ -871,6 +895,7 @@ export function useWardrobe() {
 
         if (!gymRequest && slotResult) {
           selected = ensureTopIsPresent(selected, items, slotResult);
+          selected = enforceSingleJumperRule(selected, mandatoryAnchor?.id);
         }
 
         return {

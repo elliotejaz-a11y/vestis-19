@@ -51,6 +51,10 @@ const OCCASION_TRACKSUIT_PATTERN = /\b(tracksuit|track ?pants?|sweatpants?)\b/i;
 // Max candidates sent to AI per slot — keeps the prompt under the token budget
 const MAX_CANDIDATES_PER_SLOT = 5;
 
+// A jumper (or hoodie) counts as one layering piece. Outerwear (puffers, coats, jackets)
+// is a separate category and does NOT count toward this limit.
+const MAX_JUMPERS_PER_OUTFIT = 1;
+
 export interface WeatherData {
   temp: number;
   description: string;
@@ -282,10 +286,14 @@ export function resolveSlots(
     candidatesBySlot.bottom = bottoms;
   }
 
-  // Jumper slot: additive (RULE 3 — never replaces the top slot)
-  // Trigger: temp 16–19°C OR temp ≤ 15°C, and jumpers exist
+  // Jumper slot: additive (RULE 3 — never replaces the top slot).
+  // MAX_JUMPERS_PER_OUTFIT = 1: if the mandatory anchor is already a jumper, it occupies
+  // the one allowed jumper position (placed in the top slot above). Adding a second jumper
+  // slot would let the AI pick two jumpers/hoodies, so we skip it in that case.
+  // Outerwear (puffers, coats, jackets) is a separate category and has no such limit.
+  const anchorIsJumper = mandatoryAnchor != null && (mandatoryAnchor.category || '').toLowerCase() === 'jumpers';
   const { needsJumper, needsOuterwear, needsPuffer, isRaining, noOuterwear } = weatherRules;
-  if (!isGym && jumpers.length > 0 && (needsJumper || (weather?.temp ?? 20) <= PUFFER_TEMP)) {
+  if (!isGym && !anchorIsJumper && jumpers.length > 0 && (needsJumper || (weather?.temp ?? 20) <= PUFFER_TEMP)) {
     candidatesBySlot.jumper = jumpers;
   }
 
