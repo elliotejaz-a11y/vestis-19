@@ -253,6 +253,24 @@ function dedupeById(items: any[]): any[] {
   });
 }
 
+/** Keep at most one item per category — AI sometimes selects multiple from the same slot. */
+function limitToOnePerCategory(items: any[], weather?: { temp: number; description: string } | undefined): any[] {
+  const byCategory = new Map<string, any[]>();
+  for (const item of items) {
+    const cat = normalizeCategory(item?.category);
+    if (!byCategory.has(cat)) byCategory.set(cat, []);
+    byCategory.get(cat)!.push(item);
+  }
+  return Array.from(byCategory.entries()).map(([cat, group]) => {
+    if (group.length === 1) return group[0];
+    if (cat === 'outerwear' && weather) {
+      if (isRainyWeather(weather)) return group.find(isWaterproofOuterwear) ?? group[0];
+      if (weather.temp < COLD_THRESHOLD) return group.find(isHeavyOuterwear) ?? group[0];
+    }
+    return group[0];
+  });
+}
+
 function ensureRequiredCategory(selected: any[], allItems: any[], predicate: (item: any) => boolean, replacementPriority: string[]): any[] {
   const available = allItems.filter(predicate);
   if (available.length === 0 || selected.some(predicate)) return selected;
@@ -526,11 +544,14 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
       }
 
       // Map itemId strings back to actual wardrobe items
-      const guidedSelected = (Array.isArray(guidedResult.selectedItems) ? guidedResult.selectedItems : [])
-        .map(({ itemId }: { itemId: string }) =>
-          items.find((item: any) => String(item.id) === String(itemId))
-        )
-        .filter(Boolean);
+      const guidedSelected = limitToOnePerCategory(
+        (Array.isArray(guidedResult.selectedItems) ? guidedResult.selectedItems : [])
+          .map(({ itemId }: { itemId: string }) =>
+            items.find((item: any) => String(item.id) === String(itemId))
+          )
+          .filter(Boolean),
+        weather
+      );
 
       const guidedNormalized = normalizeSelectionWithRequiredCore(guidedSelected, candidateItems);
       let guidedFinal = normalizeSelectionForWeather(guidedNormalized, candidateItems, weather, false);
@@ -782,10 +803,13 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
     const result = JSON.parse(toolCall.function.arguments);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
-    let parsedSelectedItems = rawSelectedIndices
-      .map((idx: unknown) => Number(idx))
-      .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= candidateItems.length)
-      .map((idx: number) => candidateItems[idx - 1]);
+    let parsedSelectedItems = limitToOnePerCategory(
+      rawSelectedIndices
+        .map((idx: unknown) => Number(idx))
+        .filter((idx: number) => Number.isInteger(idx) && idx >= 1 && idx <= candidateItems.length)
+        .map((idx: number) => candidateItems[idx - 1]),
+      weather
+    );
 
     // Enforce mandatory anchor in legacy mode (gym and non-gym fallback paths).
     if (mandatoryAnchorId) {
