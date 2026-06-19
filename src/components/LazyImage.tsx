@@ -52,7 +52,11 @@ export const LazyImage = memo(function LazyImage({
   };
 
   return (
-    <div className={cn("relative overflow-hidden", fallbackClassName)}>
+    /* object-fit: contain — DO NOT change to cover; clothing images must show in full, not cropped */
+    /* absolute inset-0 — fills the parent which owns the aspect-ratio; DO NOT revert to
+       aspect-[3/4] here. h-full on the img does not resolve against aspect-ratio height on
+       iOS Safari 15.x, causing intrinsic-height overflow that overflow-hidden then clips. */
+    <div className="absolute inset-0 overflow-hidden">
       {/* Blur-up placeholder shown while image loads */}
       {!loaded && (
         <div
