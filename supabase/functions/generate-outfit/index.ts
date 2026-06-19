@@ -130,13 +130,13 @@ function getWeatherDirective(weather: { temp: number; description: string }, occ
   const hot = weather.temp > HOT_THRESHOLD;
 
   if (cold && rainy) {
-    return `WEATHER REQUIREMENT (MANDATORY): It is cold and rainy (${weather.temp}°C, ${weather.description}). You MUST include a waterproof outer layer — a rain jacket, waterproof coat, or windbreaker. Also include warm fabrics (wool, knit, fleece). This is required regardless of occasion.`;
+    return `WEATHER: Cold and rainy (${weather.temp}°C, ${weather.description}). Warm fabrics (wool, knit, fleece) are preferred. A waterproof layer is a good choice if one is available, but outerwear is not required.`;
   }
   if (cold) {
-    return `WEATHER REQUIREMENT (MANDATORY): It is cold (${weather.temp}°C, ${weather.description}). You MUST include a jacket, coat, or outerwear. Favour warm fabrics (wool, knit, fleece, padded). This is non-negotiable — an outfit without outerwear is wrong for this weather.`;
+    return `WEATHER: Cold (${weather.temp}°C, ${weather.description}). Favour warm fabrics (wool, knit, fleece, padded). Outerwear is a good addition if available, but is not required.`;
   }
   if (rainy) {
-    return `WEATHER REQUIREMENT (MANDATORY): It is rainy (${weather.temp}°C, ${weather.description}). You MUST include a waterproof outer layer — rain jacket, windbreaker, or waterproof coat. Do not skip outerwear even if it is mild.`;
+    return `WEATHER: Rainy (${weather.temp}°C, ${weather.description}). A waterproof layer such as a rain jacket or windbreaker is a good choice if available, but outerwear is not required.`;
   }
   if (hot) {
     const hatNote = !isFormalOccasion(occasion) && !isBusinessOccasion(occasion)
@@ -178,42 +178,16 @@ function normalizeSelectionForWeather(
     return dedupeById(result.filter(item => !isHeavyOuterwear(item)));
   }
 
-  // Cold or rainy: ensure outerwear is present
-  if (cold || rainy) {
+  // Rainy: if outerwear was already chosen by AI, prefer a waterproof one
+  if (rainy) {
     const hasOuterwear = result.some(isOuterwearCategory);
-    const outerwearPool = allCandidates.filter(isOuterwearCategory);
-
-    if (!hasOuterwear && outerwearPool.length > 0) {
-      // Prefer waterproof if rainy, otherwise first available
-      const inject = rainy
-        ? (outerwearPool.find(isWaterproofOuterwear) ?? outerwearPool[0])
-        : outerwearPool[0];
-
-      // Replace accessories/hats first, then add if room, then replace last item
-      const replaceIdx = result.findIndex(item => {
-        const cat = normalizeCategory(item?.category);
-        return cat === 'accessories' || cat === 'hats';
-      });
-      if (replaceIdx >= 0) {
-        result = [...result];
-        result[replaceIdx] = inject;
-      } else if (result.length < 5) {
-        result = [...result, inject];
-      } else {
-        result = [...result];
-        result[result.length - 1] = inject;
-      }
-    } else if (rainy && hasOuterwear) {
-      // Has outerwear but check it's waterproof
-      const hasWaterproof = result.some(isWaterproofOuterwear);
-      if (!hasWaterproof) {
-        const waterproofItem = allCandidates.find(item => isOuterwearCategory(item) && isWaterproofOuterwear(item));
-        if (waterproofItem) {
-          const replaceIdx = result.findIndex(item => isOuterwearCategory(item) && !isWaterproofOuterwear(item));
-          if (replaceIdx >= 0) {
-            result = [...result];
-            result[replaceIdx] = waterproofItem;
-          }
+    if (hasOuterwear && !result.some(isWaterproofOuterwear)) {
+      const waterproofItem = allCandidates.find(item => isOuterwearCategory(item) && isWaterproofOuterwear(item));
+      if (waterproofItem) {
+        const replaceIdx = result.findIndex(item => isOuterwearCategory(item) && !isWaterproofOuterwear(item));
+        if (replaceIdx >= 0) {
+          result = [...result];
+          result[replaceIdx] = waterproofItem;
         }
       }
     }
