@@ -6,6 +6,9 @@ import { visualizer } from "rollup-plugin-visualizer";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  worker: {
+    format: "es",
+  },
   server: {
     host: "::",
     port: 8080,

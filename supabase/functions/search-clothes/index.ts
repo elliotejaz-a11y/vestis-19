@@ -46,49 +46,59 @@ serve(async (req) => {
       });
     }
 
-    const apiKey = Deno.env.get('SERPER_API_KEY');
+    const apiKey = Deno.env.get('TALORDATA_API_KEY');
     if (!apiKey) {
-      console.error('[search-clothes] SERPER_API_KEY not configured');
+      console.error('[search-clothes] TALORDATA_API_KEY not configured');
       return new Response(JSON.stringify({ results: [], error: 'Search unavailable' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const serperRes = await fetch('https://google.serper.dev/shopping', {
-      method: 'POST',
-      headers: {
-        'X-API-KEY': apiKey,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ q: query.trim(), num: 10 }),
+    const params = new URLSearchParams({
+      engine: 'google_images',
+      q: `${query.trim()} flat lay`,
+      json: '1',
+      num: '10',
     });
 
-    if (!serperRes.ok) {
-      console.error(`[search-clothes] Serper responded ${serperRes.status}`);
+    const talorRes = await fetch('https://serpapi.talordata.net/serp/v1/request', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
+
+    if (!talorRes.ok) {
+      console.error(`[search-clothes] TalorData responded ${talorRes.status}`);
       return new Response(JSON.stringify({ results: [], error: 'Search unavailable' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    const serperData = await serperRes.json();
-    const shoppingResults: any[] = serperData.shopping || serperData.shopping_results || [];
+    const talorData = await talorRes.json();
+    const images: any[] = talorData?.data?.images || [];
 
-    const results = shoppingResults
+    // Prioritise product images, then fill with remaining
+    const sorted = [
+      ...images.filter((r: any) => r.is_product),
+      ...images.filter((r: any) => !r.is_product),
+    ];
+
+    const results = sorted
       .map((r: any) => {
-        const title: string = r.title || '';
-        const imageUrl: string =
-          r.imageUrl || r.thumbnailUrl || r.imageLink || r.thumbnail || '';
-        const price: string = r.price || '';
-        const priceNumeric = price ? parseFloat(price.replace(/[^0-9.]/g, '')) || 0 : 0;
+        const title: string = r.image_alt || '';
+        const imageUrl: string = r.original || '';
 
         return {
           title,
           brand: extractBrand(title),
-          price,
-          priceNumeric,
+          price: '',
+          priceNumeric: 0,
           imageUrl,
           productLink: r.link || '',
-          source: r.source || '',
+          source: '',
         };
       })
       .filter((r: any) => !!r.imageUrl)

@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
@@ -8,7 +8,7 @@ import { OutfitCard } from "@/components/OutfitCard";
 import { ClothingItem, Outfit, CATEGORIES } from "@/types/wardrobe";
 import { Plus, Shirt, Bookmark, Sparkles, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Props {
@@ -38,7 +38,19 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
   const [savedOutfitPage, setSavedOutfitPage] = useState(1);
   const SAVED_OUTFITS_PER_PAGE = 20;
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const gridRef = useRef<HTMLDivElement>(null);
+
+  // Open item detail when navigated here via notification tap
+  useEffect(() => {
+    const openId = searchParams.get("openItem");
+    if (!openId || !items.length) return;
+    const item = items.find((i) => i.id === openId);
+    if (item) {
+      setDetailItem(item);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, items, setSearchParams]);
 
   const savedOutfits = useMemo(() => outfits.filter((o) => o.saved), [outfits]);
   const filteredBase = useMemo(
@@ -58,11 +70,22 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
   const numRows = Math.ceil(filtered.length / COLS);
   const useVirtualGrid = filtered.length >= VIRTUALIZE_THRESHOLD;
 
+  /* gridScrollMargin must be captured via useLayoutEffect, NOT read directly from
+     gridRef.current?.offsetTop during the render phase. The grid div only exists when
+     useVirtualGrid is true; on the first render where it appears, gridRef.current is still
+     null during rendering (refs attach in the commit phase). Passing 0 as scrollMargin makes
+     virtualRow.start equal 0 for row 0, so the positioning formula (start − offsetTop) yields a
+     large negative top value, placing card images behind the navigation header — only labels show. */
+  const [gridScrollMargin, setGridScrollMargin] = useState(0);
+  useLayoutEffect(() => {
+    if (gridRef.current) setGridScrollMargin(gridRef.current.offsetTop);
+  }, [useVirtualGrid]);
+
   const rowVirtualizer = useWindowVirtualizer({
     count: useVirtualGrid ? numRows : 0,
     estimateSize: () => ROW_HEIGHT,
     overscan: 3,
-    scrollMargin: gridRef.current?.offsetTop ?? 0,
+    scrollMargin: gridScrollMargin,
   });
 
   const handleDetail = useCallback((item: ClothingItem) => setDetailItem(item), []);

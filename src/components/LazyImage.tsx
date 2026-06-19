@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, memo } from "react";
+import { useState, useEffect, memo } from "react";
 import { cn } from "@/lib/utils";
 
 function getTransformUrl(src: string | undefined, width: number, quality: number): string | undefined {
@@ -19,29 +19,20 @@ interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   displayWidth?: number;
 }
 
-export const LazyImage = memo(function LazyImage({ src, alt, className, fallbackClassName, displayWidth = 1200, ...props }: LazyImageProps) {
+export const LazyImage = memo(function LazyImage({
+  src,
+  alt,
+  className,
+  fallbackClassName,
+  displayWidth = 1200,
+  ...props
+}: LazyImageProps) {
   const [loaded, setLoaded] = useState(false);
-  const [inView, setInView] = useState(false);
   const [errored, setErrored] = useState(false);
   const [useTransform, setUseTransform] = useState(true);
+
   const thumbnailSrc = getTransformUrl(src, 20, 20);
   const displaySrc = getTransformUrl(src, displayWidth, 80);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!ref.current) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "400px" }
-    );
-    observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     setLoaded(false);
@@ -53,6 +44,7 @@ export const LazyImage = memo(function LazyImage({ src, alt, className, fallback
 
   const handleError = () => {
     if (useTransform && displaySrc && displaySrc !== src) {
+      // Transform URL failed (plan limitation or network) — fall back to original
       setUseTransform(false);
     } else {
       setErrored(true);
@@ -60,14 +52,11 @@ export const LazyImage = memo(function LazyImage({ src, alt, className, fallback
   };
 
   return (
-    <div ref={ref} className={cn("relative overflow-hidden", fallbackClassName)}>
+    <div className={cn("relative overflow-hidden", fallbackClassName)}>
+      {/* Blur-up placeholder shown while image loads */}
       {!loaded && (
         <div
-          className={cn(
-            "absolute inset-0 bg-muted",
-            !errored && "animate-pulse",
-            fallbackClassName
-          )}
+          className={cn("absolute inset-0 bg-muted", !errored && "animate-pulse", fallbackClassName)}
           style={{
             backgroundImage: thumbnailSrc ? `url(${thumbnailSrc})` : undefined,
             backgroundSize: "cover",
@@ -77,14 +66,17 @@ export const LazyImage = memo(function LazyImage({ src, alt, className, fallback
           }}
         />
       )}
-      {inView && !errored && (
+      {/* Always render the img — native loading="lazy" handles off-screen deferral.
+          Above-fold images start downloading immediately on mount without waiting
+          for an IntersectionObserver cycle. */}
+      {!errored && (
         <img
           src={activeSrc}
           alt={alt}
           className={cn(
             className,
             "transition-opacity duration-150 ease-out",
-            loaded ? "opacity-100" : "opacity-0"
+            loaded ? "opacity-100" : "opacity-0",
           )}
           onLoad={() => setLoaded(true)}
           onError={handleError}
