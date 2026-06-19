@@ -370,18 +370,17 @@ export function resolveSlots(
     candidatesBySlot.bottom = bottoms;
   }
 
-  // Jumper slot: additive (RULE 3 — never replaces the top slot).
-  // MAX_JUMPERS_PER_OUTFIT = 1: if the mandatory anchor is already a jumper, it occupies
-  // the one allowed jumper position (placed in the top slot above). Adding a second jumper
-  // slot would let the AI pick two jumpers/hoodies, so we skip it in that case.
-  // Outerwear (puffers, coats, jackets) is a separate category and has no such limit.
+  // Jumper and outerwear are mutually exclusive outer layers — never both in the same outfit.
+  // Outerwear takes priority when weather calls for it. Jumper is only offered when no
+  // outerwear slot will be present (mild layering weather, or no outerwear in wardrobe).
   const anchorIsJumper = mandatoryAnchor != null && (mandatoryAnchor.category || '').toLowerCase() === 'jumpers';
   const { needsJumper, needsOuterwear, needsPuffer, isRaining, noOuterwear } = weatherRules;
-  if (!isGym && !anchorIsJumper && jumpers.length > 0 && (needsJumper || (weather?.temp ?? 20) <= PUFFER_TEMP)) {
+  const willHaveOuterwear = !isGym && !noOuterwear && outerwear.length > 0 && needsOuterwear;
+  if (!isGym && !anchorIsJumper && !willHaveOuterwear && jumpers.length > 0 && needsJumper) {
     candidatesBySlot.jumper = jumpers;
   }
 
-  // Outerwear slot: additive (RULE 4 — layers over shirt [+ jumper])
+  // Outerwear slot: max 1 per outfit (RULE 4 — never paired with a jumper)
   if (!isGym && !noOuterwear && outerwear.length > 0 && needsOuterwear) {
     let outerwearPool = outerwear;
     if (needsPuffer) {

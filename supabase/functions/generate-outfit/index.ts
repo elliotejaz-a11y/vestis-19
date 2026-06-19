@@ -227,6 +227,12 @@ function dedupeById(items: any[]): any[] {
   });
 }
 
+/** If outerwear is present, remove jumpers — they are mutually exclusive outer layers. */
+function stripJumpersIfOuterwearPresent(items: any[]): any[] {
+  if (!items.some(isOuterwearCategory)) return items;
+  return items.filter(item => normalizeCategory(item?.category) !== 'jumpers');
+}
+
 /** Keep at most one item per category — AI sometimes selects multiple from the same slot. */
 function limitToOnePerCategory(items: any[], weather?: { temp: number; description: string } | undefined): any[] {
   const byCategory = new Map<string, any[]>();
@@ -527,7 +533,7 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
         weather
       );
 
-      const guidedNormalized = normalizeSelectionWithRequiredCore(guidedSelected, candidateItems);
+      const guidedNormalized = normalizeSelectionWithRequiredCore(stripJumpersIfOuterwearPresent(guidedSelected), candidateItems);
       let guidedFinal = normalizeSelectionForWeather(guidedNormalized, candidateItems, weather, false);
 
       // ── Mandatory anchor enforcement (two-layer protection) ──────────────────
@@ -805,7 +811,7 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
 
     const coreNormalized = isGymRequest
       ? normalizeSelectionForGym(parsedSelectedItems, candidateItems)
-      : normalizeSelectionWithRequiredCore(parsedSelectedItems, candidateItems);
+      : normalizeSelectionWithRequiredCore(stripJumpersIfOuterwearPresent(parsedSelectedItems), candidateItems);
     let selectedItems = normalizeSelectionForWeather(coreNormalized, candidateItems, weather, isGymRequest);
 
     if (!isGymRequest) {
