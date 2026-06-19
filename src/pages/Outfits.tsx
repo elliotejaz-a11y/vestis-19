@@ -54,6 +54,9 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   }, []);
 
   const activeOccasion = customOccasion.trim() || selectedOccasion;
+  // MEDIUM: case-sensitive comparisons — all other category checks in the codebase use .toLowerCase().
+  // If any item has a capitalised category (e.g. "Shoes"), these stay false and the Generate button
+  // stays permanently disabled. Fix: add .toLowerCase() to each item.category call here.
   const hasShoes = items.some((item) => item.category === "shoes");
   const hasBottoms = items.some((item) => item.category === "bottoms" || item.category === "dresses");
   const hasTopHalf = items.some((item) => item.category === "tops" || item.category === "dresses");
@@ -246,6 +249,11 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
               { id: "neutral-anchor", label: "Neutral anchor" },
               { id: "tonal", label: "Tonal" },
               { id: "monochromatic", label: "Monochromatic" },
+              // MEDIUM: "analogous" is sent to the AI as prompt text but inferColourStrategy() in
+              // colourTheory.ts never returns "analogous" — it labels the result "tonal palette" or
+              // "balanced mix" instead. The AI still tries to apply analogous colours via the prompt
+              // instruction, but the post-gen strategy label in the reasoning will mismatch.
+              // Fix: add analogous detection to inferColourStrategy(), or remove this option from the UI.
               { id: "analogous", label: "Analogous" },
               { id: "complementary", label: "Complementary" },
             ].map((opt) => (

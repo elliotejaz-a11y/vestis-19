@@ -29,6 +29,12 @@ import { WARM_TEMP } from "@/lib/outfitConstants";
 // ── Weather thresholds (slot-engine specific) ────────────────────────────────
 // WARM_TEMP (19) is imported from outfitConstants — above this, no layering needed.
 // PUFFER_TEMP is local — below this, a puffer/coat is required if available.
+// MEDIUM: PUFFER_TEMP (15) differs from the edge function's COLD_THRESHOLD (10).
+// At 11–15°C the slot engine marks needsPuffer=true and adds the outerwear slot, but the edge
+// function legacy mode (gym path) says "Mild — light jacket optional". This only affects gym
+// outfits (which strip outerwear anyway), so there is no visible user impact today. If COLD_THRESHOLD
+// is ever raised in the edge function, or the legacy mode is extended, this will cause a mismatch.
+// Fix: export PUFFER_TEMP from outfitConstants and import it in the edge function.
 const PUFFER_TEMP = 15;
 
 const PUFFER_PATTERN = /\b(puffer|parka|duvet jacket|padded jacket|quilted jacket|down jacket|anorak|peacoat|overcoat|trench coat|duffel coat|wool coat|toggle coat|shearling|puffer coat|padded coat)\b/i;
@@ -195,6 +201,83 @@ export function filterItemsByOccasion(wardrobe: ClothingItem[], occasion: string
   return hasTops && hasBottoms ? filtered : wardrobe;
 }
 
+/**
+ * Filters each slot's candidate list so recently-worn items are excluded before
+ * colour-ranking. This must run before the MAX_CANDIDATES_PER_SLOT slice so the
+ * ranking window draws from fresh items, not worn-out ones.
+ *
+ * Three-tier logic per slot:
+ *
+ * 1. Fresh items exist (≥ 1 not worn in last 5 outfits):
+ *    Remove all recently-worn items. AI only sees fresh options. Creates true
+ *    round-robin rotation — with 7 shoes, each shoe appears before any repeats.
+ *
+ * 2. No fresh items, optional slot (hat / accessory):
+ *    a. Items not worn in the LAST outfit → show those (they've had a break).
+ *    b. Everything was in the last outfit → skip the slot entirely this generation.
+ *    This gives natural alternation with small item pools: wear → skip → wear.
+ *
+ * 3. No fresh items, required slot (top, bottom, shoes, outerwear, jumper):
+ *    Keep full list — never leave a required slot empty.
+ *
+ * The mandatory anchor (top slot restricted to a single pre-selected item) is
+ * always exempt; anchor selection already handles its own rotation.
+ */
+
+// Required slots are never omitted even when all candidates are recently worn.
+const REQUIRED_SLOTS = new Set(['top', 'bottom', 'shoes', 'outerwear', 'jumper']);
+
+export function filterCandidatesByRecency(
+  candidatesBySlot: CandidatesBySlot,
+  recentOutfitItemIds: string[][],
+  mandatoryAnchorId?: string,
+): CandidatesBySlot {
+  const recentIds = new Set(recentOutfitItemIds.flat());
+  if (recentIds.size === 0) return candidatesBySlot;
+
+  // Items from the immediately previous outfit — finer-grained than the full 5-outfit window.
+  const lastOutfitIds = new Set(recentOutfitItemIds[0] ?? []);
+
+  const result: CandidatesBySlot = {};
+
+  for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+    // Mandatory anchor slot: always exempt
+    if (mandatoryAnchorId && slot === 'top' && candidates.length === 1 && candidates[0].id === mandatoryAnchorId) {
+      result[slot] = candidates;
+      continue;
+    }
+
+    const fresh = candidates.filter(c => !recentIds.has(c.id));
+    const removedCount = candidates.length - fresh.length;
+
+    if (fresh.length >= 1) {
+      // Tier 1: fresh alternatives exist — exclude all worn items
+      console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | removed recent: ${removedCount} | remaining: ${fresh.length}`);
+      result[slot] = fresh;
+
+    } else if (!REQUIRED_SLOTS.has(slot)) {
+      // Tier 2: optional slot, all candidates worn recently
+      const notInLastOutfit = candidates.filter(c => !lastOutfitIds.has(c.id));
+      if (notInLastOutfit.length > 0) {
+        // Some weren't in the last outfit — prefer those
+        console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | all recent, showing ${notInLastOutfit.length} not worn last outfit`);
+        result[slot] = notInLastOutfit;
+      } else {
+        // Every item was in the last outfit — skip this slot for variety
+        console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | all worn last outfit — skipping slot this generation`);
+        // Intentionally omitted from result
+      }
+
+    } else {
+      // Tier 3: required slot, no fresh alternatives — keep full list
+      console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | no fresh alternatives — keeping full list`);
+      result[slot] = candidates;
+    }
+  }
+
+  return result;
+}
+
 /** Builds weatherRules from a temperature + description pair. */
 function computeWeatherRules(weather: WeatherData | null): WeatherRules {
   if (!weather) {
@@ -228,6 +311,7 @@ export function resolveSlots(
   weather: WeatherData | null,
   occasion: string,
   mandatoryAnchor?: ClothingItem,
+  recentOutfitItemIds?: string[][],
 ): SlotResult {
   const cat = (item: ClothingItem) => (item.category || '').toLowerCase();
 
@@ -342,6 +426,14 @@ export function resolveSlots(
     candidatesBySlot.accessory = accessories;
   }
 
+  // ── Recency filter (before colour-ranking) ───────────────────────────────────
+  // Remove recently-worn items from each slot before the colour-rank slice so the
+  // ranking window (MAX_CANDIDATES_PER_SLOT = 5) draws from fresh items, not worn ones.
+  // Without this, the same colour-best item re-appears at #1 every generation.
+  const candidatesForRanking = (recentOutfitItemIds && recentOutfitItemIds.length > 0)
+    ? filterCandidatesByRecency(candidatesBySlot, recentOutfitItemIds, mandatoryAnchor?.id)
+    : candidatesBySlot;
+
   // ── Colour-rank each slot's candidates ───────────────────────────────────────
   // Strategy A (mandatory items exist): rank each slot against weather-forced anchor(s)
   //   e.g. if the puffer is mandatory, rank all other slots relative to it.
@@ -353,7 +445,7 @@ export function resolveSlots(
   let colourStrategy: string | undefined;
 
   if (mandatoryItems.length > 0) {
-    for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+    for (const [slot, candidates] of Object.entries(candidatesForRanking)) {
       const anchors = mandatoryItems.filter(
         m => categoryToSlotKey((m.category || '').toLowerCase()) !== slot
       );
@@ -364,7 +456,7 @@ export function resolveSlots(
     const CORE_SLOTS = ['top', 'bottom', 'shoes'];
     const coreForRanking: Record<string, ClothingItem[]> = {};
     for (const s of CORE_SLOTS) {
-      if (candidatesBySlot[s]?.length > 0) coreForRanking[s] = candidatesBySlot[s];
+      if (candidatesForRanking[s]?.length > 0) coreForRanking[s] = candidatesForRanking[s];
     }
 
     const topCombos = rankCombinations(coreForRanking, 3, 1);
@@ -373,7 +465,7 @@ export function resolveSlots(
       const bestItems = topCombos[0].items;
       colourStrategy = inferColourStrategy(bestItems);
       // Rank each slot using the other core slots' best items as colour anchors
-      for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+      for (const [slot, candidates] of Object.entries(candidatesForRanking)) {
         const crossAnchors = bestItems.filter(
           i => categoryToSlotKey((i.category || '').toLowerCase()) !== slot
         );
@@ -381,7 +473,7 @@ export function resolveSlots(
       }
     } else {
       // Sparse wardrobe (missing core slots) — preserve original order
-      for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
+      for (const [slot, candidates] of Object.entries(candidatesForRanking)) {
         ranked[slot] = candidates.slice(0, MAX_CANDIDATES_PER_SLOT);
       }
     }

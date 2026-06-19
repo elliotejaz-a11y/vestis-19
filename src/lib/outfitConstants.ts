@@ -20,7 +20,7 @@ export const COLOUR_STORY_SURPRISE = 'surprise';
  * HOT_TEMP:  above this, strip heavy outerwear from candidates.
  */
 export const WARM_TEMP = 19;
-export const COLD_TEMP = 10;
+export const COLD_TEMP = 12;
 export const HOT_TEMP = 25;
 
 // ── Anchor pre-selection constants ───────────────────────────────────────────

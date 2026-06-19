@@ -55,74 +55,6 @@ function formatSlotCandidates(
   return `${label} (pick 1):\n${lines.join('\n')}`;
 }
 
-/** Maps a clothing category to the slot key used in candidatesBySlot. */
-function categoryToSlotKey(cat: string): string {
-  const normalized = (cat || '').toLowerCase();
-  const MAP: Record<string, string> = {
-    tops: 'top', dresses: 'top', bottoms: 'bottom',
-    jumpers: 'jumper', hats: 'hat', accessories: 'accessory',
-  };
-  return MAP[normalized] ?? normalized;
-}
-
-const SLOT_ORDER = ['top', 'jumper', 'outerwear', 'bottom', 'shoes', 'hat', 'accessory'];
-
-/**
- * Builds the per-slot rotation instruction block injected into the AI prompt.
- * Maps recently-worn item IDs to the slots they belong to (using the current
- * candidate pool as the source of truth for name + slot), then produces a
- * concise hard rule that tells the AI exactly which item names to avoid per slot.
- */
-function buildSlotRotationSection(
-  mandatoryItems: ClothingItem[],
-  candidatesBySlot: Record<string, ClothingItem[]>,
-  recentOutfitItemIds: string[][],
-): string | null {
-  if (!recentOutfitItemIds || recentOutfitItemIds.length === 0) return null;
-
-  // Build id → { name, slot } from every item the AI can see
-  const idInfo = new Map<string, { name: string; slot: string }>();
-  for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
-    for (const item of candidates) {
-      idInfo.set(item.id, { name: item.name.slice(0, 40), slot });
-    }
-  }
-  for (const item of mandatoryItems) {
-    idInfo.set(item.id, { name: item.name.slice(0, 40), slot: categoryToSlotKey(item.category) });
-  }
-
-  // Collect all recently-worn IDs, group by slot
-  const recentIds = new Set(recentOutfitItemIds.flat());
-  const avoidBySlot = new Map<string, string[]>();
-  for (const id of recentIds) {
-    const info = idInfo.get(id);
-    if (!info) continue; // item not in current candidate pool — irrelevant
-    const arr = avoidBySlot.get(info.slot) ?? [];
-    if (!arr.includes(info.name)) arr.push(info.name);
-    avoidBySlot.set(info.slot, arr);
-  }
-
-  if (avoidBySlot.size === 0) return null;
-
-  const lines = SLOT_ORDER
-    .filter(slot => avoidBySlot.has(slot))
-    .map(slot => {
-      const names = avoidBySlot.get(slot)!;
-      const totalCandidates = (candidatesBySlot[slot] ?? []).length;
-      const hasAlternative = totalCandidates > names.length;
-      const label = slot.charAt(0).toUpperCase() + slot.slice(1);
-      const suffix = hasAlternative ? '' : ' (only option — may reuse)';
-      return `- ${label}: avoid ${names.join(', ')}${suffix}`;
-    });
-
-  if (lines.length === 0) return null;
-
-  return [
-    'WARDROBE ROTATION (HARD RULE): These items appeared in recent outfits. You MUST pick a different item for every slot where an alternative exists in the candidate list below.',
-    ...lines,
-  ].join('\n');
-}
-
 /** Builds the MANDATORY ANCHOR block placed at the top of the AI prompt. */
 function buildMandatoryAnchorBlock(anchor: ClothingItem): string {
   const fabric = (anchor.fabric || '').trim();
@@ -200,13 +132,13 @@ export function buildAIPrompt(
 ): string {
   const { mandatoryItems, candidatesBySlot, weatherRules } = slotResult;
 
-  // Build recency counts (how many of the last 5 outfits each item appeared in).
+  // Build recency counts for ⚠️/🚫 worn markers on individual items.
+  // These markers serve as a backstop for slots where fewer than 3 fresh alternatives
+  // existed and recently-worn items could not be filtered out entirely.
   const recentIdCounts = new Map<string, number>();
-  const avoidanceLines: string[] = [];
   if (recentOutfitItemIds) {
-    recentOutfitItemIds.slice(0, 5).forEach((idSet, i) => {
+    recentOutfitItemIds.slice(0, 5).forEach(idSet => {
       if (!idSet || idSet.length === 0) return;
-      avoidanceLines.push(`- Outfit ${i + 1}: [${idSet.join(', ')}]`);
       new Set(idSet).forEach(id => {
         recentIdCounts.set(id, (recentIdCounts.get(id) || 0) + 1);
       });
@@ -214,7 +146,6 @@ export function buildAIPrompt(
   }
 
   const occasionNote = buildOccasionNote(occasion);
-  const slotRotationSection = buildSlotRotationSection(mandatoryItems, candidatesBySlot, recentOutfitItemIds ?? []);
   const hatAvoidanceNote = buildHatAvoidanceNote(candidatesBySlot['hat'] ?? [], recentOutfitItemIds ?? []);
 
   const header = [
@@ -223,16 +154,12 @@ export function buildAIPrompt(
     occasionNote,
     `WEATHER: ${weatherSummary(weather, weatherRules)}`,
     userStyle ? `USER STYLE (secondary context — occasion and weather take priority): ${userStyle}` : null,
-    slotRotationSection,
     hatAvoidanceNote,
     colourStory && colourStory !== COLOUR_STORY_SURPRISE
       ? `COLOUR PALETTE REQUESTED: ${colourStory.replace(/-/g, ' ')}. Rank candidates accordingly — pick items that best fulfil this palette.`
       : slotResult.colourStrategy
       ? `COLOUR APPROACH: The candidates are pre-ranked for a ${slotResult.colourStrategy}. Pick the top-ranked item in each slot unless a worn marker (⚠️/🚫) forces a substitution — the ranking was done so the #1 items form a coherent colour story together. Name the final colour story in stylingNote.`
       : 'COLOUR PALETTE: Your choice — pick the approach (tonal, neutral anchor, complementary, monochromatic) that best suits the occasion and name it in stylingNote.',
-    avoidanceLines.length > 0
-      ? `\nRECENT OUTFITS (do NOT recreate any of these item combinations):\n${avoidanceLines.join('\n')}`
-      : null,
   ].filter(Boolean).join('\n');
 
   const rules = [
@@ -255,6 +182,9 @@ export function buildAIPrompt(
 
   const slots = Object.keys(candidatesBySlot);
 
+  // LOW: the "slot" value returned by the AI in guided mode is not used. The edge function maps
+  // items by itemId only; the slot field is discarded and each item's category drives normalization.
+  // The schema description is accurate for the AI's benefit but misleading to a code reader.
   const schema = `Respond ONLY with this JSON (no prose outside it):
 {
   "selectedItems": [
