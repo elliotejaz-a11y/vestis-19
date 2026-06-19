@@ -202,16 +202,30 @@ export function filterItemsByOccasion(wardrobe: ClothingItem[], occasion: string
 }
 
 /**
- * Filters each slot's candidate list so recently-worn items are excluded when
- * enough fresh alternatives exist. Must be called BEFORE colour-ranking so the
- * ranking window (MAX_CANDIDATES_PER_SLOT = 5) draws from fresh items.
+ * Filters each slot's candidate list so recently-worn items are excluded before
+ * colour-ranking. This must run before the MAX_CANDIDATES_PER_SLOT slice so the
+ * ranking window draws from fresh items, not worn-out ones.
  *
- * Rule: if a slot has ≥ MIN_FRESH_TO_FILTER items not worn in the last 5 outfits,
- * remove all recently-worn items from that slot entirely.
- * If fewer fresh items exist, keep the full list — never leave a slot empty.
- * The mandatory anchor slot (top slot with a single pre-selected item) is always exempt.
+ * Three-tier logic per slot:
+ *
+ * 1. Fresh items exist (≥ 1 not worn in last 5 outfits):
+ *    Remove all recently-worn items. AI only sees fresh options. Creates true
+ *    round-robin rotation — with 7 shoes, each shoe appears before any repeats.
+ *
+ * 2. No fresh items, optional slot (hat / accessory):
+ *    a. Items not worn in the LAST outfit → show those (they've had a break).
+ *    b. Everything was in the last outfit → skip the slot entirely this generation.
+ *    This gives natural alternation with small item pools: wear → skip → wear.
+ *
+ * 3. No fresh items, required slot (top, bottom, shoes, outerwear, jumper):
+ *    Keep full list — never leave a required slot empty.
+ *
+ * The mandatory anchor (top slot restricted to a single pre-selected item) is
+ * always exempt; anchor selection already handles its own rotation.
  */
-const MIN_FRESH_TO_FILTER = 3;
+
+// Required slots are never omitted even when all candidates are recently worn.
+const REQUIRED_SLOTS = new Set(['top', 'bottom', 'shoes', 'outerwear', 'jumper']);
 
 export function filterCandidatesByRecency(
   candidatesBySlot: CandidatesBySlot,
@@ -221,23 +235,46 @@ export function filterCandidatesByRecency(
   const recentIds = new Set(recentOutfitItemIds.flat());
   if (recentIds.size === 0) return candidatesBySlot;
 
+  // Items from the immediately previous outfit — finer-grained than the full 5-outfit window.
+  const lastOutfitIds = new Set(recentOutfitItemIds[0] ?? []);
+
   const result: CandidatesBySlot = {};
+
   for (const [slot, candidates] of Object.entries(candidatesBySlot)) {
-    // Mandatory anchor slot: always exempt — anchor selection already handles rotation
+    // Mandatory anchor slot: always exempt
     if (mandatoryAnchorId && slot === 'top' && candidates.length === 1 && candidates[0].id === mandatoryAnchorId) {
       result[slot] = candidates;
       continue;
     }
+
     const fresh = candidates.filter(c => !recentIds.has(c.id));
     const removedCount = candidates.length - fresh.length;
-    if (fresh.length >= MIN_FRESH_TO_FILTER) {
+
+    if (fresh.length >= 1) {
+      // Tier 1: fresh alternatives exist — exclude all worn items
       console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | removed recent: ${removedCount} | remaining: ${fresh.length}`);
       result[slot] = fresh;
+
+    } else if (!REQUIRED_SLOTS.has(slot)) {
+      // Tier 2: optional slot, all candidates worn recently
+      const notInLastOutfit = candidates.filter(c => !lastOutfitIds.has(c.id));
+      if (notInLastOutfit.length > 0) {
+        // Some weren't in the last outfit — prefer those
+        console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | all recent, showing ${notInLastOutfit.length} not worn last outfit`);
+        result[slot] = notInLastOutfit;
+      } else {
+        // Every item was in the last outfit — skip this slot for variety
+        console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | all worn last outfit — skipping slot this generation`);
+        // Intentionally omitted from result
+      }
+
     } else {
-      console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | removed recent: 0 (only ${fresh.length} fresh — keeping full list)`);
+      // Tier 3: required slot, no fresh alternatives — keep full list
+      console.log(`[SlotFilter] Slot: ${slot} | total: ${candidates.length} | no fresh alternatives — keeping full list`);
       result[slot] = candidates;
     }
   }
+
   return result;
 }
 
