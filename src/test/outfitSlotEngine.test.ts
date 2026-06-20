@@ -125,13 +125,14 @@ describe("weather slot rules — temperature thresholds", () => {
     expect(result.candidatesBySlot).toHaveProperty("jumper");
   });
 
-  it("COLD (≤15°C): jumper + outerwear required", () => {
+  it("COLD (≤15°C): outerwear offered, jumper NOT offered (mutually exclusive)", () => {
     const wardrobe = [top1, bottom1, jumper1, outer1, shoe1];
     const result = resolveSlots(wardrobe, { temp: 12, description: "Clear" }, "Casual day out");
     expect(result.weatherRules.needsJumper).toBe(true);
     expect(result.weatherRules.needsOuterwear).toBe(true);
-    expect(result.candidatesBySlot).toHaveProperty("jumper");
+    // Outerwear takes priority on cold days; jumper slot must NOT be offered alongside it.
     expect(result.candidatesBySlot).toHaveProperty("outerwear");
+    expect(result.candidatesBySlot).not.toHaveProperty("jumper");
   });
 
   it("COLD boundary (15°C): puffer required", () => {
