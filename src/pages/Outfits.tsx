@@ -155,6 +155,9 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
     }
   };
 
+  const previous = outfits.filter((o) => o.id !== latestOutfit?.id);
+  const visible = previous.slice(0, outfitPage * OUTFITS_PER_PAGE);
+
   return (
     <div className="min-h-screen" style={{ paddingBottom: '120px' }}>
       <header className="px-5 pt-12 pb-4">
@@ -296,35 +299,31 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
       </div>
 
       {/* Results */}
-      <div className="px-5 space-y-4">
+      <div className="px-5 flex flex-col gap-3">
         {latestOutfit && outfits.some(o => o.id === latestOutfit.id) && (
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Latest Suggestion</p>
             <OutfitCard outfit={latestOutfit} onSave={onSave} onDelete={(id) => { if (id === latestOutfit?.id) setLatestOutfit(null); onDelete?.(id); }} onChat={setChatOutfit} />
           </div>
         )}
-        {outfits.length > 0 && (() => {
-          const previous = outfits.filter((o) => o.id !== latestOutfit?.id);
-          const visible = previous.slice(0, outfitPage * OUTFITS_PER_PAGE);
-          return (
-            <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">Previous Outfits</p>
-              <div className="flex flex-col gap-3">
-                {visible.map((outfit) => (
-                  <OutfitCard key={outfit.id} outfit={outfit} onSave={onSave} onDelete={onDelete} onChat={setChatOutfit} />
-                ))}
-              </div>
-              {visible.length < previous.length && (
-                <button
-                  onClick={() => setOutfitPage((p) => p + 1)}
-                  className="mt-3 w-full py-2.5 rounded-2xl bg-card border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  Show more ({previous.length - visible.length} more)
-                </button>
-              )}
+        {previous.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Previous Outfits</p>
+            <div className="flex flex-col gap-3">
+              {visible.map((outfit) => (
+                <OutfitCard key={outfit.id} outfit={outfit} onSave={onSave} onDelete={onDelete} onChat={setChatOutfit} />
+              ))}
             </div>
-          );
-        })()}
+            {visible.length < previous.length && (
+              <button
+                onClick={() => setOutfitPage((p) => p + 1)}
+                className="mt-3 w-full py-2.5 rounded-2xl bg-card border border-border text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Show more ({previous.length - visible.length} more)
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Generated outfit popup */}
