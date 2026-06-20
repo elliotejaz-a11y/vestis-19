@@ -320,40 +320,23 @@ function enforceOuterwearConstraint(
   selectedItems: ClothingItem[],
   weather?: { temp: number; description: string }
 ): ClothingItem[] {
-  const isJumper = (i: ClothingItem) => (i.category || '').trim().toLowerCase() === 'jumpers';
-  let result = selectedItems;
+  const outerwearItems = selectedItems.filter(isOuterwearCategory);
+  if (outerwearItems.length <= 1) return selectedItems;
 
-  // Step 1: if AI returned multiple outerwear items, keep the most contextually appropriate one.
-  const outerwearItems = result.filter(isOuterwearCategory);
-  if (outerwearItems.length > 1) {
-    const rainy = weather ? RAINY_PATTERN.test(weather.description) : false;
-    const cold = weather ? weather.temp < COLD_TEMP : false;
+  const rainy = weather ? RAINY_PATTERN.test(weather.description) : false;
+  const cold = weather ? weather.temp < COLD_TEMP : false;
 
-    let keep: ClothingItem;
-    if (rainy) keep = outerwearItems.find(isWaterproofOuterwear) ?? outerwearItems[0];
-    else if (cold) keep = outerwearItems.find(isHeavyOuterwear) ?? outerwearItems[0];
-    else keep = outerwearItems[0];
+  let keep: ClothingItem;
+  if (rainy) keep = outerwearItems.find(isWaterproofOuterwear) ?? outerwearItems[0];
+  else if (cold) keep = outerwearItems.find(isHeavyOuterwear) ?? outerwearItems[0];
+  else keep = outerwearItems[0];
 
-    console.warn(
-      `[Vestis] Outerwear constraint: removed ${outerwearItems.length - 1} extra outerwear item(s). Kept: "${keep.name}". ` +
-      `Removed: ${outerwearItems.filter(i => i.id !== keep.id).map(i => `"${i.name}"`).join(', ')}.`
-    );
-    result = result.filter(i => !isOuterwearCategory(i) || i.id === keep.id);
-  }
-
-  // Step 2: outerwear and jumpers are mutually exclusive outer layers — if outerwear is present, drop any jumper.
-  const hasOuterwear = result.some(isOuterwearCategory);
-  if (hasOuterwear) {
-    const jumpers = result.filter(isJumper);
-    if (jumpers.length > 0) {
-      console.warn(
-        `[Vestis] Outerwear+jumper conflict: removed jumper(s) [${jumpers.map(j => `"${j.name}"`).join(', ')}] because outerwear is already present.`
-      );
-      result = result.filter(i => !isJumper(i));
-    }
-  }
-
-  return result;
+  const removed = outerwearItems.length - 1;
+  console.warn(
+    `[Vestis] Outerwear constraint triggered: removed ${removed} outerwear item(s). Kept: "${keep.name}". ` +
+    `Removed: ${outerwearItems.filter(i => i.id !== keep.id).map(i => `"${i.name}"`).join(', ')}.`
+  );
+  return selectedItems.filter(i => !isOuterwearCategory(i) || i.id === keep.id);
 }
 
 /**
