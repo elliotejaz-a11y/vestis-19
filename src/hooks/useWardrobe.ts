@@ -311,6 +311,35 @@ function buildOutfitReasoningFallback({
 }
 
 /**
+ * Safety net: if the AI (or any client-side path) returned more than 1 outerwear item,
+ * keep the most contextually appropriate one and strip the rest.
+ * Selection priority: waterproof on rain, heavy coat on cold, first item otherwise.
+ * Runs on every non-gym outfit, every time — guaranteed backstop independent of prompt compliance.
+ */
+function enforceOuterwearConstraint(
+  selectedItems: ClothingItem[],
+  weather?: { temp: number; description: string }
+): ClothingItem[] {
+  const outerwearItems = selectedItems.filter(isOuterwearCategory);
+  if (outerwearItems.length <= 1) return selectedItems;
+
+  const rainy = weather ? RAINY_PATTERN.test(weather.description) : false;
+  const cold = weather ? weather.temp < COLD_TEMP : false;
+
+  let keep: ClothingItem;
+  if (rainy) keep = outerwearItems.find(isWaterproofOuterwear) ?? outerwearItems[0];
+  else if (cold) keep = outerwearItems.find(isHeavyOuterwear) ?? outerwearItems[0];
+  else keep = outerwearItems[0];
+
+  const removed = outerwearItems.length - 1;
+  console.warn(
+    `[Vestis] Outerwear constraint triggered: removed ${removed} outerwear item(s). Kept: "${keep.name}". ` +
+    `Removed: ${outerwearItems.filter(i => i.id !== keep.id).map(i => `"${i.name}"`).join(', ')}.`
+  );
+  return selectedItems.filter(i => !isOuterwearCategory(i) || i.id === keep.id);
+}
+
+/**
  * Safety net: if the AI returned more than 1 item from the jumper category, keep only
  * the most prominent one (mandatory anchor first, then the first jumper in order) and
  * strip the rest. Outerwear is unaffected. Logs a warning so prompt failures are visible.
@@ -957,6 +986,7 @@ export function useWardrobe() {
         if (!gymRequest && slotResult) {
           selected = ensureTopIsPresent(selected, items, slotResult);
           selected = enforceSingleJumperRule(selected, mandatoryAnchor?.id);
+          selected = enforceOuterwearConstraint(selected, weather);
         }
 
         return {
