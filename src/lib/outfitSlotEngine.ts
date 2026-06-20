@@ -377,12 +377,10 @@ export function resolveSlots(
   // Outerwear (puffers, coats, jackets) is a separate category and has no such limit.
   const anchorIsJumper = mandatoryAnchor != null && (mandatoryAnchor.category || '').toLowerCase() === 'jumpers';
   const { needsJumper, needsOuterwear, needsPuffer, isRaining, noOuterwear } = weatherRules;
-  if (!isGym && !anchorIsJumper && jumpers.length > 0 && (needsJumper || (weather?.temp ?? 20) <= PUFFER_TEMP)) {
-    candidatesBySlot.jumper = jumpers;
-  }
 
-  // Outerwear slot: additive (RULE 4 — layers over shirt [+ jumper])
-  if (!isGym && !noOuterwear && outerwear.length > 0 && needsOuterwear) {
+  // Outerwear slot: additive (RULE 4).
+  // Skipped when the mandatory anchor is already a jumper — outerwear and jumpers are mutually exclusive.
+  if (!isGym && !anchorIsJumper && !noOuterwear && outerwear.length > 0 && needsOuterwear) {
     let outerwearPool = outerwear;
     if (needsPuffer) {
       const puffers = outerwear.filter(isPuffer);
@@ -409,6 +407,15 @@ export function resolveSlots(
     if (!alreadyMandatory) {
       candidatesBySlot.outerwear = outerwearPool;
     }
+  }
+
+  // Jumper slot: only offered when NO outerwear is present — the two are mutually exclusive outer layers.
+  // Evaluated after the outerwear block so we know whether outerwear was added.
+  const outerwearOffered =
+    candidatesBySlot.outerwear != null ||
+    mandatoryItems.some(m => (m.category || '').toLowerCase() === 'outerwear');
+  if (!isGym && !anchorIsJumper && !outerwearOffered && jumpers.length > 0 && needsJumper) {
+    candidatesBySlot.jumper = jumpers;
   }
 
   // Shoes slot: always include if available (RULE 5)
