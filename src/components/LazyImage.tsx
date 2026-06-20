@@ -52,8 +52,10 @@ export const LazyImage = memo(function LazyImage({
   };
 
   return (
-    <div className={cn("relative overflow-hidden", fallbackClassName)}>
-      {/* Blur-up placeholder shown while image loads */}
+    /* Wrapper + img both use absolute inset-0. h-full on iOS Safari does not reliably
+       resolve when the parent's height comes from top/bottom constraints vs an explicit
+       height value — using absolute inset-0 on the img bypasses that entirely. */
+    <div className="absolute inset-0 overflow-hidden">
       {!loaded && (
         <div
           className={cn("absolute inset-0 bg-muted", !errored && "animate-pulse", fallbackClassName)}
@@ -66,14 +68,12 @@ export const LazyImage = memo(function LazyImage({
           }}
         />
       )}
-      {/* Always render the img — native loading="lazy" handles off-screen deferral.
-          Above-fold images start downloading immediately on mount without waiting
-          for an IntersectionObserver cycle. */}
       {!errored && (
         <img
           src={activeSrc}
           alt={alt}
           className={cn(
+            "absolute inset-0",
             className,
             "transition-opacity duration-150 ease-out",
             loaded ? "opacity-100" : "opacity-0",

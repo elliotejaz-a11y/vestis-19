@@ -2,7 +2,6 @@ import { useState, memo } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { Info, X, Loader2, RefreshCw } from "lucide-react";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
-import { LazyImage } from "@/components/LazyImage";
 
 interface Props {
   item: ClothingItem;
@@ -29,11 +28,12 @@ export const ClothingCard = memo(function ClothingCard({ item, onRemove, onDetai
           onClick={() => onDetail?.(item)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onDetail?.(item); } }}
         >
-          <LazyImage
+          <img
             src={item.imageUrl}
             alt={item.name}
             className="w-full h-full object-contain"
-            fallbackClassName={compact ? "aspect-square" : "aspect-[3/4]"}
+            loading="lazy"
+            decoding="async"
           />
           {isProcessing && (
             <div className="absolute inset-0 bg-background/75 backdrop-blur-sm flex flex-col items-center justify-center gap-2">
