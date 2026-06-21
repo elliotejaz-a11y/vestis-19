@@ -19,9 +19,10 @@ interface StyleThisItemPickerProps {
   dataReady: boolean;
   selectedId: string | null;
   onItemSelect: (item: ClothingItem) => void;
+  onDeselect?: () => void;
 }
 
-export function StyleThisItemPicker({ items, dataReady, selectedId, onItemSelect }: StyleThisItemPickerProps) {
+export function StyleThisItemPicker({ items, dataReady, selectedId, onItemSelect, onDeselect }: StyleThisItemPickerProps) {
   const navigate = useNavigate();
 
   if (!dataReady) {
@@ -69,7 +70,7 @@ export function StyleThisItemPicker({ items, dataReady, selectedId, onItemSelect
             key={item.id}
             role="option"
             aria-selected={isSelected}
-            onClick={() => onItemSelect(item)}
+            onClick={() => item.id === selectedId ? onDeselect?.() : onItemSelect(item)}
             className={cn(
               'relative flex-shrink-0 flex flex-col w-[72px] rounded-xl bg-card border shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent',
               isSelected
