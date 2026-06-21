@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Sparkles, Loader2, Cloud, Sun, CloudRain, Snowflake, ArrowLeft, Layers, Lightbulb, MessageCircle, Bookmark, X } from "lucide-react";
+import { StyleThisItemPicker } from "@/components/StyleThisItemPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OutfitCard } from "@/components/OutfitCard";
@@ -26,9 +27,11 @@ interface Props {
   onGenerate: (occasion: string, weather?: { temp: number; description: string }, colourStory?: string) => Promise<Outfit | null>;
   onSave?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onDelete?: (id: string) => void;
+  onStyleThis?: (item: ClothingItem) => void;
+  dataReady?: boolean;
 }
 
-export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props) {
+export function Outfits({ items, outfits, onGenerate, onSave, onDelete, onStyleThis, dataReady }: Props) {
   const { user } = useAuth();
   const [selectedOccasion, setSelectedOccasion] = useState("");
   const [customOccasion, setCustomOccasion] = useState("");
@@ -36,6 +39,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
   const [latestOutfit, setLatestOutfit] = useState<Outfit | null>(null);
   const [popupOutfit, setPopupOutfit] = useState<Outfit | null>(null);
   const [chatOutfit, setChatOutfit] = useState<Outfit | null>(null);
+  const [selectedAnchorItem, setSelectedAnchorItem] = useState<ClothingItem | null>(null);
   const [colourStory, setColourStory] = useState(COLOUR_STORY_SURPRISE);
   const [showColourPicker, setShowColourPicker] = useState(false);
   const [weather, setWeather] = useState<{ temp: number; description: string } | null>(null);
@@ -296,6 +300,39 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         {items.length >= 2 && (!hasShoes || !hasBottoms || !hasTopHalf) && (
           <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 1 {missingRequiredPieces} item to generate an outfit</p>
         )}
+      </div>
+
+      {/* Style a Specific Piece */}
+      <div className="px-5 mb-6">
+        <div className="border-t border-border/30 pt-5 mb-3">
+          <p className="text-sm font-medium text-[#2C2C2C]">Style a specific piece</p>
+          <p className="text-xs text-[#2C2C2C]/60 mt-0.5">
+            Pick an item and we'll build a complete outfit around it
+          </p>
+        </div>
+        <StyleThisItemPicker
+          items={items}
+          dataReady={dataReady ?? false}
+          selectedId={selectedAnchorItem?.id ?? null}
+          onItemSelect={(item) => setSelectedAnchorItem(item)}
+        />
+        <button
+          onClick={() => {
+            if (selectedAnchorItem) {
+              onStyleThis?.(selectedAnchorItem);
+              setSelectedAnchorItem(null);
+            }
+          }}
+          disabled={!selectedAnchorItem}
+          className={cn(
+            'mt-3 w-full py-4 rounded-xl text-base font-medium transition-colors duration-150',
+            selectedAnchorItem
+              ? 'bg-[#8B1A2E] text-white'
+              : 'bg-[#2C2C2C]/10 text-[#2C2C2C]/40 cursor-not-allowed',
+          )}
+        >
+          ✦ Style This Item
+        </button>
       </div>
 
       {/* Results */}

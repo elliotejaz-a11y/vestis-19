@@ -44,6 +44,7 @@ const SocialFeed = lazy(() => import("./pages/SocialFeed"));
 // keeping them out of the main bundle reduces initial parse time.
 const AppTutorial = lazy(() => import("./components/AppTutorial").then(m => ({ default: m.AppTutorial })));
 const MassUploadReviewSheet = lazy(() => import("./components/MassUploadReviewSheet").then(m => ({ default: m.MassUploadReviewSheet })));
+const StyleThisItemSheet = lazy(() => import("./components/StyleThisItemSheet").then(m => ({ default: m.StyleThisItemSheet })));
 
 // Eagerly preload ALL route chunks so every tab is instant on first tap.
 // Runs inside requestIdleCallback so it never competes with first paint.
@@ -155,6 +156,10 @@ function AuthenticatedApp() {
   const { items, outfits, addItem, addItemToState, updateItem, removeItem, generateOutfit, saveOutfit, deleteOutfit, retryBackgroundRemoval, addOutfitToState, dataReady } = useWardrobe();
   const { deletedItems, addToDeleted, removeFromDeleted } = useRecentlyDeleted();
 
+  // Style This Item — shared entry point for both Wardrobe and Outfit Generator tabs
+  const [styleThisTarget, setStyleThisTarget] = useState<ClothingItem | null>(null);
+  const handleOpenStyleThis = useCallback((item: ClothingItem) => setStyleThisTarget(item), []);
+
   // Use a ref so handleSoftRemove is stable across renders while still seeing current items
   const itemsRef = useRef(items);
   itemsRef.current = items;
@@ -195,12 +200,13 @@ function AuthenticatedApp() {
             onSaveOutfit={saveOutfit}
             onDeleteOutfit={deleteOutfit}
             onRetryBackgroundRemoval={retryBackgroundRemoval}
+            onStyleThis={handleOpenStyleThis}
             dataReady={dataReady}
           />
         } />
         <Route path="/add" element={<AddItem onAdd={addItem} />} />
         <Route path="/outfits" element={
-          <Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} />
+          <Outfits items={items} outfits={outfits} onGenerate={generateOutfit} onSave={saveOutfit} onDelete={deleteOutfit} onStyleThis={handleOpenStyleThis} dataReady={dataReady} />
         } />
         <Route path="/builder" element={
           <OutfitBuilder items={items} onSaveOutfit={saveOutfit} onOutfitCreated={addOutfitToState} />
@@ -236,6 +242,14 @@ function AuthenticatedApp() {
       <SearchQueueBadge />
       <Suspense fallback={null}><AppTutorial /></Suspense>
       <Suspense fallback={null}><MassUploadReviewSheet /></Suspense>
+      <Suspense fallback={null}>
+        <StyleThisItemSheet
+          anchorItem={styleThisTarget}
+          wardrobeItems={items}
+          open={!!styleThisTarget}
+          onOpenChange={(o) => { if (!o) setStyleThisTarget(null); }}
+        />
+      </Suspense>
     </div>
     </MassUploadProvider>
     </SearchQueueProvider>

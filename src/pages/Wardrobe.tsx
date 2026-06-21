@@ -2,7 +2,6 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
-import { StyleThisItemSheet } from "@/components/StyleThisItemSheet";
 import { WardrobeAddButton } from "@/components/WardrobeAddButton";
 import { OutfitCard } from "@/components/OutfitCard";
 
@@ -22,6 +21,7 @@ interface Props {
   onSaveOutfit?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onDeleteOutfit?: (id: string) => void;
   onRetryBackgroundRemoval?: (id: string) => void;
+  onStyleThis?: (item: ClothingItem) => void;
   dataReady?: boolean;
 }
 
@@ -31,12 +31,11 @@ const ROW_HEIGHT = 290;
 // Only virtualize for larger wardrobes — small lists aren't worth the overhead
 const VIRTUALIZE_THRESHOLD = 30;
 
-export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval, dataReady }: Props) {
+export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onUpdate, onSaveOutfit, onDeleteOutfit, onRetryBackgroundRemoval, onStyleThis, dataReady }: Props) {
   const [activeTab, setActiveTab] = useState<"outfits" | "clothes">("clothes");
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
-  const [styleThisItem, setStyleThisItem] = useState<ClothingItem | null>(null);
   const [savedOutfitPage, setSavedOutfitPage] = useState(1);
   const SAVED_OUTFITS_PER_PAGE = 20;
   const navigate = useNavigate();
@@ -80,7 +79,6 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
   });
 
   const handleDetail = useCallback((item: ClothingItem) => setDetailItem(item), []);
-  const handleStyleThis = useCallback((item: ClothingItem) => setStyleThisItem(item), []);
 
   return (
     <div className="min-h-screen pb-24">
@@ -234,7 +232,7 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
                         onRemove={onRemove}
                         onDetail={handleDetail}
                         onRetryBackgroundRemoval={onRetryBackgroundRemoval}
-                        onStyleThis={handleStyleThis}
+                        onStyleThis={onStyleThis}
                       />
                     ))}
                   </div>
@@ -251,7 +249,7 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
                   onRemove={onRemove}
                   onDetail={handleDetail}
                   onRetryBackgroundRemoval={onRetryBackgroundRemoval}
-                  onStyleThis={handleStyleThis}
+                  onStyleThis={onStyleThis}
                 />
               ))}
             </div>
@@ -278,12 +276,6 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
         onDuplicated={(newItem) => { setDetailItem(null); onAddDuplicated?.(newItem); }}
       />
 
-      <StyleThisItemSheet
-        anchorItem={styleThisItem}
-        wardrobeItems={items}
-        open={!!styleThisItem}
-        onOpenChange={(o) => { if (!o) setStyleThisItem(null); }}
-      />
     </div>
   );
 }
