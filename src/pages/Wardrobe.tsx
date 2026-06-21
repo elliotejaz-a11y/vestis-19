@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { ClothingCard } from "@/components/ClothingCard";
 import { ClothingDetailSheet } from "@/components/ClothingDetailSheet";
+import { StyleThisItemSheet } from "@/components/StyleThisItemSheet";
 import { WardrobeAddButton } from "@/components/WardrobeAddButton";
 import { OutfitCard } from "@/components/OutfitCard";
 
@@ -35,6 +36,7 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
   const [detailItem, setDetailItem] = useState<ClothingItem | null>(null);
+  const [styleThisItem, setStyleThisItem] = useState<ClothingItem | null>(null);
   const [savedOutfitPage, setSavedOutfitPage] = useState(1);
   const SAVED_OUTFITS_PER_PAGE = 20;
   const navigate = useNavigate();
@@ -78,6 +80,7 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
   });
 
   const handleDetail = useCallback((item: ClothingItem) => setDetailItem(item), []);
+  const handleStyleThis = useCallback((item: ClothingItem) => setStyleThisItem(item), []);
 
   return (
     <div className="min-h-screen pb-24">
@@ -231,6 +234,7 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
                         onRemove={onRemove}
                         onDetail={handleDetail}
                         onRetryBackgroundRemoval={onRetryBackgroundRemoval}
+                        onStyleThis={handleStyleThis}
                       />
                     ))}
                   </div>
@@ -247,6 +251,7 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
                   onRemove={onRemove}
                   onDetail={handleDetail}
                   onRetryBackgroundRemoval={onRetryBackgroundRemoval}
+                  onStyleThis={handleStyleThis}
                 />
               ))}
             </div>
@@ -271,6 +276,13 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
         onSave={onUpdate}
         onRemove={onRemove}
         onDuplicated={(newItem) => { setDetailItem(null); onAddDuplicated?.(newItem); }}
+      />
+
+      <StyleThisItemSheet
+        anchorItem={styleThisItem}
+        wardrobeItems={items}
+        open={!!styleThisItem}
+        onOpenChange={(o) => { if (!o) setStyleThisItem(null); }}
       />
     </div>
   );

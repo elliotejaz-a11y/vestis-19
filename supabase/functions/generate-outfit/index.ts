@@ -641,6 +641,7 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
         items: guidedFinal,
         reasoning: guidedResult.stylingNote || '',
         style_tips: guidedResult.proTip || null,
+        outfit_name: guidedResult.outfitName || null,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
