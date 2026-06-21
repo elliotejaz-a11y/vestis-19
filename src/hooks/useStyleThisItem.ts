@@ -204,9 +204,19 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
 
     const anchorCat = categorise(anchor);
     const isAnchorTop = anchorCat === 'tops' || anchorCat === 'dresses' || anchorCat === 'jumpers';
+    const isAnchorBottom = anchorCat === 'bottoms';
+    const isAnchorShoe = anchorCat === 'shoes';
 
     if (!isAnchorTop && !nonAnchor.some(isTopOrDress)) {
       setError('We couldn\'t find a matching top in your wardrobe. Try adding more tops.');
+      return;
+    }
+    if (!isAnchorBottom && !nonAnchor.some((i) => categorise(i) === 'bottoms')) {
+      setError('Add at least one bottoms item to your wardrobe to complete this look.');
+      return;
+    }
+    if (!isAnchorShoe && !nonAnchor.some((i) => categorise(i) === 'shoes')) {
+      setError('Add at least one pair of shoes to your wardrobe to complete this look.');
       return;
     }
 
@@ -263,7 +273,16 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
         },
       });
 
-      if (fnError) throw fnError;
+      if (fnError) {
+        const msg = fnError instanceof Error ? fnError.message : String(fnError);
+        if (/rate limit/i.test(msg)) throw new Error('rate_limit');
+        if (/credit|payment|402/i.test(msg)) throw new Error('credits');
+        throw fnError;
+      }
+
+      if (!data || typeof data !== 'object') {
+        throw new Error('Empty response from generation service.');
+      }
 
       let selectedItems: ClothingItem[] = (data.items || []) as ClothingItem[];
       if (selectedItems.length === 0) {
@@ -322,8 +341,13 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
 
       setResult(outfitResult);
     } catch (err: unknown) {
-      if (err instanceof Error && err.message === 'missing_top') {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === 'missing_top') {
         setError('We couldn\'t find a matching top in your wardrobe. Try adding more tops.');
+      } else if (msg === 'rate_limit') {
+        setError('Too many requests. Wait a moment and try again.');
+      } else if (msg === 'credits') {
+        setError('Generation service unavailable. Please try again later.');
       } else {
         setError('Something went wrong generating your outfit. Please try again.');
       }
