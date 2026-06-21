@@ -8,6 +8,9 @@ const ALLOWED_ORIGINS = [
   'https://vestis-19.lovable.app',
   'https://id-preview--1830068e-1c44-4713-a94f-43ffd21bb2c7.lovable.app',
   'https://1830068e-1c44-4713-a94f-43ffd21bb2c7.lovableproject.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:8080',
 ];
 
 const GYM_OCCASION_PATTERN = /\b(gym|workout|training|exercise|fitness|run|running|jog|jogging|cardio|lift|lifting|weights?|pilates|yoga|sport|sports)\b/i;
