@@ -62,7 +62,7 @@ function isShoe(item: any): boolean { return normalizeCategory(item?.category) =
 function isBottom(item: any): boolean { return normalizeCategory(item?.category) === 'bottoms'; }
 function isTopHalf(item: any): boolean {
   const cat = normalizeCategory(item?.category);
-  return cat === 'tops' || cat === 'jumpers';
+  return cat === 'tops' || cat === 'jumpers' || cat === 'dresses';
 }
 
 function isGymTop(item: any): boolean {
@@ -557,19 +557,24 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
       let guidedFinal = normalizeSelectionForWeather(guidedNormalized, candidateItems, weather, false);
 
       // ── Mandatory anchor enforcement (two-layer protection) ──────────────────
-      // The client already restricted the top slot to [mandatoryAnchor] in candidateItems
-      // and injected the MANDATORY ANCHOR block into the prompt. This is the edge-function
-      // layer: if the AI ignored those instructions and picked a different top, replace it.
+      // Look up in the FULL items array — anchor may be filtered from candidateItems
+      // by occasion/weather rules but must still appear in the final outfit.
+      // Use category-aware slot matching: replace the item in the anchor's own
+      // category slot rather than blindly replacing the top-half slot.
       if (mandatoryAnchorId) {
-        const anchorItem = candidateItems.find((i: any) => String(i.id) === String(mandatoryAnchorId));
+        const anchorItem = items.find((i: any) => String(i.id) === String(mandatoryAnchorId));
         if (anchorItem) {
-          const topIdx = guidedFinal.findIndex(isTopHalf);
-          if (topIdx >= 0 && String(guidedFinal[topIdx].id) !== String(mandatoryAnchorId)) {
-            guidedFinal = [...guidedFinal];
-            guidedFinal[topIdx] = anchorItem;
-            guidedFinal = dedupeById(guidedFinal);
-          } else if (topIdx < 0) {
-            guidedFinal = dedupeById([anchorItem, ...guidedFinal]);
+          const alreadyPresent = guidedFinal.some((i: any) => String(i.id) === String(mandatoryAnchorId));
+          if (!alreadyPresent) {
+            const anchorCat = normalizeCategory(anchorItem.category);
+            const slotIdx = guidedFinal.findIndex((i: any) => normalizeCategory(i.category) === anchorCat);
+            if (slotIdx >= 0) {
+              guidedFinal = [...guidedFinal];
+              guidedFinal[slotIdx] = anchorItem;
+              guidedFinal = dedupeById(guidedFinal);
+            } else {
+              guidedFinal = dedupeById([anchorItem, ...guidedFinal]);
+            }
           }
         }
       }
@@ -814,17 +819,18 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
     );
 
     // Enforce mandatory anchor in legacy mode (gym and non-gym fallback paths).
+    // Look up in full items array so filtering cannot hide the anchor.
     if (mandatoryAnchorId) {
-      const anchorItem = candidateItems.find((i: any) => String(i.id) === String(mandatoryAnchorId));
+      const anchorItem = items.find((i: any) => String(i.id) === String(mandatoryAnchorId));
       if (anchorItem) {
-        const anchorIsGymTop = isGymRequest ? isGymTop(anchorItem) : isTopHalf(anchorItem);
-        if (anchorIsGymTop) {
-          const predicateFn = isGymRequest ? isGymTop : isTopHalf;
-          const topIdx = parsedSelectedItems.findIndex(predicateFn);
-          if (topIdx >= 0 && String(parsedSelectedItems[topIdx].id) !== String(mandatoryAnchorId)) {
+        const alreadyPresent = parsedSelectedItems.some((i: any) => String(i.id) === String(mandatoryAnchorId));
+        if (!alreadyPresent) {
+          const anchorCat = normalizeCategory(anchorItem.category);
+          const slotIdx = parsedSelectedItems.findIndex((i: any) => normalizeCategory(i.category) === anchorCat);
+          if (slotIdx >= 0) {
             parsedSelectedItems = [...parsedSelectedItems];
-            parsedSelectedItems[topIdx] = anchorItem;
-          } else if (topIdx < 0) {
+            parsedSelectedItems[slotIdx] = anchorItem;
+          } else {
             parsedSelectedItems = [anchorItem, ...parsedSelectedItems];
           }
         }

@@ -341,7 +341,7 @@ export function StyleThisItemSheet({ anchorItem, wardrobeItems, open, onOpenChan
                   </div>
                 )}
 
-                {weather && !geoError && (
+                {weather && (
                   <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-card border border-border/40 w-fit">
                     <span>{CONDITION_EMOJI[weather.condition]}</span>
                     <span className="text-sm font-medium text-foreground">
@@ -350,14 +350,18 @@ export function StyleThisItemSheet({ anchorItem, wardrobeItems, open, onOpenChan
                     <span className="text-xs text-muted-foreground capitalize">
                       · {weather.condition}
                     </span>
-                    <MapPin className="w-3 h-3 text-muted-foreground ml-1" />
+                    {!geoError && <MapPin className="w-3 h-3 text-muted-foreground ml-1" />}
                   </div>
                 )}
 
-                {geoError && (
+                {/* Show manual input whenever weather isn't set and loading is done —
+                    covers both geo denial and silent Open-Meteo API failures. */}
+                {!weather && !weatherLoading && (
                   <div className="space-y-3">
                     <p className="text-xs text-muted-foreground">
-                      Location unavailable — enter weather manually:
+                      {geoError
+                        ? 'Location unavailable — enter weather manually:'
+                        : 'Could not detect weather — enter it manually:'}
                     </p>
                     <ManualWeatherInput
                       value={weather}
