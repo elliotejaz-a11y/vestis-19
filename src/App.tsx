@@ -12,7 +12,7 @@ import { MassUploadProgressBanner } from "@/components/MassUploadProgressBanner"
 import { SearchQueueProvider } from "@/contexts/SearchQueueContext";
 import { SearchQueueBadge } from "@/components/SearchQueueBadge";
 
-import { lazy, Suspense, useCallback, useEffect, useRef } from "react";
+import { lazy, Suspense, useState, useCallback, useEffect, useRef } from "react";
 import { ClothingItem } from "@/types/wardrobe";
 import { ThemeProvider } from "next-themes";
 
