@@ -116,6 +116,20 @@ function isOuterwearCategory(item: any): boolean {
   return normalizeCategory(item?.category) === 'outerwear';
 }
 
+function isJumperCategory(item: any): boolean {
+  return normalizeCategory(item?.category) === 'jumpers';
+}
+
+// Outerwear and jumpers are mutually exclusive — drop the jumper when both are present.
+function resolveLayeringConflict(selected: any[]): any[] {
+  const hasOuterwear = selected.some(isOuterwearCategory);
+  const hasJumper = selected.some(isJumperCategory);
+  if (hasOuterwear && hasJumper) {
+    return selected.filter(i => !isJumperCategory(i));
+  }
+  return selected;
+}
+
 function isHeavyOuterwear(item: any): boolean {
   if (!isOuterwearCategory(item)) return false;
   return HEAVY_OUTERWEAR_PATTERN.test(getItemSearchText(item));
@@ -464,6 +478,7 @@ Key principles:
 2. OCCASION FIT: The outfit must suit the stated occasion — polished for business/formal, relaxed for casual, expressive for a night out.
 3. RECENCY: Always avoid items marked [worn recently — prefer alternatives]. Strongly prefer fresh alternatives.
 4. ONE ITEM PER SLOT: Pick exactly one item from each available slot. Do not skip any slot that has candidates.
+5. LAYERING RULE: Outerwear and jumpers are mutually exclusive — never include both. If outerwear is selected, do NOT select a jumper. If a jumper is selected, do NOT select outerwear.
 
 Return a JSON object with this exact shape:
 {"selectedItems":[{"itemId":"<the id from inside the brackets>","slot":"top|bottom|jumper|outerwear|shoes|hat|accessory"}],"outfitName":"2-4 word name","stylingNote":"1-2 sentences on why it works","proTip":"one actionable tip"}`;
@@ -531,7 +546,8 @@ Return a JSON object with this exact shape:
       );
 
       const guidedNormalized = normalizeSelectionWithRequiredCore(guidedSelected, candidateItems);
-      let guidedFinal = normalizeSelectionForWeather(guidedNormalized, candidateItems, weather, false);
+      const guidedLayered = resolveLayeringConflict(guidedNormalized);
+      let guidedFinal = normalizeSelectionForWeather(guidedLayered, candidateItems, weather, false);
 
       // ── Mandatory anchor enforcement (two-layer protection) ──────────────────
       // Look up in the FULL items array — anchor may be filtered from candidateItems
@@ -786,7 +802,8 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
     const coreNormalized = isGymRequest
       ? normalizeSelectionForGym(parsedSelectedItems, candidateItems)
       : normalizeSelectionWithRequiredCore(parsedSelectedItems, candidateItems);
-    let selectedItems = normalizeSelectionForWeather(coreNormalized, candidateItems, weather, isGymRequest);
+    const layeredNormalized = isGymRequest ? coreNormalized : resolveLayeringConflict(coreNormalized);
+    let selectedItems = normalizeSelectionForWeather(layeredNormalized, candidateItems, weather, isGymRequest);
 
     if (!isGymRequest) {
       // Enforce rotation: swap recently-worn bottoms/shoes for fresh alternatives.
