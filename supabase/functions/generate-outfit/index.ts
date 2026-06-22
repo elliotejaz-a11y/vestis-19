@@ -12,6 +12,8 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:8080',
 ];
+// Match any Vercel preview URL for this project — unique per-deploy URLs can't be pre-listed
+const VERCEL_PREVIEW_PATTERN = /^https:\/\/vestis-19-vrcl[^.]*\.vercel\.app$/;
 
 const GYM_OCCASION_PATTERN = /\b(gym|workout|training|exercise|fitness|run|running|jog|jogging|cardio|lift|lifting|weights?|pilates|yoga|sport|sports)\b/i;
 const FORMAL_OCCASION_PATTERN = /\b(wedding|gala|black[-\s]?tie|formal|cocktail|funeral|opera)\b/i;
@@ -35,7 +37,8 @@ const RAINY_PATTERN = /\b(rain|rainy|drizzle|shower|showers|wet|precipitation|st
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const isAllowed = ALLOWED_ORIGINS.includes(origin) || VERCEL_PREVIEW_PATTERN.test(origin);
+  const allowedOrigin = isAllowed ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
