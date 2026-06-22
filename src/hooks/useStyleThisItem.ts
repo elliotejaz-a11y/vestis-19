@@ -274,10 +274,19 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
       });
 
       if (fnError) {
-        const msg = fnError instanceof Error ? fnError.message : String(fnError);
+        // Extract actual error body from FunctionsHttpError context
+        let bodyMsg = '';
+        try {
+          const ctx = (fnError as { context?: Response }).context;
+          if (ctx) {
+            const bodyJson = await ctx.clone().json().catch(() => null);
+            bodyMsg = bodyJson?.error || bodyJson?.message || '';
+          }
+        } catch { /* ignore */ }
+        const msg = bodyMsg || (fnError instanceof Error ? fnError.message : String(fnError));
         if (/rate limit/i.test(msg)) throw new Error('rate_limit');
         if (/credit|payment|402/i.test(msg)) throw new Error('credits');
-        throw fnError;
+        throw new Error(msg);
       }
 
       if (!data || typeof data !== 'object') {
@@ -349,7 +358,8 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
       } else if (msg === 'credits') {
         setError('Generation service unavailable. Please try again later.');
       } else {
-        setError('Something went wrong generating your outfit. Please try again.');
+        // Show actual error temporarily for diagnosis — replace with generic message once fixed
+        setError(msg || 'Something went wrong generating your outfit. Please try again.');
       }
     } finally {
       setIsGenerating(false);
