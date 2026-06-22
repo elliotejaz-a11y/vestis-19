@@ -460,69 +460,52 @@ Deno.serve(async (req) => {
       const guidedSystemPrompt = `You are a senior personal fashion stylist with a designer's eye for colour and proportion. Select the best outfit from the provided candidates.
 
 Key principles:
-1. COLOUR COHERENCE: The candidate list in each slot is pre-ranked — the #1 item is the best colour match with the other slots. Follow the stated colour approach. Pick items that form a coherent colour story together.
+1. COLOUR COHERENCE: The candidate list in each slot is pre-ranked — the #1 item is the best colour match with the other slots. Pick items that form a coherent colour story together.
 2. OCCASION FIT: The outfit must suit the stated occasion — polished for business/formal, relaxed for casual, expressive for a night out.
 3. RECENCY: Always avoid items marked [worn recently — prefer alternatives]. Strongly prefer fresh alternatives.
 4. ONE ITEM PER SLOT: Pick exactly one item from each available slot. Do not skip any slot that has candidates.
 
-Respond with ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON:
-{"selectedItems":[{"itemId":"<id from brackets>","slot":"top|bottom|jumper|outerwear|shoes|hat|accessory"}],"outfitName":"2-4 word name","stylingNote":"1-2 sentences on why it works","proTip":"one actionable tip"}`;
+Return a JSON object with this exact shape:
+{"selectedItems":[{"itemId":"<the id from inside the brackets>","slot":"top|bottom|jumper|outerwear|shoes|hat|accessory"}],"outfitName":"2-4 word name","stylingNote":"1-2 sentences on why it works","proTip":"one actionable tip"}`;
 
-      const guidedResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${GEMINI_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: guidedSystemPrompt },
-            { role: 'user', content: preBuiltPrompt },
-          ],
-          max_completion_tokens: 800,
-          response_format: { type: 'json_object' },
-        }),
-      });
+      // Use native Gemini API — guarantees valid JSON via responseMimeType
+      const guidedResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: guidedSystemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text: preBuiltPrompt }] }],
+            generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 800 },
+          }),
+        }
+      );
 
       if (!guidedResponse.ok) {
+        const text = await guidedResponse.text();
+        console.error('Gemini guided error:', guidedResponse.status, text);
         if (guidedResponse.status === 429) {
           return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
             status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        if (guidedResponse.status === 402) {
-          return new Response(JSON.stringify({ error: 'AI usage limit reached. Please add credits.' }), {
-            status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        const text = await guidedResponse.text();
-        console.error('AI gateway error (guided):', guidedResponse.status, text);
         throw new Error(`AI gateway error: ${guidedResponse.status}`);
       }
 
       const guidedAiData = await guidedResponse.json();
-      const guidedContent = guidedAiData.choices?.[0]?.message?.content;
-      console.log('Guided raw content:', String(guidedContent ?? '').slice(0, 300));
+      const guidedText = guidedAiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
       let guidedResult: any;
-      if (guidedContent) {
-        // Strip markdown fences, then try to extract the first {...} block
-        const stripped = String(guidedContent)
-          .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
-        const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+      if (guidedText) {
         try {
-          guidedResult = JSON.parse(jsonMatch ? jsonMatch[0] : stripped);
+          guidedResult = JSON.parse(guidedText);
         } catch {
-          // Last-ditch: regex extract itemIds from malformed JSON
-          const idMatches = [...String(guidedContent).matchAll(/"itemId"\s*:\s*"([^"]+)"/g)].map((m: any) => m[1]);
-          if (idMatches.length === 0) {
-            console.error('Unparseable guided content:', String(guidedContent).slice(0, 500));
-            throw new Error('Could not parse guided response');
-          }
-          guidedResult = {
-            selectedItems: idMatches.map((id: string) => ({ itemId: id, slot: 'unknown' })),
-            outfitName: 'Today\'s Pick',
-            stylingNote: '',
-            proTip: null,
-          };
+          // responseMimeType should guarantee valid JSON, but strip fences just in case
+          const stripped = String(guidedText)
+            .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
+          const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+          guidedResult = JSON.parse(jsonMatch ? jsonMatch[0] : stripped);
         }
       } else {
         console.error('Guided response structure:', JSON.stringify(guidedAiData).slice(0, 500));
@@ -730,46 +713,34 @@ ${wardrobeSummary}
 
 Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items (gym top + gym bottom + closed trainer).' : 'Return 3–5 items that genuinely work together.'}`;
 
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${GEMINI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        max_completion_tokens: 4096,
-        response_format: { type: 'json_object' },
-      }),
-    });
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 4096 },
+        }),
+      }
+    );
 
     if (!response.ok) {
+      const text = await response.text();
+      console.error('Gemini legacy error:', response.status, text);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
           status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI usage limit reached. Please add credits.' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      const text = await response.text();
-      console.error('AI gateway error:', response.status, text);
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
     const aiData = await response.json();
-    const rawContent = aiData.choices?.[0]?.message?.content;
+    const rawContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!rawContent) throw new Error('Empty response from AI');
-    const stripped = String(rawContent)
-      .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
-    const jsonBlock = stripped.match(/\{[\s\S]*\}/);
-    const result = JSON.parse(jsonBlock ? jsonBlock[0] : stripped);
+    const result = JSON.parse(rawContent);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
     let parsedSelectedItems = limitToOnePerCategory(
