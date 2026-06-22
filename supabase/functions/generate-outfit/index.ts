@@ -509,7 +509,7 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
               },
             },
           ],
-          tool_choice: { type: 'function', function: { name: 'create_outfit' } },
+          tool_choice: 'required',
         }),
       });
 
@@ -530,22 +530,35 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
       }
 
       const guidedAiData = await guidedResponse.json();
-      const guidedToolCall = guidedAiData.choices?.[0]?.message?.tool_calls?.[0];
-      if (!guidedToolCall) throw new Error('No tool call in guided response');
+      const guidedChoice = guidedAiData.choices?.[0]?.message;
+      const guidedToolCall = guidedChoice?.tool_calls?.[0];
 
       let guidedResult: any;
-      try {
-        guidedResult = JSON.parse(guidedToolCall.function.arguments);
-      } catch {
-        // Fallback Level 1: malformed JSON — regex extraction of itemIds
-        const raw = guidedToolCall.function.arguments || '';
-        const idMatches = [...raw.matchAll(/"itemId"\s*:\s*"([^"]+)"/g)].map((m: any) => m[1]);
-        guidedResult = {
-          selectedItems: idMatches.map((id: string) => ({ itemId: id, slot: 'unknown' })),
-          outfitName: 'Today\'s Pick',
-          stylingNote: '',
-          proTip: null,
-        };
+      if (guidedToolCall) {
+        try {
+          guidedResult = JSON.parse(guidedToolCall.function.arguments);
+        } catch {
+          // Fallback: malformed JSON — regex extraction of itemIds
+          const raw = guidedToolCall.function.arguments || '';
+          const idMatches = [...raw.matchAll(/"itemId"\s*:\s*"([^"]+)"/g)].map((m: any) => m[1]);
+          guidedResult = {
+            selectedItems: idMatches.map((id: string) => ({ itemId: id, slot: 'unknown' })),
+            outfitName: 'Today\'s Pick',
+            stylingNote: '',
+            proTip: null,
+          };
+        }
+      } else if (guidedChoice?.content) {
+        // Gemini returned content instead of tool call — parse JSON from text
+        try {
+          const cleaned = String(guidedChoice.content)
+            .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
+          guidedResult = JSON.parse(cleaned);
+        } catch {
+          throw new Error('No tool call in guided response');
+        }
+      } else {
+        throw new Error('No tool call in guided response');
       }
 
       // Map itemId strings back to actual wardrobe items
@@ -788,7 +801,7 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
             },
           },
         ],
-        tool_choice: { type: 'function', function: { name: 'create_outfit' } },
+        tool_choice: 'required',
       }),
     });
 
