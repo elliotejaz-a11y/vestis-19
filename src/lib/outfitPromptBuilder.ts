@@ -16,7 +16,7 @@ function weatherSummary(weather: WeatherData | null, rules: SlotResult['weatherR
   const parts: string[] = [`${temp}°C, ${description}.`];
   if (noOuterwear) parts.push('Warm — no outerwear needed.');
   if (needsJumper && !needsPuffer) parts.push('Mild — a jumper layer is recommended.');
-  if (needsPuffer) parts.push('Cold — a jumper and puffer/coat are required.');
+  if (needsPuffer) parts.push('Cold — a puffer or coat is required. A jumper may be worn instead of outerwear, but never both together.');
   if (isRaining && !needsPuffer) parts.push('Raining — waterproof outerwear required.');
   if (isRaining && needsPuffer) parts.push('Cold and wet — puffer + waterproof outerwear ideal.');
   return parts.join(' ');
@@ -174,7 +174,7 @@ export function buildAIPrompt(
     weatherRules.needsJumper || (!weatherRules.noOuterwear && !weatherRules.needsPuffer)
       ? '- Jumper slot: include if available and relevant.'
       : null,
-    weatherRules.needsPuffer ? '- Cold weather: jumper + puffer/coat both required if available.' : null,
+    weatherRules.needsPuffer ? '- Cold weather: include outerwear (puffer/coat) OR a jumper — one warm layer, never both.' : null,
     weatherRules.isRaining ? '- Rain: always include waterproof outerwear.' : null,
     weatherRules.noOuterwear ? '- Warm weather: no outerwear unless the occasion requires it.' : null,
     recentIdCounts.size > 0
