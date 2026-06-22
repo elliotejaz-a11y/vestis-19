@@ -24,6 +24,7 @@ interface Props {
   showHeader?: boolean;
   className?: string;
   canvasClassName?: string;
+  anchorItemId?: string;
 }
 
 function sortItems(items: ClothingItem[]) {
@@ -34,7 +35,7 @@ function sortItems(items: ClothingItem[]) {
   });
 }
 
-export function OutfitCollagePreview({ items, showHeader = false, className, canvasClassName }: Props) {
+export function OutfitCollagePreview({ items, showHeader = false, className, canvasClassName, anchorItemId }: Props) {
   const sorted = useMemo(() => sortItems(items), [items]);
   const countByCategory: Record<string, number> = {};
 
@@ -51,6 +52,8 @@ export function OutfitCollagePreview({ items, showHeader = false, className, can
         const y = base.y + (catIndex > 0 ? 4 : 0);
         const scale = catIndex > 0 ? 0.9 : 1;
 
+        const isAnchor = anchorItemId && item.id === anchorItemId;
+
         return (
           <div
             key={item.id}
@@ -64,6 +67,12 @@ export function OutfitCollagePreview({ items, showHeader = false, className, can
               transform: "translate(-50%, -50%)",
             }}
           >
+            {isAnchor && (
+              <div
+                className="absolute inset-0 rounded-xl"
+                style={{ boxShadow: "0 0 0 3px #8B1A2E, 0 0 12px 2px rgba(139,26,46,0.35)" }}
+              />
+            )}
             {item.imageUrl ? (
               <img
                 src={item.imageUrl}
