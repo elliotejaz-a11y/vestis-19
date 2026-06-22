@@ -468,7 +468,9 @@ Key principles:
 Return a JSON object with this exact shape:
 {"selectedItems":[{"itemId":"<the id from inside the brackets>","slot":"top|bottom|jumper|outerwear|shoes|hat|accessory"}],"outfitName":"2-4 word name","stylingNote":"1-2 sentences on why it works","proTip":"one actionable tip"}`;
 
-      // Use native Gemini API — guarantees valid JSON via responseMimeType
+      // Use native Gemini API — guarantees valid JSON via responseMimeType.
+      // thinkingBudget: 0 disables the reasoning pass so parts[0] IS the JSON output,
+      // not thinking prose that would break JSON.parse.
       const guidedResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
@@ -477,7 +479,11 @@ Return a JSON object with this exact shape:
           body: JSON.stringify({
             systemInstruction: { parts: [{ text: guidedSystemPrompt }] },
             contents: [{ role: 'user', parts: [{ text: preBuiltPrompt }] }],
-            generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 800 },
+            generationConfig: {
+              responseMimeType: 'application/json',
+              maxOutputTokens: 1024,
+              thinkingConfig: { thinkingBudget: 0 },
+            },
           }),
         }
       );
@@ -494,14 +500,16 @@ Return a JSON object with this exact shape:
       }
 
       const guidedAiData = await guidedResponse.json();
-      const guidedText = guidedAiData.candidates?.[0]?.content?.parts?.[0]?.text;
+      // Pick the last non-thinking part — with thinkingBudget 0 there's only one part,
+      // but guard against the model still emitting thought parts.
+      const guidedParts: any[] = guidedAiData.candidates?.[0]?.content?.parts ?? [];
+      const guidedText = (guidedParts.filter((p: any) => !p.thought).pop() ?? guidedParts[guidedParts.length - 1])?.text;
 
       let guidedResult: any;
       if (guidedText) {
         try {
           guidedResult = JSON.parse(guidedText);
         } catch {
-          // responseMimeType should guarantee valid JSON, but strip fences just in case
           const stripped = String(guidedText)
             .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
           const jsonMatch = stripped.match(/\{[\s\S]*\}/);
@@ -721,7 +729,11 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: systemPrompt }] },
           contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-          generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 4096 },
+          generationConfig: {
+            responseMimeType: 'application/json',
+            maxOutputTokens: 2048,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }),
       }
     );
@@ -738,7 +750,8 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
     }
 
     const aiData = await response.json();
-    const rawContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    const legacyParts: any[] = aiData.candidates?.[0]?.content?.parts ?? [];
+    const rawContent = (legacyParts.filter((p: any) => !p.thought).pop() ?? legacyParts[legacyParts.length - 1])?.text;
     if (!rawContent) throw new Error('Empty response from AI');
     const result = JSON.parse(rawContent);
 
