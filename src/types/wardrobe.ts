@@ -79,6 +79,58 @@ export const OCCASIONS = [
   "Formal event",
 ];
 
+// ── Style This Item types ────────────────────────────────────────────────────
+
+export type StyleOccasion =
+  | 'everyday_casual'
+  | 'work_office'
+  | 'date_night'
+  | 'formal_event'
+  | 'outdoor_active'
+  | 'weekend_brunch'
+  | 'night_out'
+  | 'travel';
+
+export type StyleDirection =
+  | 'minimal_clean'
+  | 'streetwear_edge'
+  | 'smart_casual'
+  | 'classic_tailored'
+  | 'relaxed_luxe'
+  | 'bold_expressive';
+
+export interface WeatherContext {
+  temperatureCelsius: number;
+  condition: 'sunny' | 'cloudy' | 'rainy' | 'windy' | 'cold' | 'hot';
+  feelsLikeCelsius?: number;
+}
+
+export interface StyleThisItemRequest {
+  anchorItem: ClothingItem;
+  occasion: StyleOccasion;
+  styleDirection: StyleDirection;
+  weather: WeatherContext;
+  wardrobeItems: ClothingItem[];
+}
+
+export interface StyledOutfitResult {
+  outfitId: string;
+  outfitName: string;
+  styleNote: string;
+  items: {
+    anchor: ClothingItem;
+    top?: ClothingItem;
+    bottom?: ClothingItem;
+    outerwear?: ClothingItem;
+    shoes?: ClothingItem;
+    accessories: ClothingItem[];
+  };
+  occasion: StyleOccasion;
+  styleDirection: StyleDirection;
+  weatherContext: WeatherContext;
+  generatedAt: string;
+}
+
 export interface PresetItem {
   name: string;
   category: ClothingCategory;

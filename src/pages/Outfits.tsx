@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { Sparkles, Loader2, Cloud, Sun, CloudRain, Snowflake, ArrowLeft, Layers, Lightbulb, MessageCircle, Bookmark, X } from "lucide-react";
+import { Sparkles, Loader2, Cloud, Sun, CloudRain, Snowflake, ArrowLeft, Layers, Lightbulb, MessageCircle, Bookmark } from "lucide-react";
+import { StyleThisItemPicker } from "@/components/StyleThisItemPicker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OutfitCard } from "@/components/OutfitCard";
@@ -20,22 +21,28 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
+type OutfitGeneratorMode = 'generate' | 'style';
+
 interface Props {
   items: ClothingItem[];
   outfits: Outfit[];
   onGenerate: (occasion: string, weather?: { temp: number; description: string }, colourStory?: string) => Promise<Outfit | null>;
   onSave?: (id: string, saved: boolean, name?: string, description?: string) => void;
   onDelete?: (id: string) => void;
+  onStyleThis?: (item: ClothingItem) => void;
+  dataReady?: boolean;
 }
 
-export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props) {
+export function Outfits({ items, outfits, onGenerate, onSave, onDelete, onStyleThis, dataReady }: Props) {
   const { user } = useAuth();
+  const [activeMode, setActiveMode] = useState<OutfitGeneratorMode>('generate');
   const [selectedOccasion, setSelectedOccasion] = useState("");
   const [customOccasion, setCustomOccasion] = useState("");
   const [generating, setGenerating] = useState(false);
   const [latestOutfit, setLatestOutfit] = useState<Outfit | null>(null);
   const [popupOutfit, setPopupOutfit] = useState<Outfit | null>(null);
   const [chatOutfit, setChatOutfit] = useState<Outfit | null>(null);
+  const [selectedAnchorItem, setSelectedAnchorItem] = useState<ClothingItem | null>(null);
   const [colourStory, setColourStory] = useState(COLOUR_STORY_SURPRISE);
   const [showColourPicker, setShowColourPicker] = useState(false);
   const [weather, setWeather] = useState<{ temp: number; description: string } | null>(null);
@@ -179,7 +186,7 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         </div>
       </header>
 
-      {/* Weather badge — shows current weather and lets user reset the location permission if needed */}
+      {/* Weather badge — always visible in both modes */}
       {weather ? (
         <div className="px-5 pb-3">
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-card border border-border/40 text-xs text-muted-foreground">
@@ -201,104 +208,178 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete }: Props)
         </div>
       )}
 
-      {/* Custom occasion input */}
-      <div className="px-5 pb-3">
-        <Input
-          value={customOccasion}
-          onChange={(e) => { setCustomOccasion(e.target.value); if (e.target.value) setSelectedOccasion(""); }}
-          placeholder="Type your own occasion..."
-          className="rounded-xl bg-card text-sm"
-        />
-      </div>
-
-      {/* Occasion selector */}
+      {/* Mode switcher */}
       <div className="px-5 pb-4">
-        <p className="text-xs font-medium text-muted-foreground mb-2">Or choose one:</p>
-        <div className="flex flex-wrap gap-2">
-          {OCCASIONS.map((occ) => (
-            <button
-              key={occ}
-              onClick={() => { setSelectedOccasion(occ); setCustomOccasion(""); }}
-              className={cn(
-                "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                selectedOccasion === occ && !customOccasion
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-card text-muted-foreground border border-border hover:border-accent/50"
-              )}
-            >
-              {occ}
-            </button>
-          ))}
+        <div
+          className="bg-[#2C2C2C]/[0.08] rounded-full p-1 flex w-full"
+          role="tablist"
+          aria-label="Outfit generator mode"
+        >
+          <button
+            role="tab"
+            aria-selected={activeMode === 'generate'}
+            onClick={() => { setActiveMode('generate'); setSelectedAnchorItem(null); }}
+            className={cn(
+              'flex-1 text-sm py-2 px-4 rounded-full text-center transition-all duration-200',
+              activeMode === 'generate'
+                ? 'bg-white shadow-sm text-[#2C2C2C] font-medium'
+                : 'bg-transparent text-[#2C2C2C]/50 font-normal',
+            )}
+          >
+            Generate Outfit
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeMode === 'style'}
+            onClick={() => setActiveMode('style')}
+            className={cn(
+              'flex-1 text-sm py-2 px-4 rounded-full text-center transition-all duration-200',
+              activeMode === 'style'
+                ? 'bg-white shadow-sm text-[#2C2C2C] font-medium'
+                : 'bg-transparent text-[#2C2C2C]/50 font-normal',
+            )}
+          >
+            Style an Item
+          </button>
         </div>
       </div>
 
-      {/* Colour story picker — optional, collapsed by default */}
-      <div className="px-5 pb-4">
-        <button
-          onClick={() => {
-            setShowColourPicker(v => !v);
-            if (showColourPicker) setColourStory(COLOUR_STORY_SURPRISE);
-          }}
-          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {showColourPicker
-            ? "Hide colour palette"
-            : `Colour palette${colourStory !== COLOUR_STORY_SURPRISE ? `: ${colourStory.replace(/-/g, " ")}` : ""} ›`}
-        </button>
-        {showColourPicker && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {[
-              { id: COLOUR_STORY_SURPRISE, label: "Surprise me" },
-              { id: "neutral-anchor", label: "Neutral anchor" },
-              { id: "tonal", label: "Tonal" },
-              { id: "monochromatic", label: "Monochromatic" },
-              // MEDIUM: "analogous" is sent to the AI as prompt text but inferColourStrategy() in
-              // colourTheory.ts never returns "analogous" — it labels the result "tonal palette" or
-              // "balanced mix" instead. The AI still tries to apply analogous colours via the prompt
-              // instruction, but the post-gen strategy label in the reasoning will mismatch.
-              // Fix: add analogous detection to inferColourStrategy(), or remove this option from the UI.
-              { id: "analogous", label: "Analogous" },
-              { id: "complementary", label: "Complementary" },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                onClick={() => setColourStory(opt.id)}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                  colourStory === opt.id
-                    ? "bg-accent text-accent-foreground"
-                    : "bg-card text-muted-foreground border border-border hover:border-accent/50"
-                )}
-              >
-                {opt.label}
-              </button>
-            ))}
+      {/* Mode A: General outfit generation */}
+      {activeMode === 'generate' && (
+        <>
+          {/* Custom occasion input */}
+          <div className="px-5 pb-3">
+            <Input
+              value={customOccasion}
+              onChange={(e) => { setCustomOccasion(e.target.value); if (e.target.value) setSelectedOccasion(""); }}
+              placeholder="Type your own occasion..."
+              className="rounded-xl bg-card text-sm"
+            />
           </div>
-        )}
-      </div>
 
-      {/* Generate button */}
-      <div className="px-5 mb-6">
-        <Button
-          onClick={handleGenerate}
-          disabled={!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms || !hasTopHalf || generating}
-          className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
-        >
-          {generating ? (
-            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> AI is styling your look...</>
-          ) : (
-            <><Sparkles className="w-4 h-4 mr-2" /> Generate Outfit</>
-          )}
-        </Button>
-        {items.length < 2 && (
-          <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 2 items to your wardrobe first</p>
-        )}
-        {items.length >= 2 && (!hasShoes || !hasBottoms || !hasTopHalf) && (
-          <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 1 {missingRequiredPieces} item to generate an outfit</p>
-        )}
-      </div>
+          {/* Occasion selector */}
+          <div className="px-5 pb-4">
+            <p className="text-xs font-medium text-muted-foreground mb-2">Or choose one:</p>
+            <div className="flex flex-wrap gap-2">
+              {OCCASIONS.map((occ) => (
+                <button
+                  key={occ}
+                  onClick={() => { setSelectedOccasion(occ); setCustomOccasion(""); }}
+                  className={cn(
+                    "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                    selectedOccasion === occ && !customOccasion
+                      ? "bg-accent text-accent-foreground"
+                      : "bg-card text-muted-foreground border border-border hover:border-accent/50"
+                  )}
+                >
+                  {occ}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Results */}
+          {/* Colour story picker — optional, collapsed by default */}
+          <div className="px-5 pb-4">
+            <button
+              onClick={() => {
+                setShowColourPicker(v => !v);
+                if (showColourPicker) setColourStory(COLOUR_STORY_SURPRISE);
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showColourPicker
+                ? "Hide colour palette"
+                : `Colour palette${colourStory !== COLOUR_STORY_SURPRISE ? `: ${colourStory.replace(/-/g, " ")}` : ""} ›`}
+            </button>
+            {showColourPicker && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {[
+                  { id: COLOUR_STORY_SURPRISE, label: "Surprise me" },
+                  { id: "neutral-anchor", label: "Neutral anchor" },
+                  { id: "tonal", label: "Tonal" },
+                  { id: "monochromatic", label: "Monochromatic" },
+                  // MEDIUM: "analogous" is sent to the AI as prompt text but inferColourStrategy() in
+                  // colourTheory.ts never returns "analogous" — it labels the result "tonal palette" or
+                  // "balanced mix" instead. The AI still tries to apply analogous colours via the prompt
+                  // instruction, but the post-gen strategy label in the reasoning will mismatch.
+                  // Fix: add analogous detection to inferColourStrategy(), or remove this option from the UI.
+                  { id: "analogous", label: "Analogous" },
+                  { id: "complementary", label: "Complementary" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setColourStory(opt.id)}
+                    className={cn(
+                      "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                      colourStory === opt.id
+                        ? "bg-accent text-accent-foreground"
+                        : "bg-card text-muted-foreground border border-border hover:border-accent/50"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Generate button */}
+          <div className="px-5 mb-6">
+            <Button
+              onClick={handleGenerate}
+              disabled={!activeOccasion || items.length < 2 || !hasShoes || !hasBottoms || !hasTopHalf || generating}
+              className="w-full h-12 rounded-2xl bg-accent text-accent-foreground font-semibold text-sm hover:bg-accent/90"
+            >
+              {generating ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> AI is styling your look...</>
+              ) : (
+                <><Sparkles className="w-4 h-4 mr-2" /> Generate Outfit</>
+              )}
+            </Button>
+            {items.length < 2 && (
+              <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 2 items to your wardrobe first</p>
+            )}
+            {items.length >= 2 && (!hasShoes || !hasBottoms || !hasTopHalf) && (
+              <p className="text-[11px] text-muted-foreground text-center mt-2">Add at least 1 {missingRequiredPieces} item to generate an outfit</p>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Mode B: Style an Item */}
+      {activeMode === 'style' && (
+        <div className="px-5 mb-6 space-y-4">
+          <p className="text-sm text-[#2C2C2C]/60">
+            Select a piece from your wardrobe and we'll build a complete outfit around it.
+          </p>
+          <StyleThisItemPicker
+            items={items}
+            dataReady={dataReady ?? false}
+            selectedId={selectedAnchorItem?.id ?? null}
+            onItemSelect={(item) => setSelectedAnchorItem(item)}
+            onDeselect={() => setSelectedAnchorItem(null)}
+          />
+          <button
+            onClick={() => {
+              if (selectedAnchorItem) {
+                onStyleThis?.(selectedAnchorItem);
+                setSelectedAnchorItem(null);
+              }
+            }}
+            disabled={!selectedAnchorItem}
+            className={cn(
+              'w-full py-4 rounded-xl text-base font-medium transition-colors duration-150',
+              selectedAnchorItem
+                ? 'bg-[#8B1A2E] text-white'
+                : 'bg-[#2C2C2C]/10 text-[#2C2C2C]/40 cursor-not-allowed',
+            )}
+          >
+            ✦ Style This Item
+          </button>
+        </div>
+      )}
+
+      {/* Results — always visible regardless of active mode */}
       <div className="px-5 flex flex-col gap-3">
         {latestOutfit && outfits.some(o => o.id === latestOutfit.id) && (
           <div>

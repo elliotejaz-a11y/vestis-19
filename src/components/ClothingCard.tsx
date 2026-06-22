@@ -1,6 +1,6 @@
 import { useState, memo } from "react";
 import { ClothingItem } from "@/types/wardrobe";
-import { Info, X, Loader2, RefreshCw } from "lucide-react";
+import { Info, X, Loader2, RefreshCw, Sparkles } from "lucide-react";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 
 interface Props {
@@ -8,10 +8,11 @@ interface Props {
   onRemove?: (id: string) => void;
   onDetail?: (item: ClothingItem) => void;
   onRetryBackgroundRemoval?: (id: string) => void;
+  onStyleThis?: (item: ClothingItem) => void;
   compact?: boolean;
 }
 
-export const ClothingCard = memo(function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemoval, compact }: Props) {
+export const ClothingCard = memo(function ClothingCard({ item, onRemove, onDetail, onRetryBackgroundRemoval, onStyleThis, compact }: Props) {
   const [showDelete, setShowDelete] = useState(false);
   const isProcessing = item.imageStatus === "processing";
   const isFailed = item.imageStatus === "failed";
@@ -62,6 +63,15 @@ export const ClothingCard = memo(function ClothingCard({ item, onRemove, onDetai
           <p className="text-[10px] text-muted-foreground capitalize">{item.category} · {item.color}</p>
         </div>
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          {onStyleThis && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onStyleThis(item); }}
+              className="w-6 h-6 rounded-full bg-accent/90 backdrop-blur flex items-center justify-center"
+              title="Style this item"
+            >
+              <Sparkles className="w-3 h-3 text-accent-foreground" />
+            </button>
+          )}
           {isReady && onRetryBackgroundRemoval && (
             <button
               onClick={(e) => { e.stopPropagation(); onRetryBackgroundRemoval(item.id); }}

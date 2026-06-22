@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = [
@@ -8,7 +7,12 @@ const ALLOWED_ORIGINS = [
   'https://vestis-19.lovable.app',
   'https://id-preview--1830068e-1c44-4713-a94f-43ffd21bb2c7.lovable.app',
   'https://1830068e-1c44-4713-a94f-43ffd21bb2c7.lovableproject.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:8080',
 ];
+// Match any Vercel preview URL for this project — unique per-deploy URLs can't be pre-listed
+const VERCEL_PREVIEW_PATTERN = /^https:\/\/vestis-19-vrcl[^.]*\.vercel\.app$/;
 
 const GYM_OCCASION_PATTERN = /\b(gym|workout|training|exercise|fitness|run|running|jog|jogging|cardio|lift|lifting|weights?|pilates|yoga|sport|sports)\b/i;
 const FORMAL_OCCASION_PATTERN = /\b(wedding|gala|black[-\s]?tie|formal|cocktail|funeral|opera)\b/i;
@@ -32,7 +36,8 @@ const RAINY_PATTERN = /\b(rain|rainy|drizzle|shower|showers|wet|precipitation|st
 
 function getCorsHeaders(req: Request) {
   const origin = req.headers.get('Origin') || '';
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  const isAllowed = ALLOWED_ORIGINS.includes(origin) || VERCEL_PREVIEW_PATTERN.test(origin);
+  const allowedOrigin = isAllowed ? origin : ALLOWED_ORIGINS[0];
   return {
     'Access-Control-Allow-Origin': allowedOrigin,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
@@ -62,7 +67,7 @@ function isShoe(item: any): boolean { return normalizeCategory(item?.category) =
 function isBottom(item: any): boolean { return normalizeCategory(item?.category) === 'bottoms'; }
 function isTopHalf(item: any): boolean {
   const cat = normalizeCategory(item?.category);
-  return cat === 'tops' || cat === 'jumpers';
+  return cat === 'tops' || cat === 'jumpers' || cat === 'dresses';
 }
 
 function isGymTop(item: any): boolean {
@@ -111,6 +116,20 @@ function isOuterwearCategory(item: any): boolean {
   return normalizeCategory(item?.category) === 'outerwear';
 }
 
+function isJumperCategory(item: any): boolean {
+  return normalizeCategory(item?.category) === 'jumpers';
+}
+
+// Outerwear and jumpers are mutually exclusive — drop the jumper when both are present.
+function resolveLayeringConflict(selected: any[]): any[] {
+  const hasOuterwear = selected.some(isOuterwearCategory);
+  const hasJumper = selected.some(isJumperCategory);
+  if (hasOuterwear && hasJumper) {
+    return selected.filter(i => !isJumperCategory(i));
+  }
+  return selected;
+}
+
 function isHeavyOuterwear(item: any): boolean {
   if (!isOuterwearCategory(item)) return false;
   return HEAVY_OUTERWEAR_PATTERN.test(getItemSearchText(item));
@@ -130,13 +149,13 @@ function getWeatherDirective(weather: { temp: number; description: string }, occ
   const hot = weather.temp > HOT_THRESHOLD;
 
   if (cold && rainy) {
-    return `WEATHER: Cold and rainy (${weather.temp}°C, ${weather.description}). Warm fabrics (wool, knit, fleece) are preferred. A waterproof layer is a good choice if one is available, but outerwear is not required.`;
+    return `WEATHER REQUIREMENT (MANDATORY): It is cold and rainy (${weather.temp}°C, ${weather.description}). You MUST include a waterproof outer layer — a rain jacket, waterproof coat, or windbreaker. Also include warm fabrics (wool, knit, fleece). This is required regardless of occasion.`;
   }
   if (cold) {
-    return `WEATHER: Cold (${weather.temp}°C, ${weather.description}). Favour warm fabrics (wool, knit, fleece, padded). Outerwear is a good addition if available, but is not required.`;
+    return `WEATHER REQUIREMENT (MANDATORY): It is cold (${weather.temp}°C, ${weather.description}). You MUST include a jacket, coat, or outerwear. Favour warm fabrics (wool, knit, fleece, padded). This is non-negotiable — an outfit without outerwear is wrong for this weather.`;
   }
   if (rainy) {
-    return `WEATHER: Rainy (${weather.temp}°C, ${weather.description}). A waterproof layer such as a rain jacket or windbreaker is a good choice if available, but outerwear is not required.`;
+    return `WEATHER REQUIREMENT (MANDATORY): It is rainy (${weather.temp}°C, ${weather.description}). You MUST include a waterproof outer layer — rain jacket, windbreaker, or waterproof coat. Do not skip outerwear even if it is mild.`;
   }
   if (hot) {
     const hatNote = !isFormalOccasion(occasion) && !isBusinessOccasion(occasion)
@@ -178,16 +197,42 @@ function normalizeSelectionForWeather(
     return dedupeById(result.filter(item => !isHeavyOuterwear(item)));
   }
 
-  // Rainy: if outerwear was already chosen by AI, prefer a waterproof one
-  if (rainy) {
+  // Cold or rainy: ensure outerwear is present
+  if (cold || rainy) {
     const hasOuterwear = result.some(isOuterwearCategory);
-    if (hasOuterwear && !result.some(isWaterproofOuterwear)) {
-      const waterproofItem = allCandidates.find(item => isOuterwearCategory(item) && isWaterproofOuterwear(item));
-      if (waterproofItem) {
-        const replaceIdx = result.findIndex(item => isOuterwearCategory(item) && !isWaterproofOuterwear(item));
-        if (replaceIdx >= 0) {
-          result = [...result];
-          result[replaceIdx] = waterproofItem;
+    const outerwearPool = allCandidates.filter(isOuterwearCategory);
+
+    if (!hasOuterwear && outerwearPool.length > 0) {
+      // Prefer waterproof if rainy, otherwise first available
+      const inject = rainy
+        ? (outerwearPool.find(isWaterproofOuterwear) ?? outerwearPool[0])
+        : outerwearPool[0];
+
+      // Replace accessories/hats first, then add if room, then replace last item
+      const replaceIdx = result.findIndex(item => {
+        const cat = normalizeCategory(item?.category);
+        return cat === 'accessories' || cat === 'hats';
+      });
+      if (replaceIdx >= 0) {
+        result = [...result];
+        result[replaceIdx] = inject;
+      } else if (result.length < 5) {
+        result = [...result, inject];
+      } else {
+        result = [...result];
+        result[result.length - 1] = inject;
+      }
+    } else if (rainy && hasOuterwear) {
+      // Has outerwear but check it's waterproof
+      const hasWaterproof = result.some(isWaterproofOuterwear);
+      if (!hasWaterproof) {
+        const waterproofItem = allCandidates.find(item => isOuterwearCategory(item) && isWaterproofOuterwear(item));
+        if (waterproofItem) {
+          const replaceIdx = result.findIndex(item => isOuterwearCategory(item) && !isWaterproofOuterwear(item));
+          if (replaceIdx >= 0) {
+            result = [...result];
+            result[replaceIdx] = waterproofItem;
+          }
         }
       }
     }
@@ -225,12 +270,6 @@ function dedupeById(items: any[]): any[] {
     seen.add(id);
     return true;
   });
-}
-
-/** If outerwear is present, remove jumpers — they are mutually exclusive outer layers. */
-function stripJumpersIfOuterwearPresent(items: any[]): any[] {
-  if (!items.some(isOuterwearCategory)) return items;
-  return items.filter(item => normalizeCategory(item?.category) !== 'jumpers');
 }
 
 /** Keep at most one item per category — AI sometimes selects multiple from the same slot. */
@@ -344,7 +383,7 @@ function isDuplicateOutfit(selected: any[], recentOutfitItemIds: any[]): boolean
   });
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req);
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -425,8 +464,8 @@ serve(async (req) => {
       }
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not configured');
 
     // ── GUIDED MODE: preBuiltPrompt provided by client slot engine ───────────
     // The client has already pre-filtered candidates by colour score and built a
@@ -435,92 +474,65 @@ serve(async (req) => {
       const guidedSystemPrompt = `You are a senior personal fashion stylist with a designer's eye for colour and proportion. Select the best outfit from the provided candidates.
 
 Key principles:
-1. COLOUR COHERENCE: The candidate list in each slot is pre-ranked — the #1 item is the best colour match with the other slots. Follow the stated colour approach. Pick items that form a coherent colour story together.
+1. COLOUR COHERENCE: The candidate list in each slot is pre-ranked — the #1 item is the best colour match with the other slots. Pick items that form a coherent colour story together.
 2. OCCASION FIT: The outfit must suit the stated occasion — polished for business/formal, relaxed for casual, expressive for a night out.
-3. RECENCY: Always avoid items marked 🚫 (worn multiple times recently). Strongly prefer fresh alternatives over items marked ⚠️ (worn once recently).
+3. RECENCY: Always avoid items marked [worn recently — prefer alternatives]. Strongly prefer fresh alternatives.
 4. ONE ITEM PER SLOT: Pick exactly one item from each available slot. Do not skip any slot that has candidates.
+5. LAYERING RULE: Outerwear and jumpers are mutually exclusive — never include both. If outerwear is selected, do NOT select a jumper. If a jumper is selected, do NOT select outerwear.
 
-Respond using the create_outfit tool only. Do not add any text outside the tool call.`;
+Return a JSON object with this exact shape:
+{"selectedItems":[{"itemId":"<the id from inside the brackets>","slot":"top|bottom|jumper|outerwear|shoes|hat|accessory"}],"outfitName":"2-4 word name","stylingNote":"1-2 sentences on why it works","proTip":"one actionable tip"}`;
 
-      const guidedResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [
-            { role: 'system', content: guidedSystemPrompt },
-            { role: 'user', content: preBuiltPrompt },
-          ],
-          max_completion_tokens: 800,
-          tools: [
-            {
-              type: 'function',
-              function: {
-                name: 'create_outfit',
-                description: 'Return the selected outfit items and styling notes',
-                parameters: {
-                  type: 'object',
-                  properties: {
-                    selectedItems: {
-                      type: 'array',
-                      description: 'Items chosen for the outfit — one per slot',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          itemId: { type: 'string', description: 'The id from the candidate list (value inside brackets)' },
-                          slot: { type: 'string', description: 'top | bottom | jumper | outerwear | shoes | hat | accessory' },
-                        },
-                        required: ['itemId', 'slot'],
-                        additionalProperties: false,
-                      },
-                    },
-                    outfitName: { type: 'string', description: '2–4 word outfit name' },
-                    stylingNote: { type: 'string', description: '1–2 sentences explaining the colour story and why it works' },
-                    proTip: { type: 'string', description: 'One actionable styling tip' },
-                  },
-                  required: ['selectedItems', 'outfitName', 'stylingNote', 'proTip'],
-                  additionalProperties: false,
-                },
-              },
+      // Use native Gemini API — guarantees valid JSON via responseMimeType.
+      // thinkingBudget: 0 disables the reasoning pass so parts[0] IS the JSON output,
+      // not thinking prose that would break JSON.parse.
+      const guidedResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: guidedSystemPrompt }] },
+            contents: [{ role: 'user', parts: [{ text: preBuiltPrompt }] }],
+            generationConfig: {
+              responseMimeType: 'application/json',
+              maxOutputTokens: 1024,
+              thinkingConfig: { thinkingBudget: 0 },
             },
-          ],
-          tool_choice: { type: 'function', function: { name: 'create_outfit' } },
-        }),
-      });
+          }),
+        }
+      );
 
       if (!guidedResponse.ok) {
+        const text = await guidedResponse.text();
+        console.error('Gemini guided error:', guidedResponse.status, text);
         if (guidedResponse.status === 429) {
           return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
             status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
-        if (guidedResponse.status === 402) {
-          return new Response(JSON.stringify({ error: 'AI usage limit reached. Please add credits.' }), {
-            status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-        const text = await guidedResponse.text();
-        console.error('AI gateway error (guided):', guidedResponse.status, text);
         throw new Error(`AI gateway error: ${guidedResponse.status}`);
       }
 
       const guidedAiData = await guidedResponse.json();
-      const guidedToolCall = guidedAiData.choices?.[0]?.message?.tool_calls?.[0];
-      if (!guidedToolCall) throw new Error('No tool call in guided response');
+      // Pick the last non-thinking part — with thinkingBudget 0 there's only one part,
+      // but guard against the model still emitting thought parts.
+      const guidedParts: any[] = guidedAiData.candidates?.[0]?.content?.parts ?? [];
+      const guidedText = (guidedParts.filter((p: any) => !p.thought).pop() ?? guidedParts[guidedParts.length - 1])?.text;
 
       let guidedResult: any;
-      try {
-        guidedResult = JSON.parse(guidedToolCall.function.arguments);
-      } catch {
-        // Fallback Level 1: malformed JSON — regex extraction of itemIds
-        const raw = guidedToolCall.function.arguments || '';
-        const idMatches = [...raw.matchAll(/"itemId"\s*:\s*"([^"]+)"/g)].map((m: any) => m[1]);
-        guidedResult = {
-          selectedItems: idMatches.map((id: string) => ({ itemId: id, slot: 'unknown' })),
-          outfitName: 'Today\'s Pick',
-          stylingNote: '',
-          proTip: null,
-        };
+      if (guidedText) {
+        try {
+          guidedResult = JSON.parse(guidedText);
+        } catch {
+          const stripped = String(guidedText)
+            .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
+          const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+          guidedResult = JSON.parse(jsonMatch ? jsonMatch[0] : stripped);
+        }
+      } else {
+        console.error('Guided response structure:', JSON.stringify(guidedAiData).slice(0, 500));
+        throw new Error('Empty guided response from AI');
       }
 
       // Map itemId strings back to actual wardrobe items
@@ -533,23 +545,29 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
         weather
       );
 
-      const guidedNormalized = normalizeSelectionWithRequiredCore(stripJumpersIfOuterwearPresent(guidedSelected), candidateItems);
-      let guidedFinal = normalizeSelectionForWeather(guidedNormalized, candidateItems, weather, false);
+      const guidedNormalized = normalizeSelectionWithRequiredCore(guidedSelected, candidateItems);
+      const guidedLayered = resolveLayeringConflict(guidedNormalized);
+      let guidedFinal = normalizeSelectionForWeather(guidedLayered, candidateItems, weather, false);
 
       // ── Mandatory anchor enforcement (two-layer protection) ──────────────────
-      // The client already restricted the top slot to [mandatoryAnchor] in candidateItems
-      // and injected the MANDATORY ANCHOR block into the prompt. This is the edge-function
-      // layer: if the AI ignored those instructions and picked a different top, replace it.
+      // Look up in the FULL items array — anchor may be filtered from candidateItems
+      // by occasion/weather rules but must still appear in the final outfit.
+      // Use category-aware slot matching: replace the item in the anchor's own
+      // category slot rather than blindly replacing the top-half slot.
       if (mandatoryAnchorId) {
-        const anchorItem = candidateItems.find((i: any) => String(i.id) === String(mandatoryAnchorId));
+        const anchorItem = items.find((i: any) => String(i.id) === String(mandatoryAnchorId));
         if (anchorItem) {
-          const topIdx = guidedFinal.findIndex(isTopHalf);
-          if (topIdx >= 0 && String(guidedFinal[topIdx].id) !== String(mandatoryAnchorId)) {
-            guidedFinal = [...guidedFinal];
-            guidedFinal[topIdx] = anchorItem;
-            guidedFinal = dedupeById(guidedFinal);
-          } else if (topIdx < 0) {
-            guidedFinal = dedupeById([anchorItem, ...guidedFinal]);
+          const alreadyPresent = guidedFinal.some((i: any) => String(i.id) === String(mandatoryAnchorId));
+          if (!alreadyPresent) {
+            const anchorCat = normalizeCategory(anchorItem.category);
+            const slotIdx = guidedFinal.findIndex((i: any) => normalizeCategory(i.category) === anchorCat);
+            if (slotIdx >= 0) {
+              guidedFinal = [...guidedFinal];
+              guidedFinal[slotIdx] = anchorItem;
+              guidedFinal = dedupeById(guidedFinal);
+            } else {
+              guidedFinal = dedupeById([anchorItem, ...guidedFinal]);
+            }
           }
         }
       }
@@ -621,6 +639,7 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
         items: guidedFinal,
         reasoning: guidedResult.stylingNote || '',
         style_tips: guidedResult.proTip || null,
+        outfit_name: guidedResult.outfitName || null,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -700,7 +719,10 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
 Once occasion, weather, and colour rules are satisfied, lean towards items that fit the user's stated style. Occasion always takes priority — a minimalist does not wear gym wear to a wedding just because it is minimal.
 
 ## REASONING (shown to user as "WHY THIS WORKS")
-Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.`;
+Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.
+
+Respond with ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON:
+{"selected_indices":[1,3,5],"reasoning":"4-6 sentences...","style_tips":"one tip"}`;
 
     const userPrompt = `Build the best outfit for: "${occasion}"
 Occasion tier: ${occasionTier.tier}
@@ -715,73 +737,39 @@ ${wardrobeSummary}
 
 Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items (gym top + gym bottom + closed trainer).' : 'Return 3–5 items that genuinely work together.'}`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
-        ],
-        max_completion_tokens: 4096,
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'create_outfit',
-              description: 'Create a curated outfit from wardrobe items',
-              parameters: {
-                type: 'object',
-                properties: {
-                  selected_indices: {
-                    type: 'array',
-                    items: { type: 'integer' },
-                    description: '1-based indices of selected wardrobe items',
-                  },
-                  reasoning: {
-                    type: 'string',
-                    description: 'Detailed 4–6 sentence stylist explanation referencing actual items, colours, fabrics, the user\'s skin tone (by name), the weather, and their style. No generic filler.',
-                  },
-                  style_tips: {
-                    type: 'string',
-                    description: 'One quick styling tip for wearing this outfit.',
-                  },
-                },
-                required: ['selected_indices', 'reasoning', 'style_tips'],
-                additionalProperties: false,
-              },
-            },
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            maxOutputTokens: 2048,
+            thinkingConfig: { thinkingBudget: 0 },
           },
-        ],
-        tool_choice: { type: 'function', function: { name: 'create_outfit' } },
-      }),
-    });
+        }),
+      }
+    );
 
     if (!response.ok) {
+      const text = await response.text();
+      console.error('Gemini legacy error:', response.status, text);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
           status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: 'AI usage limit reached. Please add credits.' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      const text = await response.text();
-      console.error('AI gateway error:', response.status, text);
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
     const aiData = await response.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error('No tool call in response');
-
-    const result = JSON.parse(toolCall.function.arguments);
+    const legacyParts: any[] = aiData.candidates?.[0]?.content?.parts ?? [];
+    const rawContent = (legacyParts.filter((p: any) => !p.thought).pop() ?? legacyParts[legacyParts.length - 1])?.text;
+    if (!rawContent) throw new Error('Empty response from AI');
+    const result = JSON.parse(rawContent);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
     let parsedSelectedItems = limitToOnePerCategory(
@@ -793,17 +781,18 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
     );
 
     // Enforce mandatory anchor in legacy mode (gym and non-gym fallback paths).
+    // Look up in full items array so filtering cannot hide the anchor.
     if (mandatoryAnchorId) {
-      const anchorItem = candidateItems.find((i: any) => String(i.id) === String(mandatoryAnchorId));
+      const anchorItem = items.find((i: any) => String(i.id) === String(mandatoryAnchorId));
       if (anchorItem) {
-        const anchorIsGymTop = isGymRequest ? isGymTop(anchorItem) : isTopHalf(anchorItem);
-        if (anchorIsGymTop) {
-          const predicateFn = isGymRequest ? isGymTop : isTopHalf;
-          const topIdx = parsedSelectedItems.findIndex(predicateFn);
-          if (topIdx >= 0 && String(parsedSelectedItems[topIdx].id) !== String(mandatoryAnchorId)) {
+        const alreadyPresent = parsedSelectedItems.some((i: any) => String(i.id) === String(mandatoryAnchorId));
+        if (!alreadyPresent) {
+          const anchorCat = normalizeCategory(anchorItem.category);
+          const slotIdx = parsedSelectedItems.findIndex((i: any) => normalizeCategory(i.category) === anchorCat);
+          if (slotIdx >= 0) {
             parsedSelectedItems = [...parsedSelectedItems];
-            parsedSelectedItems[topIdx] = anchorItem;
-          } else if (topIdx < 0) {
+            parsedSelectedItems[slotIdx] = anchorItem;
+          } else {
             parsedSelectedItems = [anchorItem, ...parsedSelectedItems];
           }
         }
@@ -812,8 +801,9 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
 
     const coreNormalized = isGymRequest
       ? normalizeSelectionForGym(parsedSelectedItems, candidateItems)
-      : normalizeSelectionWithRequiredCore(stripJumpersIfOuterwearPresent(parsedSelectedItems), candidateItems);
-    let selectedItems = normalizeSelectionForWeather(coreNormalized, candidateItems, weather, isGymRequest);
+      : normalizeSelectionWithRequiredCore(parsedSelectedItems, candidateItems);
+    const layeredNormalized = isGymRequest ? coreNormalized : resolveLayeringConflict(coreNormalized);
+    let selectedItems = normalizeSelectionForWeather(layeredNormalized, candidateItems, weather, isGymRequest);
 
     if (!isGymRequest) {
       // Enforce rotation: swap recently-worn bottoms/shoes for fresh alternatives.
