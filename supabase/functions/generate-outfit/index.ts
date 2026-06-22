@@ -705,7 +705,10 @@ Respond with ONLY a valid JSON object — no markdown fences, no explanation, ju
 Once occasion, weather, and colour rules are satisfied, lean towards items that fit the user's stated style. Occasion always takes priority — a minimalist does not wear gym wear to a wedding just because it is minimal.
 
 ## REASONING (shown to user as "WHY THIS WORKS")
-Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.`;
+Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.
+
+Respond with ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON:
+{"selected_indices":[1,3,5],"reasoning":"4-6 sentences...","style_tips":"one tip"}`;
 
     const userPrompt = `Build the best outfit for: "${occasion}"
 Occasion tier: ${occasionTier.tier}
@@ -733,36 +736,6 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
           { role: 'user', content: userPrompt },
         ],
         max_completion_tokens: 4096,
-        tools: [
-          {
-            type: 'function',
-            function: {
-              name: 'create_outfit',
-              description: 'Create a curated outfit from wardrobe items',
-              parameters: {
-                type: 'object',
-                properties: {
-                  selected_indices: {
-                    type: 'array',
-                    items: { type: 'integer' },
-                    description: '1-based indices of selected wardrobe items',
-                  },
-                  reasoning: {
-                    type: 'string',
-                    description: 'Detailed 4–6 sentence stylist explanation referencing actual items, colours, fabrics, the user\'s skin tone (by name), the weather, and their style. No generic filler.',
-                  },
-                  style_tips: {
-                    type: 'string',
-                    description: 'One quick styling tip for wearing this outfit.',
-                  },
-                },
-                required: ['selected_indices', 'reasoning', 'style_tips'],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: 'required',
       }),
     });
 
@@ -783,10 +756,11 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
     }
 
     const aiData = await response.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error('No tool call in response');
-
-    const result = JSON.parse(toolCall.function.arguments);
+    const rawContent = aiData.choices?.[0]?.message?.content;
+    if (!rawContent) throw new Error('Empty response from AI');
+    const cleaned = String(rawContent)
+      .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
+    const result = JSON.parse(cleaned);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
     let parsedSelectedItems = limitToOnePerCategory(
