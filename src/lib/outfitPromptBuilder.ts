@@ -174,13 +174,8 @@ export function buildAIPrompt(
     weatherRules.needsJumper || (!weatherRules.noOuterwear && !weatherRules.needsPuffer)
       ? '- Jumper slot: include if available and relevant.'
       : null,
-<<<<<<< HEAD
-    weatherRules.needsPuffer ? '- Cold weather: jumper + outerwear recommended if available — not required.' : null,
-    weatherRules.isRaining ? '- Rain: waterproof outerwear recommended if available — not required.' : null,
-=======
     weatherRules.needsPuffer ? '- Cold weather: include outerwear (puffer/coat) OR a jumper — one warm layer, never both.' : null,
     weatherRules.isRaining ? '- Rain: always include waterproof outerwear.' : null,
->>>>>>> staging
     weatherRules.noOuterwear ? '- Warm weather: no outerwear unless the occasion requires it.' : null,
     recentIdCounts.size > 0
       ? '- Items marked ⚠️ or 🚫 have been worn recently. Rotate across ALL slots equally — prefer fresh tops, bottoms, shoes, and accessories. No single slot gets priority over another.'
