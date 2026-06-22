@@ -478,6 +478,7 @@ Respond with ONLY a valid JSON object — no markdown fences, no explanation, ju
             { role: 'user', content: preBuiltPrompt },
           ],
           max_completion_tokens: 800,
+          response_format: { type: 'json_object' },
         }),
       });
 
@@ -499,17 +500,23 @@ Respond with ONLY a valid JSON object — no markdown fences, no explanation, ju
 
       const guidedAiData = await guidedResponse.json();
       const guidedContent = guidedAiData.choices?.[0]?.message?.content;
+      console.log('Guided raw content:', String(guidedContent ?? '').slice(0, 300));
 
       let guidedResult: any;
       if (guidedContent) {
+        // Strip markdown fences, then try to extract the first {...} block
+        const stripped = String(guidedContent)
+          .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
+        const jsonMatch = stripped.match(/\{[\s\S]*\}/);
         try {
-          const cleaned = String(guidedContent)
-            .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
-          guidedResult = JSON.parse(cleaned);
+          guidedResult = JSON.parse(jsonMatch ? jsonMatch[0] : stripped);
         } catch {
           // Last-ditch: regex extract itemIds from malformed JSON
           const idMatches = [...String(guidedContent).matchAll(/"itemId"\s*:\s*"([^"]+)"/g)].map((m: any) => m[1]);
-          if (idMatches.length === 0) throw new Error('Could not parse guided response');
+          if (idMatches.length === 0) {
+            console.error('Unparseable guided content:', String(guidedContent).slice(0, 500));
+            throw new Error('Could not parse guided response');
+          }
           guidedResult = {
             selectedItems: idMatches.map((id: string) => ({ itemId: id, slot: 'unknown' })),
             outfitName: 'Today\'s Pick',
@@ -736,6 +743,7 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
           { role: 'user', content: userPrompt },
         ],
         max_completion_tokens: 4096,
+        response_format: { type: 'json_object' },
       }),
     });
 
@@ -758,9 +766,10 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
     const aiData = await response.json();
     const rawContent = aiData.choices?.[0]?.message?.content;
     if (!rawContent) throw new Error('Empty response from AI');
-    const cleaned = String(rawContent)
+    const stripped = String(rawContent)
       .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
-    const result = JSON.parse(cleaned);
+    const jsonBlock = stripped.match(/\{[\s\S]*\}/);
+    const result = JSON.parse(jsonBlock ? jsonBlock[0] : stripped);
 
     const rawSelectedIndices = Array.isArray(result.selected_indices) ? result.selected_indices : [];
     let parsedSelectedItems = limitToOnePerCategory(
