@@ -462,10 +462,11 @@ Deno.serve(async (req) => {
 Key principles:
 1. COLOUR COHERENCE: The candidate list in each slot is pre-ranked — the #1 item is the best colour match with the other slots. Follow the stated colour approach. Pick items that form a coherent colour story together.
 2. OCCASION FIT: The outfit must suit the stated occasion — polished for business/formal, relaxed for casual, expressive for a night out.
-3. RECENCY: Always avoid items marked 🚫 (worn multiple times recently). Strongly prefer fresh alternatives over items marked ⚠️ (worn once recently).
+3. RECENCY: Always avoid items marked [worn recently — prefer alternatives]. Strongly prefer fresh alternatives.
 4. ONE ITEM PER SLOT: Pick exactly one item from each available slot. Do not skip any slot that has candidates.
 
-Respond using the create_outfit tool only. Do not add any text outside the tool call.`;
+Respond with ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON:
+{"selectedItems":[{"itemId":"<id from brackets>","slot":"top|bottom|jumper|outerwear|shoes|hat|accessory"}],"outfitName":"2-4 word name","stylingNote":"1-2 sentences on why it works","proTip":"one actionable tip"}`;
 
       const guidedResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
         method: 'POST',
@@ -477,39 +478,6 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
             { role: 'user', content: preBuiltPrompt },
           ],
           max_completion_tokens: 800,
-          tools: [
-            {
-              type: 'function',
-              function: {
-                name: 'create_outfit',
-                description: 'Return the selected outfit items and styling notes',
-                parameters: {
-                  type: 'object',
-                  properties: {
-                    selectedItems: {
-                      type: 'array',
-                      description: 'Items chosen for the outfit — one per slot',
-                      items: {
-                        type: 'object',
-                        properties: {
-                          itemId: { type: 'string', description: 'The id from the candidate list (value inside brackets)' },
-                          slot: { type: 'string', description: 'top | bottom | jumper | outerwear | shoes | hat | accessory' },
-                        },
-                        required: ['itemId', 'slot'],
-                        additionalProperties: false,
-                      },
-                    },
-                    outfitName: { type: 'string', description: '2–4 word outfit name' },
-                    stylingNote: { type: 'string', description: '1–2 sentences explaining the colour story and why it works' },
-                    proTip: { type: 'string', description: 'One actionable styling tip' },
-                  },
-                  required: ['selectedItems', 'outfitName', 'stylingNote', 'proTip'],
-                  additionalProperties: false,
-                },
-              },
-            },
-          ],
-          tool_choice: 'required',
         }),
       });
 
@@ -530,17 +498,18 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
       }
 
       const guidedAiData = await guidedResponse.json();
-      const guidedChoice = guidedAiData.choices?.[0]?.message;
-      const guidedToolCall = guidedChoice?.tool_calls?.[0];
+      const guidedContent = guidedAiData.choices?.[0]?.message?.content;
 
       let guidedResult: any;
-      if (guidedToolCall) {
+      if (guidedContent) {
         try {
-          guidedResult = JSON.parse(guidedToolCall.function.arguments);
+          const cleaned = String(guidedContent)
+            .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
+          guidedResult = JSON.parse(cleaned);
         } catch {
-          // Fallback: malformed JSON — regex extraction of itemIds
-          const raw = guidedToolCall.function.arguments || '';
-          const idMatches = [...raw.matchAll(/"itemId"\s*:\s*"([^"]+)"/g)].map((m: any) => m[1]);
+          // Last-ditch: regex extract itemIds from malformed JSON
+          const idMatches = [...String(guidedContent).matchAll(/"itemId"\s*:\s*"([^"]+)"/g)].map((m: any) => m[1]);
+          if (idMatches.length === 0) throw new Error('Could not parse guided response');
           guidedResult = {
             selectedItems: idMatches.map((id: string) => ({ itemId: id, slot: 'unknown' })),
             outfitName: 'Today\'s Pick',
@@ -548,17 +517,9 @@ Respond using the create_outfit tool only. Do not add any text outside the tool 
             proTip: null,
           };
         }
-      } else if (guidedChoice?.content) {
-        // Gemini returned content instead of tool call — parse JSON from text
-        try {
-          const cleaned = String(guidedChoice.content)
-            .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
-          guidedResult = JSON.parse(cleaned);
-        } catch {
-          throw new Error('No tool call in guided response');
-        }
       } else {
-        throw new Error('No tool call in guided response');
+        console.error('Guided response structure:', JSON.stringify(guidedAiData).slice(0, 500));
+        throw new Error('Empty guided response from AI');
       }
 
       // Map itemId strings back to actual wardrobe items
