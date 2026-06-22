@@ -1,6 +1,7 @@
 import type { ClothingItem } from "@/types/wardrobe";
 import type { SlotResult, WeatherData } from "@/lib/outfitSlotEngine";
 import { COLOUR_STORY_SURPRISE } from "@/lib/outfitConstants";
+import { getOccasionProfile, TIER_LABELS } from "@/lib/occasionTaxonomy";
 
 const TOKEN_BUDGET = 800;
 // Rough approximation: 4 chars ≈ 1 token
@@ -91,27 +92,28 @@ function buildHatAvoidanceNote(
   return `HAT ROTATION RULE: ${recentNames} was worn in the last 2 outfits. If including a hat, you MUST select ${altNames} instead. Do NOT use ${recentNames}.`;
 }
 
-const FORMAL_RE = /\b(wedding|gala|black[-\s]?tie|formal|cocktail|funeral|opera)\b/i;
-const BUSINESS_RE = /\b(business|interview|meeting|office|work|corporate|conference|presentation)\b/i;
-const BEACH_RE = /\b(beach|pool|swim|holiday|vacation|tropical|summer)\b/i;
-const NIGHT_OUT_RE = /\b(night out|party|club|bar|drinks|going out)\b/i;
-const DATE_RE = /\b(date|dinner|romantic|brunch)\b/i;
-
-/** Returns a short occasion-specific constraint note, or null for casual. */
-function buildOccasionNote(occasion: string): string | null {
-  if (FORMAL_RE.test(occasion)) {
-    return 'OCCASION RULES: No gym wear, activewear, tracksuits, or sports-branded trainers. Clean smart shoes or sneakers are acceptable. Shirts, tailored trousers, blazers, and dresses are strongly preferred.';
+/**
+ * Builds the weather directive with occasion-appropriate weighting.
+ *
+ * weatherWeight from the occasion profile determines framing:
+ *   ≤ 0.35 → occasion dress code dominates; weather is advisory
+ *   0.36–0.69 → balanced; standard directive with no framing
+ *   ≥ 0.70 → weather is primary; adapt layering freely
+ */
+function buildWeatherDirective(
+  weather: WeatherData | null,
+  weatherRules: SlotResult['weatherRules'],
+  weatherWeight: number,
+  tierLabel: string,
+): string {
+  const summary = weatherSummary(weather, weatherRules);
+  if (weatherWeight <= 0.35) {
+    return `WEATHER (advisory — ${tierLabel} dress code takes precedence): ${summary} Adapt layering where possible but maintain ${tierLabel.toLowerCase()} standards.`;
   }
-  if (BUSINESS_RE.test(occasion)) {
-    return 'OCCASION RULES: No gym wear, activewear, or sports-branded athletic shoes. Collared shirts, smart trousers or clean jeans, and leather/smart shoes are preferred.';
+  if (weatherWeight >= 0.7) {
+    return `WEATHER (primary factor — adapt layering freely): ${summary}`;
   }
-  if (BEACH_RE.test(occasion)) {
-    return 'OCCASION RULES: No heavy winter coats or strict formal shoes (oxfords, brogues). Light fabrics, shorts, sandals, and canvas shoes are preferred.';
-  }
-  if (NIGHT_OUT_RE.test(occasion) || DATE_RE.test(occasion)) {
-    return 'OCCASION RULES: No gym-specific activewear (compression tops, performance leggings, dry-fit shirts). Stylish casual or smart-casual items preferred.';
-  }
-  return null;
+  return `WEATHER: ${summary}`;
 }
 
 /**
@@ -145,14 +147,15 @@ export function buildAIPrompt(
     });
   }
 
-  const occasionNote = buildOccasionNote(occasion);
+  const profile = getOccasionProfile(occasion);
+  const tierLabel = TIER_LABELS[profile.tier];
   const hatAvoidanceNote = buildHatAvoidanceNote(candidatesBySlot['hat'] ?? [], recentOutfitItemIds ?? []);
 
   const header = [
     mandatoryAnchor ? buildMandatoryAnchorBlock(mandatoryAnchor) : null,
-    `OCCASION (HARD CONSTRAINT): "${occasion}" — every item MUST be appropriate for this occasion. Pieces that do not suit ${occasion} must not be selected regardless of colour or style.`,
-    occasionNote,
-    `WEATHER: ${weatherSummary(weather, weatherRules)}`,
+    `OCCASION (HARD CONSTRAINT — ${tierLabel}): "${occasion}" — every item MUST be appropriate for this occasion. Pieces that do not suit ${occasion} must not be selected regardless of colour or style.`,
+    `OCCASION RULES: ${profile.aiGuidance}`,
+    buildWeatherDirective(weather, weatherRules, profile.weatherWeight, tierLabel),
     userStyle ? `USER STYLE (secondary context — occasion and weather take priority): ${userStyle}` : null,
     hatAvoidanceNote,
     colourStory && colourStory !== COLOUR_STORY_SURPRISE
