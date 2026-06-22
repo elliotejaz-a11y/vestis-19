@@ -68,18 +68,10 @@ export function StyledOutfitResultCard({ result, onTryAgain, onSave, isSaving, i
         </p>
 
         {/* Actions */}
-        <div className="flex gap-3 pt-1">
-          <Button
-            variant="outline"
-            className="flex-1 rounded-xl border-border text-foreground"
-            onClick={onTryAgain}
-            disabled={isSaving}
-          >
-            Try Again
-          </Button>
+        <div className="pt-1">
           <Button
             className={cn(
-              'flex-1 rounded-xl font-medium',
+              'w-full rounded-xl font-medium',
               isSaved
                 ? 'bg-green-700 text-white hover:bg-green-700'
                 : 'bg-accent text-accent-foreground hover:bg-accent/90',
