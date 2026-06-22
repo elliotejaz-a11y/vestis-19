@@ -503,7 +503,7 @@ Key principles:
 5. LAYERING RULE: Outerwear and jumpers are mutually exclusive — never include both. If outerwear is selected, do NOT select a jumper. If a jumper is selected, do NOT select outerwear.
 
 Return a JSON object with this exact shape:
-{"selectedItems":[{"itemId":"<the id from inside the brackets>","slot":"top|bottom|jumper|outerwear|shoes|hat|accessory"}],"outfitName":"2-4 word name","stylingNote":"1-2 sentences on why it works","proTip":"one actionable tip"}`;
+{"selectedItems":[{"itemId":"<the id from inside the brackets>","slot":"top|bottom|jumper|outerwear|shoes|hat|accessory"}],"outfitName":"2-4 word name","stylingNote":"1-2 short natural sentences — use generic terms like 'the t-shirt' or 'the jacket', not exact product names","proTip":"one actionable tip"}`;
 
       // Use native Gemini API — guarantees valid JSON via responseMimeType.
       // thinkingBudget: 0 disables the reasoning pass so parts[0] IS the JSON output,
@@ -740,8 +740,8 @@ Return a JSON object with this exact shape:
 ## STYLE PREFERENCE (secondary context)
 Once occasion, weather, and colour rules are satisfied, lean towards items that fit the user's stated style. Occasion always takes priority — a minimalist does not wear gym wear to a wedding just because it is minimal.
 
-## REASONING (shown to user as "WHY THIS WORKS")
-Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.
+## REASONING (shown to user)
+Write 2–3 short natural sentences. Use generic terms — say "the t-shirt and trousers" or "the jacket" rather than exact product names. Briefly mention how it suits the occasion and weather if relevant. No jargon, no padding — just a natural sentence or two you'd say to a friend.
 
 Respond with ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON:
 {"selected_indices":[1,3,5],"reasoning":"4-6 sentences...","style_tips":"one tip"}`;
