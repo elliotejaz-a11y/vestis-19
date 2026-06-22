@@ -15,10 +15,13 @@ const ALLOWED_ORIGINS = [
 const VERCEL_PREVIEW_PATTERN = /^https:\/\/vestis-19-vrcl[^.]*\.vercel\.app$/;
 
 const GYM_OCCASION_PATTERN = /\b(gym|workout|training|exercise|fitness|run|running|jog|jogging|cardio|lift|lifting|weights?|pilates|yoga|sport|sports)\b/i;
-const FORMAL_OCCASION_PATTERN = /\b(wedding|gala|black[-\s]?tie|formal|cocktail|funeral|opera)\b/i;
-const BUSINESS_OCCASION_PATTERN = /\b(business|interview|meeting|office|work|corporate|conference|presentation)\b/i;
-const SMART_CASUAL_PATTERN = /\b(date|dinner|brunch|drinks|party|night out|event)\b/i;
-const BEACH_PATTERN = /\b(beach|pool|swim|holiday|vacation|tropical|summer)\b/i;
+const FORMAL_OCCASION_PATTERN = /\b(gala|black[-\s]?tie|formal|cocktail|funeral|opera|graduation|ceremony|award)\b/i;
+const WEDDING_OCCASION_PATTERN = /\b(wedding|bride|groom|bridesmaid|registry[\s-]?office|hen[\s-]?night|stag[\s-]?do)\b/i;
+const JOB_INTERVIEW_PATTERN = /\b(interview|job[\s-]?interview|job[\s-]?application|assessment[\s-]?cent(re|er))\b/i;
+const BUSINESS_OCCASION_PATTERN = /\b(business|meeting|office|work|corporate|conference|presentation|professional|boardroom)\b/i;
+const SMART_CASUAL_PATTERN = /\b(date|dinner|brunch|drinks|party|night[\s-]?out|event)\b/i;
+const BEACH_PATTERN = /\b(beach|pool|swim|holiday|vacation|tropical|summer|island|resort)\b/i;
+const TRAVEL_PATTERN = /\b(travel|trip|airport|flight|train|road[\s-]?trip|transit|expedition|backpack)\b/i;
 
 const GYM_TOP_POSITIVE_PATTERN = /\b(t-?shirt|tee|compression|activewear|athletic|performance|training|workout|gym|sport|sports|polyester|spandex|elastane|nylon|dry[-\s]?fit|moisture[-\s]?wicking|tight(?:-?fitting)?|fitted|jersey|tank)\b/i;
 const GYM_TOP_NEGATIVE_PATTERN = /\b(jacket|coat|hoodie|jumper|sweater|cardigan|blazer|outerwear|parka|puffer|fleece|windbreaker|flannel|dress shirt|button[-\s]?up|oxford|knit|wool|zip[-\s]?up|anorak|shell)\b/i;
@@ -62,6 +65,8 @@ function getItemSearchText(item: any): string {
 
 function isGymOccasion(occasion: string): boolean { return GYM_OCCASION_PATTERN.test(occasion); }
 function isFormalOccasion(occasion: string): boolean { return FORMAL_OCCASION_PATTERN.test(occasion); }
+function isWeddingOccasion(occasion: string): boolean { return WEDDING_OCCASION_PATTERN.test(occasion); }
+function isJobInterviewOccasion(occasion: string): boolean { return JOB_INTERVIEW_PATTERN.test(occasion); }
 function isBusinessOccasion(occasion: string): boolean { return BUSINESS_OCCASION_PATTERN.test(occasion); }
 function isShoe(item: any): boolean { return normalizeCategory(item?.category) === 'shoes'; }
 function isBottom(item: any): boolean { return normalizeCategory(item?.category) === 'bottoms'; }
@@ -105,10 +110,11 @@ function isGymWearItem(item: any): boolean {
 }
 
 function filterItemsForOccasion(items: any[], occasion: string): any[] {
-  if (isFormalOccasion(occasion) || isBusinessOccasion(occasion)) {
+  // Business / formal / wedding / job interview: strip hats, branded athletic shoes, gym wear
+  if (isFormalOccasion(occasion) || isWeddingOccasion(occasion) || isJobInterviewOccasion(occasion) || isBusinessOccasion(occasion)) {
     return items.filter(item => !isHatCategory(item) && !isAthleticShoe(item) && !isGymWearItem(item));
   }
-  // Smart casual and casual: allow hats and non-gym shoes but strip gym-specific clothing
+  // All other occasions: strip gym-specific activewear as a minimum
   return items.filter(item => !isGymWearItem(item));
 }
 
@@ -241,23 +247,39 @@ function normalizeSelectionForWeather(
   return dedupeById(result);
 }
 
-function getOccasionTier(occasion: string): { tier: string; guidance: string } {
+interface OccasionTierResult {
+  tier: string;
+  guidance: string;
+  /** 0 = occasion rules dominate, 1 = weather rules dominate */
+  weatherWeight: number;
+}
+
+function getOccasionTier(occasion: string): OccasionTierResult {
   if (isGymOccasion(occasion)) {
-    return { tier: 'ACTIVE/GYM', guidance: 'Athletic wear ONLY. EXACTLY 3 items: (1) one gym top — t-shirt, tight-fit tee, compression top, performance polyester/spandex/nylon top; (2) one gym bottom — shorts, track pants, joggers, lightweight athletic pants; (3) one closed trainer/sneaker. NO jackets, hoodies, jumpers, sweaters, blazers, outerwear, hats, jewellery, bags, sandals, boots, formal shoes.' };
+    return { tier: 'ACTIVE/GYM', weatherWeight: 0.1, guidance: 'Athletic wear ONLY. EXACTLY 3 items: (1) one gym top — t-shirt, tight-fit tee, compression top, performance polyester/spandex/nylon top; (2) one gym bottom — shorts, track pants, joggers, lightweight athletic pants; (3) one closed trainer/sneaker. NO jackets, hoodies, jumpers, sweaters, blazers, outerwear, hats, jewellery, bags, sandals, boots, formal shoes.' };
+  }
+  if (JOB_INTERVIEW_PATTERN.test(occasion)) {
+    return { tier: 'JOB INTERVIEW', weatherWeight: 0.25, guidance: 'Professional, polished, and interview-ready. Pick chinos or smart trousers or clean dark jeans. Pair with a collared shirt, polo, or fine-knit top. Shoes must be smart leather shoes, loafers, or clean minimal dress sneakers — NO trainers, running shoes, or sport-branded footwear. NO hats, caps, hoodies, graphic tees, athletic wear, tracksuits, or sandals.' };
+  }
+  if (WEDDING_OCCASION_PATTERN.test(occasion)) {
+    return { tier: 'WEDDING GUEST', weatherWeight: 0.3, guidance: 'Occasion-appropriate formal or smart-formal. Tailored suit, smart dress, or formal separates. Clean smart shoes only — NO trainers, sport-branded shoes, or athletic footwear. Fascinators and formal hats are welcome. NO gym wear, tracksuits, or overly casual items.' };
   }
   if (isFormalOccasion(occasion)) {
-    return { tier: 'FORMAL', guidance: 'Formal pieces ONLY. Pick suit trousers / dress pants / smart trousers (NEVER jeans, joggers, shorts, athletic). Pair with a dress shirt or smart top, polished dress shoes (Oxfords/derbies/loafers — NEVER trainers/sandals/boots/athletic footwear), and a blazer/suit jacket if available. NO hoodies, t-shirts with graphics, hats, caps, headwear, trainers, sneakers, or any athletic items.' };
+    return { tier: 'FORMAL', weatherWeight: 0.2, guidance: 'Dress code adherent. Pick suit trousers / dress pants / smart trousers (NEVER jeans, joggers, shorts, athletic). Pair with a dress shirt or smart top, polished dress shoes (Oxfords/derbies/loafers — NEVER trainers/sandals/boots/athletic footwear), and a blazer/suit jacket if available. NO hoodies, t-shirts with graphics, hats, caps, trainers, sneakers, or any athletic items.' };
   }
   if (isBusinessOccasion(occasion)) {
-    return { tier: 'BUSINESS', guidance: 'Smart professional workwear ONLY. Pick chinos, smart trousers, or dark/clean jeans (NEVER joggers, athletic bottoms, ripped). Pair with a collared shirt, polo, or fine-knit top. Shoes must be smart leather shoes, loafers, derbies, or clean minimal dress sneakers — NEVER trainers, running shoes, TNs, Air Max, Jordans, or any athletic or sport-branded footwear. NO hats, caps, beanies, or any headwear. NO graphic tees, hoodies, athletic wear, sandals, or streetwear.' };
-  }
-  if (SMART_CASUAL_PATTERN.test(occasion)) {
-    return { tier: 'SMART CASUAL', guidance: 'Polished but relaxed. Smart jeans/chinos/trousers, knitwear or smart top, clean sneakers or loafers. Avoid athletic wear and sloppy casual.' };
+    return { tier: 'BUSINESS', weatherWeight: 0.35, guidance: 'Smart professional workwear ONLY. Pick chinos, smart trousers, or dark/clean jeans (NEVER joggers, athletic bottoms, ripped). Pair with a collared shirt, polo, or fine-knit top. Shoes must be smart leather shoes, loafers, derbies, or clean minimal dress sneakers — NEVER trainers, running shoes, or any sport-branded footwear. NO hats, caps, beanies, or any headwear. NO graphic tees, hoodies, athletic wear, or sandals.' };
   }
   if (BEACH_PATTERN.test(occasion)) {
-    return { tier: 'BEACH/HOLIDAY', guidance: 'Light, breathable. Shorts or linen trousers, t-shirt or short-sleeve shirt, sandals/slides or canvas sneakers. NO heavy outerwear, wool, dress shoes.' };
+    return { tier: 'BEACH/HOLIDAY', weatherWeight: 0.95, guidance: 'Light, breathable. Shorts or linen trousers, t-shirt or short-sleeve shirt, sandals/slides or canvas sneakers. NO heavy outerwear, puffers, wool layers, or formal dress shoes. Hats and sunglasses strongly encouraged.' };
   }
-  return { tier: 'CASUAL', guidance: 'Relaxed everyday wear. Jeans/chinos/casual trousers, t-shirt/sweatshirt/casual shirt, trainers or casual shoes. Avoid suits, blazers, dress shoes unless user style demands it.' };
+  if (TRAVEL_PATTERN.test(occasion)) {
+    return { tier: 'TRAVEL', weatherWeight: 0.9, guidance: 'Comfortable, practical, and layerable. Wrinkle-tolerant fabrics preferred. Versatile combinations that work across multiple settings — ideal for airports, trains, and long journeys. Trainers, clean sneakers, or boots all acceptable.' };
+  }
+  if (SMART_CASUAL_PATTERN.test(occasion)) {
+    return { tier: 'SMART CASUAL', weatherWeight: 0.6, guidance: 'Polished but relaxed. Smart jeans/chinos/trousers, knitwear or smart top, clean sneakers or loafers. Avoid gym-specific activewear and overly casual sloppy pieces.' };
+  }
+  return { tier: 'CASUAL', weatherWeight: 0.85, guidance: 'Relaxed everyday wear. Jeans/chinos/casual trousers, t-shirt/sweatshirt/casual shirt, trainers or casual shoes. Avoid gym wear unless the occasion calls for it.' };
 }
 
 
@@ -481,7 +503,7 @@ Key principles:
 5. LAYERING RULE: Outerwear and jumpers are mutually exclusive — never include both. If outerwear is selected, do NOT select a jumper. If a jumper is selected, do NOT select outerwear.
 
 Return a JSON object with this exact shape:
-{"selectedItems":[{"itemId":"<the id from inside the brackets>","slot":"top|bottom|jumper|outerwear|shoes|hat|accessory"}],"outfitName":"2-4 word name","stylingNote":"1-2 sentences on why it works","proTip":"one actionable tip"}`;
+{"selectedItems":[{"itemId":"<the id from inside the brackets>","slot":"top|bottom|jumper|outerwear|shoes|hat|accessory"}],"outfitName":"2-4 word name","stylingNote":"1-2 short natural sentences — use generic terms like 'the t-shirt' or 'the jacket', not exact product names","proTip":"one actionable tip"}`;
 
       // Use native Gemini API — guarantees valid JSON via responseMimeType.
       // thinkingBudget: 0 disables the reasoning pass so parts[0] IS the JSON output,
@@ -718,15 +740,29 @@ Return a JSON object with this exact shape:
 ## STYLE PREFERENCE (secondary context)
 Once occasion, weather, and colour rules are satisfied, lean towards items that fit the user's stated style. Occasion always takes priority — a minimalist does not wear gym wear to a wedding just because it is minimal.
 
-## REASONING (shown to user as "WHY THIS WORKS")
-Write 4–6 specific sentences. Reference the actual items chosen, the actual colours, the actual fabrics, the weather (if provided), and how it fits their style. NEVER use vague filler like "a curated look" or "complementary pieces". Speak like a real stylist explaining their choices to a client.
+## REASONING (shown to user)
+Write 2–3 short natural sentences. Use generic terms — say "the t-shirt and trousers" or "the jacket" rather than exact product names. Briefly mention how it suits the occasion and weather if relevant. No jargon, no padding — just a natural sentence or two you'd say to a friend.
 
 Respond with ONLY a valid JSON object — no markdown fences, no explanation, just the raw JSON:
 {"selected_indices":[1,3,5],"reasoning":"4-6 sentences...","style_tips":"one tip"}`;
 
+    const weatherBlock = weather
+      ? (() => {
+          const directive = getWeatherDirective(weather, occasion);
+          const w = occasionTier.weatherWeight;
+          if (w <= 0.35) {
+            return `${directive}\n(NOTE: This is a ${occasionTier.tier} occasion — dress code takes priority over weather. Adapt layering where possible but maintain ${occasionTier.tier.toLowerCase()} standards.)\n`;
+          }
+          if (w >= 0.7) {
+            return `${directive}\n(NOTE: Weather is the primary factor for this occasion — prioritise practical layering and weather-appropriate fabrics.)\n`;
+          }
+          return `${directive}\n`;
+        })()
+      : '';
+
     const userPrompt = `Build the best outfit for: "${occasion}"
 Occasion tier: ${occasionTier.tier}
-${weather ? `${getWeatherDirective(weather, occasion)}\n` : ''}${colourStoryDirective}${avoidanceSection}${userProfile ? `User profile:
+${weatherBlock}${colourStoryDirective}${avoidanceSection}${userProfile ? `User profile:
 - Style preference: ${userProfile.stylePreference || 'not specified'} (secondary — occasion takes priority)
 - Body type: ${userProfile.bodyType || 'not specified'}
 - Preferred colours: ${(userProfile.preferredColors || []).join(', ') || 'not specified'}

@@ -248,6 +248,7 @@ function AuthenticatedApp() {
           wardrobeItems={items}
           open={!!styleThisTarget}
           onOpenChange={(o) => { if (!o) setStyleThisTarget(null); }}
+          onOutfitCreated={addOutfitToState}
         />
       </Suspense>
     </div>

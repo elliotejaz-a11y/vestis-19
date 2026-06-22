@@ -9,6 +9,7 @@ import { OutfitChat } from "@/components/OutfitChat";
 import { OutfitCollagePreview } from "@/components/OutfitCollagePreview";
 import { ClothingItem, Outfit, OCCASIONS } from "@/types/wardrobe";
 import { COLOUR_STORY_SURPRISE } from "@/lib/outfitConstants";
+import { getOccasionProfile, TIER_LABELS, TIER_DOT_CLASSES } from "@/lib/occasionTaxonomy";
 
 const WEATHER_ICON_MAP: Record<string, typeof Sun> = {
   Rainy: CloudRain,
@@ -255,26 +256,40 @@ export function Outfits({ items, outfits, onGenerate, onSave, onDelete, onStyleT
               placeholder="Type your own occasion..."
               className="rounded-xl bg-card text-sm"
             />
+            {customOccasion.trim() && (() => {
+              const detectedProfile = getOccasionProfile(customOccasion.trim());
+              return (
+                <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1.5">
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${TIER_DOT_CLASSES[detectedProfile.tier]}`} />
+                  Detected: {detectedProfile.label} · {TIER_LABELS[detectedProfile.tier]}
+                </p>
+              );
+            })()}
           </div>
 
           {/* Occasion selector */}
           <div className="px-5 pb-4">
             <p className="text-xs font-medium text-muted-foreground mb-2">Or choose one:</p>
             <div className="flex flex-wrap gap-2">
-              {OCCASIONS.map((occ) => (
-                <button
-                  key={occ}
-                  onClick={() => { setSelectedOccasion(occ); setCustomOccasion(""); }}
-                  className={cn(
-                    "px-3.5 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
-                    selectedOccasion === occ && !customOccasion
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-card text-muted-foreground border border-border hover:border-accent/50"
-                  )}
-                >
-                  {occ}
-                </button>
-              ))}
+              {OCCASIONS.map((occ) => {
+                const p = getOccasionProfile(occ);
+                const isSelected = selectedOccasion === occ && !customOccasion;
+                return (
+                  <button
+                    key={occ}
+                    onClick={() => { setSelectedOccasion(occ); setCustomOccasion(""); }}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                      isSelected
+                        ? "bg-accent text-accent-foreground"
+                        : "bg-card text-muted-foreground border border-border hover:border-accent/50"
+                    )}
+                  >
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${isSelected ? 'bg-accent-foreground/60' : TIER_DOT_CLASSES[p.tier]}`} />
+                    {occ}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

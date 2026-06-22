@@ -25,6 +25,7 @@
 import type { ClothingItem } from "@/types/wardrobe";
 import { rankSlotCandidates, rankCombinations, inferColourStrategy } from "@/lib/colourTheory";
 import { WARM_TEMP } from "@/lib/outfitConstants";
+import { getOccasionProfile } from "@/lib/occasionTaxonomy";
 
 // ── Weather thresholds (slot-engine specific) ────────────────────────────────
 // WARM_TEMP (19) is imported from outfitConstants — above this, no layering needed.
@@ -47,12 +48,9 @@ const BEACH_PATTERN = /\b(beach|pool|swim|holiday|vacation|tropical|summer)\b/i;
 const NIGHT_OUT_PATTERN = /\b(night out|party|club|bar|drinks|going out)\b/i;
 const DATE_PATTERN = /\b(date|dinner|romantic|brunch)\b/i;
 
-// ── Occasion-specific item exclusion patterns ────────────────────────────────
-const OCCASION_GYM_WEAR_PATTERN = /\b(compression|activewear|athletic wear|performance top|training top|workout top|gym top|sports top|spandex|elastane|dry[-\s]?fit|moisture[-\s]?wicking)\b/i;
-const OCCASION_HEAVY_COAT_PATTERN = /\b(puffer|parka|duvet jacket|padded jacket|quilted jacket|down jacket|peacoat|overcoat|trench coat|duffel coat|wool coat|toggle coat|shearling)\b/i;
-const OCCASION_FORMAL_SHOE_PATTERN = /\b(oxford|derby|derbies|brogue|court shoe|kitten heel|stiletto)\b/i;
-const OCCASION_BRANDED_ATHLETIC_SHOE_PATTERN = /\b(TN|TNs|air ?max|air ?force|running shoe|trail shoe|training shoe|gym shoe|sports shoe|basketball shoe|tech runner|boost|ultra ?boost|foam ?runner)\b/i;
-const OCCASION_TRACKSUIT_PATTERN = /\b(tracksuit|track ?pants?|sweatpants?)\b/i;
+// Occasion-specific item exclusion is now driven by occasionTaxonomy profiles.
+// The helper functions below remain for the legacy item-category checks still used
+// in resolveSlots (gym detection, formal/business hat exclusion via profile.allowHats).
 
 // Max candidates sent to AI per slot — keeps the prompt under the token budget
 const MAX_CANDIDATES_PER_SLOT = 5;
@@ -129,35 +127,11 @@ function occSearchText(item: ClothingItem): string {
     .filter(Boolean).join(' ').toLowerCase();
 }
 
-function isOccasionGymWear(item: ClothingItem): boolean {
-  const c = (item.category || '').toLowerCase();
-  if (c !== 'tops' && c !== 'bottoms') return false;
-  return OCCASION_GYM_WEAR_PATTERN.test(occSearchText(item));
-}
-
-function isOccasionBrandedAthleticShoe(item: ClothingItem): boolean {
-  if ((item.category || '').toLowerCase() !== 'shoes') return false;
-  return OCCASION_BRANDED_ATHLETIC_SHOE_PATTERN.test(occSearchText(item));
-}
-
-function isOccasionHeavyCoat(item: ClothingItem): boolean {
-  if ((item.category || '').toLowerCase() !== 'outerwear') return false;
-  return OCCASION_HEAVY_COAT_PATTERN.test(occSearchText(item));
-}
-
-function isOccasionFormalShoe(item: ClothingItem): boolean {
-  if ((item.category || '').toLowerCase() !== 'shoes') return false;
-  return OCCASION_FORMAL_SHOE_PATTERN.test(occSearchText(item));
-}
-
-function isOccasionTracksuit(item: ClothingItem): boolean {
-  const c = (item.category || '').toLowerCase();
-  if (c !== 'bottoms' && c !== 'tops') return false;
-  return OCCASION_TRACKSUIT_PATTERN.test(occSearchText(item));
-}
-
 /**
  * Deterministically removes items that are definitively wrong for the occasion.
+ * Driven by OccasionProfile.forbiddenPatterns and OccasionProfile.allowHats
+ * from the occasion taxonomy — single source of truth for all filtering rules.
+ *
  * Runs before slot resolution so the AI never sees inappropriate candidates.
  *
  * Safety: if the filtered pool would leave no tops or no bottoms (e.g. wardrobe
@@ -167,27 +141,17 @@ function isOccasionTracksuit(item: ClothingItem): boolean {
  * before calling resolveSlots.
  */
 export function filterItemsByOccasion(wardrobe: ClothingItem[], occasion: string): ClothingItem[] {
-  let filtered: ClothingItem[];
+  const profile = getOccasionProfile(occasion);
 
-  if (FORMAL_PATTERN.test(occasion)) {
-    // Formal events + wedding guest: remove gym wear, branded athletic shoes, tracksuits.
-    // Clean sneakers are allowed (streetwear-formal crossover). Only exclude sports-branded trainers.
-    filtered = wardrobe.filter(
-      i => !isOccasionGymWear(i) && !isOccasionBrandedAthleticShoe(i) && !isOccasionTracksuit(i)
-    );
-  } else if (BUSINESS_PATTERN.test(occasion)) {
-    // Business / interview: exclude gym wear + branded athletic shoes.
-    filtered = wardrobe.filter(i => !isOccasionGymWear(i) && !isOccasionBrandedAthleticShoe(i));
-  } else if (BEACH_PATTERN.test(occasion)) {
-    // Beach / vacation: exclude heavy coats and strict formal shoes.
-    filtered = wardrobe.filter(i => !isOccasionHeavyCoat(i) && !isOccasionFormalShoe(i));
-  } else if (NIGHT_OUT_PATTERN.test(occasion) || DATE_PATTERN.test(occasion)) {
-    // Night out / party / date / brunch: exclude gym-specific activewear items.
-    filtered = wardrobe.filter(i => !isOccasionGymWear(i));
-  } else {
-    // Casual and everything else: exclude gym activewear as a minimum.
-    filtered = wardrobe.filter(i => !isOccasionGymWear(i));
-  }
+  const filtered = wardrobe.filter(item => {
+    const cat = (item.category || '').toLowerCase();
+    // Hat exclusion via occasion profile
+    if (!profile.allowHats && cat === 'hats') return false;
+    // Item-level pattern exclusion from the profile
+    const text = occSearchText(item);
+    if (profile.forbiddenPatterns.some(p => p.test(text))) return false;
+    return true;
+  });
 
   // Safety: if filtering removed all tops or all bottoms, return the full wardrobe.
   const hasTops = filtered.some(i => {
@@ -329,9 +293,7 @@ export function resolveSlots(
   const accessories = pool.filter(i => cat(i) === 'accessories');
 
   const isGym     = GYM_PATTERN.test(occasion);
-  const isFormal  = FORMAL_PATTERN.test(occasion);
-  const isBusiness = BUSINESS_PATTERN.test(occasion);
-  const isFormalOrBusiness = isFormal || isBusiness;
+  const occasionProfile = getOccasionProfile(occasion);
 
   const weatherRules = computeWeatherRules(weather);
 
@@ -421,8 +383,8 @@ export function resolveSlots(
     candidatesBySlot.shoes = shoes;
   }
 
-  // Hat slot: optional, excluded for formal/business (RULE 6)
-  if (!isGym && !isFormalOrBusiness && hats.length > 0) {
+  // Hat slot: optional, excluded when the occasion profile disallows headwear (RULE 6)
+  if (!isGym && occasionProfile.allowHats && hats.length > 0) {
     candidatesBySlot.hat = hats;
   }
 

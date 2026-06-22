@@ -77,6 +77,7 @@ export const OCCASIONS = [
   "Job interview",
   "Night out / Party",
   "Formal event",
+  "Travel",
 ];
 
 // ── Style This Item types ────────────────────────────────────────────────────

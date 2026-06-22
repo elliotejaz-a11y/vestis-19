@@ -29,6 +29,7 @@ import { buildStyleThisItemPrompt } from '@/lib/styleThisItemPrompt';
 import { RECENT_OUTFIT_SIMILARITY_WINDOW } from '@/lib/outfitConstants';
 import type {
   ClothingItem,
+  Outfit,
   StyleOccasion,
   StyleDirection,
   WeatherContext,
@@ -147,7 +148,7 @@ export interface UseStyleThisItemReturn {
   setStyleDirection: (d: StyleDirection) => void;
   setWeather: (w: WeatherContext) => void;
   generate: () => Promise<void>;
-  saveOutfit: () => Promise<void>;
+  saveOutfit: () => Promise<Outfit>;
   reset: () => void;
 }
 
@@ -366,8 +367,8 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
     }
   }, [anchorItem, occasion, styleDirection, weather, user]);
 
-  const saveOutfit = useCallback(async () => {
-    if (!result || !user) return;
+  const saveOutfit = useCallback(async (): Promise<Outfit> => {
+    if (!result || !user) throw new Error('save_failed');
 
     const allItems = [
       result.items.anchor,
@@ -412,6 +413,16 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
 
       setIsSaved(true);
       setResult((prev) => prev ? { ...prev, outfitId: outfitRow.id } : prev);
+
+      return {
+        id: outfitRow.id as string,
+        name: result.outfitName,
+        occasion: OCCASION_LABEL[result.occasion],
+        items: uniqueItems,
+        createdAt: new Date(result.generatedAt),
+        reasoning: result.styleNote,
+        saved: true,
+      };
     } catch {
       // Caller (UI) will show a toast or inline error
       throw new Error('save_failed');

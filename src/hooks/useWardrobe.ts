@@ -259,6 +259,46 @@ function isDetailedReasoning(reasoning?: string | null): boolean {
   return detailSignals.filter(Boolean).length >= 4;
 }
 
+function itemToNoun(item: ClothingItem): string {
+  const text = [item.name, ...(item.tags || [])].join(' ').toLowerCase();
+  const cat = (item.category || '').toLowerCase();
+  if (cat === 'bottoms') {
+    if (/jeans?|denim/.test(text)) return 'jeans';
+    if (/shorts?/.test(text)) return 'shorts';
+    if (/joggers?|trackpants?|sweatpants?/.test(text)) return 'joggers';
+    if (/skirt/.test(text)) return 'skirt';
+    return 'trousers';
+  }
+  if (cat === 'tops') {
+    if (/t-?shirt|tee/.test(text)) return 't-shirt';
+    if (/polo/.test(text)) return 'polo';
+    if (/shirt|button/.test(text)) return 'shirt';
+    return 'top';
+  }
+  if (cat === 'dresses') return 'dress';
+  if (cat === 'outerwear') {
+    if (/puffer|parka|padded/.test(text)) return 'puffer';
+    if (/blazer/.test(text)) return 'blazer';
+    if (/coat/.test(text)) return 'coat';
+    return 'jacket';
+  }
+  if (cat === 'jumpers') {
+    if (/hoodie/.test(text)) return 'hoodie';
+    if (/cardigan/.test(text)) return 'cardigan';
+    return 'jumper';
+  }
+  if (cat === 'shoes') {
+    if (/trainer|sneaker|runner/.test(text)) return 'trainers';
+    if (/boot/.test(text)) return 'boots';
+    if (/loafer/.test(text)) return 'loafers';
+    if (/heel/.test(text)) return 'heels';
+    return 'shoes';
+  }
+  if (cat === 'hats') return 'hat';
+  if (cat === 'accessories') return 'accessories';
+  return cat;
+}
+
 function buildOutfitReasoningFallback({
   occasion,
   selectedItems,
@@ -272,42 +312,36 @@ function buildOutfitReasoningFallback({
   } | null;
   weather?: { temp: number; description: string };
 }): string {
-  const itemNames = selectedItems.map((item) => item.name).filter(Boolean).slice(0, 4);
-  const colours = selectedItems.map((item) => item.color).filter(Boolean);
-  const fabrics = selectedItems.map((item) => item.fabric).filter(Boolean);
-  const categories = selectedItems.map((item) => item.category).filter(Boolean);
-  const colourText = formatList(colours).toLowerCase();
-  const fabricText = formatList(fabrics).toLowerCase();
-  const categoryText = formatList(categories).toLowerCase();
-  const itemText = formatList(itemNames);
+  const nouns = selectedItems.slice(0, 4).map(itemToNoun).filter(Boolean);
+  const uniqueColours = [...new Set(selectedItems.map(i => i.color).filter(Boolean).map(c => c.toLowerCase()))].slice(0, 2);
   const stylePreference = profile?.style_preference?.trim();
 
-  const weatherFit = weather
-    ? weather.temp >= 22
-      ? "keeps the outfit light and breathable"
-      : weather.temp <= 12
-        ? "adds enough substance for cooler conditions without feeling bulky"
-        : "keeps the look comfortable and easy to wear through changing conditions"
-    : "suits the setting without feeling overdone";
+  const coreNouns = nouns.slice(0, 2);
+  const restNouns = nouns.slice(2);
 
-  const sentences = [
-    itemText
-      ? `${itemText} work together for ${occasion.toLowerCase()} because the mix of ${categoryText || "key wardrobe pieces"} feels intentional from top to bottom.`
-      : `This outfit feels right for ${occasion.toLowerCase()} because each piece supports the same overall direction rather than competing for attention.`,
-    colourText
-      ? `The ${colourText} palette creates clean contrast and visual balance, which helps the outfit feel polished and easy to wear.`
-      : null,
-    fabricText
-      ? weather
-        ? `The ${fabricText} fabrics also make sense here, because they match the ${occasion.toLowerCase()} brief while responding well to ${weather.description.toLowerCase()} weather at ${weather.temp}°C, which ${weatherFit}.`
-        : `The ${fabricText} fabrics fit the tone of ${occasion.toLowerCase()}, balancing comfort with the right amount of structure and texture.`
-      : null,
-    stylePreference
-      ? `It also aligns with your ${stylePreference.toLowerCase()} style preference, so the final look feels personal and believable instead of like a random mix of separate items.`
-      : `Overall, the outfit feels cohesive because the proportions, colours, and textures all point in the same direction.`,
-  ];
+  const baseLine = coreNouns.length >= 2
+    ? `The ${coreNouns[0]} and ${coreNouns[1]} anchor the look`
+    : `A solid base for ${occasion.toLowerCase()}`;
 
-  return sentences.filter(Boolean).join(" ");
+  const layerNote = restNouns.length > 0
+    ? `, with ${formatList(restNouns)} to finish it off`
+    : '';
+
+  const colourNote = uniqueColours.length >= 2
+    ? ` — the ${uniqueColours[0]} and ${uniqueColours[1]} keep the palette tight.`
+    : '.';
+
+  let weatherNote = '';
+  if (weather) {
+    if (weather.temp <= 12) weatherNote = ` The extra layer makes sense for ${weather.temp}°C.`;
+    else if (weather.temp >= 23) weatherNote = ` Light enough for ${weather.temp}°C.`;
+  }
+
+  const tailNote = stylePreference
+    ? ` Works well with your ${stylePreference.toLowerCase()} style.`
+    : '';
+
+  return `${baseLine}${layerNote}${colourNote}${weatherNote}${tailNote}`.trim();
 }
 
 /**
