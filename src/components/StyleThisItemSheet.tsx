@@ -8,13 +8,14 @@ import { useStyleThisItem } from '@/hooks/useStyleThisItem';
 import { useWeather } from '@/hooks/useWeather';
 import { useToast } from '@/hooks/use-toast';
 import { StyledOutfitResultCard } from '@/components/StyledOutfitResultCard';
-import type { ClothingItem, StyleOccasion, StyleDirection, WeatherContext } from '@/types/wardrobe';
+import type { ClothingItem, Outfit, StyleOccasion, StyleDirection, WeatherContext } from '@/types/wardrobe';
 
 interface Props {
   anchorItem: ClothingItem | null;
   wardrobeItems: ClothingItem[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onOutfitCreated?: (outfit: Outfit) => void;
 }
 
 // ── Occasion config ───────────────────────────────────────────────────────────
@@ -135,7 +136,7 @@ function ManualWeatherInput({
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function StyleThisItemSheet({ anchorItem, wardrobeItems, open, onOpenChange }: Props) {
+export function StyleThisItemSheet({ anchorItem, wardrobeItems, open, onOpenChange, onOutfitCreated }: Props) {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -198,7 +199,8 @@ export function StyleThisItemSheet({ anchorItem, wardrobeItems, open, onOpenChan
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await saveOutfit();
+      const savedOutfit = await saveOutfit();
+      onOutfitCreated?.(savedOutfit);
       toast({ title: 'Outfit saved! ✨' });
     } catch {
       toast({ title: 'Couldn\'t save outfit', description: 'Please try again.', variant: 'destructive' });
@@ -207,10 +209,22 @@ export function StyleThisItemSheet({ anchorItem, wardrobeItems, open, onOpenChan
     }
   };
 
+  const handleOpenChange = async (o: boolean) => {
+    if (!o && result && !isSaved) {
+      try {
+        const savedOutfit = await saveOutfit();
+        onOutfitCreated?.(savedOutfit);
+      } catch {
+        // Silent — outfit was generated but save failed; don't block close
+      }
+    }
+    onOpenChange(o);
+  };
+
   if (!anchorItem) return null;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="bottom"
         className="rounded-t-3xl px-0 pb-0 max-h-[92dvh] overflow-hidden flex flex-col"
@@ -221,7 +235,7 @@ export function StyleThisItemSheet({ anchorItem, wardrobeItems, open, onOpenChan
           <h2 className="text-xl font-bold tracking-tight text-foreground">Style This</h2>
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-4 h-4" />
