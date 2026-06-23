@@ -8,14 +8,15 @@
  * baby onesie and is skipped; file 19 is a genuine adult item and is included).
  *
  * Usage:
- *   node scripts/seed-essentials.mjs
+ *   node scripts/seed-essentials.mjs                                    # targets staging by default
+ *   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/seed-essentials.mjs   # targets any project (e.g. production)
  */
 
 import { readFileSync, existsSync } from 'fs';
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://sfwneyufnefjgkauilcq.supabase.co';
-const SERVICE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmd25leXVmbmVmamdrYXVpbGNxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTM0ODQzOSwiZXhwIjoyMDk2OTI0NDM5fQ.aky-_8gwXev4p0q7rqwZQOxuKPRFjYUN8d3mqtP6SXM';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://sfwneyufnefjgkauilcq.supabase.co';
+const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmd25leXVmbmVmamdrYXVpbGNxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTM0ODQzOSwiZXhwIjoyMDk2OTI0NDM5fQ.aky-_8gwXev4p0q7rqwZQOxuKPRFjYUN8d3mqtP6SXM';
 const BUCKET       = 'essentials';
 const IMG_DIR       = '/Users/ejazadam/Downloads/Vestis Essentials NOBG';
 
