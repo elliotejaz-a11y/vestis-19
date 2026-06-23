@@ -46,14 +46,11 @@ AI background removal.
 - Never commit API keys or secrets
 
 ## Behaviour
-- After every change, automatically commit with a descriptive 
-  conventional commit message (feat:, fix:, refactor:, chore:)
-- Push to main after every commit## Behaviour
-- After every change, automatically commit with a descriptive commit message
-- Always push to main after committing
-
-## Project
-[paste what Claude told you about the app here]
+- Never commit unless explicitly asked to in that conversation. Never push unless
+  explicitly asked to in that conversation.
+- Always work on the `staging` branch. Never commit or push directly to `main` —
+  `main` is production; the user merges staging into main themselves when ready.
+- Never run `vercel --prod`. The user deploys staging and production manually.
 
 ## Rules
 - Never break existing functionality
