@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
 import { processClothingImage } from "@/lib/image-processing";
 import { generateClothingImage } from "@/services/imageGenerationService";
+import { segmentPileItems, SegmentationResult } from "@/services/segmentationService";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
 
@@ -146,6 +147,34 @@ async function blobToBase64(blob: Blob): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
+}
+
+function buildBaseCandidate(item: ItemWithSource): MassUploadCandidate {
+  return {
+    id: item.id,
+    name: item.name,
+    category: item.category as ClothingCategory,
+    color: item.color,
+    fabric: item.fabric,
+    tags: item.tags || [],
+    notes: item.notes || "",
+    estimatedPrice: item.estimated_price_nzd,
+    confidence: item.confidence,
+    cropHint: item.crop_hint,
+    bbox: item.bbox,
+    previewStatus: "extracting",
+    addState: "idle",
+  };
+}
+
+// Finishes a real SAM2 cutout (already has its background masked out) with the
+// same trim + soft-shadow studio polish used for generated flatlays — no
+// background removal needed since the SAM2 mask already did that.
+async function finalizeSegmentedPreview(segmentedBase64: string): Promise<{ previewUrl: string; imageBase64: string }> {
+  const sourceBlob = base64ToBlob(segmentedBase64, "image/png");
+  const finalBlob = await compositeWithSoftShadow(sourceBlob);
+  const finalBase64 = await blobToBase64(finalBlob);
+  return { previewUrl: URL.createObjectURL(finalBlob), imageBase64: finalBase64 };
 }
 
 async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previewUrl: string; imageBase64: string }> {
@@ -295,48 +324,99 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       if (sessionRef.current !== mySession) return;
       if (allItemsWithSrc.length === 0) { setPhase("ready"); return; }
 
-      // ── Phase 2: Generate clean studio flat lays, then bg-remove them ─────
+      // ── Phase 2: real SAM2 cutouts for pile mode; generated flat lays for outfit mode ──
       setPhase("extracting");
 
-      for (const item of allItemsWithSrc) {
-        if (sessionRef.current !== mySession) return;
+      if (uploadMode === "pile") {
+        // Group by source photo so each photo is sent to SAM2 once, no matter how
+        // many items Gemini found in it.
+        const itemsByPhoto = new Map<string, ItemWithSource[]>();
+        for (const item of allItemsWithSrc) {
+          const list = itemsByPhoto.get(item._sourceBase64) ?? [];
+          list.push(item);
+          itemsByPhoto.set(item._sourceBase64, list);
+        }
 
-        const baseCandidate: MassUploadCandidate = {
-          id: item.id,
-          name: item.name,
-          category: item.category as ClothingCategory,
-          color: item.color,
-          fabric: item.fabric,
-          tags: item.tags || [],
-          notes: item.notes || "",
-          estimatedPrice: item.estimated_price_nzd,
-          confidence: item.confidence,
-          cropHint: item.crop_hint,
-          bbox: item.bbox,
-          previewStatus: "extracting",
-          addState: "idle",
-        };
+        for (const [sourceBase64, photoItems] of itemsByPhoto) {
+          if (sessionRef.current !== mySession) return;
 
-        try {
-          const { previewUrl, imageBase64 } = await createStudioFlatlayPreview(item);
+          const requestable = photoItems.filter((item) => item.bbox);
+          let resultById = new Map<string, SegmentationResult>();
 
-          if (sessionRef.current === mySession) {
-            setCandidates((prev) => [...prev, {
-              ...baseCandidate,
-              previewStatus: "ready",
-              previewUrl,
-              croppedBase64: imageBase64,
-            }]);
+          if (requestable.length > 0) {
+            try {
+              const results = await segmentPileItems(
+                sourceBase64,
+                requestable.map((item) => ({ id: item.id, bbox: item.bbox! })),
+              );
+              resultById = new Map(results.map((result) => [result.id, result]));
+            } catch (error) {
+              const reason = error instanceof Error ? error.message : "Segmentation is temporarily unavailable";
+              resultById = new Map(
+                requestable.map((item) => [item.id, { id: item.id, status: "failed" as const, reason }]),
+              );
+            }
+          }
+
+          for (const item of photoItems) {
+            if (sessionRef.current !== mySession) return;
+
+            const baseCandidate = buildBaseCandidate(item);
+            const result = resultById.get(item.id);
+
+            if (result?.status === "segmented") {
+              try {
+                const { previewUrl, imageBase64 } = await finalizeSegmentedPreview(result.imageBase64);
+                setCandidates((prev) => [...prev, {
+                  ...baseCandidate,
+                  previewStatus: "ready",
+                  previewUrl,
+                  croppedBase64: imageBase64,
+                }]);
+              } catch (error) {
+                setCandidates((prev) => [...prev, {
+                  ...baseCandidate,
+                  previewStatus: "failed",
+                  error: error instanceof Error ? error.message : "Could not finish processing this item",
+                }]);
+              }
+            } else {
+              setCandidates((prev) => [...prev, {
+                ...baseCandidate,
+                previewStatus: "failed",
+                error: result?.reason ?? "Could not isolate this item from the photo",
+              }]);
+            }
             setExtracted((prev) => prev + 1);
           }
-        } catch (error) {
-          if (sessionRef.current === mySession) {
-            setCandidates((prev) => [...prev, {
-              ...baseCandidate,
-              previewStatus: "failed",
-              error: error instanceof Error ? error.message : "Could not generate flatlay image",
-            }]);
-            setExtracted((prev) => prev + 1);
+        }
+      } else {
+        for (const item of allItemsWithSrc) {
+          if (sessionRef.current !== mySession) return;
+
+          const baseCandidate = buildBaseCandidate(item);
+
+          try {
+            const { previewUrl, imageBase64 } = await createStudioFlatlayPreview(item);
+
+            if (sessionRef.current === mySession) {
+              setCandidates((prev) => [...prev, {
+                ...baseCandidate,
+                previewStatus: "ready",
+                previewUrl,
+                croppedBase64: imageBase64,
+              }]);
+              setExtracted((prev) => prev + 1);
+            }
+          } catch (error) {
+            if (sessionRef.current === mySession) {
+              setCandidates((prev) => [...prev, {
+                ...baseCandidate,
+                previewStatus: "failed",
+                error: error instanceof Error ? error.message : "Could not generate flatlay image",
+              }]);
+              setExtracted((prev) => prev + 1);
+            }
           }
         }
       }

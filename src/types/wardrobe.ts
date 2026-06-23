@@ -140,6 +140,44 @@ export interface PresetItem {
   tags: string[];
 }
 
+// ── Essentials Catalogue types ───────────────────────────────────────────────
+
+export type EssentialsCategory =
+  | 'Tops'
+  | 'Bottoms'
+  | 'Shoes'
+  | 'Outerwear'
+  | 'Accessories'
+  | 'Bags'
+  | 'Dresses'
+  | 'Knitwear';
+
+export interface EssentialsCatalogueItem {
+  id: string;
+  name: string;
+  category: string;
+  subcategory: string | null;
+  colour: string | null;
+  colour_hex: string | null;
+  brand: string | null;
+  description: string | null;
+  image_url: string;
+  image_url_full: string | null;
+  image_placeholder: string | null;
+  tags: string[] | null;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface UserEssential {
+  id: string;
+  user_id: string;
+  essential_id: string;
+  added_at: string;
+  essential?: EssentialsCatalogueItem;
+}
+
 export const PRESET_ITEMS: PresetItem[] = [
   // Tops
   { name: "White T-Shirt", category: "tops", color: "White", fabric: "Cotton", tags: ["casual", "basic"] },

@@ -1,7 +1,7 @@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Camera, Layers, ChevronRight, UserSquare2, Lock, Search } from "lucide-react";
+import { Camera, Layers, ChevronRight, UserSquare2, Lock, Search, Sparkles } from "lucide-react";
 
-export type AddChoice = "single" | "mass" | "outfit" | "search" | "catalog";
+export type AddChoice = "single" | "mass" | "outfit" | "search" | "catalog" | "essentials";
 
 interface Props {
   open: boolean;
@@ -53,20 +53,32 @@ export function AddChoiceSheet({ open, onOpenChange, onPick, children }: Props) 
 
           <button
             type="button"
-            disabled
-            className="w-full rounded-2xl bg-muted/50 border border-border flex items-center gap-4 px-5 py-4 text-left opacity-75"
+            onClick={() => onPick("essentials")}
+            className="w-full rounded-2xl bg-card border border-border flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors text-left"
+          >
+            <div className="w-11 h-11 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
+              <Sparkles className="w-5 h-5 text-accent" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">Browse Essentials</p>
+              <p className="text-[11px] text-muted-foreground">Add pre-curated wardrobe basics in one tap</p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onPick("mass")}
+            className="w-full rounded-2xl bg-card border border-border flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors text-left"
           >
             <div className="w-11 h-11 rounded-xl bg-accent/15 flex items-center justify-center shrink-0">
               <Layers className="w-5 h-5 text-accent" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <p className="text-sm font-semibold text-foreground">Mass Upload</p>
-                <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-semibold text-accent">Coming soon</span>
-              </div>
+              <p className="text-sm font-semibold text-foreground">Mass Upload</p>
               <p className="text-[11px] text-muted-foreground">Snap a pile or closet - AI detects each item</p>
             </div>
-            <Lock className="w-4 h-4 text-muted-foreground" />
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
           </button>
 
           <button
