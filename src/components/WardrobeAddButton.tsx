@@ -4,11 +4,13 @@ import { AddClothingSheet } from "@/components/AddClothingSheet";
 import { MassUploadSheet } from "@/components/MassUploadSheet";
 import { SearchAddModal } from "@/components/SearchAddModal";
 import { CatalogBrowserSheet } from "@/components/CatalogBrowserSheet";
+import { EssentialsCatalogueSheet } from "@/components/EssentialsCatalogueSheet";
 import { ClothingItem } from "@/types/wardrobe";
 
 interface Props {
   onAdd: (item: ClothingItem, options?: { runBackgroundRemoval?: boolean; imageBase64ForProcessing?: string }) => Promise<void> | void;
   children: React.ReactNode;
+  onStyleThis?: (item: ClothingItem) => void;
 }
 
 /**
@@ -19,13 +21,14 @@ interface Props {
  * lock to clear before opening the next sheet — otherwise the
  * second sheet receives no clicks and appears unresponsive.
  */
-export function WardrobeAddButton({ onAdd, children }: Props) {
+export function WardrobeAddButton({ onAdd, children, onStyleThis }: Props) {
   const [chooserOpen, setChooserOpen] = useState(false);
   const [singleOpen, setSingleOpen] = useState(false);
   const [massOpen, setMassOpen] = useState(false);
   const [outfitOpen, setOutfitOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [catalogOpen, setCatalogOpen] = useState(false);
+  const [essentialsOpen, setEssentialsOpen] = useState(false);
 
   const handlePick = (which: AddChoice) => {
     setChooserOpen(false);
@@ -37,6 +40,7 @@ export function WardrobeAddButton({ onAdd, children }: Props) {
       else if (which === "mass") setMassOpen(true);
       else if (which === "search") setSearchOpen(true);
       else if (which === "catalog") setCatalogOpen(true);
+      else if (which === "essentials") setEssentialsOpen(true);
       else setOutfitOpen(true);
     }, 350);
   };
@@ -52,6 +56,12 @@ export function WardrobeAddButton({ onAdd, children }: Props) {
       <MassUploadSheet open={outfitOpen} onOpenChange={setOutfitOpen} mode="outfit" />
       <SearchAddModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} onAdd={onAdd} />
       <CatalogBrowserSheet open={catalogOpen} onOpenChange={setCatalogOpen} onAdd={onAdd} />
+      <EssentialsCatalogueSheet
+        open={essentialsOpen}
+        onOpenChange={setEssentialsOpen}
+        onAdd={onAdd}
+        onStyleThis={onStyleThis}
+      />
     </>
   );
 }

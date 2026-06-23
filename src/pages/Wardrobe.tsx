@@ -198,7 +198,7 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
               </div>
               <p className="text-sm font-medium text-foreground">Your wardrobe is empty</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-[200px]">Add your first piece by tapping the + button below</p>
-              <WardrobeAddButton onAdd={onAdd}>
+              <WardrobeAddButton onAdd={onAdd} onStyleThis={onStyleThis}>
                 <button className="mt-4 px-5 py-2 rounded-full bg-accent text-accent-foreground text-xs font-semibold flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5" /> Add Clothing
                 </button>
@@ -258,7 +258,7 @@ export function Wardrobe({ items, outfits, onAdd, onAddDuplicated, onRemove, onU
       )}
 
       {/* Always-visible floating add button */}
-      <WardrobeAddButton onAdd={onAdd}>
+      <WardrobeAddButton onAdd={onAdd} onStyleThis={onStyleThis}>
         <button
           className="fixed right-4 z-40 w-14 h-14 rounded-full bg-accent text-accent-foreground shadow-lg flex items-center justify-center hover:bg-accent/90 transition-colors"
           style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom))' }}

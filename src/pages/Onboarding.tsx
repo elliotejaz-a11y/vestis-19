@@ -10,6 +10,9 @@ import { UserAvatar, DEFAULT_AVATAR_PRESET_ID } from "@/components/UserAvatar";
 import { StyleQuizSheet } from "@/components/StyleQuizSheet";
 import { BodySilhouette } from "@/components/BodySilhouette";
 import { cn } from "@/lib/utils";
+import { EssentialsCatalogueSheet } from "@/components/EssentialsCatalogueSheet";
+import { useEssentialsCatalogue } from "@/hooks/useEssentialsCatalogue";
+import type { EssentialsCatalogueItem } from "@/types/wardrobe";
 
 export const STYLES = [
   { value: "casual", label: "Casual", emoji: "👕" },
@@ -73,8 +76,11 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
   const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showEssentialsCatalogue, setShowEssentialsCatalogue] = useState(false);
+  const [selectedEssentials, setSelectedEssentials] = useState<Map<string, EssentialsCatalogueItem>>(new Map());
   const { user, updateProfile, profile } = useAuth();
   const { toast } = useToast();
+  const { addMultipleEssentials } = useEssentialsCatalogue({ activeCategory: 'all', skipUserData: true });
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -393,6 +399,87 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
       ),
       valid: true,
     },
+    // Only show the essentials step during first-time onboarding (not edit mode)
+    ...(!editMode ? [{
+      title: "Build your wardrobe",
+      subtitle: "Select at least 5 essentials to get started",
+      content: (
+        <div className="space-y-5">
+          <div className="rounded-2xl bg-card border border-border/40 p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Wardrobe essentials</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Pre-curated timeless pieces to seed your wardrobe
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "text-sm font-semibold px-3 py-1 rounded-full transition-colors",
+                  selectedEssentials.size >= 5
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-muted text-muted-foreground"
+                )}
+              >
+                {selectedEssentials.size} / 5
+                {selectedEssentials.size >= 5 && " ✓"}
+              </span>
+            </div>
+
+            {selectedEssentials.size > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {Array.from(selectedEssentials.values()).slice(0, 6).map((e) => (
+                  <span
+                    key={e.id}
+                    className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20 truncate max-w-[120px]"
+                  >
+                    {e.name}
+                  </span>
+                ))}
+                {selectedEssentials.size > 6 && (
+                  <span className="text-[10px] text-muted-foreground px-1 py-0.5">
+                    +{selectedEssentials.size - 6} more
+                  </span>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowEssentialsCatalogue(true)}
+              className="w-full h-11 rounded-xl border-2 border-dashed border-accent/40 text-accent text-sm font-medium hover:bg-accent/5 transition-colors flex items-center justify-center gap-2"
+            >
+              <Sparkles className="w-4 h-4" />
+              {selectedEssentials.size === 0 ? "Browse essentials" : "Add more essentials"}
+            </button>
+          </div>
+
+          <p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+            These are added to your wardrobe and used by the AI to build your outfits.
+            You can add more later.
+          </p>
+
+          <EssentialsCatalogueSheet
+            open={showEssentialsCatalogue}
+            onOpenChange={setShowEssentialsCatalogue}
+            multiSelectMode
+            minSelection={5}
+            title="Build your wardrobe"
+            subtitle={`${selectedEssentials.size} of 5 selected`}
+            onConfirmSelection={async (items) => {
+              // Replace current selection with confirmed items (union with existing)
+              setSelectedEssentials((prev) => {
+                const next = new Map(prev);
+                items.forEach((item) => next.set(item.id, item));
+                return next;
+              });
+              setShowEssentialsCatalogue(false);
+            }}
+          />
+        </div>
+      ),
+      valid: selectedEssentials.size >= 5,
+    }] : []),
   ];
 
   const handleNext = () => {
@@ -432,6 +519,20 @@ export default function Onboarding({ editMode = false, onComplete }: OnboardingP
         }
       }
       const styleValue = allStyles.join(", ");
+
+      // Batch-add selected essentials to wardrobe before completing onboarding
+      if (!editMode && selectedEssentials.size > 0) {
+        try {
+          await addMultipleEssentials(Array.from(selectedEssentials.values()));
+        } catch {
+          toast({
+            title: "Couldn't add essentials",
+            description: "Your profile was saved but essentials weren't added. You can add them from the wardrobe.",
+            variant: "destructive",
+          });
+        }
+      }
+
       await updateProfile({
         style_preference: styleValue || null,
         body_type: bodyType,
