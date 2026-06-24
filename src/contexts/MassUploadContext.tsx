@@ -185,20 +185,16 @@ async function generatePileFlatLay(
   segmentedBase64: string,
   item: { name: string; category: string; color: string; fabric: string },
 ): Promise<{ previewUrl: string; imageBase64: string }> {
-  try {
-    const flatLayBase64 = await generateFlatLay(segmentedBase64, {
-      name: item.name,
-      category: item.category,
-      colour: item.color,
-      fabric: item.fabric,
-    });
-    const sourceBlob = base64ToBlob(flatLayBase64, "image/png");
-    const finalBlob = await compositeWithSoftShadow(sourceBlob);
-    const finalBase64 = await blobToBase64(finalBlob);
-    return { previewUrl: URL.createObjectURL(finalBlob), imageBase64: finalBase64 };
-  } catch {
-    return finalizeSegmentedPreview(segmentedBase64);
-  }
+  const flatLayBase64 = await generateFlatLay(segmentedBase64, {
+    name: item.name,
+    category: item.category,
+    colour: item.color,
+    fabric: item.fabric,
+  });
+  const sourceBlob = base64ToBlob(flatLayBase64, "image/png");
+  const finalBlob = await compositeWithSoftShadow(sourceBlob);
+  const finalBase64 = await blobToBase64(finalBlob);
+  return { previewUrl: URL.createObjectURL(finalBlob), imageBase64: finalBase64 };
 }
 
 async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previewUrl: string; imageBase64: string }> {
