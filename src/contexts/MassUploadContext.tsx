@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
 import { processClothingImage } from "@/lib/image-processing";
 import { generateClothingImage } from "@/services/imageGenerationService";
+import { generateFlatLay } from "@/services/flatLayService";
 import { segmentPileItems, SegmentationResult } from "@/services/segmentationService";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
@@ -168,13 +169,36 @@ function buildBaseCandidate(item: ItemWithSource): MassUploadCandidate {
 }
 
 // Finishes a real SAM2 cutout (already has its background masked out) with the
-// same trim + soft-shadow studio polish used for generated flatlays — no
+// same trim + soft-shadow studio polish used for generated flat-lays — no
 // background removal needed since the SAM2 mask already did that.
 async function finalizeSegmentedPreview(segmentedBase64: string): Promise<{ previewUrl: string; imageBase64: string }> {
   const sourceBlob = base64ToBlob(segmentedBase64, "image/png");
   const finalBlob = await compositeWithSoftShadow(sourceBlob);
   const finalBase64 = await blobToBase64(finalBlob);
   return { previewUrl: URL.createObjectURL(finalBlob), imageBase64: finalBase64 };
+}
+
+// Sends the SAM2 cutout to Gemini 2.5 Flash Image for professional flat-lay
+// generation, then applies the same shadow composite pass. Falls back to the
+// raw SAM2 cutout (via finalizeSegmentedPreview) if Gemini is unavailable.
+async function generatePileFlatLay(
+  segmentedBase64: string,
+  item: { name: string; category: string; color: string; fabric: string },
+): Promise<{ previewUrl: string; imageBase64: string }> {
+  try {
+    const flatLayBase64 = await generateFlatLay(segmentedBase64, {
+      name: item.name,
+      category: item.category,
+      colour: item.color,
+      fabric: item.fabric,
+    });
+    const sourceBlob = base64ToBlob(flatLayBase64, "image/png");
+    const finalBlob = await compositeWithSoftShadow(sourceBlob);
+    const finalBase64 = await blobToBase64(finalBlob);
+    return { previewUrl: URL.createObjectURL(finalBlob), imageBase64: finalBase64 };
+  } catch {
+    return finalizeSegmentedPreview(segmentedBase64);
+  }
 }
 
 async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previewUrl: string; imageBase64: string }> {
@@ -218,6 +242,7 @@ interface ContextValue {
   closeReview: () => void;
   updateCandidate: (id: string, patch: Partial<MassUploadCandidate>) => void;
   addCandidateToWardrobe: (candidate: MassUploadCandidate) => Promise<void>;
+  addAllCandidatesToWardrobe: () => Promise<void>;
   skipCandidate: (id: string) => void;
   reset: () => void;
 }
@@ -366,7 +391,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
             if (result?.status === "segmented") {
               try {
-                const { previewUrl, imageBase64 } = await finalizeSegmentedPreview(result.imageBase64);
+                const { previewUrl, imageBase64 } = await generatePileFlatLay(result.imageBase64, item);
                 setCandidates((prev) => [...prev, {
                   ...baseCandidate,
                   previewStatus: "ready",
@@ -456,6 +481,19 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
     }
   }, [updateCandidate]);
 
+  const addAllCandidatesToWardrobe = useCallback(async () => {
+    const snapshot = candidates.filter(
+      (c) => c.previewStatus === "ready" && c.addState === "idle" && c.name && c.category,
+    );
+    for (const candidate of snapshot) {
+      try {
+        await addCandidateToWardrobe(candidate);
+      } catch {
+        // Individual failures are surfaced per-card via addState — continue with the rest.
+      }
+    }
+  }, [candidates, addCandidateToWardrobe]);
+
   const skipCandidate = useCallback((id: string) => {
     updateCandidate(id, { addState: "skipped" });
   }, [updateCandidate]);
@@ -476,6 +514,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         closeReview,
         updateCandidate,
         addCandidateToWardrobe,
+        addAllCandidatesToWardrobe,
         skipCandidate,
         reset,
       }}
