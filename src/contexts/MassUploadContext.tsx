@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
 import { processClothingImage } from "@/lib/image-processing";
 import { generateClothingImage } from "@/services/imageGenerationService";
-import { generateFlatLay } from "@/services/flatLayService";
 import { segmentPileItems, SegmentationResult } from "@/services/segmentationService";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
@@ -84,43 +83,28 @@ async function trimTransparentPadding(blob: Blob, alphaThreshold = 8): Promise<B
   });
 }
 
-// Composites a bg-removed transparent PNG with a drop shadow and studio
-// vibrancy, outputting a transparent PNG blob (alpha preserved for Supabase).
-async function compositeWithSoftShadow(bgRemovedBlob: Blob, size = 512): Promise<Blob> {
-  const trimmedBlob = await trimTransparentPadding(bgRemovedBlob);
-
+// Places a transparent-background cutout onto a white square canvas.
+async function placeOnWhite(cutoutBlob: Blob, size = 512): Promise<Blob> {
+  const trimmedBlob = await trimTransparentPadding(cutoutBlob);
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(trimmedBlob);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const dpr = Math.min(window.devicePixelRatio ?? 1, 3);
-      const px = Math.round(size * dpr);
       const canvas = document.createElement("canvas");
-      canvas.width = px;
-      canvas.height = px;
+      canvas.width = size;
+      canvas.height = size;
       const ctx = canvas.getContext("2d")!;
-      ctx.scale(dpr, dpr);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, size, size);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      const padding = size * 0.06;
+      const padding = size * 0.08;
       const maxDim = size - padding * 2;
       const scale = Math.min(maxDim / img.naturalWidth, maxDim / img.naturalHeight);
       const w = img.naturalWidth * scale;
       const h = img.naturalHeight * scale;
-      const x = (size - w) / 2;
-      const y = (size - h) / 2;
-      ctx.shadowColor = "rgba(0, 0, 0, 0.22)";
-      ctx.shadowBlur = 24;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 10;
-      ctx.drawImage(img, x, y, w, h);
-      ctx.shadowColor = "transparent";
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
-      ctx.filter = "contrast(1.1) saturate(1.05)";
-      ctx.drawImage(img, x, y, w, h);
-      ctx.filter = "none";
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
       canvas.toBlob(
         (blob) => blob ? resolve(blob) : reject(new Error("toBlob failed")),
         "image/png",
@@ -168,31 +152,11 @@ function buildBaseCandidate(item: ItemWithSource): MassUploadCandidate {
   };
 }
 
-// Finishes a real SAM2 cutout (already has its background masked out) with the
-// same trim + soft-shadow studio polish used for generated flat-lays — no
-// background removal needed since the SAM2 mask already did that.
+// Places the real SAM2 cutout onto a clean white background — no AI involved,
+// no shadow. What SAM2 segments is exactly what the user sees.
 async function finalizeSegmentedPreview(segmentedBase64: string): Promise<{ previewUrl: string; imageBase64: string }> {
   const sourceBlob = base64ToBlob(segmentedBase64, "image/png");
-  const finalBlob = await compositeWithSoftShadow(sourceBlob);
-  const finalBase64 = await blobToBase64(finalBlob);
-  return { previewUrl: URL.createObjectURL(finalBlob), imageBase64: finalBase64 };
-}
-
-// Sends the SAM2 cutout to Gemini 2.5 Flash Image for professional flat-lay
-// generation, then applies the same shadow composite pass. Falls back to the
-// raw SAM2 cutout (via finalizeSegmentedPreview) if Gemini is unavailable.
-async function generatePileFlatLay(
-  segmentedBase64: string,
-  item: { name: string; category: string; color: string; fabric: string },
-): Promise<{ previewUrl: string; imageBase64: string }> {
-  const flatLayBase64 = await generateFlatLay(segmentedBase64, {
-    name: item.name,
-    category: item.category,
-    colour: item.color,
-    fabric: item.fabric,
-  });
-  const sourceBlob = base64ToBlob(flatLayBase64, "image/png");
-  const finalBlob = await compositeWithSoftShadow(sourceBlob);
+  const finalBlob = await placeOnWhite(sourceBlob);
   const finalBase64 = await blobToBase64(finalBlob);
   return { previewUrl: URL.createObjectURL(finalBlob), imageBase64: finalBase64 };
 }
@@ -215,7 +179,7 @@ async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previ
   const sourceBlob = base64ToBlob(generatedBase64, "image/png");
   const sourceFile = new File([sourceBlob], "mass-upload-item.png", { type: sourceBlob.type || "image/png" });
   const bgRemovedBlob = await processClothingImage(sourceFile);
-  const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
+  const finalBlob = await placeOnWhite(bgRemovedBlob);
   const finalBase64 = await blobToBase64(finalBlob);
 
   return {
@@ -387,7 +351,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
             if (result?.status === "segmented") {
               try {
-                const { previewUrl, imageBase64 } = await generatePileFlatLay(result.imageBase64, item);
+                const { previewUrl, imageBase64 } = await finalizeSegmentedPreview(result.imageBase64);
                 setCandidates((prev) => [...prev, {
                   ...baseCandidate,
                   previewStatus: "ready",
