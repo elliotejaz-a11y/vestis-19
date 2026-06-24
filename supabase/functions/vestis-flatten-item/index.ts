@@ -8,28 +8,13 @@ const corsHeaders = {
 };
 
 const REPLICATE_POLL_INTERVAL_MS = 1500;
-const REPLICATE_MAX_WAIT_MS = 60_000;
+const REPLICATE_MAX_WAIT_MS = 90_000;
 
 interface ItemMetadata {
   name: string;
   category: string;
   colour: string;
   fabric: string;
-}
-
-interface GeminiTextPart {
-  text: string;
-}
-
-interface GeminiInlinePart {
-  inlineData: { mimeType: string; data: string };
-}
-
-type GeminiPart = GeminiTextPart | GeminiInlinePart;
-
-interface GeminiGenerateResponse {
-  candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
-  error?: { message?: string };
 }
 
 interface ReplicatePrediction {
@@ -40,130 +25,40 @@ interface ReplicatePrediction {
   urls?: { get?: string };
 }
 
-function isTextPart(p: GeminiPart): p is GeminiTextPart {
-  return "text" in p;
-}
+function buildPrompt(item: ItemMetadata): string {
+  const pose = (() => {
+    const cat = item.category.toLowerCase();
+    if (cat === "bottoms") return "flat-lay with legs straight, waistband at top";
+    if (cat === "shoes") return "pair of shoes, three-quarter front view";
+    if (cat === "hats") return "front-facing flat-lay";
+    if (cat === "accessories") return "centred product view";
+    return "front-facing flat-lay, fully spread out";
+  })();
 
-function poseForCategory(category: string): string {
-  const cat = category.toLowerCase();
-  if (cat === "bottoms") return "flat-lay with both legs straight and parallel, waistband at top";
-  if (cat === "shoes") return "pair of shoes centred, three-quarter front view";
-  if (cat === "hats") return "single hat centred, front-facing";
-  if (cat === "accessories") return "single accessory centred";
-  return "front-facing flat-lay fully spread out, entire front of garment visible";
-}
-
-// Step 1 — use Gemini 2.5 Flash Vision to produce a rich visual description
-// of the real SAM2 cutout, capturing exact colours, texture, print details, etc.
-async function describeGarment(
-  imageBase64: string,
-  item: ItemMetadata,
-  geminiKey: string,
-): Promise<string> {
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            {
-              text: `Describe this ${item.category} garment for an e-commerce product photographer who cannot see the image. Be precise and visual. Cover: exact colours and any colour patterns, visible fabric texture and sheen, any logos, graphics, prints, or embroidery, and key structural features (collar, sleeves, cut, hardware). Two sentences maximum. Do not say "the image shows" — describe the item directly.`,
-            },
-            { inlineData: { mimeType: "image/png", data: imageBase64 } },
-          ] as GeminiPart[],
-        }],
-        generationConfig: { maxOutputTokens: 150 },
-      }),
-    },
-  );
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Gemini vision error ${response.status}: ${text.substring(0, 200)}`);
-  }
-
-  const result: GeminiGenerateResponse = await response.json();
-  if (result.error) throw new Error(result.error.message ?? "Gemini vision returned an error");
-
-  const parts = result.candidates?.[0]?.content?.parts ?? [];
-  const description = parts.find(isTextPart)?.text?.trim() ?? "";
-  if (!description) throw new Error("Gemini vision returned no description");
-  return description;
-}
-
-// Step 2 — use Replicate FLUX 1.1 Pro to generate a clean studio flat-lay
-// from the Gemini-produced garment description.
-async function generateWithFlux(
-  description: string,
-  item: ItemMetadata,
-  replicateToken: string,
-): Promise<string> {
-  const pose = poseForCategory(item.category);
-
-  const prompt = [
-    `Professional e-commerce product photograph, studio flat-lay.`,
-    description,
-    `Pose: ${pose}.`,
-    `Pure white background, soft even overhead lighting, subtle shadow beneath.`,
-    `Item centred, fills 80% of frame. Sharp focus, photorealistic.`,
+  return [
+    `Professional e-commerce product photograph, ${pose}.`,
+    `${item.name}, ${item.colour}, ${item.fabric}.`,
+    `Pure white studio background, soft even overhead lighting, subtle shadow beneath.`,
+    `Item centred and fills 80% of the frame. Sharp focus, photorealistic.`,
     `No model, no mannequin, no hanger, no background clutter, no text, no watermarks.`,
   ].join(" ");
+}
 
-  // Create the prediction
-  const createRes = await fetch("https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${replicateToken}`,
-      "Content-Type": "application/json",
-      Prefer: "wait",
-    },
-    body: JSON.stringify({
-      input: {
-        prompt,
-        aspect_ratio: "1:1",
-        output_format: "png",
-        output_quality: 90,
-        safety_tolerance: 2,
-      },
-    }),
-  });
-
-  if (!createRes.ok) {
-    const text = await createRes.text();
-    throw new Error(`Replicate FLUX create failed [${createRes.status}]: ${text.substring(0, 300)}`);
-  }
-
-  let prediction: ReplicatePrediction = await createRes.json();
-
-  // Poll if not already completed (Prefer: wait may return immediately on some plans)
+async function pollPrediction(predictionId: string, getUrl: string, token: string): Promise<ReplicatePrediction> {
   const deadline = Date.now() + REPLICATE_MAX_WAIT_MS;
-  while (prediction.status !== "succeeded" && prediction.status !== "failed" && prediction.status !== "canceled") {
-    if (Date.now() > deadline) throw new Error("FLUX generation timed out");
+  while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, REPLICATE_POLL_INTERVAL_MS));
-
-    const pollUrl = prediction.urls?.get ?? `https://api.replicate.com/v1/predictions/${prediction.id}`;
-    const pollRes = await fetch(pollUrl, { headers: { Authorization: `Bearer ${replicateToken}` } });
-    if (!pollRes.ok) {
-      const text = await pollRes.text();
-      throw new Error(`Replicate poll failed [${pollRes.status}]: ${text.substring(0, 200)}`);
+    const res = await fetch(getUrl, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Replicate poll failed [${res.status}]: ${text.substring(0, 200)}`);
     }
-    prediction = await pollRes.json();
+    const prediction: ReplicatePrediction = await res.json();
+    if (prediction.status === "succeeded" || prediction.status === "failed" || prediction.status === "canceled") {
+      return prediction;
+    }
   }
-
-  if (prediction.status !== "succeeded") {
-    throw new Error(`FLUX generation ${prediction.status}: ${prediction.error ?? "unknown error"}`);
-  }
-
-  const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-  if (!outputUrl) throw new Error("FLUX returned no output URL");
-
-  // Download the generated image and return as base64
-  const imgRes = await fetch(outputUrl);
-  if (!imgRes.ok) throw new Error(`Failed to download generated image [${imgRes.status}]`);
-  const imgBuffer = await imgRes.arrayBuffer();
-  return encodeBase64(imgBuffer);
+  throw new Error(`FLUX img2img timed out after ${REPLICATE_MAX_WAIT_MS / 1000}s`);
 }
 
 serve(async (req) => {
@@ -203,9 +98,6 @@ serve(async (req) => {
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
-
     const REPLICATE_API_TOKEN = Deno.env.get("REPLICATE_API_TOKEN");
     if (!REPLICATE_API_TOKEN) throw new Error("REPLICATE_API_TOKEN is not configured");
 
@@ -217,12 +109,57 @@ serve(async (req) => {
       fabric: String(meta.fabric ?? ""),
     };
 
-    // Step 1: Gemini 2.5 Flash Vision — describe the real garment cutout
-    const description = await describeGarment(imageBase64, item, GEMINI_API_KEY);
-    console.log(`vestis-flatten-item: "${description.substring(0, 100)}..."`);
+    const prompt = buildPrompt(item);
+    console.log(`vestis-flatten-item: generating flat-lay for "${item.name}"`);
 
-    // Step 2: Replicate FLUX 1.1 Pro — generate the studio flat-lay
-    const flatLayBase64 = await generateWithFlux(description, item, REPLICATE_API_TOKEN);
+    // Send the SAM2 cutout directly to FLUX 1.1 Pro as an img2img input.
+    // The model sees the real garment and transforms it into a clean studio flat-lay.
+    const createRes = await fetch(
+      "https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
+          "Content-Type": "application/json",
+          Prefer: "wait",
+        },
+        body: JSON.stringify({
+          input: {
+            prompt,
+            image: `data:image/png;base64,${imageBase64}`,
+            prompt_strength: 0.8,
+            aspect_ratio: "1:1",
+            output_format: "png",
+            output_quality: 90,
+            safety_tolerance: 2,
+          },
+        }),
+      },
+    );
+
+    if (!createRes.ok) {
+      const text = await createRes.text();
+      throw new Error(`Replicate FLUX create failed [${createRes.status}]: ${text.substring(0, 300)}`);
+    }
+
+    let prediction: ReplicatePrediction = await createRes.json();
+
+    // Poll if Prefer: wait didn't return a completed prediction
+    if (prediction.status !== "succeeded" && prediction.status !== "failed" && prediction.status !== "canceled") {
+      const getUrl = prediction.urls?.get ?? `https://api.replicate.com/v1/predictions/${prediction.id}`;
+      prediction = await pollPrediction(prediction.id, getUrl, REPLICATE_API_TOKEN);
+    }
+
+    if (prediction.status !== "succeeded") {
+      throw new Error(`FLUX generation ${prediction.status}: ${prediction.error ?? "unknown error"}`);
+    }
+
+    const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+    if (!outputUrl) throw new Error("FLUX returned no output URL");
+
+    const imgRes = await fetch(outputUrl);
+    if (!imgRes.ok) throw new Error(`Failed to download generated image [${imgRes.status}]`);
+    const flatLayBase64 = encodeBase64(await imgRes.arrayBuffer());
 
     return new Response(
       JSON.stringify({ imageBase64: flatLayBase64, mimeType: "image/png" }),
