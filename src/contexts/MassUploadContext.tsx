@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
 import { processClothingImage } from "@/lib/image-processing";
 import { generateClothingImage } from "@/services/imageGenerationService";
+import { generateFlatLay } from "@/services/flatLayService";
 import { segmentPileItems, SegmentationResult } from "@/services/segmentationService";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
@@ -152,8 +153,26 @@ function buildBaseCandidate(item: ItemWithSource): MassUploadCandidate {
   };
 }
 
-// Places the real SAM2 cutout onto a clean white background — no AI involved,
-// no shadow. What SAM2 segments is exactly what the user sees.
+// SAM2 cutout → FLUX Kontext → clean studio flat-lay of the real garment.
+// Falls back to placing the raw cutout on white if the AI step fails.
+async function generatePileFlatLay(
+  segmentedBase64: string,
+  item: { name: string; category: string; color: string; fabric: string },
+): Promise<{ previewUrl: string; imageBase64: string }> {
+  const flatLayBase64 = await generateFlatLay(segmentedBase64, {
+    name: item.name,
+    category: item.category,
+    colour: item.color,
+    fabric: item.fabric,
+  });
+  const mimeType = "image/jpeg";
+  const sourceBlob = base64ToBlob(flatLayBase64, mimeType);
+  const finalBlob = await placeOnWhite(sourceBlob);
+  const finalBase64 = await blobToBase64(finalBlob);
+  return { previewUrl: URL.createObjectURL(finalBlob), imageBase64: finalBase64 };
+}
+
+// Fallback: place the raw SAM2 cutout on white with no AI step.
 async function finalizeSegmentedPreview(segmentedBase64: string): Promise<{ previewUrl: string; imageBase64: string }> {
   const sourceBlob = base64ToBlob(segmentedBase64, "image/png");
   const finalBlob = await placeOnWhite(sourceBlob);
@@ -351,7 +370,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
             if (result?.status === "segmented") {
               try {
-                const { previewUrl, imageBase64 } = await finalizeSegmentedPreview(result.imageBase64);
+                const { previewUrl, imageBase64 } = await generatePileFlatLay(result.imageBase64, item);
                 setCandidates((prev) => [...prev, {
                   ...baseCandidate,
                   previewStatus: "ready",

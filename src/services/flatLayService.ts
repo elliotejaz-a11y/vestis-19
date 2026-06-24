@@ -8,11 +8,9 @@ export interface FlatLayItemMetadata {
 }
 
 /**
- * Sends the SAM2 cutout PNG (base64) to vestis-flatten-item, which calls
- * Gemini 2.5 Flash Image to generate a professional studio flat-lay of the
- * same garment. Returns the generated image as base64.
- *
- * Throws if the edge function returns an error or no image.
+ * Sends the SAM2 cutout to vestis-flatten-item, which uses FLUX Kontext to
+ * transform the real garment into a clean studio flat-lay while preserving
+ * its exact design, colours, and details. Returns the result as base64.
  */
 export async function generateFlatLay(
   cutoutBase64: string,

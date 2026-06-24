@@ -16,17 +16,17 @@ interface ItemMetadata {
 function buildPrompt(item: ItemMetadata): string {
   const pose = (() => {
     const cat = item.category.toLowerCase();
-    if (cat === "bottoms") return "flat-lay, both legs straight and parallel, waistband at top";
-    if (cat === "shoes") return "pair of shoes, three-quarter front product view";
-    if (cat === "hats") return "hat, front-facing product view";
-    if (cat === "accessories") return "single accessory, centred product view";
-    return "front-facing flat-lay, fully spread out showing the entire front";
+    if (cat === "bottoms") return "both legs straight and parallel, waistband at top";
+    if (cat === "shoes") return "pair viewed from a slight angle, both shoes visible";
+    if (cat === "hats") return "front-facing, brim flat";
+    if (cat === "accessories") return "centred and flat";
+    return "fully spread out flat showing the entire front, no folds, no wrinkles";
   })();
 
-  return `Professional e-commerce product photograph of the exact same ${item.category} garment shown in the reference image. ${pose}. Pure white studio background, soft even overhead lighting, subtle natural shadow beneath. Item centred and fills 80% of the frame. Preserve exact colours, patterns, and design details from the reference. Sharp focus, clean product-photography realism. No model, no mannequin, no hanger, no background clutter, no text, no watermarks.`;
+  return `Professional e-commerce product flat-lay photograph of this exact ${item.category}. Keep every design detail identical — same colours, patterns, graphics, logos, text, and fabric texture as the input. Lay it perfectly flat and smooth on a pure white background. Pose: ${pose}. Soft even overhead studio lighting. Item centred and fills most of the frame. No model, no mannequin, no hanger, no background clutter.`;
 }
 
-interface FalImage { url: string; width?: number; height?: number; content_type?: string }
+interface FalImage { url: string; content_type?: string }
 interface FalResponse { images?: FalImage[]; error?: string; detail?: string | { msg: string }[] }
 
 serve(async (req) => {
@@ -77,11 +77,9 @@ serve(async (req) => {
       fabric: String(meta.fabric ?? ""),
     };
 
-    console.log(`vestis-flatten-item: flat-lay for "${item.name}" via fal.ai ideogram/v3`);
+    console.log(`vestis-flatten-item: FLUX Kontext flat-lay for "${item.name}"`);
 
-    // Send the SAM2 cutout as an image reference alongside the flat-lay prompt.
-    // Ideogram v3 on fal.ai accepts data URIs as image_url.
-    const falRes = await fetch("https://fal.run/fal-ai/ideogram/v3", {
+    const falRes = await fetch("https://fal.run/fal-ai/flux-pro/kontext", {
       method: "POST",
       headers: {
         Authorization: `Key ${FAL_KEY}`,
@@ -90,15 +88,15 @@ serve(async (req) => {
       body: JSON.stringify({
         prompt: buildPrompt(item),
         image_url: `data:image/png;base64,${imageBase64}`,
-        aspect_ratio: "SQUARE_1_1",
-        style: "REALISTIC",
-        rendering_quality: "QUALITY",
+        aspect_ratio: "1:1",
+        output_format: "jpeg",
+        safety_tolerance: 6,
       }),
     });
 
     if (!falRes.ok) {
       const text = await falRes.text();
-      console.error("fal.ai error:", falRes.status, text.substring(0, 600));
+      console.error("fal.ai Kontext error:", falRes.status, text.substring(0, 600));
       let message = `fal.ai error ${falRes.status}`;
       try {
         const parsed: FalResponse = JSON.parse(text);
@@ -115,18 +113,16 @@ serve(async (req) => {
     const imageUrl = falResult.images?.[0]?.url;
 
     if (!imageUrl) {
-      console.error("No image URL in fal.ai response:", JSON.stringify(falResult).substring(0, 400));
-      return new Response(JSON.stringify({ error: "fal.ai returned no image" }), {
+      console.error("No image URL in Kontext response:", JSON.stringify(falResult).substring(0, 400));
+      return new Response(JSON.stringify({ error: "FLUX Kontext returned no image" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Download the generated image and return it as base64
     const imgRes = await fetch(imageUrl);
     if (!imgRes.ok) throw new Error(`Failed to download generated image: ${imgRes.status}`);
     const imgBytes = new Uint8Array(await imgRes.arrayBuffer());
 
-    // Convert to base64
     let binary = "";
     for (let i = 0; i < imgBytes.length; i++) binary += String.fromCharCode(imgBytes[i]);
     const b64 = btoa(binary);
