@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { decode as decodeBase64 } from "https://deno.land/std@0.168.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,93 +14,17 @@ interface ItemMetadata {
   fabric: string;
 }
 
-interface GeminiTextPart { text: string }
-interface GeminiInlinePart { inlineData: { mimeType: string; data: string } }
-type GeminiPart = GeminiTextPart | GeminiInlinePart;
-interface GeminiResponse {
-  candidates?: Array<{ content?: { parts?: GeminiPart[] } }>;
-  error?: { message?: string };
-}
+function buildPrompt(item: ItemMetadata): string {
+  const pose = (() => {
+    const cat = item.category.toLowerCase();
+    if (cat === "bottoms") return "flat-lay with both legs straight and parallel, waistband at top";
+    if (cat === "shoes") return "pair of shoes, three-quarter front product view";
+    if (cat === "hats") return "single hat, front-facing product view";
+    if (cat === "accessories") return "single accessory, centred product view";
+    return "front-facing flat-lay, fully spread out showing the entire front";
+  })();
 
-function isTextPart(p: GeminiPart): p is GeminiTextPart { return "text" in p; }
-
-function poseForCategory(category: string): string {
-  const cat = category.toLowerCase();
-  if (cat === "bottoms") return "flat-lay, both legs straight and parallel, waistband at top";
-  if (cat === "shoes") return "pair of shoes, three-quarter front product view";
-  if (cat === "hats") return "single hat, front-facing";
-  if (cat === "accessories") return "single accessory, centred";
-  return "front-facing flat-lay, fully spread out, entire front visible";
-}
-
-// Step 1: Gemini 2.5 Flash Vision analyses the real SAM2 cutout and produces a
-// precise description of the actual garment — colours, prints, texture, details.
-async function describeGarment(imageBase64: string, item: ItemMetadata, geminiKey: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            {
-              text: `Describe this ${item.category} garment for a product photographer. Be precise and visual: cover the exact colours and any patterns, fabric texture and sheen, any logos, prints, graphics, or embroidery, and key structural features (collar type, sleeve length, cut, hardware). Two sentences maximum. Do not say "the image shows" — describe the item directly.`,
-            },
-            { inlineData: { mimeType: "image/png", data: imageBase64 } },
-          ] as GeminiPart[],
-        }],
-        generationConfig: { maxOutputTokens: 150 },
-      }),
-    },
-  );
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Gemini vision error ${res.status}: ${text.substring(0, 200)}`);
-  }
-  const result: GeminiResponse = await res.json();
-  if (result.error) throw new Error(result.error.message ?? "Gemini vision error");
-  const parts = result.candidates?.[0]?.content?.parts ?? [];
-  const description = parts.find(isTextPart)?.text?.trim() ?? "";
-  if (!description) throw new Error("Gemini returned no description");
-  return description;
-}
-
-// Step 2: gpt-image-1 generation — same endpoint used by vestis-extract-item
-// for outfit mode, proven quality. The Gemini description grounds the prompt in
-// the real garment's actual appearance.
-async function generateFlatLay(description: string, item: ItemMetadata, openAiKey: string): Promise<string> {
-  const pose = poseForCategory(item.category);
-
-  const prompt = `Create a professional e-commerce catalogue product image. ${description} Pose: ${pose}. Pure white studio background, soft even lighting, subtle natural shadow. Item centred and fills 80% of the frame. Sharp focus, clean product-photography realism. No model, no mannequin, no hanger, no background clutter, no text, no watermarks.`;
-
-  const res = await fetch("https://api.openai.com/v1/images/generations", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${openAiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "gpt-image-1",
-      prompt,
-      size: "1024x1024",
-      quality: "medium",
-      output_format: "png",
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("gpt-image-1 generation error:", res.status, text.substring(0, 400));
-    let message = `Image generation error ${res.status}`;
-    try { message = (JSON.parse(text))?.error?.message ?? message; } catch { /* keep generic */ }
-    throw new Error(message);
-  }
-
-  const result = await res.json();
-  const b64 = result?.data?.[0]?.b64_json;
-  if (!b64) throw new Error("No image returned from gpt-image-1");
-  return b64;
+  return `Using this clothing item as the reference, generate a professional e-commerce product photograph of the exact same garment. Pose: ${pose}. Pure white studio background, soft even overhead lighting, subtle natural shadow beneath. Item centred and fills 80% of the frame. Sharp focus, clean product-photography realism. Preserve the exact colours, fabric, and design details from the reference image. No model, no mannequin, no hanger, no background clutter, no text, no watermarks.`;
 }
 
 serve(async (req) => {
@@ -139,9 +64,6 @@ serve(async (req) => {
       });
     }
 
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY is not configured");
-
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY") ?? Deno.env.get("OPEN_AI_API_KEY");
     if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
 
@@ -153,15 +75,46 @@ serve(async (req) => {
       fabric: String(meta.fabric ?? ""),
     };
 
-    // Step 1: analyse the real garment cutout with Gemini Vision
-    const description = await describeGarment(imageBase64, item, GEMINI_API_KEY);
-    console.log(`vestis-flatten-item: "${description.substring(0, 100)}"`);
+    console.log(`vestis-flatten-item: flat-lay for "${item.name}"`);
 
-    // Step 2: generate a clean studio flat-lay with gpt-image-1
-    const flatLayBase64 = await generateFlatLay(description, item, OPENAI_API_KEY);
+    const imageBytes = decodeBase64(imageBase64);
+    const imageBlob = new Blob([imageBytes], { type: "image/png" });
+
+    const formData = new FormData();
+    formData.append("image[]", imageBlob, "cutout.png");
+    formData.append("prompt", buildPrompt(item));
+    formData.append("model", "gpt-image-1");
+    formData.append("size", "1024x1024");
+    formData.append("quality", "medium");
+    formData.append("n", "1");
+
+    const response = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("gpt-image-1 edit error:", response.status, text.substring(0, 600));
+      let message = `gpt-image-1 error ${response.status}`;
+      try { message = (JSON.parse(text))?.error?.message ?? message; } catch { /* keep generic */ }
+      return new Response(JSON.stringify({ error: message }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const result = await response.json();
+    const b64 = result?.data?.[0]?.b64_json;
+    if (!b64) {
+      console.error("No image in response:", JSON.stringify(result).substring(0, 400));
+      return new Response(JSON.stringify({ error: "No image returned from gpt-image-1" }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(
-      JSON.stringify({ imageBase64: flatLayBase64, mimeType: "image/png" }),
+      JSON.stringify({ imageBase64: b64, mimeType: "image/png" }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
