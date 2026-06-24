@@ -12,6 +12,7 @@ import { MassUploadCandidate, WARDROBE_FABRICS } from "@/types/massUpload";
 import { useMassUpload } from "@/contexts/MassUploadContext";
 import { Check, ChevronDown, ChevronUp, Loader2, Sparkles, X } from "lucide-react";
 
+
 export function MassUploadReviewSheet() {
   const {
     phase,
@@ -25,7 +26,6 @@ export function MassUploadReviewSheet() {
     updateCandidate,
   } = useMassUpload();
   const { toast } = useToast();
-  const [addingAll, setAddingAll] = useState(false);
 
   const handleAdd = async (candidate: MassUploadCandidate) => {
     try {
@@ -35,15 +35,12 @@ export function MassUploadReviewSheet() {
     }
   };
 
-  const handleAddAll = async () => {
-    setAddingAll(true);
-    try {
-      await addAllCandidatesToWardrobe();
-    } catch {
-      toast({ title: "Some items couldn't be saved", description: "Please try adding them individually.", variant: "destructive" });
-    } finally {
-      setAddingAll(false);
-    }
+  const handleAddAll = () => {
+    // Close immediately so the app stays usable while bg removal + uploads run.
+    closeReview();
+    addAllCandidatesToWardrobe().catch(() => {
+      toast({ title: "Some items couldn't be saved", description: "Check your wardrobe for any missing items.", variant: "destructive" });
+    });
   };
 
   const isOutfit = mode === "outfit";
@@ -111,17 +108,10 @@ export function MassUploadReviewSheet() {
             <Button
               type="button"
               className="w-full rounded-2xl bg-accent text-accent-foreground hover:bg-accent/90 h-12 text-sm font-semibold"
-              disabled={addingAll}
               onClick={handleAddAll}
             >
-              {addingAll ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-4 w-4" />
-              )}
-              {addingAll
-                ? "Adding to wardrobe..."
-                : `Add ${pendingCount} item${pendingCount === 1 ? "" : "s"} to wardrobe`}
+              <Sparkles className="mr-2 h-4 w-4" />
+              {`Add ${pendingCount} item${pendingCount === 1 ? "" : "s"} to wardrobe`}
             </Button>
           </div>
         )}

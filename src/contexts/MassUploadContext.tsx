@@ -436,7 +436,23 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
   const addCandidateToWardrobe = useCallback(async (candidate: MassUploadCandidate) => {
     updateCandidate(candidate.id, { addState: "saving" });
     try {
-      let finalImageUrl = candidate.previewUrl!;
+      // Run background removal on the flat-lay so the wardrobe gets a clean
+      // transparent-background image. processClothingImage runs in a web worker
+      // so it doesn't block the main thread while the app stays usable.
+      let imageUrl = candidate.previewUrl!;
+      if (candidate.croppedBase64) {
+        try {
+          const bytes = atob(candidate.croppedBase64);
+          const arr = new Uint8Array(bytes.length);
+          for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+          const flatLayBlob = new Blob([arr], { type: "image/png" });
+          const flatLayFile = new File([flatLayBlob], "flat-lay.png", { type: "image/png" });
+          const bgRemovedBlob = await processClothingImage(flatLayFile);
+          imageUrl = URL.createObjectURL(bgRemovedBlob);
+        } catch {
+          // bg removal failed — fall back to the white-background preview
+        }
+      }
 
       await onAddRef.current(
         {
@@ -445,7 +461,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           category: candidate.category,
           color: candidate.color,
           fabric: candidate.fabric,
-          imageUrl: finalImageUrl,
+          imageUrl,
           tags: [...candidate.tags, candidate.category, candidate.fabric.toLowerCase(), candidate.color.toLowerCase()].filter(Boolean),
           notes: candidate.notes,
           estimatedPrice: candidate.estimatedPrice,
