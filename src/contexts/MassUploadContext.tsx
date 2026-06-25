@@ -272,7 +272,10 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       const allItemsWithSrc: ItemWithSource[] = [];
 
       await Promise.all(files.map(async (file) => {
-        const base64 = await optimiseMassUploadImage(file);
+        // Outfit photos contain a full person, which causes SAM2 to generate
+        // many more masks than a pile photo. At 1600px, 40+ masks × 10MB each
+        // risks OOM in the edge function. 1024px keeps mask memory under ~170MB.
+        const base64 = await optimiseMassUploadImage(file, uploadMode === "outfit" ? 1024 : 1600);
         if (sessionRef.current !== mySession) return;
 
         const { data, error } = await supabase.functions.invoke("vestis-analyze-pile", {
