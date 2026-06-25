@@ -71,11 +71,19 @@ serve(async (req) => {
     });
 
     if (!stripeRes.ok) {
-      const errData: StripeApiError = await stripeRes.json();
-      console.error("vestis-create-checkout: Stripe error", stripeRes.status, errData?.error?.message);
+      const rawErrText = await stripeRes.text();
+      console.error("vestis-create-checkout: Stripe error", stripeRes.status, rawErrText);
+      let stripeMessage = "Could not create checkout session. Please try again.";
+      try {
+        const errData: StripeApiError = JSON.parse(rawErrText);
+        if (errData?.error?.message) stripeMessage = errData.error.message;
+      } catch { /* keep default */ }
+      // Return 200 with error in body — the Supabase client discards the body on
+      // non-2xx responses, so checkoutService.ts would never see our message.
+      // All other edge functions in this codebase use this same pattern.
       return new Response(
-        JSON.stringify({ error: "Could not create checkout session. Please try again." }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        JSON.stringify({ error: stripeMessage }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
