@@ -178,8 +178,7 @@ async function cropItemFromPhoto(
       ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
       canvas.toBlob(
         (blob) => blob ? resolve(blob) : reject(new Error("toBlob failed")),
-        "image/jpeg",
-        0.92,
+        "image/png",
       );
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load failed")); };
@@ -424,10 +423,8 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
           try {
             const croppedBlob = await cropItemFromPhoto(item._sourceBase64, item.bbox);
-            const croppedFile = new File([croppedBlob], "outfit-crop.jpg", { type: "image/jpeg" });
-            const bgRemovedBlob = await processClothingImage(croppedFile);
-            const cutoutBase64 = await blobToBase64(bgRemovedBlob);
-            const { previewUrl, imageBase64 } = await generatePileFlatLay(cutoutBase64, item);
+            const cropBase64 = await blobToBase64(croppedBlob);
+            const { previewUrl, imageBase64 } = await generatePileFlatLay(cropBase64, item);
             setCandidates((prev) => [...prev, {
               ...baseCandidate,
               previewStatus: "ready",
