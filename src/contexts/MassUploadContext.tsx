@@ -316,7 +316,17 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
         setAnalysisDone((prev) => prev + 1);
 
-        const items: DetectedItem[] = (error ? [] : data?.items) ?? [];
+        const rawItems: DetectedItem[] = (error ? [] : data?.items) ?? [];
+        // Outfit mode: skip accessories (earrings, rings, watches — too small in a
+        // worn photo for FLUX to reproduce faithfully) and any item whose bbox
+        // covers less than 2 % of the image (similarly too small to crop usefully).
+        const items = uploadMode === "outfit"
+          ? rawItems.filter((item) => {
+              if (item.category === "accessories") return false;
+              const area = (item.bbox?.width ?? 0) * (item.bbox?.height ?? 0);
+              return area >= 0.02;
+            })
+          : rawItems;
         if (items.length === 0) return;
 
         const idxStart = itemCounterRef.current;

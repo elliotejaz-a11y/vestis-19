@@ -23,7 +23,8 @@ function buildPrompt(item: ItemMetadata): string {
     return "fully spread out flat showing the entire front, no folds, no wrinkles";
   })();
 
-  return `Professional e-commerce product flat-lay photograph of this exact ${item.category}. Keep every design detail identical — same colours, patterns, graphics, logos, text, and fabric texture as the input. Lay it perfectly flat and smooth on a pure white background. Pose: ${pose}. Soft even overhead studio lighting. Item centred and fills most of the frame. No model, no mannequin, no hanger, no background clutter.`;
+  const subject = item.name || item.category;
+  return `Professional e-commerce product flat-lay photograph of this exact ${subject}. Keep every design detail identical — same colours, patterns, graphics, logos, text, and fabric texture as the input. Lay it perfectly flat and smooth on a pure white background. Pose: ${pose}. Soft even overhead studio lighting. Item centred and fills most of the frame. No model, no mannequin, no hanger, no background clutter.`;
 }
 
 interface FalImage { url: string; content_type?: string }
