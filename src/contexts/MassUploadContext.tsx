@@ -152,6 +152,41 @@ function buildBaseCandidate(item: ItemWithSource): MassUploadCandidate {
   };
 }
 
+// Crops the normalised bbox region from a JPEG source image, with padding.
+// Returns the cropped JPEG blob, ready for background removal.
+async function cropItemFromPhoto(
+  sourceBase64: string,
+  bbox: { x: number; y: number; width: number; height: number },
+): Promise<Blob> {
+  const sourceBlob = base64ToBlob(sourceBase64, "image/jpeg");
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(sourceBlob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const iw = img.naturalWidth;
+      const ih = img.naturalHeight;
+      const pad = Math.max(bbox.width * iw, bbox.height * ih) * 0.06;
+      const sx = Math.max(0, Math.round(bbox.x * iw - pad));
+      const sy = Math.max(0, Math.round(bbox.y * ih - pad));
+      const sw = Math.min(iw - sx, Math.round(bbox.width * iw + pad * 2));
+      const sh = Math.min(ih - sy, Math.round(bbox.height * ih + pad * 2));
+      const canvas = document.createElement("canvas");
+      canvas.width = sw;
+      canvas.height = sh;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error("toBlob failed")),
+        "image/jpeg",
+        0.92,
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load failed")); };
+    img.src = url;
+  });
+}
+
 // SAM2 cutout → FLUX Kontext → clean studio flat-lay of the real garment.
 // Falls back to placing the raw cutout on white if the AI step fails.
 async function generatePileFlatLay(
@@ -272,10 +307,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       const allItemsWithSrc: ItemWithSource[] = [];
 
       await Promise.all(files.map(async (file) => {
-        // Outfit photos contain a full person, which causes SAM2 to generate
-        // many more masks than a pile photo. At 1600px, 40+ masks × 10MB each
-        // risks OOM in the edge function. 1024px keeps mask memory under ~170MB.
-        const base64 = await optimiseMassUploadImage(file, uploadMode === "outfit" ? 1024 : 1600);
+        const base64 = await optimiseMassUploadImage(file);
         if (sessionRef.current !== mySession) return;
 
         const { data, error } = await supabase.functions.invoke("vestis-analyze-pile", {
@@ -304,68 +336,109 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       if (sessionRef.current !== mySession) return;
       if (allItemsWithSrc.length === 0) { setPhase("ready"); return; }
 
-      // ── Phase 2: SAM2 cutout → FLUX Kontext flat-lay (both pile and outfit mode) ──
-      // vestis-analyze-pile already uses a different Gemini prompt per mode; the
-      // extraction pipeline (SAM2 → FLUX Kontext → white canvas) is identical.
       setPhase("extracting");
 
-      // Group by source photo so each photo is sent to SAM2 once, no matter how
-      // many items Gemini found in it.
-      const itemsByPhoto = new Map<string, ItemWithSource[]>();
-      for (const item of allItemsWithSrc) {
-        const list = itemsByPhoto.get(item._sourceBase64) ?? [];
-        list.push(item);
-        itemsByPhoto.set(item._sourceBase64, list);
-      }
-
-      for (const [sourceBase64, photoItems] of itemsByPhoto) {
-        if (sessionRef.current !== mySession) return;
-
-        const requestable = photoItems.filter((item) => item.bbox);
-        let resultById = new Map<string, SegmentationResult>();
-
-        if (requestable.length > 0) {
-          try {
-            const results = await segmentPileItems(
-              sourceBase64,
-              requestable.map((item) => ({ id: item.id, bbox: item.bbox! })),
-            );
-            resultById = new Map(results.map((result) => [result.id, result]));
-          } catch (error) {
-            const reason = error instanceof Error ? error.message : "Segmentation is temporarily unavailable";
-            resultById = new Map(
-              requestable.map((item) => [item.id, { id: item.id, status: "failed" as const, reason }]),
-            );
-          }
+      if (uploadMode === "pile") {
+        // ── Pile mode: SAM2 cutout → FLUX Kontext flat-lay ──────────────────────
+        // Group by source photo so each photo is sent to SAM2 once.
+        const itemsByPhoto = new Map<string, ItemWithSource[]>();
+        for (const item of allItemsWithSrc) {
+          const list = itemsByPhoto.get(item._sourceBase64) ?? [];
+          list.push(item);
+          itemsByPhoto.set(item._sourceBase64, list);
         }
 
-        for (const item of photoItems) {
+        for (const [sourceBase64, photoItems] of itemsByPhoto) {
           if (sessionRef.current !== mySession) return;
 
-          const baseCandidate = buildBaseCandidate(item);
-          const result = resultById.get(item.id);
+          const requestable = photoItems.filter((item) => item.bbox);
+          let resultById = new Map<string, SegmentationResult>();
 
-          if (result?.status === "segmented") {
+          if (requestable.length > 0) {
             try {
-              const { previewUrl, imageBase64 } = await generatePileFlatLay(result.imageBase64, item);
-              setCandidates((prev) => [...prev, {
-                ...baseCandidate,
-                previewStatus: "ready",
-                previewUrl,
-                croppedBase64: imageBase64,
-              }]);
+              const results = await segmentPileItems(
+                sourceBase64,
+                requestable.map((item) => ({ id: item.id, bbox: item.bbox! })),
+              );
+              resultById = new Map(results.map((result) => [result.id, result]));
             } catch (error) {
+              const reason = error instanceof Error ? error.message : "Segmentation is temporarily unavailable";
+              resultById = new Map(
+                requestable.map((item) => [item.id, { id: item.id, status: "failed" as const, reason }]),
+              );
+            }
+          }
+
+          for (const item of photoItems) {
+            if (sessionRef.current !== mySession) return;
+
+            const baseCandidate = buildBaseCandidate(item);
+            const result = resultById.get(item.id);
+
+            if (result?.status === "segmented") {
+              try {
+                const { previewUrl, imageBase64 } = await generatePileFlatLay(result.imageBase64, item);
+                setCandidates((prev) => [...prev, {
+                  ...baseCandidate,
+                  previewStatus: "ready",
+                  previewUrl,
+                  croppedBase64: imageBase64,
+                }]);
+              } catch (error) {
+                setCandidates((prev) => [...prev, {
+                  ...baseCandidate,
+                  previewStatus: "failed",
+                  error: error instanceof Error ? error.message : "Could not finish processing this item",
+                }]);
+              }
+            } else {
               setCandidates((prev) => [...prev, {
                 ...baseCandidate,
                 previewStatus: "failed",
-                error: error instanceof Error ? error.message : "Could not finish processing this item",
+                error: result?.reason ?? "Could not isolate this item from the photo",
               }]);
             }
-          } else {
+            setExtracted((prev) => prev + 1);
+          }
+        }
+      } else {
+        // ── Outfit mode: crop bbox → @imgly bg removal → FLUX Kontext flat-lay ──
+        // SAM2 automatic masks don't align reliably with Gemini bboxes for worn
+        // clothing (the person's body disrupts the IoU match). Instead: crop the
+        // Gemini bbox from the source photo, remove the background client-side,
+        // then let FLUX Kontext generate a clean studio flat-lay from that cutout.
+        for (const item of allItemsWithSrc) {
+          if (sessionRef.current !== mySession) return;
+
+          const baseCandidate = buildBaseCandidate(item);
+
+          if (!item.bbox) {
             setCandidates((prev) => [...prev, {
               ...baseCandidate,
               previewStatus: "failed",
-              error: result?.reason ?? "Could not isolate this item from the photo",
+              error: "Item location could not be determined",
+            }]);
+            setExtracted((prev) => prev + 1);
+            continue;
+          }
+
+          try {
+            const croppedBlob = await cropItemFromPhoto(item._sourceBase64, item.bbox);
+            const croppedFile = new File([croppedBlob], "outfit-crop.jpg", { type: "image/jpeg" });
+            const bgRemovedBlob = await processClothingImage(croppedFile);
+            const cutoutBase64 = await blobToBase64(bgRemovedBlob);
+            const { previewUrl, imageBase64 } = await generatePileFlatLay(cutoutBase64, item);
+            setCandidates((prev) => [...prev, {
+              ...baseCandidate,
+              previewStatus: "ready",
+              previewUrl,
+              croppedBase64: imageBase64,
+            }]);
+          } catch (error) {
+            setCandidates((prev) => [...prev, {
+              ...baseCandidate,
+              previewStatus: "failed",
+              error: error instanceof Error ? error.message : "Could not process this item",
             }]);
           }
           setExtracted((prev) => prev + 1);
