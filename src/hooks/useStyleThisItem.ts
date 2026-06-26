@@ -411,6 +411,9 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
         );
       }
 
+      // Increment all-time counter — persists even if the outfit is later deleted.
+      await supabase.rpc('increment_total_outfits_generated', { p_user_id: user.id });
+
       setIsSaved(true);
       setResult((prev) => prev ? { ...prev, outfitId: outfitRow.id } : prev);
 
