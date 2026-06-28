@@ -283,6 +283,23 @@ function getOccasionTier(occasion: string): OccasionTierResult {
 }
 
 
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+async function geminiRequest(url: string, body: object, maxRetries = 2): Promise<Response> {
+  const options: RequestInit = {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  };
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const res = await fetch(url, options);
+    if (res.status !== 429 || attempt === maxRetries) return res;
+    await sleep(1500 * (attempt + 1));
+  }
+  // unreachable, but satisfies TS
+  return fetch(url, options);
+}
+
 function dedupeById(items: any[]): any[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -508,20 +525,16 @@ Return a JSON object with this exact shape:
       // Use native Gemini API — guarantees valid JSON via responseMimeType.
       // thinkingBudget: 0 disables the reasoning pass so parts[0] IS the JSON output,
       // not thinking prose that would break JSON.parse.
-      const guidedResponse = await fetch(
+      const guidedResponse = await geminiRequest(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: guidedSystemPrompt }] },
-            contents: [{ role: 'user', parts: [{ text: preBuiltPrompt }] }],
-            generationConfig: {
-              responseMimeType: 'application/json',
-              maxOutputTokens: 1024,
-              thinkingConfig: { thinkingBudget: 0 },
-            },
-          }),
+          systemInstruction: { parts: [{ text: guidedSystemPrompt }] },
+          contents: [{ role: 'user', parts: [{ text: preBuiltPrompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            maxOutputTokens: 1024,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }
       );
 
@@ -773,20 +786,16 @@ ${wardrobeSummary}
 
 Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items (gym top + gym bottom + closed trainer).' : 'Return 3–5 items that genuinely work together.'}`;
 
-    const response = await fetch(
+    const response = await geminiRequest(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            maxOutputTokens: 2048,
-            thinkingConfig: { thinkingBudget: 0 },
-          },
-        }),
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          maxOutputTokens: 2048,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       }
     );
 
