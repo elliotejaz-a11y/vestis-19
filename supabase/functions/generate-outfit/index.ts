@@ -288,12 +288,12 @@ const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, m
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 // Primary model then fallback — each has an independent RPM bucket so a 429 on one
-// does not affect the other.
-const GEMINI_MODEL_CASCADE = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+// does not affect the other. gemini-2.0-flash is the stable fallback.
+const GEMINI_MODEL_CASCADE = ['gemini-2.5-flash', 'gemini-2.0-flash'];
 
-// gemini-1.5-flash doesn't support thinkingConfig — strip it to avoid API errors.
+// Only gemini-2.5-* supports thinkingConfig — strip it for all other models.
 function bodyForModel(body: Record<string, unknown>, model: string): Record<string, unknown> {
-  if (model.startsWith('gemini-2.5') || model.startsWith('gemini-2.0')) return body;
+  if (model.startsWith('gemini-2.5')) return body;
   const gc = body.generationConfig as Record<string, unknown> | undefined;
   if (!gc?.thinkingConfig) return body;
   const { thinkingConfig: _dropped, ...restGc } = gc;
