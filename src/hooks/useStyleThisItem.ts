@@ -261,34 +261,45 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
         description: weather.condition,
       };
 
-      // ── Call generate-outfit edge function (guided mode) ─────────────────
-      const { data, error: fnError } = await supabase.functions.invoke('generate-outfit', {
-        body: {
-          occasion: OCCASION_LABEL[occasion],
-          items: items,
-          weather: weatherForEdge,
-          recentOutfitItemIds: recentItemIds,
-          preBuiltPrompt,
-          mandatoryAnchorId: anchor.id,
-          mandatoryAnchorName: anchor.name,
-        },
-      });
+      // ── Call generate-outfit edge function with client-side retry on rate limit ──
+      const edgeBody = {
+        occasion: OCCASION_LABEL[occasion],
+        items: items,
+        weather: weatherForEdge,
+        recentOutfitItemIds: recentItemIds,
+        preBuiltPrompt,
+        mandatoryAnchorId: anchor.id,
+        mandatoryAnchorName: anchor.name,
+      };
 
-      if (fnError) {
-        // Extract actual error body from FunctionsHttpError context
-        let bodyMsg = '';
-        try {
-          const ctx = (fnError as { context?: Response }).context;
-          if (ctx) {
-            const bodyJson = await ctx.clone().json().catch(() => null);
-            bodyMsg = bodyJson?.error || bodyJson?.message || '';
+      const invokeWithRetry = async () => {
+        for (let attempt = 0; attempt <= 1; attempt++) {
+          if (attempt > 0) {
+            setError('Generation service is busy — retrying automatically...');
+            await new Promise<void>(r => setTimeout(r, 12000));
+            setError(null);
           }
-        } catch { /* ignore */ }
-        const msg = bodyMsg || (fnError instanceof Error ? fnError.message : String(fnError));
-        if (/rate limit/i.test(msg)) throw new Error('rate_limit');
-        if (/credit|payment|402/i.test(msg)) throw new Error('credits');
-        throw new Error(msg);
-      }
+          const { data, error: fnError } = await supabase.functions.invoke('generate-outfit', { body: edgeBody });
+          if (fnError) {
+            let bodyMsg = '';
+            try {
+              const ctx = (fnError as { context?: Response }).context;
+              if (ctx) {
+                const bodyJson = await ctx.clone().json().catch(() => null);
+                bodyMsg = bodyJson?.error || bodyJson?.message || '';
+              }
+            } catch { /* ignore */ }
+            const msg = bodyMsg || (fnError instanceof Error ? fnError.message : String(fnError));
+            if (/rate limit/i.test(msg) && attempt < 1) continue;
+            if (/rate limit/i.test(msg)) throw new Error('rate_limit');
+            if (/credit|payment|402/i.test(msg)) throw new Error('credits');
+            throw new Error(msg);
+          }
+          return data;
+        }
+      };
+
+      const data = await invokeWithRetry();
 
       if (!data || typeof data !== 'object') {
         throw new Error('Empty response from generation service.');

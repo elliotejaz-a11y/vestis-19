@@ -285,16 +285,19 @@ function getOccasionTier(occasion: string): OccasionTierResult {
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
-async function geminiRequest(url: string, body: object, maxRetries = 2): Promise<Response> {
+// Retry delays: 3 s then 7 s — long enough for Gemini's RPM bucket to partially refill.
+const RETRY_DELAYS_MS = [3000, 7000];
+
+async function geminiRequest(url: string, body: object): Promise<Response> {
   const options: RequestInit = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   };
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     const res = await fetch(url, options);
-    if (res.status !== 429 || attempt === maxRetries) return res;
-    await sleep(1500 * (attempt + 1));
+    if (res.status !== 429 || attempt === RETRY_DELAYS_MS.length) return res;
+    await sleep(RETRY_DELAYS_MS[attempt]);
   }
   // unreachable, but satisfies TS
   return fetch(url, options);
