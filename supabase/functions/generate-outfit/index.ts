@@ -301,6 +301,7 @@ function bodyForModel(body: Record<string, unknown>, model: string): Record<stri
 }
 
 async function geminiRequest(apiKey: string, body: Record<string, unknown>): Promise<Response> {
+  let lastErrBody = '';
   for (let mi = 0; mi < GEMINI_MODEL_CASCADE.length; mi++) {
     const model = GEMINI_MODEL_CASCADE[mi];
     const url = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
@@ -314,13 +315,15 @@ async function geminiRequest(apiKey: string, body: Record<string, unknown>): Pro
       if (attempt > 0) await sleep(3000);
       const res = await fetch(url, opts);
       if (res.status !== 429) return res;
+      lastErrBody = await res.text();
+      console.error(`[gemini] ${model} attempt=${attempt} status=429 body=${lastErrBody}`);
     }
-    // Still rate-limited — fall through to next model
-    console.log(`geminiRequest: ${model} rate-limited, trying next model`);
+    console.error(`[gemini] ${model} exhausted, trying next model`);
   }
-  // All models exhausted
+  // All models exhausted — surface the actual Gemini error to aid debugging
+  console.error('[gemini] all models exhausted, last error:', lastErrBody);
   return new Response(
-    JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
+    JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.', geminiError: lastErrBody }),
     { status: 429, headers: { 'Content-Type': 'application/json' } }
   );
 }
