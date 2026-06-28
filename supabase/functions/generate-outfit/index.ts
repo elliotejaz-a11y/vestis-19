@@ -320,10 +320,10 @@ async function geminiRequest(apiKey: string, body: Record<string, unknown>): Pro
     }
     console.error(`[gemini] ${model} exhausted, trying next model`);
   }
-  // All models exhausted — surface the actual Gemini error to aid debugging
+  // All models exhausted — return actual Gemini error body so client can display it
   console.error('[gemini] all models exhausted, last error:', lastErrBody);
   return new Response(
-    JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.', geminiError: lastErrBody }),
+    JSON.stringify({ error: `Gemini quota: ${lastErrBody.slice(0, 300)}` }),
     { status: 429, headers: { 'Content-Type': 'application/json' } }
   );
 }
@@ -567,9 +567,8 @@ Return a JSON object with this exact shape:
         const text = await guidedResponse.text();
         console.error('Gemini guided error:', guidedResponse.status, text);
         if (guidedResponse.status === 429) {
-          return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
-            status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          // Pass through geminiRequest's body (contains cascade debug info)
+          return new Response(text, { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
         throw new Error(`AI gateway error: ${guidedResponse.status}`);
       }
@@ -825,9 +824,7 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
       const text = await response.text();
       console.error('Gemini legacy error:', response.status, text);
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
-          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return new Response(text, { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       throw new Error(`AI gateway error: ${response.status}`);
     }
