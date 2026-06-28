@@ -285,22 +285,44 @@ function getOccasionTier(occasion: string): OccasionTierResult {
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
-// Retry delays: 3 s then 7 s — long enough for Gemini's RPM bucket to partially refill.
-const RETRY_DELAYS_MS = [3000, 7000];
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-async function geminiRequest(url: string, body: object): Promise<Response> {
-  const options: RequestInit = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  };
-  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-    const res = await fetch(url, options);
-    if (res.status !== 429 || attempt === RETRY_DELAYS_MS.length) return res;
-    await sleep(RETRY_DELAYS_MS[attempt]);
+// Primary model then fallback — each has an independent RPM bucket so a 429 on one
+// does not affect the other.
+const GEMINI_MODEL_CASCADE = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+
+// gemini-1.5-flash doesn't support thinkingConfig — strip it to avoid API errors.
+function bodyForModel(body: Record<string, unknown>, model: string): Record<string, unknown> {
+  if (model.startsWith('gemini-2.5') || model.startsWith('gemini-2.0')) return body;
+  const gc = body.generationConfig as Record<string, unknown> | undefined;
+  if (!gc?.thinkingConfig) return body;
+  const { thinkingConfig: _dropped, ...restGc } = gc;
+  return { ...body, generationConfig: restGc };
+}
+
+async function geminiRequest(apiKey: string, body: Record<string, unknown>): Promise<Response> {
+  for (let mi = 0; mi < GEMINI_MODEL_CASCADE.length; mi++) {
+    const model = GEMINI_MODEL_CASCADE[mi];
+    const url = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
+    const opts: RequestInit = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyForModel(body, model)),
+    };
+    // One retry on 429 before moving to the next model (3 s wait)
+    for (let attempt = 0; attempt <= 1; attempt++) {
+      if (attempt > 0) await sleep(3000);
+      const res = await fetch(url, opts);
+      if (res.status !== 429) return res;
+    }
+    // Still rate-limited — fall through to next model
+    console.log(`geminiRequest: ${model} rate-limited, trying next model`);
   }
-  // unreachable, but satisfies TS
-  return fetch(url, options);
+  // All models exhausted
+  return new Response(
+    JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
+    { status: 429, headers: { 'Content-Type': 'application/json' } }
+  );
 }
 
 function dedupeById(items: any[]): any[] {
@@ -528,18 +550,15 @@ Return a JSON object with this exact shape:
       // Use native Gemini API — guarantees valid JSON via responseMimeType.
       // thinkingBudget: 0 disables the reasoning pass so parts[0] IS the JSON output,
       // not thinking prose that would break JSON.parse.
-      const guidedResponse = await geminiRequest(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          systemInstruction: { parts: [{ text: guidedSystemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: preBuiltPrompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            maxOutputTokens: 1024,
-            thinkingConfig: { thinkingBudget: 0 },
-          },
-        }
-      );
+      const guidedResponse = await geminiRequest(GEMINI_API_KEY, {
+        systemInstruction: { parts: [{ text: guidedSystemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: preBuiltPrompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          maxOutputTokens: 1024,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      });
 
       if (!guidedResponse.ok) {
         const text = await guidedResponse.text();
@@ -789,18 +808,15 @@ ${wardrobeSummary}
 
 Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items (gym top + gym bottom + closed trainer).' : 'Return 3–5 items that genuinely work together.'}`;
 
-    const response = await geminiRequest(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        systemInstruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          maxOutputTokens: 2048,
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      }
-    );
+    const response = await geminiRequest(GEMINI_API_KEY, {
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: 2048,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    });
 
     if (!response.ok) {
       const text = await response.text();
