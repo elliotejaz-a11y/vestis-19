@@ -310,20 +310,20 @@ async function geminiRequest(apiKey: string, body: Record<string, unknown>): Pro
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(bodyForModel(body, model)),
     };
-    // One retry on 429 before moving to the next model (3 s wait)
     for (let attempt = 0; attempt <= 1; attempt++) {
       if (attempt > 0) await sleep(3000);
       const res = await fetch(url, opts);
       if (res.status !== 429) return res;
       lastErrBody = await res.text();
-      console.error(`[gemini] ${model} attempt=${attempt} status=429 body=${lastErrBody}`);
+      console.error(`[gemini] ${model} attempt=${attempt} status=429`);
     }
     console.error(`[gemini] ${model} exhausted, trying next model`);
   }
-  // All models exhausted — return actual Gemini error body so client can display it
-  console.error('[gemini] all models exhausted, last error:', lastErrBody);
+  // Detect spending cap vs generic rate limit so client shows the right message
+  const isSpendingCap = /spending cap/i.test(lastErrBody);
+  console.error('[gemini] all models exhausted. spending_cap=', isSpendingCap);
   return new Response(
-    JSON.stringify({ error: `Gemini quota: ${lastErrBody.slice(0, 300)}` }),
+    JSON.stringify({ error: isSpendingCap ? 'spending_cap' : 'rate_limit' }),
     { status: 429, headers: { 'Content-Type': 'application/json' } }
   );
 }
@@ -565,9 +565,8 @@ Return a JSON object with this exact shape:
 
       if (!guidedResponse.ok) {
         const text = await guidedResponse.text();
-        console.error('Gemini guided error:', guidedResponse.status, text);
+        console.error('Gemini guided error:', guidedResponse.status);
         if (guidedResponse.status === 429) {
-          // Pass through geminiRequest's body (contains cascade debug info)
           return new Response(text, { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
         throw new Error(`AI gateway error: ${guidedResponse.status}`);
@@ -822,7 +821,7 @@ Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items 
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('Gemini legacy error:', response.status, text);
+      console.error('Gemini legacy error:', response.status);
       if (response.status === 429) {
         return new Response(text, { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }

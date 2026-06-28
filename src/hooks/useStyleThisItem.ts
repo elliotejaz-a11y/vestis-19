@@ -282,18 +282,17 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
           const { data, error: fnError } = await supabase.functions.invoke('generate-outfit', { body: edgeBody });
           if (fnError) {
             let bodyMsg = '';
-            let geminiError = '';
             try {
               const ctx = (fnError as { context?: Response }).context;
               if (ctx) {
                 const bodyJson = await ctx.clone().json().catch(() => null);
                 bodyMsg = bodyJson?.error || bodyJson?.message || '';
-                geminiError = bodyJson?.geminiError || '';
               }
             } catch { /* ignore */ }
             const msg = bodyMsg || (fnError instanceof Error ? fnError.message : String(fnError));
-            if (/rate limit/i.test(msg) && attempt < 1) continue;
-            if (/rate limit/i.test(msg)) throw new Error(`rate_limit${geminiError ? `:${geminiError}` : ''}`);
+            if (msg === 'spending_cap') throw new Error('spending_cap');
+            if (msg === 'rate_limit' && attempt < 1) continue;
+            if (msg === 'rate_limit') throw new Error('rate_limit');
             if (/credit|payment|402/i.test(msg)) throw new Error('credits');
             throw new Error(msg);
           }
@@ -367,9 +366,10 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
       const msg = err instanceof Error ? err.message : String(err);
       if (msg === 'missing_top') {
         setError('We couldn\'t find a matching top in your wardrobe. Try adding more tops.');
-      } else if (msg.startsWith('rate_limit')) {
-        const detail = msg.includes(':') ? ` (${msg.slice(msg.indexOf(':') + 1).slice(0, 120)})` : '';
-        setError(`Too many requests. Wait a moment and try again.${detail}`);
+      } else if (msg === 'spending_cap') {
+        setError('Generation service is temporarily unavailable. Please try again later.');
+      } else if (msg === 'rate_limit') {
+        setError('Too many requests. Wait a moment and try again.');
       } else if (msg === 'credits') {
         setError('Generation service unavailable. Please try again later.');
       } else {
