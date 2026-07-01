@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Camera, Layers, ChevronRight, UserSquare2, Search, Sparkles } from "lucide-react";
+import { Camera, Layers, ChevronRight, UserSquare2, Search, Sparkles, Lock } from "lucide-react";
 import { usePremiumStatus } from "@/hooks/usePremiumStatus";
 import { PaywallScreen } from "@/components/PaywallScreen";
 
@@ -105,7 +105,10 @@ export function AddChoiceSheet({ open, onOpenChange, onPick, children }: Props) 
                   <Layers className="w-5 h-5 text-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Mass Upload</p>
+                  <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                    Mass Upload
+                    {!isPremium && <Lock className="w-3 h-3 text-accent shrink-0" />}
+                  </p>
                   <p className="text-[11px] text-muted-foreground">Snap a pile or closet - AI detects each item</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
@@ -120,7 +123,10 @@ export function AddChoiceSheet({ open, onOpenChange, onPick, children }: Props) 
                   <UserSquare2 className="w-5 h-5 text-accent" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-foreground">Extract from Outfit Photo</p>
+                  <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                    Extract from Outfit Photo
+                    {!isPremium && <Lock className="w-3 h-3 text-accent shrink-0" />}
+                  </p>
                   <p className="text-[11px] text-muted-foreground">Scan a worn outfit - tops, bottoms, shoes, watches & more</p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-muted-foreground" />
