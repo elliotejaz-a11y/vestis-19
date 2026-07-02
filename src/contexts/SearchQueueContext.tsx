@@ -33,7 +33,7 @@ interface InternalQueueItem extends QueueItem {
 
 interface SearchQueueContextValue {
   queue: QueueItem[];
-  addToQueue: (result: SearchResult, onAdd: OnAdd) => void;
+  addToQueue: (result: SearchResult, onAdd: OnAdd) => string;
 }
 
 const SearchQueueContext = createContext<SearchQueueContextValue | null>(null);
@@ -147,6 +147,12 @@ export function SearchQueueProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("[SearchQueue] processing failed:", err);
       setStatus(item.queueId, "error");
+      const shortTitle = item.title.length > 40 ? item.title.slice(0, 40) + "…" : item.title;
+      toast({
+        title: "Couldn't add item",
+        description: `${shortTitle} failed to process. Please try again.`,
+        variant: "destructive",
+      });
     }
   }, [toast, navigate]);
 
@@ -174,6 +180,7 @@ export function SearchQueueProvider({ children }: { children: ReactNode }) {
     setQueue((prev) => [...prev, item]);
     pendingRef.current.push(item);
     drain();
+    return item.queueId;
   }, [drain]);
 
   const publicQueue: QueueItem[] = queue.map(({ queueId, itemId, title, thumbnailUrl, status }) => ({

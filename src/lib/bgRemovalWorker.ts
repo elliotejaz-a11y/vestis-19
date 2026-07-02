@@ -22,6 +22,10 @@ function getWorker(): Worker {
     };
     workerInstance.onerror = (e) => {
       console.error("[BgRemovalWorker]", e.message);
+      for (const [, reject] of pending.values()) {
+        reject(new Error(e.message || "Background removal worker crashed"));
+      }
+      pending.clear();
     };
   }
   return workerInstance;

@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Search, CheckCircle2 } from "lucide-react";
+import { Loader2, Search, CheckCircle2, AlertCircle } from "lucide-react";
 import { ClothingItem } from "@/types/wardrobe";
 import { supabase } from "@/integrations/supabase/client";
 import { useSearchQueue, SearchResult } from "@/contexts/SearchQueueContext";
@@ -19,7 +19,7 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searchState, setSearchState] = useState<SearchState>("idle");
-  const [queuedKeys, setQueuedKeys] = useState<Set<string>>(new Set());
+  const [queuedKeys, setQueuedKeys] = useState<Map<string, string>>(new Map());
   const searchingRef = useRef(false);
   const { addToQueue, queue } = useSearchQueue();
 
@@ -52,16 +52,19 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
 
   const handleAdd = (result: SearchResult) => {
     const key = result.productLink || result.title;
-    if (queuedKeys.has(key)) return;
-    setQueuedKeys((prev) => new Set(prev).add(key));
-    addToQueue(result, onAdd);
+    const existingQueueId = queuedKeys.get(key);
+    const existingStatus = queue.find((q) => q.queueId === existingQueueId)?.status;
+    // Allow retrying a failed item, but not re-queuing one that's pending/processing/done.
+    if (existingQueueId && existingStatus !== "error") return;
+    const queueId = addToQueue(result, onAdd);
+    setQueuedKeys((prev) => new Map(prev).set(key, queueId));
   };
 
   const handleClose = () => {
     setQuery("");
     setResults([]);
     setSearchState("idle");
-    setQueuedKeys(new Set());
+    setQueuedKeys(new Map());
     onClose();
   };
 
@@ -141,7 +144,8 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
             <div className="grid grid-cols-2 gap-3">
               {results.map((result, i) => {
                 const key = result.productLink || result.title;
-                const isQueued = queuedKeys.has(key);
+                const queueId = queuedKeys.get(key);
+                const status = queue.find((q) => q.queueId === queueId)?.status;
                 return (
                   <button
                     key={i}
@@ -168,10 +172,22 @@ export function SearchAddModal({ isOpen, onClose, onAdd }: Props) {
                         <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{result.source}</p>
                       ) : null}
                     </div>
-                    {isQueued && (
+                    {(status === "pending" || status === "processing") && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 rounded-2xl">
+                        <Loader2 className="w-6 h-6 text-accent animate-spin" />
+                        <p className="text-[10px] font-medium text-foreground">Adding…</p>
+                      </div>
+                    )}
+                    {status === "done" && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 rounded-2xl">
                         <CheckCircle2 className="w-6 h-6 text-accent" />
-                        <p className="text-[10px] font-medium text-foreground">Queued</p>
+                        <p className="text-[10px] font-medium text-foreground">Added</p>
+                      </div>
+                    )}
+                    {status === "error" && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 rounded-2xl">
+                        <AlertCircle className="w-6 h-6 text-destructive" />
+                        <p className="text-[10px] font-medium text-foreground">Failed — tap to retry</p>
                       </div>
                     )}
                   </button>

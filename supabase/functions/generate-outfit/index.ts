@@ -283,6 +283,51 @@ function getOccasionTier(occasion: string): OccasionTierResult {
 }
 
 
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+// Primary model then fallback — each has an independent RPM bucket so a 429 on one
+// does not affect the other. gemini-2.0-flash is the stable fallback.
+const GEMINI_MODEL_CASCADE = ['gemini-2.5-flash', 'gemini-2.0-flash'];
+
+// Only gemini-2.5-* supports thinkingConfig — strip it for all other models.
+function bodyForModel(body: Record<string, unknown>, model: string): Record<string, unknown> {
+  if (model.startsWith('gemini-2.5')) return body;
+  const gc = body.generationConfig as Record<string, unknown> | undefined;
+  if (!gc?.thinkingConfig) return body;
+  const { thinkingConfig: _dropped, ...restGc } = gc;
+  return { ...body, generationConfig: restGc };
+}
+
+async function geminiRequest(apiKey: string, body: Record<string, unknown>): Promise<Response> {
+  let lastErrBody = '';
+  for (let mi = 0; mi < GEMINI_MODEL_CASCADE.length; mi++) {
+    const model = GEMINI_MODEL_CASCADE[mi];
+    const url = `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
+    const opts: RequestInit = {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyForModel(body, model)),
+    };
+    for (let attempt = 0; attempt <= 1; attempt++) {
+      if (attempt > 0) await sleep(3000);
+      const res = await fetch(url, opts);
+      if (res.status !== 429) return res;
+      lastErrBody = await res.text();
+      console.error(`[gemini] ${model} attempt=${attempt} status=429`);
+    }
+    console.error(`[gemini] ${model} exhausted, trying next model`);
+  }
+  // Detect spending cap vs generic rate limit so client shows the right message
+  const isSpendingCap = /spending cap/i.test(lastErrBody);
+  console.error('[gemini] all models exhausted. spending_cap=', isSpendingCap);
+  return new Response(
+    JSON.stringify({ error: isSpendingCap ? 'spending_cap' : 'rate_limit' }),
+    { status: 429, headers: { 'Content-Type': 'application/json' } }
+  );
+}
+
 function dedupeById(items: any[]): any[] {
   const seen = new Set<string>();
   return items.filter((item) => {
@@ -508,30 +553,21 @@ Return a JSON object with this exact shape:
       // Use native Gemini API — guarantees valid JSON via responseMimeType.
       // thinkingBudget: 0 disables the reasoning pass so parts[0] IS the JSON output,
       // not thinking prose that would break JSON.parse.
-      const guidedResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: guidedSystemPrompt }] },
-            contents: [{ role: 'user', parts: [{ text: preBuiltPrompt }] }],
-            generationConfig: {
-              responseMimeType: 'application/json',
-              maxOutputTokens: 1024,
-              thinkingConfig: { thinkingBudget: 0 },
-            },
-          }),
-        }
-      );
+      const guidedResponse = await geminiRequest(GEMINI_API_KEY, {
+        systemInstruction: { parts: [{ text: guidedSystemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: preBuiltPrompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          maxOutputTokens: 1024,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
+      });
 
       if (!guidedResponse.ok) {
         const text = await guidedResponse.text();
-        console.error('Gemini guided error:', guidedResponse.status, text);
+        console.error('Gemini guided error:', guidedResponse.status);
         if (guidedResponse.status === 429) {
-          return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
-            status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return new Response(text, { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
         }
         throw new Error(`AI gateway error: ${guidedResponse.status}`);
       }
@@ -773,30 +809,21 @@ ${wardrobeSummary}
 
 Pick the items by their 1-based index. ${isGymRequest ? 'Return EXACTLY 3 items (gym top + gym bottom + closed trainer).' : 'Return 3–5 items that genuinely work together.'}`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemPrompt }] },
-          contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-          generationConfig: {
-            responseMimeType: 'application/json',
-            maxOutputTokens: 2048,
-            thinkingConfig: { thinkingBudget: 0 },
-          },
-        }),
-      }
-    );
+    const response = await geminiRequest(GEMINI_API_KEY, {
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        maxOutputTokens: 2048,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
+    });
 
     if (!response.ok) {
       const text = await response.text();
-      console.error('Gemini legacy error:', response.status, text);
+      console.error('Gemini legacy error:', response.status);
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }), {
-          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        return new Response(text, { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       }
       throw new Error(`AI gateway error: ${response.status}`);
     }

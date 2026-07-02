@@ -261,34 +261,46 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
         description: weather.condition,
       };
 
-      // ── Call generate-outfit edge function (guided mode) ─────────────────
-      const { data, error: fnError } = await supabase.functions.invoke('generate-outfit', {
-        body: {
-          occasion: OCCASION_LABEL[occasion],
-          items: items,
-          weather: weatherForEdge,
-          recentOutfitItemIds: recentItemIds,
-          preBuiltPrompt,
-          mandatoryAnchorId: anchor.id,
-          mandatoryAnchorName: anchor.name,
-        },
-      });
+      // ── Call generate-outfit edge function with client-side retry on rate limit ──
+      const edgeBody = {
+        occasion: OCCASION_LABEL[occasion],
+        items: items,
+        weather: weatherForEdge,
+        recentOutfitItemIds: recentItemIds,
+        preBuiltPrompt,
+        mandatoryAnchorId: anchor.id,
+        mandatoryAnchorName: anchor.name,
+      };
 
-      if (fnError) {
-        // Extract actual error body from FunctionsHttpError context
-        let bodyMsg = '';
-        try {
-          const ctx = (fnError as { context?: Response }).context;
-          if (ctx) {
-            const bodyJson = await ctx.clone().json().catch(() => null);
-            bodyMsg = bodyJson?.error || bodyJson?.message || '';
+      const invokeWithRetry = async () => {
+        for (let attempt = 0; attempt <= 1; attempt++) {
+          if (attempt > 0) {
+            setError('Generation service is busy — retrying automatically...');
+            await new Promise<void>(r => setTimeout(r, 12000));
+            setError(null);
           }
-        } catch { /* ignore */ }
-        const msg = bodyMsg || (fnError instanceof Error ? fnError.message : String(fnError));
-        if (/rate limit/i.test(msg)) throw new Error('rate_limit');
-        if (/credit|payment|402/i.test(msg)) throw new Error('credits');
-        throw new Error(msg);
-      }
+          const { data, error: fnError } = await supabase.functions.invoke('generate-outfit', { body: edgeBody });
+          if (fnError) {
+            let bodyMsg = '';
+            try {
+              const ctx = (fnError as { context?: Response }).context;
+              if (ctx) {
+                const bodyJson = await ctx.clone().json().catch(() => null);
+                bodyMsg = bodyJson?.error || bodyJson?.message || '';
+              }
+            } catch { /* ignore */ }
+            const msg = bodyMsg || (fnError instanceof Error ? fnError.message : String(fnError));
+            if (msg === 'spending_cap') throw new Error('spending_cap');
+            if (msg === 'rate_limit' && attempt < 1) continue;
+            if (msg === 'rate_limit') throw new Error('rate_limit');
+            if (/credit|payment|402/i.test(msg)) throw new Error('credits');
+            throw new Error(msg);
+          }
+          return data;
+        }
+      };
+
+      const data = await invokeWithRetry();
 
       if (!data || typeof data !== 'object') {
         throw new Error('Empty response from generation service.');
@@ -354,6 +366,8 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
       const msg = err instanceof Error ? err.message : String(err);
       if (msg === 'missing_top') {
         setError('We couldn\'t find a matching top in your wardrobe. Try adding more tops.');
+      } else if (msg === 'spending_cap') {
+        setError('Generation service is temporarily unavailable. Please try again later.');
       } else if (msg === 'rate_limit') {
         setError('Too many requests. Wait a moment and try again.');
       } else if (msg === 'credits') {
@@ -410,6 +424,9 @@ export function useStyleThisItem(wardrobeItems: ClothingItem[]): UseStyleThisIte
           }))
         );
       }
+
+      // Increment all-time counter — persists even if the outfit is later deleted.
+      await supabase.rpc('increment_total_outfits_generated', { p_user_id: user.id });
 
       setIsSaved(true);
       setResult((prev) => prev ? { ...prev, outfitId: outfitRow.id } : prev);

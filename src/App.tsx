@@ -36,6 +36,8 @@ const Privacy = lazy(() => import("./pages/policies/Privacy"));
 const Community = lazy(() => import("./pages/policies/Community"));
 const Cookies = lazy(() => import("./pages/policies/Cookies"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const PremiumSuccess = lazy(() => import("./pages/premium/PremiumSuccess"));
+const PremiumCancel = lazy(() => import("./pages/premium/PremiumCancel"));
 const LaunchVideo = lazy(() => import("./components/VestisLaunchVideo"));
 const SharedOutfit = lazy(() => import("./pages/SharedOutfit"));
 const SocialFeed = lazy(() => import("./pages/SocialFeed"));
@@ -131,6 +133,17 @@ function AppRoutes() {
       <Suspense fallback={<Noop />}>
         <Routes>
           <Route path="/shared-outfit/:shareId" element={<SharedOutfit />} />
+        </Routes>
+      </Suspense>
+    );
+  }
+
+  if (location.pathname === "/premium/success" || location.pathname === "/premium/cancel") {
+    return (
+      <Suspense fallback={<Noop />}>
+        <Routes>
+          <Route path="/premium/success" element={<PremiumSuccess />} />
+          <Route path="/premium/cancel" element={<PremiumCancel />} />
         </Routes>
       </Suspense>
     );

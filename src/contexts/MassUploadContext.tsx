@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useRef, useState } from "react"
 import { supabase } from "@/integrations/supabase/client";
 import { optimiseMassUploadImage } from "@/lib/wardrobeMassUpload";
 import { processClothingImage } from "@/lib/image-processing";
-import { generateClothingImage } from "@/services/imageGenerationService";
+import { generateFlatLay } from "@/services/flatLayService";
 import { segmentPileItems, SegmentationResult } from "@/services/segmentationService";
 import { MassUploadCandidate } from "@/types/massUpload";
 import { ClothingCategory, ClothingItem } from "@/types/wardrobe";
@@ -83,43 +83,28 @@ async function trimTransparentPadding(blob: Blob, alphaThreshold = 8): Promise<B
   });
 }
 
-// Composites a bg-removed transparent PNG with a drop shadow and studio
-// vibrancy, outputting a transparent PNG blob (alpha preserved for Supabase).
-async function compositeWithSoftShadow(bgRemovedBlob: Blob, size = 512): Promise<Blob> {
-  const trimmedBlob = await trimTransparentPadding(bgRemovedBlob);
-
+// Places a transparent-background cutout onto a white square canvas.
+async function placeOnWhite(cutoutBlob: Blob, size = 512): Promise<Blob> {
+  const trimmedBlob = await trimTransparentPadding(cutoutBlob);
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(trimmedBlob);
     const img = new Image();
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const dpr = Math.min(window.devicePixelRatio ?? 1, 3);
-      const px = Math.round(size * dpr);
       const canvas = document.createElement("canvas");
-      canvas.width = px;
-      canvas.height = px;
+      canvas.width = size;
+      canvas.height = size;
       const ctx = canvas.getContext("2d")!;
-      ctx.scale(dpr, dpr);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, size, size);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = "high";
-      const padding = size * 0.06;
+      const padding = size * 0.08;
       const maxDim = size - padding * 2;
       const scale = Math.min(maxDim / img.naturalWidth, maxDim / img.naturalHeight);
       const w = img.naturalWidth * scale;
       const h = img.naturalHeight * scale;
-      const x = (size - w) / 2;
-      const y = (size - h) / 2;
-      ctx.shadowColor = "rgba(0, 0, 0, 0.22)";
-      ctx.shadowBlur = 24;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 10;
-      ctx.drawImage(img, x, y, w, h);
-      ctx.shadowColor = "transparent";
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
-      ctx.filter = "contrast(1.1) saturate(1.05)";
-      ctx.drawImage(img, x, y, w, h);
-      ctx.filter = "none";
+      ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
       canvas.toBlob(
         (blob) => blob ? resolve(blob) : reject(new Error("toBlob failed")),
         "image/png",
@@ -167,42 +152,67 @@ function buildBaseCandidate(item: ItemWithSource): MassUploadCandidate {
   };
 }
 
-// Finishes a real SAM2 cutout (already has its background masked out) with the
-// same trim + soft-shadow studio polish used for generated flatlays — no
-// background removal needed since the SAM2 mask already did that.
-async function finalizeSegmentedPreview(segmentedBase64: string): Promise<{ previewUrl: string; imageBase64: string }> {
-  const sourceBlob = base64ToBlob(segmentedBase64, "image/png");
-  const finalBlob = await compositeWithSoftShadow(sourceBlob);
+// Crops the normalised bbox region from a JPEG source image, with padding.
+// Returns the cropped JPEG blob, ready for background removal.
+async function cropItemFromPhoto(
+  sourceBase64: string,
+  bbox: { x: number; y: number; width: number; height: number },
+): Promise<Blob> {
+  const sourceBlob = base64ToBlob(sourceBase64, "image/jpeg");
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(sourceBlob);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const iw = img.naturalWidth;
+      const ih = img.naturalHeight;
+      const pad = Math.max(bbox.width * iw, bbox.height * ih) * 0.06;
+      const sx = Math.max(0, Math.round(bbox.x * iw - pad));
+      const sy = Math.max(0, Math.round(bbox.y * ih - pad));
+      const sw = Math.min(iw - sx, Math.round(bbox.width * iw + pad * 2));
+      const sh = Math.min(ih - sy, Math.round(bbox.height * ih + pad * 2));
+      const canvas = document.createElement("canvas");
+      canvas.width = sw;
+      canvas.height = sh;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      canvas.toBlob(
+        (blob) => blob ? resolve(blob) : reject(new Error("toBlob failed")),
+        "image/png",
+      );
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("image load failed")); };
+    img.src = url;
+  });
+}
+
+// SAM2 cutout → FLUX Kontext → clean studio flat-lay of the real garment.
+// Falls back to placing the raw cutout on white if the AI step fails.
+async function generatePileFlatLay(
+  segmentedBase64: string,
+  item: { name: string; category: string; color: string; fabric: string },
+): Promise<{ previewUrl: string; imageBase64: string }> {
+  const flatLayBase64 = await generateFlatLay(segmentedBase64, {
+    name: item.name,
+    category: item.category,
+    colour: item.color,
+    fabric: item.fabric,
+  });
+  const mimeType = "image/jpeg";
+  const sourceBlob = base64ToBlob(flatLayBase64, mimeType);
+  const finalBlob = await placeOnWhite(sourceBlob);
   const finalBase64 = await blobToBase64(finalBlob);
   return { previewUrl: URL.createObjectURL(finalBlob), imageBase64: finalBase64 };
 }
 
-async function createStudioFlatlayPreview(item: ItemWithSource): Promise<{ previewUrl: string; imageBase64: string }> {
-  const generatedBase64 = await generateClothingImage(
-    {
-      name: item.name,
-      category: item.category,
-      color: item.color,
-      fabric: item.fabric,
-      tags: item.tags,
-      notes: item.notes,
-      cropHint: item.crop_hint,
-      bbox: item.bbox,
-    },
-  );
-  if (!generatedBase64) throw new Error("Image generation failed");
-
-  const sourceBlob = base64ToBlob(generatedBase64, "image/png");
-  const sourceFile = new File([sourceBlob], "mass-upload-item.png", { type: sourceBlob.type || "image/png" });
-  const bgRemovedBlob = await processClothingImage(sourceFile);
-  const finalBlob = await compositeWithSoftShadow(bgRemovedBlob);
+// Fallback: place the raw SAM2 cutout on white with no AI step.
+async function finalizeSegmentedPreview(segmentedBase64: string): Promise<{ previewUrl: string; imageBase64: string }> {
+  const sourceBlob = base64ToBlob(segmentedBase64, "image/png");
+  const finalBlob = await placeOnWhite(sourceBlob);
   const finalBase64 = await blobToBase64(finalBlob);
-
-  return {
-    previewUrl: URL.createObjectURL(finalBlob),
-    imageBase64: finalBase64,
-  };
+  return { previewUrl: URL.createObjectURL(finalBlob), imageBase64: finalBase64 };
 }
+
 
 interface ContextValue {
   phase: MassUploadPhase;
@@ -218,6 +228,7 @@ interface ContextValue {
   closeReview: () => void;
   updateCandidate: (id: string, patch: Partial<MassUploadCandidate>) => void;
   addCandidateToWardrobe: (candidate: MassUploadCandidate) => Promise<void>;
+  addAllCandidatesToWardrobe: () => Promise<void>;
   skipCandidate: (id: string) => void;
   reset: () => void;
 }
@@ -305,7 +316,17 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
         setAnalysisDone((prev) => prev + 1);
 
-        const items: DetectedItem[] = (error ? [] : data?.items) ?? [];
+        const rawItems: DetectedItem[] = (error ? [] : data?.items) ?? [];
+        // Outfit mode: skip accessories (earrings, rings, watches — too small in a
+        // worn photo for FLUX to reproduce faithfully) and any item whose bbox
+        // covers less than 2 % of the image (similarly too small to crop usefully).
+        const items = uploadMode === "outfit"
+          ? rawItems.filter((item) => {
+              if (item.category === "accessories") return false;
+              const area = (item.bbox?.width ?? 0) * (item.bbox?.height ?? 0);
+              return area >= 0.02;
+            })
+          : rawItems;
         if (items.length === 0) return;
 
         const idxStart = itemCounterRef.current;
@@ -324,12 +345,11 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       if (sessionRef.current !== mySession) return;
       if (allItemsWithSrc.length === 0) { setPhase("ready"); return; }
 
-      // ── Phase 2: real SAM2 cutouts for pile mode; generated flat lays for outfit mode ──
       setPhase("extracting");
 
       if (uploadMode === "pile") {
-        // Group by source photo so each photo is sent to SAM2 once, no matter how
-        // many items Gemini found in it.
+        // ── Pile mode: SAM2 cutout → FLUX Kontext flat-lay ──────────────────────
+        // Group by source photo so each photo is sent to SAM2 once.
         const itemsByPhoto = new Map<string, ItemWithSource[]>();
         for (const item of allItemsWithSrc) {
           const list = itemsByPhoto.get(item._sourceBase64) ?? [];
@@ -366,7 +386,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
 
             if (result?.status === "segmented") {
               try {
-                const { previewUrl, imageBase64 } = await finalizeSegmentedPreview(result.imageBase64);
+                const { previewUrl, imageBase64 } = await generatePileFlatLay(result.imageBase64, item);
                 setCandidates((prev) => [...prev, {
                   ...baseCandidate,
                   previewStatus: "ready",
@@ -391,33 +411,44 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           }
         }
       } else {
+        // ── Outfit mode: crop bbox → @imgly bg removal → FLUX Kontext flat-lay ──
+        // SAM2 automatic masks don't align reliably with Gemini bboxes for worn
+        // clothing (the person's body disrupts the IoU match). Instead: crop the
+        // Gemini bbox from the source photo, remove the background client-side,
+        // then let FLUX Kontext generate a clean studio flat-lay from that cutout.
         for (const item of allItemsWithSrc) {
           if (sessionRef.current !== mySession) return;
 
           const baseCandidate = buildBaseCandidate(item);
 
-          try {
-            const { previewUrl, imageBase64 } = await createStudioFlatlayPreview(item);
-
-            if (sessionRef.current === mySession) {
-              setCandidates((prev) => [...prev, {
-                ...baseCandidate,
-                previewStatus: "ready",
-                previewUrl,
-                croppedBase64: imageBase64,
-              }]);
-              setExtracted((prev) => prev + 1);
-            }
-          } catch (error) {
-            if (sessionRef.current === mySession) {
-              setCandidates((prev) => [...prev, {
-                ...baseCandidate,
-                previewStatus: "failed",
-                error: error instanceof Error ? error.message : "Could not generate flatlay image",
-              }]);
-              setExtracted((prev) => prev + 1);
-            }
+          if (!item.bbox) {
+            setCandidates((prev) => [...prev, {
+              ...baseCandidate,
+              previewStatus: "failed",
+              error: "Item location could not be determined",
+            }]);
+            setExtracted((prev) => prev + 1);
+            continue;
           }
+
+          try {
+            const croppedBlob = await cropItemFromPhoto(item._sourceBase64, item.bbox);
+            const cropBase64 = await blobToBase64(croppedBlob);
+            const { previewUrl, imageBase64 } = await generatePileFlatLay(cropBase64, item);
+            setCandidates((prev) => [...prev, {
+              ...baseCandidate,
+              previewStatus: "ready",
+              previewUrl,
+              croppedBase64: imageBase64,
+            }]);
+          } catch (error) {
+            setCandidates((prev) => [...prev, {
+              ...baseCandidate,
+              previewStatus: "failed",
+              error: error instanceof Error ? error.message : "Could not process this item",
+            }]);
+          }
+          setExtracted((prev) => prev + 1);
         }
       }
 
@@ -432,7 +463,23 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
   const addCandidateToWardrobe = useCallback(async (candidate: MassUploadCandidate) => {
     updateCandidate(candidate.id, { addState: "saving" });
     try {
-      let finalImageUrl = candidate.previewUrl!;
+      // Run background removal on the flat-lay so the wardrobe gets a clean
+      // transparent-background image. processClothingImage runs in a web worker
+      // so it doesn't block the main thread while the app stays usable.
+      let imageUrl = candidate.previewUrl!;
+      if (candidate.croppedBase64) {
+        try {
+          const bytes = atob(candidate.croppedBase64);
+          const arr = new Uint8Array(bytes.length);
+          for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+          const flatLayBlob = new Blob([arr], { type: "image/png" });
+          const flatLayFile = new File([flatLayBlob], "flat-lay.png", { type: "image/png" });
+          const bgRemovedBlob = await processClothingImage(flatLayFile);
+          imageUrl = URL.createObjectURL(bgRemovedBlob);
+        } catch {
+          // bg removal failed — fall back to the white-background preview
+        }
+      }
 
       await onAddRef.current(
         {
@@ -441,7 +488,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
           category: candidate.category,
           color: candidate.color,
           fabric: candidate.fabric,
-          imageUrl: finalImageUrl,
+          imageUrl,
           tags: [...candidate.tags, candidate.category, candidate.fabric.toLowerCase(), candidate.color.toLowerCase()].filter(Boolean),
           notes: candidate.notes,
           estimatedPrice: candidate.estimatedPrice,
@@ -455,6 +502,19 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
       throw err;
     }
   }, [updateCandidate]);
+
+  const addAllCandidatesToWardrobe = useCallback(async () => {
+    const snapshot = candidates.filter(
+      (c) => c.previewStatus === "ready" && c.addState === "idle" && c.name && c.category,
+    );
+    for (const candidate of snapshot) {
+      try {
+        await addCandidateToWardrobe(candidate);
+      } catch {
+        // Individual failures are surfaced per-card via addState — continue with the rest.
+      }
+    }
+  }, [candidates, addCandidateToWardrobe]);
 
   const skipCandidate = useCallback((id: string) => {
     updateCandidate(id, { addState: "skipped" });
@@ -476,6 +536,7 @@ export function MassUploadProvider({ children, onAdd }: ProviderProps) {
         closeReview,
         updateCandidate,
         addCandidateToWardrobe,
+        addAllCandidatesToWardrobe,
         skipCandidate,
         reset,
       }}

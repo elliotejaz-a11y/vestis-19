@@ -12,9 +12,19 @@ import { MassUploadCandidate, WARDROBE_FABRICS } from "@/types/massUpload";
 import { useMassUpload } from "@/contexts/MassUploadContext";
 import { Check, ChevronDown, ChevronUp, Loader2, Sparkles, X } from "lucide-react";
 
+
 export function MassUploadReviewSheet() {
-  const { phase, mode, candidates, reviewOpen, closeReview, addCandidateToWardrobe, skipCandidate, updateCandidate } =
-    useMassUpload();
+  const {
+    phase,
+    mode,
+    candidates,
+    reviewOpen,
+    closeReview,
+    addCandidateToWardrobe,
+    addAllCandidatesToWardrobe,
+    skipCandidate,
+    updateCandidate,
+  } = useMassUpload();
   const { toast } = useToast();
 
   const handleAdd = async (candidate: MassUploadCandidate) => {
@@ -25,7 +35,19 @@ export function MassUploadReviewSheet() {
     }
   };
 
+  const handleAddAll = () => {
+    // Close immediately so the app stays usable while bg removal + uploads run.
+    closeReview();
+    addAllCandidatesToWardrobe().catch(() => {
+      toast({ title: "Some items couldn't be saved", description: "Check your wardrobe for any missing items.", variant: "destructive" });
+    });
+  };
+
   const isOutfit = mode === "outfit";
+  const pendingCount = candidates.filter(
+    (c) => c.previewStatus === "ready" && c.addState === "idle" && c.name && c.category,
+  ).length;
+  const showConfirmBar = pendingCount > 0;
 
   return (
     <Sheet open={reviewOpen && phase === "ready"} onOpenChange={(open) => { if (!open) closeReview(); }}>
@@ -50,7 +72,12 @@ export function MassUploadReviewSheet() {
         {/* Scrollable list */}
         <div
           className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-4"
-          style={{ touchAction: "pan-y", paddingBottom: 'max(5rem, calc(4rem + env(safe-area-inset-bottom)))' }}
+          style={{
+            touchAction: "pan-y",
+            paddingBottom: showConfirmBar
+              ? 'max(7rem, calc(6rem + env(safe-area-inset-bottom)))'
+              : 'max(5rem, calc(4rem + env(safe-area-inset-bottom)))',
+          }}
         >
           {candidates.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
@@ -71,6 +98,23 @@ export function MassUploadReviewSheet() {
             ))
           )}
         </div>
+
+        {/* Sticky confirm-all footer */}
+        {showConfirmBar && (
+          <div
+            className="flex-shrink-0 px-4 pt-3 border-t border-border bg-background"
+            style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+          >
+            <Button
+              type="button"
+              className="w-full rounded-2xl bg-accent text-accent-foreground hover:bg-accent/90 h-12 text-sm font-semibold"
+              onClick={handleAddAll}
+            >
+              <Sparkles className="mr-2 h-4 w-4" />
+              {`Add ${pendingCount} item${pendingCount === 1 ? "" : "s"} to wardrobe`}
+            </Button>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -93,14 +137,18 @@ function CandidateCard({
   const update = (patch: Partial<MassUploadCandidate>) => onChange(candidate.id, patch);
   const disabled = candidate.addState === "saved" || candidate.addState === "skipped";
 
-  // Find the category label + icon for display
   const catMeta = CATEGORIES.find((c) => c.value === candidate.category);
 
   return (
     <div className="rounded-3xl border border-border bg-card overflow-hidden shadow-sm">
       {/* ── Large image ── */}
       <div className="relative bg-white dark:bg-muted w-full h-60">
-        {candidate.previewUrl ? (
+        {candidate.previewStatus === "extracting" ? (
+          <div className="flex h-full items-center justify-center gap-2 text-muted-foreground">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-xs">Generating flat lay...</span>
+          </div>
+        ) : candidate.previewUrl ? (
           <img
             src={candidate.previewUrl}
             alt={candidate.name}
