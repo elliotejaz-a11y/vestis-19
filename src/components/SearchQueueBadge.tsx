@@ -1,5 +1,5 @@
 import { useSearchQueue } from "@/contexts/SearchQueueContext";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -10,6 +10,7 @@ export function SearchQueueBadge() {
 
   const processing = queue.filter((q) => q.status === "processing" || q.status === "pending");
   const recentDone = queue.filter((q) => q.status === "done");
+  const recentFailed = queue.filter((q) => q.status === "error");
   const isProcessing = processing.length > 0;
 
   useEffect(() => {
@@ -34,10 +35,16 @@ export function SearchQueueBadge() {
           <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
           Analysing {processing.length} item{processing.length > 1 ? "s" : ""}…
         </>
-      ) : (
+      ) : recentDone.length > 0 ? (
         <>
           <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-green-400" />
           {recentDone.length} item{recentDone.length > 1 ? "s" : ""} added
+          {recentFailed.length > 0 ? `, ${recentFailed.length} failed` : ""}
+        </>
+      ) : (
+        <>
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-destructive" />
+          {recentFailed.length} item{recentFailed.length > 1 ? "s" : ""} failed to add
         </>
       )}
     </button>
