@@ -38,7 +38,7 @@ interface SearchQueueContextValue {
 
 const SearchQueueContext = createContext<SearchQueueContextValue | null>(null);
 
-const MAX_CONCURRENT = 2;
+const MAX_CONCURRENT = 3;
 
 // Resize to ≤512px using createImageBitmap (off-main-thread decode) +
 // OffscreenCanvas (off-main-thread draw), then encode the tiny result.
