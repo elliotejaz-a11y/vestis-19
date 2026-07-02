@@ -38,7 +38,9 @@ interface SearchQueueContextValue {
 
 const SearchQueueContext = createContext<SearchQueueContextValue | null>(null);
 
-const MAX_CONCURRENT = 3;
+// Must not exceed the background-removal worker pool size (bgRemovalWorker.ts) —
+// otherwise two concurrent items would share one worker's WASM session.
+const MAX_CONCURRENT = 2;
 
 // Resize to ≤512px using createImageBitmap (off-main-thread decode) +
 // OffscreenCanvas (off-main-thread draw), then encode the tiny result.

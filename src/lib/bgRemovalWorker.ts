@@ -1,12 +1,22 @@
 type Handlers = [(blob: Blob) => void, (err: Error) => void];
 
-// A pool (not a single worker) so concurrently-processed items actually run
+// A small pool (not a single worker) so concurrently-processed items run
 // background removal in parallel instead of queuing on one worker thread.
-const POOL_SIZE = 3;
+// Kept modest — each worker holds its own ONNX/WASM session, and running too
+// many at once increases the odds of a worker crashing under memory pressure.
+const POOL_SIZE = 2;
+const TIMEOUT_MS = 30000;
 const workers: Worker[] = [];
 const workerPending = new Map<Worker, Set<string>>();
 const pending = new Map<string, Handlers>();
 let nextWorker = 0;
+
+function removeFromPool(worker: Worker) {
+  const idx = workers.indexOf(worker);
+  if (idx !== -1) workers.splice(idx, 1);
+  workerPending.delete(worker);
+  worker.terminate();
+}
 
 function createWorker(): Worker {
   const worker = new Worker(
@@ -34,8 +44,10 @@ function createWorker(): Worker {
         pending.get(id)?.[1](new Error(e.message || "Background removal worker crashed"));
         pending.delete(id);
       }
-      ids.clear();
     }
+    // Drop the crashed worker from the pool so it isn't reused — a fresh one
+    // is created the next time this slot is needed.
+    removeFromPool(worker);
   };
   return worker;
 }
@@ -56,7 +68,18 @@ export async function removeBackgroundInWorker(blob: Blob): Promise<Blob> {
   const buffer = await blob.arrayBuffer();
   const worker = getWorker();
   return new Promise((resolve, reject) => {
-    pending.set(id, [resolve, reject]);
+    // Guards against a worker that silently stops responding (e.g. a fatal
+    // WASM trap that doesn't surface as an `error` event) so a single stuck
+    // item can never hang the queue forever.
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      workerPending.get(worker)?.delete(id);
+      reject(new Error("Background removal timed out"));
+    }, TIMEOUT_MS);
+    pending.set(id, [
+      (result) => { clearTimeout(timer); resolve(result); },
+      (err) => { clearTimeout(timer); reject(err); },
+    ]);
     workerPending.get(worker)!.add(id);
     worker.postMessage({ id, buffer, mimeType: blob.type || "image/png" }, [buffer]);
   });
